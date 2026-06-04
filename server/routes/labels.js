@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const { requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
+const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-ten.vercel.app';
 
 // ======= BATCH ROUTES =======
 
@@ -71,7 +72,7 @@ router.post('/batches', auth, requireOwnership, async (req, res) => {
         enterpriseId,
         productId: productId || null,
         serialNumber: `${prefix}-${String(i).padStart(6, '0')}`,
-        qrUrl: `https://tem.vn/scan/${prefix}-${String(i).padStart(6, '0')}`,
+        qrUrl: `${ADMIN_URL}/scan/${prefix}-${String(i).padStart(6, '0')}`,
         status: 'INACTIVE'
       });
     }
@@ -187,7 +188,7 @@ router.post('/migrate', auth, requireOwnership, async (req, res) => {
         enterpriseId,
         productId: productId || null,
         serialNumber: serial,
-        qrUrl: item.oldLink || item.qrcode || `https://tem.vn/scan/${serial}`,
+        qrUrl: item.oldLink || item.qrcode || `${ADMIN_URL}/scan/${serial}`,
         legacyQrCode: item.qrcode || null,
         legacyTemQr: item.temqr || null,
         activeCode: item.activeCode || null,

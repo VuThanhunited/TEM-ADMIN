@@ -11,6 +11,7 @@ const ScanLog = require('./models/ScanLog');
 const Template = require('./models/Template');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_admin';
+const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-ten.vercel.app';
 
 const seed = async (shouldExit = true) => {
   try {
@@ -222,7 +223,7 @@ const seed = async (shouldExit = true) => {
         enterpriseId: enterprise1._id,
         productId: products[0]._id,
         serialNumber: `VH-${String(i).padStart(6, '0')}`,
-        qrUrl: `https://tem.vn/scan/VH-${String(i).padStart(6, '0')}`,
+        qrUrl: `${ADMIN_URL}/scan/VH-${String(i).padStart(6, '0')}`,
         status: i <= 32 ? 'SCANNED' : 'ACTIVE',
         scanCount: i <= 32 ? Math.floor(Math.random() * 5) + 1 : 0,
         isActive: true
@@ -249,7 +250,7 @@ const seed = async (shouldExit = true) => {
         enterpriseId: enterprise1._id,
         productId: products[1]._id,
         serialNumber: `VH-${String(i).padStart(6, '0')}`,
-        qrUrl: `https://tem.vn/scan/VH-${String(i).padStart(6, '0')}`,
+        qrUrl: `${ADMIN_URL}/scan/VH-${String(i).padStart(6, '0')}`,
         status: 'INACTIVE',
         isActive: false
       });
@@ -277,7 +278,7 @@ const seed = async (shouldExit = true) => {
         enterpriseId: enterprise2._id,
         productId: products[3]._id,
         serialNumber: `SV-${String(i).padStart(6, '0')}`,
-        qrUrl: `https://tem.vn/scan/SV-${String(i).padStart(6, '0')}`,
+        qrUrl: `${ADMIN_URL}/scan/SV-${String(i).padStart(6, '0')}`,
         status: i <= 75 ? 'SCANNED' : 'ACTIVE',
         scanCount: i <= 75 ? Math.floor(Math.random() * 10) + 1 : 0,
         distributorName: i % 3 === 0 ? 'Nhà thuốc Long Châu' : i % 3 === 1 ? 'Nhà thuốc Pharmacity' : 'Nhà thuốc An Khang',
@@ -308,7 +309,7 @@ const seed = async (shouldExit = true) => {
         enterpriseId: enterprise2._id,
         productId: products[4]._id,
         serialNumber: `OLD-SV-${String(i).padStart(4, '0')}`,
-        qrUrl: `https://tem.vn/scan/OLD-SV-${String(i).padStart(4, '0')}`,
+        qrUrl: `${ADMIN_URL}/scan/OLD-SV-${String(i).padStart(4, '0')}`,
         status: 'ACTIVE',
         scanCount: Math.floor(Math.random() * 20) + 5,
         isActive: true
@@ -337,7 +338,7 @@ const seed = async (shouldExit = true) => {
         enterpriseId: enterprise3._id,
         productId: products[6]._id,
         serialNumber: `HS-${String(i).padStart(6, '0')}`,
-        qrUrl: `https://tem.vn/scan/HS-${String(i).padStart(6, '0')}`,
+        qrUrl: `${ADMIN_URL}/scan/HS-${String(i).padStart(6, '0')}`,
         status: i <= 18 ? 'SCANNED' : 'ACTIVE',
         scanCount: i <= 18 ? Math.floor(Math.random() * 3) + 1 : 0,
         isActive: true
