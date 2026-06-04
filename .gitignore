@@ -1,0 +1,23 @@
+# Dependency directories
+node_modules/
+admin/node_modules/
+server/node_modules/
+
+# Production build
+dist/
+admin/dist/
+
+# Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/.env
+
+# Logs and system generated files
+logs/
+*.log
+npm-debug.log*
+.system_generated/
+.gemini/

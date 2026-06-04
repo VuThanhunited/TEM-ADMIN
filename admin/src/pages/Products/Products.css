@@ -1,0 +1,23 @@
+.products-page { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.toolbar-count { font-size: var(--font-size-sm); color: var(--color-text-muted); white-space: nowrap; }
+.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--spacing-lg); }
+.product-card { padding: 0; overflow: hidden; cursor: pointer; }
+.product-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.product-image { position: relative; height: 180px; background: var(--color-bg-tertiary); overflow: hidden; }
+.product-image img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--transition-base); }
+.product-card:hover .product-image img { transform: scale(1.05); }
+.product-image-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); }
+.product-overlay { position: absolute; top: 0; right: 0; padding: var(--spacing-sm); display: flex; gap: 4px; opacity: 0; transition: opacity var(--transition-fast); }
+.product-card:hover .product-overlay { opacity: 1; }
+.product-overlay .btn { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); color: #fff; }
+.product-info { padding: var(--spacing-lg); display: flex; flex-direction: column; gap: 6px; }
+.product-name { font-size: var(--font-size-base); font-weight: 600; color: var(--color-text-primary); }
+.product-sku { font-size: var(--font-size-xs); color: var(--color-text-muted); font-family: monospace; }
+.product-desc { font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.4; }
+.product-dist { font-size: var(--font-size-xs); color: var(--color-accent-light); }
+.distributors-section { border-top: 1px solid var(--color-border); padding-top: var(--spacing-lg); }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-md); }
+.section-header label { font-weight: 600; color: var(--color-text-primary); }
+.distributor-row { display: grid; grid-template-columns: 1fr 1fr 120px 32px; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); align-items: center; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+@media (max-width: 768px) { .products-grid { grid-template-columns: 1fr; } .distributor-row { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }

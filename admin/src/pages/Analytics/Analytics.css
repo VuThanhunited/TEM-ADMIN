@@ -1,0 +1,42 @@
+.analytics-page { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.tabs { display: flex; gap: var(--spacing-sm); }
+.tab { display: flex; align-items: center; gap: 6px; }
+.scan-time { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.serial-number { font-family: 'Courier New', monospace; font-weight: 600; font-size: var(--font-size-sm); }
+.location-cell { display: flex; align-items: center; gap: 6px; font-size: var(--font-size-sm); }
+.device-badge { display: flex; align-items: center; gap: 4px; font-size: var(--font-size-xs); color: var(--color-text-muted); text-transform: capitalize; }
+.ip-address { font-family: monospace; font-size: var(--font-size-xs); color: var(--color-text-muted); }
+/* Map */
+.map-section { display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-lg); }
+.map-placeholder { padding: var(--spacing-2xl); text-align: center; color: var(--color-text-muted); }
+.map-placeholder h3 { margin-top: var(--spacing-md); color: var(--color-text-secondary); }
+.map-placeholder p { font-size: var(--font-size-sm); margin-bottom: var(--spacing-xl); }
+.location-list { text-align: left; max-height: 400px; overflow-y: auto; }
+.location-item { display: flex; align-items: center; gap: var(--spacing-sm); padding: 8px; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); }
+.location-coords { font-family: monospace; font-size: var(--font-size-xs); color: var(--color-text-muted); margin-left: auto; }
+.location-time { font-size: var(--font-size-xs); color: var(--color-text-muted); min-width: 120px; text-align: right; }
+.text-accent { color: var(--color-accent); }
+/* Demo */
+.demo-container { display: flex; gap: var(--spacing-2xl); align-items: flex-start; padding: var(--spacing-lg); flex-wrap: wrap; }
+.demo-phone { width: 280px; min-width: 280px; background: #000; border-radius: 36px; padding: 12px; position: relative; box-shadow: var(--shadow-xl), 0 0 0 2px #333; }
+.phone-notch { width: 100px; height: 24px; background: #000; border-radius: 0 0 16px 16px; margin: 0 auto; position: relative; z-index: 2; }
+.phone-screen { background: #0f172a; border-radius: 24px; overflow: hidden; padding: var(--spacing-lg); min-height: 440px; }
+.demo-scan-result { animation: fadeInUp 500ms ease-out; }
+.demo-badge-verified { display: flex; align-items: center; gap: var(--spacing-sm); background: var(--gradient-success); padding: 10px 16px; border-radius: var(--radius-lg); color: #fff; font-weight: 700; font-size: var(--font-size-sm); margin-bottom: var(--spacing-xl); }
+.demo-product { text-align: center; margin-bottom: var(--spacing-lg); }
+.demo-product-image { font-size: 48px; margin-bottom: var(--spacing-md); }
+.demo-product h3 { font-size: var(--font-size-md); color: #f1f5f9; margin-bottom: 6px; }
+.demo-product-desc { font-size: var(--font-size-xs); color: #94a3b8; }
+.demo-info-section { padding: var(--spacing-md) 0; border-top: 1px solid rgba(255,255,255,0.06); }
+.demo-info-section h4 { font-size: var(--font-size-xs); color: #6366f1; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.demo-info-section p { font-size: var(--font-size-sm); color: #cbd5e1; }
+.demo-serial { text-align: center; font-size: var(--font-size-xs); color: #475569; margin-top: var(--spacing-lg); font-family: monospace; }
+.demo-details { flex: 1; min-width: 280px; }
+.demo-details h3 { font-size: var(--font-size-lg); margin-bottom: var(--spacing-md); }
+.demo-details p { font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.6; margin-bottom: var(--spacing-md); }
+.demo-details ul { list-style: none; display: flex; flex-direction: column; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg); }
+.demo-details li { font-size: var(--font-size-sm); color: var(--color-text-secondary); padding: 8px 12px; background: var(--color-bg-tertiary); border-radius: var(--radius-md); }
+.demo-note { font-style: italic; color: var(--color-text-muted); font-size: var(--font-size-xs); }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+@media (max-width: 1024px) { .map-section { grid-template-columns: 1fr; } .chart-row { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .demo-container { flex-direction: column; align-items: center; } }

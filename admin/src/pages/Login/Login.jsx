@@ -1,0 +1,132 @@
+import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Shield, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import './Login.css';
+
+export default function Login() {
+  const { login, error, setError } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setError('Vui lòng nhập đầy đủ thông tin');
+      return;
+    }
+    setLoading(true);
+    try {
+      await login(username, password);
+    } catch (err) {
+      // Error is set in context
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-page">
+      <div className="login-bg-effects">
+        <div className="bg-orb orb-1"></div>
+        <div className="bg-orb orb-2"></div>
+        <div className="bg-orb orb-3"></div>
+        <div className="bg-grid"></div>
+      </div>
+
+      <div className="login-container animate-scale-in">
+        <div className="login-card glass-strong">
+          {/* Header */}
+          <div className="login-header">
+            <div className="login-logo">
+              <Shield size={32} />
+            </div>
+            <h1>TEM Admin</h1>
+            <p>Hệ thống Quản lý Tem nhãn Thông minh</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="login-form">
+            {error && (
+              <div className="login-error animate-fade-in">
+                <AlertCircle size={16} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="input-group">
+              <label htmlFor="username">Tên đăng nhập</label>
+              <input
+                id="username"
+                type="text"
+                className="input"
+                placeholder="Nhập tên đăng nhập..."
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoFocus
+                autoComplete="username"
+              />
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="password">Mật khẩu</label>
+              <div className="password-wrapper">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  className="input"
+                  placeholder="Nhập mật khẩu..."
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary btn-lg login-btn"
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="loading-spinner" style={{width:20,height:20,borderWidth:2}}></div>
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  Đăng nhập
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Demo Accounts */}
+          <div className="login-demo">
+            <p className="demo-title">Tài khoản demo</p>
+            <div className="demo-accounts">
+              <button type="button" className="demo-account" onClick={() => { setUsername('admin'); setPassword('admin123'); }}>
+                <span className="badge badge-dot badge-danger">Admin</span>
+                <span className="demo-cred">admin / admin123</span>
+              </button>
+              <button type="button" className="demo-account" onClick={() => { setUsername('viethuong'); setPassword('nsx123'); }}>
+                <span className="badge badge-dot badge-success">NSX</span>
+                <span className="demo-cred">viethuong / nsx123</span>
+              </button>
+              <button type="button" className="demo-account" onClick={() => { setUsername('saovang'); setPassword('npp123'); }}>
+                <span className="badge badge-dot badge-warning">NPP</span>
+                <span className="demo-cred">saovang / npp123</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

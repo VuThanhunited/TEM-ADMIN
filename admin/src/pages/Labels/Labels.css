@@ -1,0 +1,20 @@
+.labels-page { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.batch-code { font-family: 'Courier New', monospace; font-weight: 700; color: var(--color-accent-light); background: var(--color-accent-glow); padding: 2px 8px; border-radius: var(--radius-sm); font-size: var(--font-size-sm); }
+.serial-range { font-size: var(--font-size-xs); color: var(--color-text-muted); font-family: monospace; }
+.serial-number { font-family: 'Courier New', monospace; font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text-primary); }
+.text-muted { color: var(--color-text-muted); font-style: italic; }
+.text-danger { color: var(--color-danger); }
+.text-success { color: var(--color-success); }
+.action-buttons { display: flex; gap: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+.renew-info { background: var(--color-bg-tertiary); padding: var(--spacing-lg); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); }
+.renew-info p { margin-bottom: var(--spacing-sm); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.renew-info p strong { color: var(--color-text-primary); }
+.migrate-guide { padding: var(--spacing-lg); }
+.migrate-guide > p { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--spacing-lg); line-height: 1.6; }
+.guide-steps { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.guide-step { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md); background: var(--color-bg-tertiary); border-radius: var(--radius-md); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.step-num { width: 28px; height: 28px; min-width: 28px; background: var(--gradient-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: var(--font-size-sm); }
+.tabs { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; }
+.tab { display: flex; align-items: center; gap: 6px; }
+@media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
