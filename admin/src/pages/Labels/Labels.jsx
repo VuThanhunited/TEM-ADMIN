@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import {
   Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload,
   Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight,
-  Package, MapPin, Calendar, ExternalLink
+  Package, MapPin, Calendar, ExternalLink, Download
 } from 'lucide-react';
 import './Labels.css';
 
@@ -28,6 +28,8 @@ export default function Labels() {
   const [batchPagination, setBatchPagination] = useState({ page: 1, totalPages: 1 });
   const [labelPagination, setLabelPagination] = useState({ page: 1, totalPages: 1 });
   const [templates, setTemplates] = useState([]);
+  const [exportingBatchId, setExportingBatchId] = useState(null);
+  const [exportingLabels, setExportingLabels] = useState(false);
 
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: 'TEM', productId: '', templateId: '', expiryDate: '', notes: '', enterpriseId: '' });
   const [renewMonths, setRenewMonths] = useState(12);
@@ -118,6 +120,111 @@ export default function Labels() {
       loadBatches();
     } catch (err) { alert(err.message); }
   };
+
+  const handleDownloadBatch = async (batch) => {
+    try {
+      setExportingBatchId(batch._id);
+      // Fetch all labels for the specific batch (high limit to fetch all)
+      const res = await api.getLabels({ batchId: batch._id, limit: 100000 });
+      if (!res.data || res.data.length === 0) {
+        alert('Lô tem này không có dữ liệu tem nhãn nào để tải về!');
+        return;
+      }
+
+      // Format data for Excel export
+      const exportData = res.data.map((label, index) => ({
+        'STT': index + 1,
+        'Mã lô': batch.batchCode,
+        'Sản phẩm': batch.productId?.name || 'Chưa gắn',
+        'Mã Serial': label.serialNumber,
+        'Link quét': label.qrUrl,
+        'Mã SMS': label.smsCode || '',
+        'Mã Kích hoạt': label.activeCode || '',
+        'Link QR gốc (Di trú)': label.legacyQrCode || '',
+        'Link TEMQR gốc (Di trú)': label.legacyTemQr || '',
+        'Trạng thái': getStatusLabel(label.status),
+        'Số lượt quét': label.scanCount || 0
+      }));
+
+      // Generate Workbook
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh sách tem');
+
+      // Autofit columns roughly
+      worksheet['!cols'] = [
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 18 },
+        { wch: 45 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 25 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 12 }
+      ];
+
+      XLSX.writeFile(workbook, `Danh_sach_tem_lo_${batch.batchCode}.xlsx`);
+    } catch (err) {
+      alert('Lỗi xuất Excel lô tem: ' + err.message);
+    } finally {
+      setExportingBatchId(null);
+    }
+  };
+
+  const handleDownloadFilteredLabels = async () => {
+    try {
+      setExportingLabels(true);
+      // Fetch all labels matching currently active search filter (high limit to fetch all matching)
+      const res = await api.getLabels({ search, limit: 100000 });
+      if (!res.data || res.data.length === 0) {
+        alert('Không tìm thấy dữ liệu tem nhãn nào phù hợp với bộ lọc!');
+        return;
+      }
+
+      // Format data
+      const exportData = res.data.map((label, index) => ({
+        'STT': index + 1,
+        'Mã lô': label.batchId?.batchCode || '—',
+        'Sản phẩm': label.productId?.name || 'Chưa gắn',
+        'Mã Serial': label.serialNumber,
+        'Link quét': label.qrUrl,
+        'Mã SMS': label.smsCode || '',
+        'Mã Kích hoạt': label.activeCode || '',
+        'Điểm bán': label.distributorName || '—',
+        'Địa chỉ điểm bán': label.distributorAddress || '—',
+        'Trạng thái': getStatusLabel(label.status),
+        'Số lượt quét': label.scanCount || 0
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Kết quả tìm kiếm');
+
+      worksheet['!cols'] = [
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 18 },
+        { wch: 45 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 20 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 12 }
+      ];
+
+      XLSX.writeFile(workbook, `Danh_sach_tem_loc.xlsx`);
+    } catch (err) {
+      alert('Lỗi xuất Excel danh sách lọc: ' + err.message);
+    } finally {
+      setExportingLabels(false);
+    }
+  };
+
 
   const handleMigrate = async (e) => {
     e.preventDefault();
@@ -382,12 +489,27 @@ export default function Labels() {
         })}
       </div>
 
-      {/* Search */}
-      <div className="toolbar">
+      {/* Search & Export Actions */}
+      <div className="toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div className="search-box">
           <Search size={18} className="search-icon" />
           <input className="input" placeholder={activeTab === 'batches' ? 'Tìm mã lô...' : 'Tìm serial...'} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+        {activeTab === 'activate' && (
+          <button className="btn btn-primary" onClick={handleDownloadFilteredLabels} disabled={exportingLabels} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {exportingLabels ? (
+              <>
+                <div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }}></div>
+                Đang xuất...
+              </>
+            ) : (
+              <>
+                <Download size={16} />
+                Xuất Excel
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Batches Tab */}
@@ -428,6 +550,13 @@ export default function Labels() {
                         </button>
                         <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setMapForm({productId: batch.productId?._id || ''}); setShowMapModal(true); }} title="Gắn sản phẩm">
                           <Link2 size={14}/>
+                        </button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
+                          {exportingBatchId === batch._id ? (
+                            <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
+                          ) : (
+                            <Download size={14} className="text-success" />
+                          )}
                         </button>
                         {activeTab === 'renew' && (
                           <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setShowRenewModal(true); }} title="Gia hạn">

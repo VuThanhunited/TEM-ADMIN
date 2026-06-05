@@ -168,12 +168,12 @@ export default function Scan() {
           <div className="verif-badge-container">
             {label.scanCount === 1 || isFirstScan ? (
               <div className="verif-badge success">
-                <CheckCircle size={24} />
+                <Shield size={24} className="icon-shield" />
                 <span>SẢN PHẨM CHÍNH HÃNG</span>
               </div>
             ) : (
               <div className="verif-badge warning">
-                <AlertTriangle size={24} />
+                <AlertTriangle size={24} className="icon-warning" />
                 <span>CẢNH BÁO QUÉT TRÙNG</span>
               </div>
             )}
@@ -183,7 +183,7 @@ export default function Scan() {
           {/* Verification Alert Message */}
           {label.scanCount === 1 || isFirstScan ? (
             <div className="scan-alert success">
-              <CheckCircle size={20} className="info-icon" style={{ marginTop: 2 }} />
+              <Shield size={20} className="info-icon" style={{ marginTop: 2 }} />
               <div>
                 <div className="alert-title">Xác thực thành công (Lần quét đầu tiên)</div>
                 <p>Đây là lần đầu tiên tem nhãn này được quét xác thực. Sản phẩm được cam kết chính hãng bởi <strong>{enterprise.name}</strong>.</p>
@@ -209,9 +209,15 @@ export default function Scan() {
           {template.showProductInfo && product && (
             <div className="scan-product-section animate-fade-in">
               {product.images && product.images[0] ? (
-                <img src={product.images[0]} alt={product.name} className="scan-product-image" />
+                <div className="scan-image-wrapper">
+                  <img src={product.images[0]} alt={product.name} className="scan-product-image" />
+                  <div className="scan-line"></div>
+                </div>
               ) : (
-                <div className="scan-product-image" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '3rem' }}>📦</div>
+                <div className="scan-image-wrapper">
+                  <div className="scan-product-image" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '3rem', background: 'rgba(255,255,255,0.02)', aspectRatio: 1 }}>📦</div>
+                  <div className="scan-line"></div>
+                </div>
               )}
               <div>
                 <h2 className="scan-product-name">{product.name}</h2>
