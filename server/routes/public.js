@@ -158,4 +158,35 @@ router.get('/scan/:serial', async (req, res) => {
   }
 });
 
+// POST /api/public/scan/:serial/location - Update scan log with precise GPS coordinates
+router.post('/scan/:serial/location', async (req, res) => {
+  try {
+    const { serial } = req.params;
+    const { lat, lng } = req.body;
+
+    if (lat === undefined || lng === undefined) {
+      return res.status(400).json({ error: 'Thiếu vĩ độ hoặc kinh độ' });
+    }
+
+    // Find the latest ScanLog for this serial number created in the last 15 seconds (to cover slow GPS responses)
+    const fifteenSecondsAgo = new Date(Date.now() - 15000);
+    const scanLog = await ScanLog.findOne({
+      serialNumber: serial,
+      scannedAt: { $gte: fifteenSecondsAgo }
+    }).sort({ scannedAt: -1 });
+
+    if (scanLog) {
+      scanLog.location.lat = parseFloat(lat);
+      scanLog.location.lng = parseFloat(lng);
+      await scanLog.save();
+      return res.json({ success: true, message: 'Đã cập nhật tọa độ chính xác GPS' });
+    }
+
+    res.status(404).json({ error: 'Không tìm thấy lượt quét gần đây tương ứng' });
+  } catch (error) {
+    console.error('Update location error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật vị trí' });
+  }
+});
+
 module.exports = router;

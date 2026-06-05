@@ -270,4 +270,54 @@ router.put('/:id/status', auth, async (req, res) => {
   }
 });
 
+// POST /api/labels/bulk-map - Bulk map a range of serials in a batch to a product/distributor
+router.post('/bulk-map', auth, async (req, res) => {
+  try {
+    const { batchId, serialStart, serialEnd, productId, distributorName, distributorAddress } = req.body;
+    
+    if (!batchId || !serialStart || !serialEnd) {
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc (Lô tem, Serial bắt đầu, Serial kết thúc)' });
+    }
+
+    // Check if batch exists
+    const batch = await LabelBatch.findById(batchId);
+    if (!batch) {
+      return res.status(404).json({ error: 'Không tìm thấy lô tem' });
+    }
+
+    // Range query using lexicographical range comparison
+    const query = {
+      batchId,
+      serialNumber: { $gte: serialStart, $lte: serialEnd }
+    };
+
+    const updateData = {};
+    if (productId !== undefined) updateData.productId = productId || null;
+    if (distributorName !== undefined) updateData.distributorName = distributorName || null;
+    if (distributorAddress !== undefined) updateData.distributorAddress = distributorAddress || null;
+
+    // We can also activate them automatically if a product is mapped
+    if (productId) {
+      updateData.status = 'ACTIVE';
+      updateData.isActive = true;
+    }
+
+    const result = await Label.updateMany(query, updateData);
+
+    // If productId was changed and batch doesn't have a product yet, set it as default
+    if (productId && !batch.productId) {
+      batch.productId = productId;
+      await batch.save();
+    }
+
+    res.json({
+      message: `Đã cập nhật thành công ${result.modifiedCount} tem nhãn.`,
+      modifiedCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Bulk map error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
+  }
+});
+
 module.exports = router;

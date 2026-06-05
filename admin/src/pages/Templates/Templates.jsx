@@ -18,7 +18,8 @@ export default function Templates() {
   const [form, setForm] = useState({
     name: '', primaryColor: '#6366f1', secondaryColor: '#8b5cf6',
     backgroundColor: '#0f172a', textColor: '#f8fafc', layout: 'default',
-    showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, enterpriseId: ''
+    showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, enterpriseId: '',
+    logo: '', backgroundImage: ''
   });
 
   useEffect(() => {
@@ -43,15 +44,57 @@ export default function Templates() {
   const openCreate = () => {
     setEditing(null);
     setModalError(null);
-    setForm({ name: '', primaryColor: '#6366f1', secondaryColor: '#8b5cf6', backgroundColor: '#0f172a', textColor: '#f8fafc', layout: 'default', showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, enterpriseId: '' });
+    setForm({ name: '', primaryColor: '#6366f1', secondaryColor: '#8b5cf6', backgroundColor: '#0f172a', textColor: '#f8fafc', layout: 'default', showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, enterpriseId: '', logo: '', backgroundImage: '' });
     setShowModal(true);
   };
 
   const openEdit = (tmpl) => {
     setEditing(tmpl);
     setModalError(null);
-    setForm({ name: tmpl.name, primaryColor: tmpl.primaryColor, secondaryColor: tmpl.secondaryColor, backgroundColor: tmpl.backgroundColor, textColor: tmpl.textColor, layout: tmpl.layout, showVerificationBadge: tmpl.showVerificationBadge, showProductInfo: tmpl.showProductInfo, showDistributorInfo: tmpl.showDistributorInfo, showScanCount: tmpl.showScanCount, enterpriseId: tmpl.enterpriseId?._id || tmpl.enterpriseId || '' });
+    setForm({ name: tmpl.name, primaryColor: tmpl.primaryColor, secondaryColor: tmpl.secondaryColor, backgroundColor: tmpl.backgroundColor, textColor: tmpl.textColor, layout: tmpl.layout, showVerificationBadge: tmpl.showVerificationBadge, showProductInfo: tmpl.showProductInfo, showDistributorInfo: tmpl.showDistributorInfo, showScanCount: tmpl.showScanCount, enterpriseId: tmpl.enterpriseId?._id || tmpl.enterpriseId || '', logo: tmpl.logo || '', backgroundImage: tmpl.backgroundImage || '' });
     setShowModal(true);
+  };
+
+  const applyPreset = (presetType) => {
+    if (!presetType) return;
+    let presetName = '';
+    if (presetType === 'duoc') {
+      presetName = 'Giao diện Dược phẩm';
+      setForm(prev => ({
+        ...prev,
+        name: prev.name || presetName,
+        primaryColor: '#0d9488',
+        secondaryColor: '#0ea5e9',
+        backgroundColor: '#ffffff',
+        textColor: '#1e293b',
+        layout: 'modern',
+        logo: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="20" fill="%23f0fdfa"/><path d="M50 20v60M30 50h40" stroke="%230d9488" stroke-width="12" stroke-linecap="round"/><circle cx="50" cy="50" r="10" fill="%230ea5e9"/></svg>'
+      }));
+    } else if (presetType === 'mypham') {
+      presetName = 'Giao diện Mỹ phẩm';
+      setForm(prev => ({
+        ...prev,
+        name: prev.name || presetName,
+        primaryColor: '#c5a880',
+        secondaryColor: '#db2777',
+        backgroundColor: '#0f0f15',
+        textColor: '#ffffff',
+        layout: 'premium',
+        logo: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="20" fill="%230f0f15"/><path d="M50 15c0 0-10 15-10 25s10 10 10 10 10 0 10-10-10-25-10-25zM50 85c0 0 10-15 10-25s-10-10-10-10-10 0-10 10 10 25 10 25zM15 50c0 0 15 10 25 10s10-10 10-10-0-10-10-10-25 10-25 10zM85 50c0 0-15-10-25-10s-10 10-10 10 0 10 10 10 25-10 25-10z" fill="%23c5a880"/><circle cx="50" cy="50" r="8" fill="%23db2777"/></svg>'
+      }));
+    } else if (presetType === 'nongnghiep') {
+      presetName = 'Giao diện Nông nghiệp';
+      setForm(prev => ({
+        ...prev,
+        name: prev.name || presetName,
+        primaryColor: '#16a34a',
+        secondaryColor: '#84cc16',
+        backgroundColor: '#f0fdf4',
+        textColor: '#1f2937',
+        layout: 'minimal',
+        logo: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="20" fill="%23f0fdf4"/><path d="M50 80V40M50 40c0-10-15-15-25-5 0 0 5 15 25 5zm0 15c0-8 15-12 25-2 0 0-5 12-25 2z" stroke="%2316a34a" stroke-width="8" stroke-linecap="round" fill="none"/><circle cx="50" cy="30" r="6" fill="%2384cc16"/></svg>'
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -163,6 +206,19 @@ export default function Templates() {
                     </select>
                   </div>
                 )}
+                <div className="input-group">
+                  <label>Áp dụng nhanh Ngành Hàng mẫu</label>
+                  <select
+                    className="input select"
+                    defaultValue=""
+                    onChange={e => applyPreset(e.target.value)}
+                  >
+                    <option value="">-- Tùy chọn thiết kế mẫu --</option>
+                    <option value="duoc">Dược phẩm & Y tế (Xanh Teal, Modern, Light mode)</option>
+                    <option value="mypham">Mỹ phẩm & Làm đẹp (Gold/Rose, Premium, Dark mode)</option>
+                    <option value="nongnghiep">Nông nghiệp & Thực phẩm (Xanh lá, Minimal, Nature)</option>
+                  </select>
+                </div>
                 <div className="input-group"><label>Tên Template *</label><input className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
                 <div className="input-group">
                   <label>Layout</label>
@@ -172,6 +228,30 @@ export default function Templates() {
                     <option value="premium">Premium</option>
                     <option value="modern">Modern</option>
                   </select>
+                </div>
+                <div className="input-group">
+                  <label>Logo của Template (URL hoặc SVG Data URI)</label>
+                  <input
+                    className="input"
+                    value={form.logo || ''}
+                    onChange={e => setForm({...form, logo: e.target.value})}
+                    placeholder="Để trống sẽ dùng logo doanh nghiệp"
+                  />
+                </div>
+                {form.logo && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0', padding: 8, borderRadius: 8, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>Logo hiện tại:</span>
+                    <img src={form.logo} alt="Logo preview" style={{ height: 32, maxWidth: 120, objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  </div>
+                )}
+                <div className="input-group">
+                  <label>Hình nền Template (URL tùy chọn)</label>
+                  <input
+                    className="input"
+                    value={form.backgroundImage || ''}
+                    onChange={e => setForm({...form, backgroundImage: e.target.value})}
+                    placeholder="URL ảnh nền cho trang quét tem"
+                  />
                 </div>
                 <div className="color-grid">
                   <div className="input-group">
@@ -210,9 +290,20 @@ export default function Templates() {
       {/* Full Preview Modal */}
       {previewTemplate && (
         <div className="modal-overlay" onClick={() => setPreviewTemplate(null)}>
-          <div className="preview-modal animate-scale-in" style={{background: previewTemplate.backgroundColor, color: previewTemplate.textColor}}>
+          <div className="preview-modal animate-scale-in" style={{
+            background: previewTemplate.backgroundColor, 
+            color: previewTemplate.textColor,
+            backgroundImage: previewTemplate.backgroundImage ? `url(${previewTemplate.backgroundImage})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}>
             <button className="preview-close btn-icon" onClick={() => setPreviewTemplate(null)}><X size={24}/></button>
             <div className="preview-full">
+              {previewTemplate.logo && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                  <img src={previewTemplate.logo} alt="Brand Logo Preview" style={{ maxHeight: 50, maxWidth: 150, objectFit: 'contain' }} />
+                </div>
+              )}
               {previewTemplate.showVerificationBadge && (
                 <div className="preview-badge" style={{background: `linear-gradient(135deg, ${previewTemplate.primaryColor}, ${previewTemplate.secondaryColor})`}}>
                   <CheckCircle size={28}/> <span>Sản phẩm chính hãng</span>

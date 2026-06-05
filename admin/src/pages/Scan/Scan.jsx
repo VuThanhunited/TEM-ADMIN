@@ -41,6 +41,25 @@ export default function Scan() {
       const res = await api.getPublicScan(serial);
       setData(res);
       applyTheme(res.template);
+
+      // Request Geolocation to log precise coordinate on server
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+              await api.sendScanLocation(serial, { lat: latitude, lng: longitude });
+              console.log('Precise GPS location logged:', latitude, longitude);
+            } catch (locationErr) {
+              console.error('Failed to update scan coordinates:', locationErr);
+            }
+          },
+          (geoErr) => {
+            console.warn('Geolocation denied or error:', geoErr.message);
+          },
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || 'Có lỗi xảy ra khi quét tem nhãn');
@@ -155,14 +174,33 @@ export default function Scan() {
   const lightClass = isLightTheme() ? 'light-theme' : '';
   const layoutClass = `layout-${template.layout || 'default'}`;
 
+  const getPageStyle = () => {
+    if (!template?.backgroundImage) return {};
+    return {
+      backgroundImage: `url(${template.backgroundImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed'
+    };
+  };
+
   return (
-    <div className={`scan-public-page ${lightClass} ${layoutClass}`}>
-      <div className="scan-bg-effects">
-        <div className="bg-orb orb-1"></div>
-        <div className="bg-orb orb-2"></div>
-      </div>
+    <div className={`scan-public-page ${lightClass} ${layoutClass}`} style={getPageStyle()}>
+      {!template?.backgroundImage && (
+        <div className="scan-bg-effects">
+          <div className="bg-orb orb-1"></div>
+          <div className="bg-orb orb-2"></div>
+        </div>
+      )}
 
       <div className="scan-container">
+        {/* Brand Header Logo */}
+        {(template?.logo || enterprise.logo) && (
+          <div className="scan-brand-header animate-fade-in">
+            <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="brand-header-logo" />
+          </div>
+        )}
+
         {/* Verification Status */}
         <div className="scan-card">
           <div className="verif-badge-container">
@@ -232,8 +270,8 @@ export default function Scan() {
             <h4 className="block-title">Đơn vị sở hữu & Sản xuất</h4>
             <div className="block-content">
               <div className="enterprise-logo-title">
-                {enterprise.logo ? (
-                  <img src={enterprise.logo} alt={enterprise.name} className="enterprise-logo" />
+                {template?.logo || enterprise.logo ? (
+                  <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="enterprise-logo" />
                 ) : (
                   <div className="enterprise-logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', fontSize: '0.8rem', color: '#1e293b' }}>MS</div>
                 )}

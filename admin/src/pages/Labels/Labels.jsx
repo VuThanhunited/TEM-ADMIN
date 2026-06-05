@@ -30,6 +30,8 @@ export default function Labels() {
   const [templates, setTemplates] = useState([]);
   const [exportingBatchId, setExportingBatchId] = useState(null);
   const [exportingLabels, setExportingLabels] = useState(false);
+  const [showBulkMapModal, setShowBulkMapModal] = useState(false);
+  const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' });
 
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: 'TEM', productId: '', templateId: '', expiryDate: '', notes: '', enterpriseId: '' });
   const [renewMonths, setRenewMonths] = useState(12);
@@ -224,6 +226,59 @@ export default function Labels() {
       setExportingLabels(false);
     }
   };
+
+  const handleBulkFormBatchChange = (batchId) => {
+    const selected = batches.find(b => b._id === batchId);
+    if (selected) {
+      setBulkForm(prev => ({
+        ...prev,
+        batchId,
+        serialStart: selected.serialStart,
+        serialEnd: selected.serialEnd,
+        productId: selected.productId?._id || selected.productId || ''
+      }));
+    } else {
+      setBulkForm(prev => ({
+        ...prev,
+        batchId: '',
+        serialStart: '',
+        serialEnd: '',
+        productId: ''
+      }));
+    }
+  };
+
+  const handleBulkMapSubmit = async (e) => {
+    e.preventDefault();
+    setModalError(null);
+    if (!bulkForm.batchId || !bulkForm.serialStart || !bulkForm.serialEnd) {
+      setModalError('Vui lòng chọn Lô tem và nhập đầy đủ dải Serial!');
+      return;
+    }
+
+    try {
+      const res = await api.bulkMapLabels({
+        batchId: bulkForm.batchId,
+        serialStart: bulkForm.serialStart,
+        serialEnd: bulkForm.serialEnd,
+        productId: bulkForm.productId || null,
+        distributorName: bulkForm.distributorName || null,
+        distributorAddress: bulkForm.distributorAddress || null
+      });
+
+      setShowBulkMapModal(false);
+      setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' });
+      
+      // Reload lists
+      if (activeTab === 'batches') loadBatches();
+      else if (activeTab === 'activate') loadLabels();
+
+      alert(res.message || 'Cập nhật dải tem nhãn thành công!');
+    } catch (err) {
+      setModalError(err.message || 'Lỗi cập nhật dải tem nhãn');
+    }
+  };
+
 
 
   const handleMigrate = async (e) => {
@@ -459,6 +514,9 @@ export default function Labels() {
     { id: 'renew', label: 'Gia hạn lô tem', icon: Clock },
   ];
 
+  const selectedProduct = products.find(p => p._id === bulkForm.productId);
+  const productDistributors = selectedProduct?.distributors || [];
+
   return (
     <div className="labels-page">
       <div className="page-header">
@@ -466,10 +524,17 @@ export default function Labels() {
           <h1>Quản lý Tem nhãn</h1>
           <p>Khởi tạo, theo dõi và quản lý lô tem - serial</p>
         </div>
-        {activeTab === 'batches' && (
-          <button className="btn btn-primary" onClick={() => { setModalError(null); setBatchForm({ batchCode: '', totalLabels: 100, prefix: 'TEM', productId: '', templateId: '', expiryDate: '', notes: '', enterpriseId: '' }); setShowCreateBatch(true); }}>
-            <Plus size={18}/> Tạo lô tem mới
-          </button>
+        {(activeTab === 'batches' || activeTab === 'activate') && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-ghost" onClick={() => { setModalError(null); setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' }); setShowBulkMapModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <Link2 size={16} /> Gắn kết hàng loạt
+            </button>
+            {activeTab === 'batches' && (
+              <button className="btn btn-primary" onClick={() => { setModalError(null); setBatchForm({ batchCode: '', totalLabels: 100, prefix: 'TEM', productId: '', templateId: '', expiryDate: '', notes: '', enterpriseId: '' }); setShowCreateBatch(true); }}>
+                <Plus size={18}/> Tạo lô tem mới
+              </button>
+            )}
+          </div>
         )}
         {activeTab === 'migrate' && (
           <button className="btn btn-primary" onClick={() => { setModalError(null); setMigrateForm({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', labelsText: '', enterpriseId: '' }); setShowMigrateModal(true); }}>
@@ -864,6 +929,130 @@ export default function Labels() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowMigrateModal(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary"><Upload size={16}/> Bắt đầu Import</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Bulk Map Product/Distributor Modal */}
+      {showBulkMapModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowBulkMapModal(false)}>
+          <div className="modal" style={{ maxWidth: 540 }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Gắn kết sản phẩm & Điểm bán hàng loạt</h3>
+              <button className="btn-icon" onClick={() => setShowBulkMapModal(false)}><X size={20}/></button>
+            </div>
+            <form onSubmit={handleBulkMapSubmit}>
+              <div className="modal-body">
+                {modalError && (
+                  <div className="modal-error animate-fade-in" style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: 12, marginBottom: 16,
+                    borderRadius: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)'
+                  }}>
+                    <XCircle size={18} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.9rem' }}>{modalError}</span>
+                  </div>
+                )}
+
+                <div className="input-group">
+                  <label>Chọn Lô tem *</label>
+                  <select
+                    className="input select"
+                    value={bulkForm.batchId}
+                    onChange={e => handleBulkFormBatchChange(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Chọn lô tem --</option>
+                    {batches.map(b => (
+                      <option key={b._id} value={b._id}>{b.batchCode} ({b.totalLabels} tem: {b.serialStart} → {b.serialEnd})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <div className="input-group">
+                    <label>Từ số Serial *</label>
+                    <input
+                      className="input"
+                      value={bulkForm.serialStart}
+                      onChange={e => setBulkForm({ ...bulkForm, serialStart: e.target.value })}
+                      required
+                      placeholder="VD: TEM-000001"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Đến số Serial *</label>
+                    <input
+                      className="input"
+                      value={bulkForm.serialEnd}
+                      onChange={e => setBulkForm({ ...bulkForm, serialEnd: e.target.value })}
+                      required
+                      placeholder="VD: TEM-000020"
+                    />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label>Gắn với Sản phẩm</label>
+                  <select
+                    className="input select"
+                    value={bulkForm.productId}
+                    onChange={e => setBulkForm({ ...bulkForm, productId: e.target.value, distributorIdx: '', distributorName: '', distributorAddress: '' })}
+                  >
+                    <option value="">-- Chọn sản phẩm --</option>
+                    {products.map(p => (
+                      <option key={p._id} value={p._id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="input-group">
+                  <label>Chọn Điểm bán lẻ từ sản phẩm</label>
+                  <select
+                    className="input select"
+                    value={bulkForm.distributorIdx}
+                    onChange={e => {
+                      const idx = e.target.value;
+                      if (idx === '') {
+                        setBulkForm(prev => ({ ...prev, distributorIdx: '', distributorName: '', distributorAddress: '' }));
+                      } else {
+                        const dist = productDistributors[idx];
+                        setBulkForm(prev => ({ ...prev, distributorIdx: idx, distributorName: dist.name, distributorAddress: dist.address }));
+                      }
+                    }}
+                    disabled={!bulkForm.productId}
+                  >
+                    <option value="">-- Chọn từ danh sách đại lý của sản phẩm --</option>
+                    {productDistributors.map((d, index) => (
+                      <option key={index} value={index}>{d.name} ({d.address})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-row">
+                  <div className="input-group">
+                    <label>Tên điểm bán lẻ (Tùy chọn)</label>
+                    <input
+                      className="input"
+                      value={bulkForm.distributorName}
+                      onChange={e => setBulkForm({ ...bulkForm, distributorName: e.target.value, distributorIdx: '' })}
+                      placeholder="VD: Đại lý Sao Mai"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Địa chỉ điểm bán lẻ (Tùy chọn)</label>
+                    <input
+                      className="input"
+                      value={bulkForm.distributorAddress}
+                      onChange={e => setBulkForm({ ...bulkForm, distributorAddress: e.target.value, distributorIdx: '' })}
+                      placeholder="VD: Quận 1, TP.HCM"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowBulkMapModal(false)}>Hủy</button>
+                <button type="submit" className="btn btn-primary"><Link2 size={16}/> Thực hiện Gắn kết</button>
               </div>
             </form>
           </div>

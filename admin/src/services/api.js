@@ -82,6 +82,7 @@ class ApiService {
   getLabels(params) { return this.request('GET', '/labels', null, params); }
   mapLabel(id, data) { return this.request('PUT', `/labels/${id}/map`, data); }
   updateLabelStatus(id, data) { return this.request('PUT', `/labels/${id}/status`, data); }
+  bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data); }
 
   // Analytics
   getOverview() { return this.request('GET', '/analytics/overview'); }
@@ -98,6 +99,7 @@ class ApiService {
   
   // Public scan
   getPublicScan(serial) { return this.request('GET', `/public/scan/${serial}`); }
+  sendScanLocation(serial, data) { return this.request('POST', `/public/scan/${serial}/location`, data); }
 }
 
 const api = new ApiService();
