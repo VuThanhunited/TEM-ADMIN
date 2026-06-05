@@ -227,7 +227,10 @@ export default function Analytics() {
                       <li>📍 Điểm bán / nhà phân phối</li>
                       <li>🔢 Serial number và lượt quét</li>
                     </ul>
-                    <p className="demo-note">Giao diện có thể tùy chỉnh theo template của doanh nghiệp tại mục "Cấu hình Giao diện".</p>
+                    <p className="demo-note" style={{ marginBottom: '16px' }}>Giao diện có thể tùy chỉnh theo template của doanh nghiệp tại mục "Cấu hình Giao diện".</p>
+                    <a href="/scan/VH-000001" target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+                      <Eye size={16} /> Mở Trang Quét Thực Tế (Test)
+                    </a>
                   </div>
                 </div>
               </div>
