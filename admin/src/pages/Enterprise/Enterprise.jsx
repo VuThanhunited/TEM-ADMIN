@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
@@ -8,10 +9,20 @@ import './Enterprise.css';
 
 export default function Enterprise() {
   const { user, enterpriseId } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Determine active tab based on route path
+  let activeTab = 'info';
+  if (location.pathname.endsWith('/domain')) {
+    activeTab = 'domain';
+  } else if (location.pathname.endsWith('/chatbot')) {
+    activeTab = 'chatbot';
+  }
+
   const [enterprise, setEnterprise] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('info');
   const [form, setForm] = useState({});
   const [domainForm, setDomainForm] = useState({ domain: '', subdomain: '' });
   const [chatbotForm, setChatbotForm] = useState({ enabled: false, script: '', welcomeMessage: '' });
@@ -99,7 +110,15 @@ export default function Enterprise() {
         {tabs.map(tab => {
           const Icon = tab.icon;
           return (
-            <button key={tab.id} className={`tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
+            <button 
+              key={tab.id} 
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`} 
+              onClick={() => {
+                if (tab.id === 'info') navigate('/enterprise');
+                else if (tab.id === 'domain') navigate('/enterprise/domain');
+                else if (tab.id === 'chatbot') navigate('/enterprise/chatbot');
+              }}
+            >
               <Icon size={16} /> {tab.label}
             </button>
           );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
@@ -11,7 +12,18 @@ import './Labels.css';
 
 export default function Labels() {
   const { isAdmin, enterpriseId } = useAuth();
-  const [activeTab, setActiveTab] = useState('batches');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Determine active tab based on route path
+  let activeTab = 'batches';
+  if (location.pathname.endsWith('/activate')) {
+    activeTab = 'activate';
+  } else if (location.pathname.endsWith('/migrate')) {
+    activeTab = 'migrate';
+  } else if (location.pathname.endsWith('/renew')) {
+    activeTab = 'renew';
+  }
   const [batches, setBatches] = useState([]);
   const [labels, setLabels] = useState([]);
   const [products, setProducts] = useState([]);
@@ -547,7 +559,17 @@ export default function Labels() {
         {tabs.map(tab => {
           const Icon = tab.icon;
           return (
-            <button key={tab.id} className={`tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => { setActiveTab(tab.id); setSearch(''); }}>
+            <button 
+              key={tab.id} 
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`} 
+              onClick={() => {
+                setSearch('');
+                if (tab.id === 'batches') navigate('/labels');
+                else if (tab.id === 'activate') navigate('/labels/activate');
+                else if (tab.id === 'migrate') navigate('/labels/migrate');
+                else if (tab.id === 'renew') navigate('/labels/renew');
+              }}
+            >
               <Icon size={16} /> {tab.label}
             </button>
           );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import {
   BarChart3, MapPin, Eye, Search, Calendar, Clock,
@@ -14,7 +15,17 @@ import './Analytics.css';
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
 export default function Analytics() {
-  const [activeTab, setActiveTab] = useState('history');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Determine active tab based on route path
+  let activeTab = 'history';
+  if (location.pathname.endsWith('/map')) {
+    activeTab = 'map';
+  } else if (location.pathname.endsWith('/demo')) {
+    activeTab = 'demo';
+  }
+
   const [scans, setScans] = useState([]);
   const [locations, setLocations] = useState([]);
   const [charts, setCharts] = useState(null);
@@ -81,7 +92,19 @@ export default function Analytics() {
       <div className="tabs">
         {tabs.map(tab => {
           const Icon = tab.icon;
-          return <button key={tab.id} className={`tab ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}><Icon size={16}/> {tab.label}</button>;
+          return (
+            <button 
+              key={tab.id} 
+              className={`tab ${activeTab === tab.id ? 'active' : ''}`} 
+              onClick={() => {
+                if (tab.id === 'history') navigate('/analytics');
+                else if (tab.id === 'map') navigate('/analytics/map');
+                else if (tab.id === 'demo') navigate('/analytics/demo');
+              }}
+            >
+              <Icon size={16}/> {tab.label}
+            </button>
+          );
         })}
       </div>
 
