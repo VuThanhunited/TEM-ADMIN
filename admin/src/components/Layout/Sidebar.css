@@ -285,10 +285,11 @@
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    width: 270px !important;
+    transition: transform var(--transition-base) !important;
   }
   .sidebar.mobile-open {
     transform: translateX(0);
-    width: var(--sidebar-width);
   }
   .sidebar-mobile-overlay {
     position: fixed;
