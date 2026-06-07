@@ -136,7 +136,7 @@
 
 .nav-item.active {
   background: var(--color-accent-glow);
-  color: var(--color-accent-light);
+  color: var(--color-accent);
 }
 
 .nav-item.active .nav-item-left svg {
@@ -191,7 +191,7 @@
 }
 
 .nav-subitem.active {
-  color: var(--color-accent-light);
+  color: var(--color-accent);
 }
 
 .subitem-dot {

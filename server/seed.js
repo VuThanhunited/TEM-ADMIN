@@ -213,6 +213,7 @@ const seed = async (shouldExit = true) => {
       status: 'ACTIVE',
       activatedCount: 50,
       scannedCount: 32,
+      theme: 'agriculture',
       expiryDate: new Date(Date.now() + 300 * 24 * 60 * 60 * 1000)
     });
     batches.push(batch1);
@@ -268,6 +269,7 @@ const seed = async (shouldExit = true) => {
       status: 'ACTIVE',
       activatedCount: 100,
       scannedCount: 75,
+      theme: 'functional_food',
       expiryDate: new Date(Date.now() + 150 * 24 * 60 * 60 * 1000)
     });
     batches.push(batch3);
@@ -328,6 +330,7 @@ const seed = async (shouldExit = true) => {
       status: 'ACTIVE',
       activatedCount: 40,
       scannedCount: 18,
+      theme: 'cosmetics',
       expiryDate: new Date(Date.now() + 250 * 24 * 60 * 60 * 1000)
     });
     batches.push(batch5);

@@ -42,7 +42,7 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
 // POST /api/labels/batches - Create batch and individual labels
 router.post('/batches', auth, requireOwnership, async (req, res) => {
   try {
-    const { batchCode, totalLabels, prefix = 'TEM', productId, templateId, expiryDate, notes } = req.body;
+    const { batchCode, totalLabels, prefix = 'TEM', productId, templateId, theme, expiryDate, notes } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
 
     const startNum = 1;
@@ -54,6 +54,7 @@ router.post('/batches', auth, requireOwnership, async (req, res) => {
       enterpriseId,
       productId: productId || null,
       templateId: templateId || null,
+      theme: theme || 'default',
       batchCode,
       totalLabels,
       serialStart,
@@ -115,20 +116,26 @@ router.put('/batches/:id/status', auth, async (req, res) => {
   }
 });
 
-// POST /api/labels/batches/:id/map-product - Map batch to product
+// POST /api/labels/batches/:id/map-product - Map batch to product & theme
 router.post('/batches/:id/map-product', auth, async (req, res) => {
   try {
-    const { productId } = req.body;
+    const { productId, theme } = req.body;
+    const updateData = {};
+    if (productId !== undefined) updateData.productId = productId || null;
+    if (theme !== undefined) updateData.theme = theme;
+
     const batch = await LabelBatch.findByIdAndUpdate(
       req.params.id,
-      { productId },
+      updateData,
       { new: true }
     ).populate('enterpriseId', 'name').populate('productId', 'name');
 
     if (!batch) return res.status(404).json({ error: 'Không tìm thấy lô tem' });
 
-    // Update all labels in batch
-    await Label.updateMany({ batchId: batch._id }, { productId });
+    // Update all labels in batch if productId changed
+    if (productId !== undefined) {
+      await Label.updateMany({ batchId: batch._id }, { productId });
+    }
 
     res.json(batch);
   } catch (error) {
@@ -162,13 +169,14 @@ router.put('/batches/:id/renew', auth, async (req, res) => {
 // POST /api/labels/migrate - Import old labels
 router.post('/migrate', auth, requireOwnership, async (req, res) => {
   try {
-    const { batchCode, labels: labelData, migrationSource, migrationOldLink, productId, templateId } = req.body;
+    const { batchCode, labels: labelData, migrationSource, migrationOldLink, productId, templateId, theme } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
 
     const batch = new LabelBatch({
       enterpriseId,
       productId: productId || null,
       templateId: templateId || null,
+      theme: theme || 'default',
       batchCode,
       totalLabels: labelData.length,
       serialStart: String(labelData[0]?.serial || labelData[0]?.id || 'MIGRATED-000001'),

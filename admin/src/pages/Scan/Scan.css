@@ -654,4 +654,272 @@
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
+/* ==========================================================================
+   THEME STYLES (Agriculture, Functional Food, Cosmetics)
+   ========================================================================== */
+
+/* -----------------------------------------
+   Agriculture Theme (Chủ đề Nông nghiệp)
+   ----------------------------------------- */
+.scan-public-page.theme-agriculture {
+  --primary-color: #10b981;
+  --secondary-color: #047857;
+  --bg-color: #f0fdf4;
+  --text-color: #1f2937;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.scan-public-page.theme-agriculture .scan-bg-effects {
+  display: none;
+}
+
+.scan-public-page.theme-agriculture .scan-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.08);
+}
+
+.scan-public-page.theme-agriculture .scan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.scan-public-page.theme-agriculture .verif-text {
+  color: #047857;
+  font-weight: 500;
+}
+
+.scan-public-page.theme-agriculture .scan-alert.success {
+  background-color: #ecfdf5;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #065f46;
+}
+
+.scan-public-page.theme-agriculture .scan-product-name {
+  color: #065f46;
+}
+
+.scan-public-page.theme-agriculture .block-title {
+  color: #047857;
+  opacity: 0.7;
+}
+
+.scan-public-page.theme-agriculture .badge-neutral {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.scan-public-page.theme-agriculture .scan-serial-box {
+  background-color: #f6fffa;
+  border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.scan-public-page.theme-agriculture .serial-row {
+  border-bottom: 1px solid rgba(16, 185, 129, 0.08);
+}
+
+.scan-public-page.theme-agriculture .chatbot-window {
+  background-color: #ffffff;
+  border: 1px solid #10b981;
+}
+
+.scan-public-page.theme-agriculture .chat-msg.bot {
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+
+.scan-public-page.theme-agriculture .chatbot-input-area {
+  border-top: 1px solid #d1fae5;
+  background-color: #f0fdf4;
+}
+
+.scan-public-page.theme-agriculture .chatbot-input {
+  background-color: #ffffff;
+  border: 1px solid #a7f3d0;
+  color: #1f2937;
+}
+
+
+/* -----------------------------------------
+   Functional Food Theme (Chủ đề Thực phẩm chức năng)
+   ----------------------------------------- */
+.scan-public-page.theme-functional_food {
+  --primary-color: #0284c7;
+  --secondary-color: #0369a1;
+  --bg-color: #f0f9ff;
+  --text-color: #1e293b;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.scan-public-page.theme-functional_food .scan-bg-effects {
+  display: none;
+}
+
+.scan-public-page.theme-functional_food .scan-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(2, 132, 199, 0.15);
+  box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
+}
+
+.scan-public-page.theme-functional_food .scan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(2, 132, 199, 0.15);
+  border-color: rgba(2, 132, 199, 0.25);
+}
+
+.scan-public-page.theme-functional_food .verif-text {
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.scan-public-page.theme-functional_food .verif-badge.success {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+}
+
+.scan-public-page.theme-functional_food .scan-alert.success {
+  background-color: #e0f2fe;
+  border: 1px solid rgba(2, 132, 199, 0.3);
+  color: #075985;
+}
+
+.scan-public-page.theme-functional_food .scan-product-name {
+  color: #0c4a6e;
+}
+
+.scan-public-page.theme-functional_food .block-title {
+  color: #0369a1;
+  opacity: 0.7;
+}
+
+.scan-public-page.theme-functional_food .badge-neutral {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.scan-public-page.theme-functional_food .scan-serial-box {
+  background-color: #f7fcff;
+  border: 1px solid rgba(2, 132, 199, 0.1);
+}
+
+.scan-public-page.theme-functional_food .serial-row {
+  border-bottom: 1px solid rgba(2, 132, 199, 0.08);
+}
+
+.scan-public-page.theme-functional_food .chatbot-window {
+  background-color: #ffffff;
+  border: 1px solid #0284c7;
+}
+
+.scan-public-page.theme-functional_food .chat-msg.bot {
+  background-color: #f0f9ff;
+  color: #075985;
+}
+
+.scan-public-page.theme-functional_food .chatbot-input-area {
+  border-top: 1px solid #bae6fd;
+  background-color: #f0f9ff;
+}
+
+.scan-public-page.theme-functional_food .chatbot-input {
+  background-color: #ffffff;
+  border: 1px solid #93c5fd;
+  color: #1e293b;
+}
+
+
+/* -----------------------------------------
+   Cosmetics Theme (Chủ đề Mỹ phẩm)
+   ----------------------------------------- */
+.scan-public-page.theme-cosmetics {
+  --primary-color: #ec4899;
+  --secondary-color: #db2777;
+  --bg-color: #fff1f2;
+  --text-color: #374151;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.scan-public-page.theme-cosmetics .scan-bg-effects {
+  display: none;
+}
+
+.scan-public-page.theme-cosmetics .scan-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(236, 72, 153, 0.15);
+  box-shadow: 0 10px 30px rgba(236, 72, 153, 0.08);
+  border-radius: 30px;
+}
+
+.scan-public-page.theme-cosmetics .scan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(236, 72, 153, 0.15);
+  border-color: rgba(236, 72, 153, 0.25);
+}
+
+.scan-public-page.theme-cosmetics .verif-text {
+  color: #be185d;
+  font-weight: 500;
+}
+
+.scan-public-page.theme-cosmetics .verif-badge.success {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+}
+
+.scan-public-page.theme-cosmetics .scan-alert.success {
+  background-color: #ffe4e6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+  color: #9f1239;
+}
+
+.scan-public-page.theme-cosmetics .scan-product-name {
+  color: #881337;
+  font-family: 'Playfair Display', 'Outfit', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.scan-public-page.theme-cosmetics .block-title {
+  color: #be185d;
+  opacity: 0.7;
+}
+
+.scan-public-page.theme-cosmetics .badge-neutral {
+  background-color: #ffe4e6;
+  color: #be185d;
+}
+
+.scan-public-page.theme-cosmetics .scan-serial-box {
+  background-color: #fffbfa;
+  border: 1px solid rgba(236, 72, 153, 0.1);
+}
+
+.scan-public-page.theme-cosmetics .serial-row {
+  border-bottom: 1px solid rgba(236, 72, 153, 0.08);
+}
+
+.scan-public-page.theme-cosmetics .chatbot-window {
+  background-color: #ffffff;
+  border: 1px solid #ec4899;
+}
+
+.scan-public-page.theme-cosmetics .chat-msg.bot {
+  background-color: #ffe4e6;
+  color: #9f1239;
+}
+
+.scan-public-page.theme-cosmetics .chatbot-input-area {
+  border-top: 1px solid #fecdd3;
+  background-color: #fff1f2;
+}
+
+.scan-public-page.theme-cosmetics .chatbot-input {
+  background-color: #ffffff;
+  border: 1px solid #f9a8d4;
+  color: #374151;
+}
+
 

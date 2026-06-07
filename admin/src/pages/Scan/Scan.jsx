@@ -40,7 +40,7 @@ export default function Scan() {
     try {
       const res = await api.getPublicScan(serial);
       setData(res);
-      applyTheme(res.template);
+      applyTheme(res.template, res.theme);
 
       // Request Geolocation to log precise coordinate on server
       if (navigator.geolocation) {
@@ -68,9 +68,16 @@ export default function Scan() {
     }
   };
 
-  const applyTheme = (template) => {
-    if (!template) return;
+  const applyTheme = (template, themeName) => {
     const root = document.documentElement;
+    if (themeName && themeName !== 'default') {
+      root.style.removeProperty('--primary-color');
+      root.style.removeProperty('--secondary-color');
+      root.style.removeProperty('--bg-color');
+      root.style.removeProperty('--text-color');
+      return;
+    }
+    if (!template) return;
     root.style.setProperty('--primary-color', template.primaryColor || '#6366f1');
     root.style.setProperty('--secondary-color', template.secondaryColor || '#4f46e5');
     root.style.setProperty('--bg-color', template.backgroundColor || '#0f172a');
@@ -170,9 +177,10 @@ export default function Scan() {
     );
   }
 
-  const { label, product, enterprise, template, isFirstScan, firstScanTime } = data;
+  const { label, product, enterprise, template, isFirstScan, firstScanTime, theme } = data;
   const lightClass = isLightTheme() ? 'light-theme' : '';
   const layoutClass = `layout-${template.layout || 'default'}`;
+  const themeClass = `theme-${theme || 'default'}`;
 
   const getPageStyle = () => {
     if (!template?.backgroundImage) return {};
@@ -185,7 +193,7 @@ export default function Scan() {
   };
 
   return (
-    <div className={`scan-public-page ${lightClass} ${layoutClass}`} style={getPageStyle()}>
+    <div className={`scan-public-page ${lightClass} ${layoutClass} ${themeClass}`} style={getPageStyle()}>
       {!template?.backgroundImage && (
         <div className="scan-bg-effects">
           <div className="bg-orb orb-1"></div>

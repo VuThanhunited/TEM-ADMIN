@@ -149,7 +149,8 @@ router.get('/scan/:serial', async (req, res) => {
       enterprise,
       template,
       isFirstScan,
-      firstScanTime
+      firstScanTime,
+      theme: batch.theme || 'default'
     });
 
   } catch (error) {

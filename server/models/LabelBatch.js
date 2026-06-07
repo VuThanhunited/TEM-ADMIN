@@ -70,6 +70,11 @@ const labelBatchSchema = new mongoose.Schema({
   notes: {
     type: String,
     default: ''
+  },
+  theme: {
+    type: String,
+    enum: ['default', 'agriculture', 'functional_food', 'cosmetics'],
+    default: 'default'
   }
 }, {
   timestamps: true
