@@ -13,6 +13,8 @@ export default function MainLayout() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        mobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
       <Header onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
       <main className="main-content">

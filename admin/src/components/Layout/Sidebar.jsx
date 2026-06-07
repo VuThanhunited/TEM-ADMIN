@@ -64,7 +64,7 @@ const menuItems = [
   },
 ];
 
-export default function Sidebar({ collapsed, onToggle }) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }) {
   const { user, isAdmin, logout } = useAuth();
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState({});
@@ -94,7 +94,11 @@ export default function Sidebar({ collapsed, onToggle }) {
   };
 
   return (
-    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+    <>
+      {mobileOpen && (
+        <div className="sidebar-mobile-overlay" onClick={onCloseMobile} />
+      )}
+      <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
       {/* Brand */}
       <div className="sidebar-brand">
         <div className="brand-logo">
@@ -148,6 +152,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                           to={child.path}
                           end={child.path === item.path}
                           className={({ isActive: a }) => `nav-subitem ${a ? 'active' : ''}`}
+                          onClick={onCloseMobile}
                         >
                           <span className="subitem-dot" />
                           <span>{child.label}</span>
@@ -162,6 +167,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                   end={item.path === '/'}
                   className={({ isActive: a }) => `nav-item ${a ? 'active' : ''}`}
                   title={collapsed ? item.label : undefined}
+                  onClick={onCloseMobile}
                 >
                   <div className="nav-item-left">
                     <Icon size={20} />
@@ -192,5 +198,6 @@ export default function Sidebar({ collapsed, onToggle }) {
         </div>
       )}
     </aside>
+    </>
   );
 }
