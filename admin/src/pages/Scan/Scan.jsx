@@ -420,8 +420,8 @@ export default function Scan() {
                   {enterprise.logo ? (
                     <img src={enterprise.logo} alt={enterprise.name} className="brand-logo-img" />
                   ) : (
-                    <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#007d32', textAlign: 'center', lineHeight: 1.1, padding: '2px' }}>
-                      {enterprise.name.split(' ').map(w => w[0]).join('').slice(0, 4).toUpperCase()}
+                    <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#007d32', textAlign: 'center', lineHeight: 1.15, letterSpacing: '0.3px', padding: '4px 2px', display: 'block' }}>
+                      {enterprise.name.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').slice(0, 4).toUpperCase()}
                     </span>
                   )}
                 </div>
@@ -431,7 +431,7 @@ export default function Scan() {
                 </div>
               </div>
               <div className="brand-divider-v"></div>
-              <span className="brand-slogan">Chất lượng tạo niềm tin</span>
+              <span className="brand-slogan">Ch&#7845;t l&#432;&#7907;ng t&#7841;o ni&#7873;m tin</span>
             </div>
 
             {galleryImages.length > 0 ? (
@@ -502,10 +502,10 @@ export default function Scan() {
                 <button
                   key={id}
                   type="button"
-                  className={`action-grid-btn ${activeSection === id ? 'active' : ''}`}
+                  className={`action-grid-btn ${activeSection === id ? 'active agri' : ''}`}
                   onClick={() => setActiveSection(activeSection === id ? null : id)}
                 >
-                  <div className={`agb-icon-circle ${hubVariant}`}><Icon size={22} strokeWidth={1.75} /></div>
+                  <div className="agb-icon-circle agri"><Icon size={22} strokeWidth={1.75} /></div>
                   <span>{label.split('\n').map((line, i, arr) => (
                     <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
                   ))}</span>
@@ -976,8 +976,8 @@ export default function Scan() {
         )}
       </div>
 
-      {/* Dynamic Chatbot Widget */}
-      {enterprise.chatbotConfig?.enabled !== false && (
+      {/* Dynamic Chatbot Widget - Always show for hub themes, or when enterprise enables it */}
+      {(isHubTheme || enterprise.chatbotConfig?.enabled !== false) && (
         <div className="scan-chatbot-widget animate-fade-in">
           {!chatOpen ? (
             <button className="chatbot-toggle-btn" onClick={() => setChatOpen(true)}>
