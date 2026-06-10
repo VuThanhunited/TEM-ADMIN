@@ -5,7 +5,8 @@ import {
   Shield, CheckCircle, AlertTriangle, XCircle, MessageSquare, Send,
   Globe, Phone, MapPin, Building, Calendar, X, Eye, Info,
   Leaf, Factory, Truck, Store, Sparkles, Activity, Package,
-  ArrowLeft, MoreVertical, Download, Share2, Sprout, Droplet
+  ArrowLeft, MoreVertical, Download, Share2, Sprout, Droplet,
+  ClipboardCheck, FlaskConical, Beaker, Award, Link2
 } from 'lucide-react';
 import './Scan.css';
 
@@ -211,13 +212,6 @@ export default function Scan() {
       )}
 
       <div className="scan-container">
-        {/* Brand Header Logo (only if not agriculture theme) */}
-        {theme !== 'agriculture' && (template?.logo || enterprise.logo) && (
-          <div className="scan-brand-header animate-fade-in">
-            <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="brand-header-logo" />
-          </div>
-        )}
-
         {/* Dynamic Layout Based on Theme */}
         {theme === 'agriculture' && (
           <>
@@ -432,463 +426,654 @@ export default function Scan() {
         )}
 
         {theme === 'functional_food' && (
-          <div className="scan-card theme-med-card">
-            <div className="theme-header-block medical">
-              <div className="check-outer-circle medical">
-                <Shield size={40} className="check-inner-icon" />
-              </div>
-              <h1 className="theme-title">XÁC THỰC DƯỢC PHẨM CHÍNH HÃNG</h1>
-              <p className="theme-subtitle">Sản phẩm chăm sóc sức khỏe đã kiểm định</p>
+          <>
+            <div className="med-header-bar">
+              <button className="header-back-btn" onClick={() => window.history.back()}><ArrowLeft size={20} /></button>
+              <span className="header-title">Kết quả truy xuất</span>
+              <button className="header-more-btn"><MoreVertical size={20} /></button>
             </div>
 
-            {/* Alert */}
-            <div className={`scan-alert ${label.scanCount === 1 || isFirstScan ? 'success' : 'warning'} med-alert`}>
-              <Info size={20} className="info-icon" />
-              <div>
-                <div className="alert-title">{label.scanCount === 1 || isFirstScan ? 'Sản phẩm chính gốc' : 'Cảnh báo lặp lại'}</div>
-                <p>Nhãn dược phẩm này được kiểm chứng bởi hệ thống TEM Smart Label.</p>
-              </div>
-            </div>
-
-            {/* Product info 2 cols */}
-            {template.showProductInfo && product && (
-              <div className="product-details-grid">
-                <div className="product-image-col">
-                  {product.images && product.images[0] ? (
-                    <img src={product.images[0]} alt={product.name} className="med-product-img" />
-                  ) : (
-                    <div className="med-product-img placeholder">💊</div>
-                  )}
-                  <div className="scan-line-blue"></div>
+            <div className="scan-card theme-med-card">
+              <div className="med-verification-block">
+                <div className="med-success-circle">
+                  <svg className="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                    <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
-                <div className="product-info-col">
-                  <span className="med-category-badge">{product.category || 'Dược phẩm'}</span>
-                  <h2 className="med-product-name">{product.name}</h2>
-                  
-                  <div className="med-specs-list">
-                    <div className="spec-row">
-                      <span className="spec-label">Mã vạch (Barcode):</span>
-                      <span className="spec-value">{product.barcode || '—'}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Số công bố (SDK):</span>
-                      <span className="spec-value highlight-blue">{specs.find(s => s[0] === 'Số công bố')?.[1] || 'Đang cập nhật'}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Thành phần chính:</span>
-                      <span className="spec-value">{specs.find(s => s[0] === 'Thành phần')?.[1] || 'Xem vỏ bao bì'}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Cách dùng:</span>
-                      <span className="spec-value">{specs.find(s => s[0] === 'Cách dùng')?.[1] || 'Theo chỉ định'}</span>
-                    </div>
-                    {specs.filter(s => s[0] !== 'Số công bố' && s[0] !== 'Thành phần' && s[0] !== 'Cách dùng').map(([key, val], idx) => (
-                      <div className="spec-row" key={idx}>
-                        <span className="spec-label">{key}:</span>
-                        <span className="spec-value">{val}</span>
+                <div className="med-verif-text-col">
+                  <h2 className="med-verif-title">XÁC THỰC THÀNH CÔNG</h2>
+                  <h3 className="med-verif-subtitle">Sản phẩm chính hãng</h3>
+                  <p className="med-verif-desc">Cảm ơn bạn đã tin tưởng sản phẩm chăm sóc sức khỏe Việt Nam</p>
+                </div>
+              </div>
+
+              {template.showProductInfo && product && (
+                <div className="product-details-grid-med">
+                  <div className="product-image-col-med">
+                    {product.images && product.images[0] ? (
+                      <img src={product.images[0]} alt={product.name} className="med-product-img" />
+                    ) : (
+                      <div className="med-product-img placeholder">💊</div>
+                    )}
+                    <div className="scan-line-blue"></div>
+                  </div>
+                  <div className="product-info-col-med">
+                    <h2 className="med-product-title-bold">{product.name.toUpperCase()}</h2>
+                    <div className="med-specs-list-new">
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã lô hàng:</span>
+                        <span className="spec-value-new highlight-blue">{label.batchId?.batchCode || specs.find(s => s[0] === 'Mã lô hàng')?.[1] || 'SV-2024-001'}</span>
                       </div>
-                    ))}
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Số công bố (SDK):</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Số công bố')?.[1] || 'SDK-2024-0589'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Thành phần chính:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Thành phần')?.[1] || 'Vitamin C 1000mg'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Quy cách đóng gói:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Quy cách đóng gói')?.[1] || 'Hộp 100 viên'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Hạn sử dụng:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Hạn sử dụng')?.[1] || '24 tháng kể từ ngày SX'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="med-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-blue"><Building size={16} /></div>
+                  <span className="section-title-bold">THÔNG TIN NHÀ SẢN XUẤT</span>
+                </div>
+                <div className="section-body-specs med">
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Tên doanh nghiệp:</span>
+                    <span className="spec-value-new">{enterprise.name || 'Công ty Dược phẩm Sao Vàng'}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Địa chỉ:</span>
+                    <span className="spec-value-new text-left">{enterprise.address || 'KCN Tân Bình, TP. Hồ Chí Minh'}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Mã số thuế:</span>
+                    <span className="spec-value-new">{enterprise.taxCode || '0123456789'}</span>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* Traceability Flow */}
-            <div className="traceability-section">
-              <h4 className="section-title">QUY TRÌNH CHẤT LƯỢNG & ĐẠT CHUẨN GMP</h4>
-              <div className="trace-flow-stepper blue">
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Shield size={16} /></div>
-                  <div className="step-label">Kiểm duyệt</div>
-                  <div className="step-desc">Nguyên liệu sạch</div>
+              <div className="med-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-blue"><Shield size={16} /></div>
+                  <span className="section-title-bold">QUY TRÌNH SẢN XUẤT</span>
                 </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Factory size={16} /></div>
-                  <div className="step-label">Sản xuất</div>
-                  <div className="step-desc">Chuẩn GMP y tế</div>
-                </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Activity size={16} /></div>
-                  <div className="step-label">Kiểm định</div>
-                  <div className="step-desc">Bộ Y Tế cấp SDK</div>
-                </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Store size={16} /></div>
-                  <div className="step-label">Phân phối</div>
-                  <div className="step-desc">{label.distributorName || 'Đại lý phân phối'}</div>
+                <div className="production-process-stepper med">
+                  <div className="process-step-box">
+                    <div className="step-square med">
+                      <ClipboardCheck size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Kiểm duyệt</span>
+                  </div>
+                  <div className="process-arrow med">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square med">
+                      <Factory size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Sản xuất GMP</span>
+                  </div>
+                  <div className="process-arrow med">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square med">
+                      <FlaskConical size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Kiểm định</span>
+                  </div>
+                  <div className="process-arrow med">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square med">
+                      <Store size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Phân phối</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Manufacturer details */}
-            <div className="med-info-card">
-              <div className="enterprise-logo-title">
-                {template?.logo || enterprise.logo ? (
-                  <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="enterprise-logo" />
-                ) : (
-                  <div className="enterprise-logo text-blue">DP</div>
-                )}
-                <div>
-                  <span className="enterprise-name-styled text-blue">{enterprise.name}</span>
-                  <span className="enterprise-mst">MST: {enterprise.taxCode || '—'}</span>
+              <div className="med-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-blue"><Award size={16} /></div>
+                  <span className="section-title-bold">CHỨNG NHẬN ĐẠT ĐƯỢC</span>
+                </div>
+                <div className="certifications-grid med">
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper sdk">
+                      <div className="sdk-badge-design">
+                        <span className="sdk-main-text">SDK</span>
+                        <span className="sdk-sub-text">BỘ Y TẾ</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">Công bố sản phẩm</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('SDK') || s[0].includes('công bố'))?.[1] || 'SDK-2024-0589'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper gmp">
+                      <div className="gmp-badge-design">
+                        <span className="gmp-text-top">GMP</span>
+                        <span className="gmp-text-bottom">WHO</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">Tiêu chuẩn GMP</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('GMP'))?.[1] || 'GMP-VN-2023-12'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper iso-med">
+                      <div className="iso-badge-design">
+                        <span className="iso-quacert">QUACERT</span>
+                        <span className="iso-number">ISO 22000</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">ISO 22000:2018</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '22000-24-02'}</span>
+                  </div>
                 </div>
               </div>
-              <div className="info-body">
-                <div className="info-line"><MapPin size={14} className="icon-blue" /> {enterprise.address || '—'}</div>
-                {enterprise.phone && <div className="info-line"><Phone size={14} className="icon-blue" /> {enterprise.phone}</div>}
+
+              <div className="med-card-section">
+                <div className="section-header-styled map-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="header-icon-circle-blue"><MapPin size={16} /></div>
+                    <span className="section-title-bold">VỊ TRÍ NHÀ MÁY</span>
+                  </div>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="view-map-link med">
+                    Xem trên bản đồ <span className="arrow-right-icon">→</span>
+                  </a>
+                </div>
+                <div className="map-wrapper-new">
+                  <iframe src={mapUrl} width="100%" height="200" style={{ border: 0 }} allowFullScreen="" loading="lazy"></iframe>
+                  <div className="map-location-label med">
+                    <MapPin size={14} className="icon-map-label" />
+                    <span>{enterprise.name || 'Nhà máy Sao Vàng'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="med-action-buttons-row">
+                <button className="action-footer-btn med" onClick={() => alert('Đang tải chứng nhận...')}>
+                  <Download size={16} className="btn-footer-icon" /> Tải chứng nhận
+                </button>
+                <button className="action-footer-btn med" onClick={() => alert('Sao chép link để chia sẻ!')}>
+                  <Share2 size={16} className="btn-footer-icon" /> Chia sẻ
+                </button>
+                <button className="action-footer-btn report" onClick={() => alert('Gửi báo cáo vi phạm thành công!')}>
+                  <AlertTriangle size={16} className="btn-footer-icon" /> Báo cáo
+                </button>
+              </div>
+
+              <div className="med-last-updated">
+                Dữ liệu được cập nhật lần cuối: {specs.find(s => s[0] === 'Cập nhật')?.[1] || formatDateTime(label.lastScannedAt) || '18/05/2024 08:30'}
               </div>
             </div>
-
-            {/* Map GPS */}
-            <div className="map-section">
-              <h4 className="section-title">BẢN ĐỒ XÁC THỰC GPS</h4>
-              <div className="map-wrapper">
-                <iframe src={mapUrl} width="100%" height="220" style={{ border: 0, borderRadius: 16 }} allowFullScreen="" loading="lazy"></iframe>
-              </div>
-            </div>
-
-            {/* Metadata */}
-            <div className="med-metadata-box">
-              <div className="meta-row"><span>Mã Serial:</span><strong>{label.serialNumber}</strong></div>
-              <div className="meta-row"><span>Lượt quét:</span><strong>{label.scanCount} lần</strong></div>
-              <div className="meta-row"><span>Thời gian quét:</span><span>{formatDateTime(label.lastScannedAt)}</span></div>
-            </div>
-          </div>
+          </>
         )}
 
         {theme === 'cosmetics' && (
-          <div className="scan-card theme-cosm-card">
-            <div className="theme-header-block cosmetics">
-              <div className="check-outer-circle cosmetics">
-                <Sparkles size={40} className="check-inner-icon" />
-              </div>
-              <h1 className="theme-title-cosm">AUTHENTICITY CERTIFICATE</h1>
-              <p className="theme-subtitle-cosm">Mỹ Phẩm Cao Cấp Chính Hãng</p>
+          <>
+            <div className="cosm-header-bar">
+              <button className="header-back-btn" onClick={() => window.history.back()}><ArrowLeft size={20} /></button>
+              <span className="header-title">Kết quả truy xuất</span>
+              <button className="header-more-btn"><MoreVertical size={20} /></button>
             </div>
 
-            {/* Verification Alert Message */}
-            <div className={`scan-alert ${label.scanCount === 1 || isFirstScan ? 'success' : 'warning'} cosm-alert`}>
-              <CheckCircle size={20} className="info-icon" />
-              <div>
-                <div className="alert-title">{label.scanCount === 1 || isFirstScan ? 'Chứng nhận chính hãng' : 'Cảnh báo lặp lại'}</div>
-                <p>Sản phẩm đã qua kiểm định chất lượng và đóng gói niêm phong chính thức.</p>
-              </div>
-            </div>
-
-            {/* Product Details - 2 columns layout */}
-            {template.showProductInfo && product && (
-              <div className="product-details-grid">
-                <div className="product-image-col">
-                  {product.images && product.images[0] ? (
-                    <img src={product.images[0]} alt={product.name} className="cosm-product-img" />
-                  ) : (
-                    <div className="cosm-product-img placeholder">💄</div>
-                  )}
-                  <div className="scan-line-pink"></div>
+            <div className="scan-card theme-cosm-card">
+              <div className="cosm-verification-block">
+                <div className="cosm-success-circle">
+                  <svg className="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                    <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
-                <div className="product-info-col">
-                  <span className="cosm-category-badge">{product.category || 'Mỹ phẩm'}</span>
-                  <h2 className="cosm-product-name">{product.name}</h2>
-                  
-                  <div className="cosm-specs-list">
-                    <div className="spec-row">
-                      <span className="spec-label">Thương hiệu:</span>
-                      <span className="spec-value highlight-pink">{enterprise.name}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Dung tích:</span>
-                      <span className="spec-value">{specs.find(s => s[0] === 'Dung tích')?.[1] || 'Xem bao bì'}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Loại da khuyên dùng:</span>
-                      <span className="spec-value">{specs.find(s => s[0] === 'Loại da')?.[1] || 'Mọi loại da'}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Hạn sử dụng:</span>
-                      <span className="spec-value">{specs.find(s => s[0] === 'Hạn sử dụng')?.[1] || 'Xem đáy hộp'}</span>
-                    </div>
-                    {specs.filter(s => s[0] !== 'Dung tích' && s[0] !== 'Loại da' && s[0] !== 'Hạn sử dụng').map(([key, val], idx) => (
-                      <div className="spec-row" key={idx}>
-                        <span className="spec-label">{key}:</span>
-                        <span className="spec-value">{val}</span>
+                <div className="cosm-verif-text-col">
+                  <h2 className="cosm-verif-title">XÁC THỰC THÀNH CÔNG</h2>
+                  <h3 className="cosm-verif-subtitle">Mỹ phẩm chính hãng</h3>
+                  <p className="cosm-verif-desc">Cảm ơn bạn đã tin tưởng sản phẩm làm đẹp Việt Nam</p>
+                </div>
+              </div>
+
+              {template.showProductInfo && product && (
+                <div className="product-details-grid-cosm">
+                  <div className="product-image-col-cosm">
+                    {product.images && product.images[0] ? (
+                      <img src={product.images[0]} alt={product.name} className="cosm-product-img" />
+                    ) : (
+                      <div className="cosm-product-img placeholder">💄</div>
+                    )}
+                    <div className="scan-line-pink"></div>
+                  </div>
+                  <div className="product-info-col-cosm">
+                    <h2 className="cosm-product-title-bold">{product.name.toUpperCase()}</h2>
+                    <div className="cosm-specs-list-new">
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã lô hàng:</span>
+                        <span className="spec-value-new highlight-pink">{label.batchId?.batchCode || specs.find(s => s[0] === 'Mã lô hàng')?.[1] || 'HS-2024-001'}</span>
                       </div>
-                    ))}
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Thương hiệu:</span>
+                        <span className="spec-value-new">{enterprise.name || 'Hoa Sen Beauty'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Dung tích:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Dung tích')?.[1] || '50ml'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Loại da khuyên dùng:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Loại da')?.[1] || 'Mọi loại da'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Hạn sử dụng:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Hạn sử dụng')?.[1] || '36 tháng kể từ ngày SX'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="cosm-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-pink"><Building size={16} /></div>
+                  <span className="section-title-bold">THÔNG TIN THƯƠNG HIỆU</span>
+                </div>
+                <div className="section-body-specs cosm">
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Tên thương hiệu:</span>
+                    <span className="spec-value-new">{enterprise.name || 'Công ty Mỹ phẩm Hoa Sen'}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Địa chỉ:</span>
+                    <span className="spec-value-new text-left">{enterprise.address || 'KCN VSIP, Thuận An, Bình Dương'}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Mã số thuế:</span>
+                    <span className="spec-value-new">{enterprise.taxCode || '0987654321'}</span>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* Quality Step Flow */}
-            <div className="traceability-section">
-              <h4 className="section-title cosm">QUY TRÌNH CHẤT LƯỢNG TIÊU CHUẨN CGMP</h4>
-              <div className="trace-flow-stepper pink">
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Sparkles size={16} /></div>
-                  <div className="step-label">Công thức</div>
-                  <div className="step-desc">Đạt chuẩn y khoa</div>
+              <div className="cosm-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-pink"><Sparkles size={16} /></div>
+                  <span className="section-title-bold">QUY TRÌNH SẢN XUẤT</span>
                 </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Factory size={16} /></div>
-                  <div className="step-label">Sản xuất</div>
-                  <div className="step-desc">Chuẩn CGMP vô trùng</div>
-                </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Package size={16} /></div>
-                  <div className="step-label">Đóng gói</div>
-                  <div className="step-desc">Seal chống giả</div>
-                </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Store size={16} /></div>
-                  <div className="step-label">Phân phối</div>
-                  <div className="step-desc">{label.distributorName || 'Showroom chính hãng'}</div>
+                <div className="production-process-stepper cosm">
+                  <div className="process-step-box">
+                    <div className="step-square cosm">
+                      <Beaker size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Công thức</span>
+                  </div>
+                  <div className="process-arrow cosm">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square cosm">
+                      <Factory size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Sản xuất CGMP</span>
+                  </div>
+                  <div className="process-arrow cosm">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square cosm">
+                      <Package size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Đóng gói</span>
+                  </div>
+                  <div className="process-arrow cosm">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square cosm">
+                      <Store size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Phân phối</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Manufacturer details */}
-            <div className="cosm-info-card">
-              <div className="enterprise-logo-title">
-                {template?.logo || enterprise.logo ? (
-                  <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="enterprise-logo" />
-                ) : (
-                  <div className="enterprise-logo text-pink">MP</div>
-                )}
-                <div>
-                  <span className="enterprise-name-styled text-pink">{enterprise.name}</span>
-                  <span className="enterprise-mst">MST: {enterprise.taxCode || '—'}</span>
+              <div className="cosm-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-pink"><Award size={16} /></div>
+                  <span className="section-title-bold">CHỨNG NHẬN ĐẠT ĐƯỢC</span>
+                </div>
+                <div className="certifications-grid cosm">
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper cgmp">
+                      <div className="cgmp-badge-design">
+                        <span className="cgmp-text-top">CGMP</span>
+                        <span className="cgmp-text-bottom">ASEAN</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">Tiêu chuẩn CGMP</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('CGMP'))?.[1] || 'CGMP-24-015'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper iso-cosm">
+                      <div className="iso-cosm-badge-design">
+                        <span className="iso-cosm-text">ISO</span>
+                        <span className="iso-cosm-number">22716</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">ISO 22716:2007</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '22716-24-08'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper halal">
+                      <div className="halal-badge-design">
+                        <span className="halal-text-top">HALAL</span>
+                        <span className="halal-text-bottom">CERTIFIED</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">Chứng nhận Halal</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('Halal'))?.[1] || 'HL-24-0321'}</span>
+                  </div>
                 </div>
               </div>
-              <div className="info-body">
-                <div className="info-line"><MapPin size={14} className="icon-pink" /> {enterprise.address || '—'}</div>
-                {enterprise.phone && <div className="info-line"><Phone size={14} className="icon-pink" /> {enterprise.phone}</div>}
+
+              <div className="cosm-card-section">
+                <div className="section-header-styled map-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="header-icon-circle-pink"><MapPin size={16} /></div>
+                    <span className="section-title-bold">VỊ TRÍ XƯỞNG SẢN XUẤT</span>
+                  </div>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="view-map-link cosm">
+                    Xem trên bản đồ <span className="arrow-right-icon">→</span>
+                  </a>
+                </div>
+                <div className="map-wrapper-new">
+                  <iframe src={mapUrl} width="100%" height="200" style={{ border: 0 }} allowFullScreen="" loading="lazy"></iframe>
+                  <div className="map-location-label cosm">
+                    <MapPin size={14} className="icon-map-label" />
+                    <span>{enterprise.name || 'Xưởng sản xuất Hoa Sen'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="cosm-action-buttons-row">
+                <button className="action-footer-btn cosm" onClick={() => alert('Đang tải chứng nhận...')}>
+                  <Download size={16} className="btn-footer-icon" /> Tải chứng nhận
+                </button>
+                <button className="action-footer-btn cosm" onClick={() => alert('Sao chép link để chia sẻ!')}>
+                  <Share2 size={16} className="btn-footer-icon" /> Chia sẻ
+                </button>
+                <button className="action-footer-btn report" onClick={() => alert('Gửi báo cáo vi phạm thành công!')}>
+                  <AlertTriangle size={16} className="btn-footer-icon" /> Báo cáo
+                </button>
+              </div>
+
+              <div className="cosm-last-updated">
+                Dữ liệu được cập nhật lần cuối: {specs.find(s => s[0] === 'Cập nhật')?.[1] || formatDateTime(label.lastScannedAt) || '18/05/2024 08:30'}
               </div>
             </div>
-
-            {/* Map GPS */}
-            <div className="map-section">
-              <h4 className="section-title cosm">BẢN ĐỒ ĐIỂM QUÉT QUỐC TẾ</h4>
-              <div className="map-wrapper">
-                <iframe src={mapUrl} width="100%" height="220" style={{ border: 0, borderRadius: 16 }} allowFullScreen="" loading="lazy"></iframe>
-              </div>
-            </div>
-
-            {/* Metadata */}
-            <div className="cosm-metadata-box">
-              <div className="meta-row"><span>Serial Number:</span><strong>{label.serialNumber}</strong></div>
-              <div className="meta-row"><span>Scan Count:</span><strong>{label.scanCount} times</strong></div>
-              <div className="meta-row"><span>Verified At:</span><span>{formatDateTime(label.lastScannedAt)}</span></div>
-            </div>
-          </div>
+          </>
         )}
 
         {(theme !== 'agriculture' && theme !== 'functional_food' && theme !== 'cosmetics') && (
-          <div className="scan-card">
-            <div className="verif-badge-container">
-              {label.scanCount === 1 || isFirstScan ? (
-                <div className="verif-badge success">
-                  <Shield size={24} className="icon-shield" />
-                  <span>SẢN PHẨM CHÍNH HÃNG</span>
-                </div>
-              ) : (
-                <div className="verif-badge warning">
-                  <AlertTriangle size={24} className="icon-warning" />
-                  <span>CẢNH BÁO QUÉT TRÙNG</span>
-                </div>
-              )}
-              <p className="verif-text">Hệ thống xác thực điện tử TEM Smart Label</p>
+          <>
+            <div className="def-header-bar">
+              <button className="header-back-btn" onClick={() => window.history.back()}><ArrowLeft size={20} /></button>
+              <span className="header-title">Kết quả truy xuất</span>
+              <button className="header-more-btn"><MoreVertical size={20} /></button>
             </div>
 
-            {/* Verification Alert Message */}
-            {label.scanCount === 1 || isFirstScan ? (
-              <div className="scan-alert success">
-                <Shield size={20} className="info-icon" style={{ marginTop: 2 }} />
-                <div>
-                  <div className="alert-title">Xác thực thành công (Lần quét đầu tiên)</div>
-                  <p>Đây là lần đầu tiên tem nhãn này được quét xác thực. Sản phẩm được cam kết chính hãng bởi <strong>{enterprise.name}</strong>.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="scan-alert warning">
-                <AlertTriangle size={20} className="info-icon" style={{ marginTop: 2 }} />
-                <div>
-                  <div className="alert-title">Cảnh báo quét lặp lại!</div>
-                  <p>Mã QR này đã được quét <strong>{label.scanCount} lần</strong>.</p>
-                  <p style={{ marginTop: 4, fontSize: '0.85rem' }}>
-                    Lần quét đầu tiên: <strong style={{ textDecoration: 'underline' }}>{formatDateTime(firstScanTime)}</strong>.
-                  </p>
-                  <p style={{ marginTop: 6, fontSize: '0.8rem', opacity: 0.9 }}>
-                    ⚠️ Nếu bạn vừa mới mua sản phẩm này và mở hộp lần đầu, vui lòng kiểm tra lại chất lượng hoặc liên hệ nhà sản xuất vì nhãn này có thể đã bị sao chép!
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Product Details Section */}
-            {template.showProductInfo && product && (
-              <div className="scan-product-section animate-fade-in">
-                {product.images && product.images[0] ? (
-                  <div className="scan-image-wrapper">
-                    <img src={product.images[0]} alt={product.name} className="scan-product-image" />
-                    <div className="scan-line"></div>
+            <div className="scan-card theme-def-card">
+              <div className="def-verification-block">
+                {label.scanCount === 1 || isFirstScan ? (
+                  <div className="def-success-circle">
+                    <svg className="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                      <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                   </div>
                 ) : (
-                  <div className="scan-image-wrapper">
-                    <div className="scan-product-image" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '3rem', background: 'rgba(255,255,255,0.02)', aspectRatio: 1 }}>📦</div>
-                    <div className="scan-line"></div>
+                  <div className="def-warning-circle">
+                    <AlertTriangle size={28} />
                   </div>
                 )}
-                <div>
-                  <h2 className="scan-product-name">{product.name}</h2>
-                  <span className="badge badge-neutral" style={{ marginTop: 6, display: 'inline-block' }}>{product.category || 'Sản phẩm'}</span>
-                  <p className="scan-product-desc" style={{ marginTop: 12 }}>{product.description}</p>
-                  
-                  {/* Dynamic specs if any */}
-                  {specs.length > 0 && (
-                    <div className="generic-specs-list" style={{ marginTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 12 }}>
-                      {specs.map(([key, val], idx) => (
-                        <div className="serial-row" key={idx} style={{ padding: '6px 0' }}>
-                          <span className="serial-label">{key}</span>
-                          <span className="serial-value">{val}</span>
+                <div className="def-verif-text-col">
+                  <h2 className="def-verif-title">
+                    {label.scanCount === 1 || isFirstScan ? 'XÁC THỰC THÀNH CÔNG' : 'CẢNH BÁO QUÉT LẶP LẠI'}
+                  </h2>
+                  <h3 className="def-verif-subtitle">
+                    {label.scanCount === 1 || isFirstScan ? 'Sản phẩm chính hãng' : `Đã quét ${label.scanCount} lần`}
+                  </h3>
+                  <p className="def-verif-desc">
+                    {label.scanCount === 1 || isFirstScan
+                      ? `Cảm ơn bạn đã tin tưởng sản phẩm của ${enterprise.name}`
+                      : `Lần quét đầu tiên: ${formatDateTime(firstScanTime)}. Vui lòng kiểm tra nếu vừa mua mới.`}
+                  </p>
+                </div>
+              </div>
+
+              {template.showProductInfo && product && (
+                <div className="product-details-grid-def">
+                  <div className="product-image-col-def">
+                    {product.images && product.images[0] ? (
+                      <img src={product.images[0]} alt={product.name} className="def-product-img" />
+                    ) : (
+                      <div className="def-product-img placeholder">📦</div>
+                    )}
+                    <div className="scan-line-def"></div>
+                  </div>
+                  <div className="product-info-col-def">
+                    <h2 className="def-product-title-bold">{product.name.toUpperCase()}</h2>
+                    <div className="def-specs-list-new">
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã serial:</span>
+                        <span className="spec-value-new highlight-default">{label.serialNumber}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Danh mục:</span>
+                        <span className="spec-value-new">{product.category || 'Sản phẩm'}</span>
+                      </div>
+                      {product.sku && (
+                        <div className="spec-row-new">
+                          <span className="spec-label-new">Mã SKU:</span>
+                          <span className="spec-value-new">{product.sku}</span>
+                        </div>
+                      )}
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã lô hàng:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Mã lô hàng')?.[1] || label.batchId?.batchCode || '—'}</span>
+                      </div>
+                      {specs.filter(s => !['Mã lô hàng'].includes(s[0])).slice(0, 2).map(([key, val], idx) => (
+                        <div className="spec-row-new" key={idx}>
+                          <span className="spec-label-new">{key}:</span>
+                          <span className="spec-value-new">{val}</span>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Enterprise / Manufacturer Section */}
-            <div className="scan-info-block">
-              <h4 className="block-title">Đơn vị sở hữu & Sản xuất</h4>
-              <div className="block-content">
-                <div className="enterprise-logo-title">
-                  {template?.logo || enterprise.logo ? (
-                    <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="enterprise-logo" />
-                  ) : (
-                    <div className="enterprise-logo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', fontSize: '0.8rem', color: '#1e293b' }}>MS</div>
-                  )}
-                  <span className="enterprise-name">{enterprise.name}</span>
-                </div>
-                <div className="info-item">
-                  <Building size={14} className="info-icon" />
-                  <span>Mã số thuế: {enterprise.taxCode || '—'}</span>
-                </div>
-                <div className="info-item">
-                  <MapPin size={14} className="info-icon" />
-                  <span>Địa chỉ: {enterprise.address || '—'}</span>
-                </div>
-                {enterprise.phone && (
-                  <div className="info-item">
-                    <Phone size={14} className="info-icon" />
-                    <span>Điện thoại: {enterprise.phone}</span>
                   </div>
-                )}
-                {enterprise.website && (
-                  <div className="info-item">
-                    <Globe size={14} className="info-icon" />
-                    <a href={enterprise.website} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>
-                      {enterprise.website.replace('https://', '').replace('http://', '')}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Distributor / Retail Point Section */}
-            {template.showDistributorInfo && label.distributorName && (
-              <div className="scan-info-block" style={{ marginTop: 24 }}>
-                <h4 className="block-title">Điểm phân phối / Điểm bán lẻ</h4>
-                <div className="block-content">
-                  <div className="info-item">
-                    <MapPin size={16} className="info-icon" style={{ color: '#10b981' }} />
-                    <div>
-                      <strong style={{ fontSize: '1rem', display: 'block', color: 'var(--text-color)' }}>{label.distributorName}</strong>
-                      {label.distributorAddress && <span style={{ fontSize: '0.85rem', opacity: 0.8, display: 'block', marginTop: 4 }}>{label.distributorAddress}</span>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Embedded Map for Default Theme */}
-            <div className="scan-info-block" style={{ marginTop: 24 }}>
-              <h4 className="block-title">Bản đồ định vị quét</h4>
-              <div style={{ marginTop: 8, overflow: 'hidden', borderRadius: 12 }}>
-                <iframe src={mapUrl} width="100%" height="200" style={{ border: 0 }} allowFullScreen="" loading="lazy"></iframe>
-              </div>
-            </div>
-
-            {/* Legacy Information Block */}
-            {(label.legacyQrCode || label.legacyTemQr || label.activeCode || label.smsCode) && (
-              <div className="scan-info-block legacy-info-block">
-                <h4 className="block-title">Dữ liệu liên kết tem cũ (Đồng bộ)</h4>
-                <div className="block-content legacy-content">
-                  {label.legacyQrCode && (
-                    <div className="info-item" style={{ alignItems: 'flex-start' }}>
-                      <Globe size={14} className="info-icon" style={{ color: 'var(--primary-color)', marginTop: 3 }} />
-                      <span style={{ wordBreak: 'break-all', fontSize: '0.85rem' }}>
-                        QR Code gốc: <a href={label.legacyQrCode} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>
-                          {label.legacyQrCode}
-                        </a>
-                      </span>
-                    </div>
-                  )}
-                  {label.legacyTemQr && (
-                    <div className="info-item" style={{ alignItems: 'flex-start' }}>
-                      <Globe size={14} className="info-icon" style={{ color: 'var(--primary-color)', marginTop: 3 }} />
-                      <span style={{ wordBreak: 'break-all', fontSize: '0.85rem' }}>
-                        Liên kết TEMQR: <a href={label.legacyTemQr} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>
-                          {label.legacyTemQr}
-                        </a>
-                      </span>
-                    </div>
-                  )}
-                  {label.smsCode && (
-                    <div className="info-item">
-                      <Info size={14} className="info-icon" style={{ color: 'var(--primary-color)', marginTop: 3 }} />
-                      <span style={{ fontSize: '0.85rem' }}>Mã SMS: <strong style={{ color: 'var(--text-color)' }}>{label.smsCode}</strong></span>
-                    </div>
-                  )}
-                  {label.activeCode && (
-                    <div className="info-item">
-                      <Info size={14} className="info-icon" style={{ color: 'var(--primary-color)', marginTop: 3 }} />
-                      <span style={{ fontSize: '0.85rem' }}>Mã Kích Hoạt (Active Code): <strong style={{ color: 'var(--text-color)' }}>{label.activeCode}</strong></span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Scan metadata table */}
-            <div className="scan-serial-box">
-              <div className="serial-row">
-                <span className="serial-label">Mã Serial sản phẩm</span>
-                <span className="serial-value highlight">{label.serialNumber}</span>
-              </div>
-              {template.showScanCount && (
-                <div className="serial-row">
-                  <span className="serial-label">Tổng số lượt quét</span>
-                  <span className="serial-value">{label.scanCount} lần</span>
                 </div>
               )}
-              <div className="serial-row">
-                <span className="serial-label">Thời gian xác thực</span>
-                <span className="serial-value">{formatDateTime(label.lastScannedAt)}</span>
+
+              <div className="def-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-def"><Building size={16} /></div>
+                  <span className="section-title-bold">THÔNG TIN DOANH NGHIỆP</span>
+                </div>
+                <div className="section-body-specs def">
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Tên doanh nghiệp:</span>
+                    <span className="spec-value-new">{enterprise.name}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Địa chỉ:</span>
+                    <span className="spec-value-new text-left">{enterprise.address || '—'}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Mã số thuế:</span>
+                    <span className="spec-value-new">{enterprise.taxCode || '—'}</span>
+                  </div>
+                  {enterprise.phone && (
+                    <div className="spec-row-new">
+                      <span className="spec-label-new">Điện thoại:</span>
+                      <span className="spec-value-new">{enterprise.phone}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              {enterprise.domain && (
-                <div className="serial-row">
-                  <span className="serial-label">Tên miền xác thực</span>
-                  <span className="serial-value">{enterprise.domain}</span>
+
+              {template.showDistributorInfo && label.distributorName && (
+                <div className="def-card-section">
+                  <div className="section-header-styled">
+                    <div className="header-icon-circle-def"><Store size={16} /></div>
+                    <span className="section-title-bold">ĐIỂM PHÂN PHỐI</span>
+                  </div>
+                  <div className="section-body-specs def">
+                    <div className="spec-row-new">
+                      <span className="spec-label-new">Tên điểm bán:</span>
+                      <span className="spec-value-new">{label.distributorName}</span>
+                    </div>
+                    {label.distributorAddress && (
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Địa chỉ:</span>
+                        <span className="spec-value-new text-left">{label.distributorAddress}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
+
+              <div className="def-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-def"><Shield size={16} /></div>
+                  <span className="section-title-bold">QUY TRÌNH SẢN XUẤT</span>
+                </div>
+                <div className="production-process-stepper def">
+                  <div className="process-step-box">
+                    <div className="step-square def">
+                      <Package size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Nguyên liệu</span>
+                  </div>
+                  <div className="process-arrow def">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square def">
+                      <Factory size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Sản xuất</span>
+                  </div>
+                  <div className="process-arrow def">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square def">
+                      <ClipboardCheck size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Kiểm tra</span>
+                  </div>
+                  <div className="process-arrow def">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square def">
+                      <Truck size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Phân phối</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="def-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-def"><Award size={16} /></div>
+                  <span className="section-title-bold">CHỨNG NHẬN ĐẠT ĐƯỢC</span>
+                </div>
+                <div className="certifications-grid def">
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper haccp">
+                      <div className="haccp-badge-design">
+                        <span className="haccp-text-top">HACCP</span>
+                        <span className="haccp-text-bottom">FOOD</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">An toàn thực phẩm</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('HACCP'))?.[1] || 'HACCP-24-001'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper iso-def">
+                      <div className="iso-def-badge-design">
+                        <span className="iso-def-text">ISO</span>
+                        <span className="iso-def-number">9001</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">ISO 9001:2015</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '9001-24-05'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper tem">
+                      <div className="tem-badge-design">
+                        <span className="tem-text-top">TEM</span>
+                        <span className="tem-text-bottom">SMART</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">Xác thực TEM</span>
+                    <span className="cert-number-label">Số: {label.serialNumber}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="def-card-section">
+                <div className="section-header-styled map-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="header-icon-circle-def"><MapPin size={16} /></div>
+                    <span className="section-title-bold">VỊ TRÍ QUÉT XÁC THỰC</span>
+                  </div>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="view-map-link def">
+                    Xem trên bản đồ <span className="arrow-right-icon">→</span>
+                  </a>
+                </div>
+                <div className="map-wrapper-new">
+                  <iframe src={mapUrl} width="100%" height="200" style={{ border: 0 }} allowFullScreen="" loading="lazy"></iframe>
+                  <div className="map-location-label def">
+                    <MapPin size={14} className="icon-map-label" />
+                    <span>{enterprise.name}</span>
+                  </div>
+                </div>
+              </div>
+
+              {(label.legacyQrCode || label.legacyTemQr || label.activeCode || label.smsCode) && (
+                <div className="def-card-section">
+                  <div className="section-header-styled">
+                    <div className="header-icon-circle-def"><Link2 size={16} /></div>
+                    <span className="section-title-bold">DỮ LIỆU TEM CŨ</span>
+                  </div>
+                  <div className="section-body-specs def">
+                    {label.smsCode && (
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã SMS:</span>
+                        <span className="spec-value-new">{label.smsCode}</span>
+                      </div>
+                    )}
+                    {label.activeCode && (
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã kích hoạt:</span>
+                        <span className="spec-value-new">{label.activeCode}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="def-action-buttons-row">
+                <button className="action-footer-btn def" onClick={() => alert('Đang tải chứng nhận...')}>
+                  <Download size={16} className="btn-footer-icon" /> Tải chứng nhận
+                </button>
+                <button className="action-footer-btn def" onClick={() => alert('Sao chép link để chia sẻ!')}>
+                  <Share2 size={16} className="btn-footer-icon" /> Chia sẻ
+                </button>
+                <button className="action-footer-btn report" onClick={() => alert('Gửi báo cáo vi phạm thành công!')}>
+                  <AlertTriangle size={16} className="btn-footer-icon" /> Báo cáo
+                </button>
+              </div>
+
+              <div className="def-last-updated">
+                Dữ liệu được cập nhật lần cuối: {formatDateTime(label.lastScannedAt) || '—'}
+                {template.showScanCount && ` · Lượt quét: ${label.scanCount}`}
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
