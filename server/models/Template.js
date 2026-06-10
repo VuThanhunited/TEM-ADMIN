@@ -40,6 +40,15 @@ const templateSchema = new mongoose.Schema({
     enum: ['default', 'minimal', 'premium', 'modern'],
     default: 'default'
   },
+  templateType: {
+    type: String,
+    enum: ['default', 'minimal', 'premium', 'modern', 'food-agriculture'],
+    default: 'default'
+  },
+  extendedConfig: {
+    type: String,
+    default: null
+  },
   showVerificationBadge: {
     type: Boolean,
     default: true
