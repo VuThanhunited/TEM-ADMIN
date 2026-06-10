@@ -12,6 +12,37 @@ import {
 } from 'lucide-react';
 import './Scan.css';
 
+const getEffectiveTheme = (themeName, category) => {
+  if (themeName === 'agriculture' || themeName === 'functional_food') {
+    return themeName;
+  }
+  const cat = (category || '').toLowerCase().trim();
+  
+  const agriKeywords = [
+    'nông nghiệp', 'nông sản', 'trồng trọt', 'chăn nuôi', 'thủy sản', 
+    'hải sản', 'lâm sản', 'trái cây', 'rau củ', 'hoa quả', 'gạo', 
+    'sâm', 'chè', 'agri'
+  ];
+  
+  const foodKeywords = [
+    'thực phẩm', 'gia vị', 'dầu ăn', 'nước uống', 'nước ngọt', 
+    'nước đóng chai', 'nước ép', 'nước khoáng', 'bia', 'rượu', 
+    'bánh kẹo', 'bánh', 'kẹo', 'sữa', 'ăn uống', 'dinh dưỡng', 
+    'trà', 'cà phê', 'mật ong', 'yến sào', 'mật', 'mứt', 'food', 
+    'beverage', 'snack', 'candy', 'milk'
+  ];
+
+  const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
+  const isFood = foodKeywords.some(keyword => cat.includes(keyword));
+
+  if (isAgri) {
+    return 'agriculture';
+  } else if (isFood) {
+    return 'functional_food';
+  }
+  return themeName || 'default';
+};
+
 export default function Scan() {
   const { serial } = useParams();
   const [data, setData] = useState(null);
@@ -48,7 +79,8 @@ export default function Scan() {
     try {
       const res = await api.getPublicScan(serial);
       setData(res);
-      applyTheme(res.template, res.theme);
+      const effTheme = getEffectiveTheme(res.theme, res.product?.category);
+      applyTheme(res.template, effTheme);
 
       // Request Geolocation to log precise coordinate on server
       if (navigator.geolocation) {
@@ -187,9 +219,10 @@ export default function Scan() {
   }
 
   const { label, product, enterprise, template, isFirstScan, firstScanTime, theme } = data;
+  const effectiveTheme = getEffectiveTheme(theme, product?.category);
   const lightClass = isLightTheme() ? 'light-theme' : '';
   const layoutClass = `layout-${template.layout || 'default'}`;
-  const themeClass = `theme-${theme || 'default'}`;
+  const themeClass = `theme-${effectiveTheme || 'default'}`;
 
   const getPageStyle = () => {
     if (!template?.backgroundImage) return {};
@@ -222,8 +255,8 @@ export default function Scan() {
     return [];
   };
 
-  const isHubTheme = theme === 'agriculture' || theme === 'functional_food';
-  const hubVariant = theme === 'agriculture' ? 'agri' : 'food';
+  const isHubTheme = effectiveTheme === 'agriculture' || effectiveTheme === 'functional_food';
+  const hubVariant = effectiveTheme === 'agriculture' ? 'agri' : 'food';
   const brandLines = splitBrandName(enterprise.name);
   const galleryImages = getGalleryImages();
 
@@ -518,7 +551,7 @@ export default function Scan() {
           </div>
         )}
 
-        {theme === 'cosmetics' && (
+        {effectiveTheme === 'cosmetics' && (
           <>
             <div className="cosm-header-bar">
               <button className="header-back-btn" onClick={() => window.history.back()}><ArrowLeft size={20} /></button>
@@ -712,7 +745,7 @@ export default function Scan() {
           </>
         )}
 
-        {(theme !== 'agriculture' && theme !== 'functional_food' && theme !== 'cosmetics') && (
+        {(effectiveTheme !== 'agriculture' && effectiveTheme !== 'functional_food' && effectiveTheme !== 'cosmetics') && (
           <>
             <div className="def-header-bar">
               <button className="header-back-btn" onClick={() => window.history.back()}><ArrowLeft size={20} /></button>

@@ -143,6 +143,34 @@ router.get('/scan/:serial', async (req, res) => {
       scannedAt: new Date()
     });
 
+    let responseTheme = batch.theme || 'default';
+    if (responseTheme === 'default' && label.productId) {
+      const cat = (label.productId.category || '').toLowerCase().trim();
+      
+      const agriKeywords = [
+        'nông nghiệp', 'nông sản', 'trồng trọt', 'chăn nuôi', 'thủy sản', 
+        'hải sản', 'lâm sản', 'trái cây', 'rau củ', 'hoa quả', 'gạo', 
+        'sâm', 'chè', 'agri'
+      ];
+      
+      const foodKeywords = [
+        'thực phẩm', 'gia vị', 'dầu ăn', 'nước uống', 'nước ngọt', 
+        'nước đóng chai', 'nước ép', 'nước khoáng', 'bia', 'rượu', 
+        'bánh kẹo', 'bánh', 'kẹo', 'sữa', 'ăn uống', 'dinh dưỡng', 
+        'trà', 'cà phê', 'mật ong', 'yến sào', 'mật', 'mứt', 'food', 
+        'beverage', 'snack', 'candy', 'milk'
+      ];
+
+      const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
+      const isFood = foodKeywords.some(keyword => cat.includes(keyword));
+
+      if (isAgri) {
+        responseTheme = 'agriculture';
+      } else if (isFood) {
+        responseTheme = 'functional_food';
+      }
+    }
+
     res.json({
       label,
       product: label.productId,
@@ -150,7 +178,7 @@ router.get('/scan/:serial', async (req, res) => {
       template,
       isFirstScan,
       firstScanTime,
-      theme: batch.theme || 'default'
+      theme: responseTheme
     });
 
   } catch (error) {
