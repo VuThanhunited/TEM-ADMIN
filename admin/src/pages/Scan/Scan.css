@@ -922,4 +922,556 @@
   color: #374151;
 }
 
+/* ==========================================================================
+   THEMED CARD LAYOUTS & DETAILED SUB-ELEMENTS
+   ========================================================================== */
+
+/* Theme Common Custom Header block */
+.theme-header-block {
+  text-align: center;
+  padding: 24px 16px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-header-block.agriculture {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+}
+
+.theme-header-block.medical {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+}
+
+.theme-header-block.cosmetics {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+  color: #ffffff;
+}
+
+.check-outer-circle {
+  width: 72px;
+  height: 72px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: scale-glow 2s infinite ease-in-out;
+}
+
+.check-inner-icon {
+  color: #ffffff;
+}
+
+.theme-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.theme-subtitle {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.theme-title-cosm {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.4rem;
+  letter-spacing: 2px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.theme-subtitle-cosm {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+/* Product details two-column layout */
+.product-details-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 20px;
+  padding: 16px 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+}
+
+.scan-public-page:not(.light-theme):not(.theme-agriculture):not(.theme-functional_food):not(.theme-cosmetics) .product-details-grid {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.product-image-col {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.agri-product-img, .med-product-img, .cosm-product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 16px;
+}
+
+.product-image-col.placeholder {
+  background-color: rgba(0,0,0,0.04);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 3rem;
+}
+
+/* Product Info Column details */
+.product-info-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.agri-category-badge {
+  background-color: #e6fcf5;
+  color: #059669;
+  padding: 4px 10px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  align-self: flex-start;
+  margin-bottom: 6px;
+}
+
+.med-category-badge {
+  background-color: #f0f9ff;
+  color: #0284c7;
+  padding: 4px 10px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  align-self: flex-start;
+  margin-bottom: 6px;
+}
+
+.cosm-category-badge {
+  background-color: #fff1f2;
+  color: #ec4899;
+  padding: 4px 10px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  align-self: flex-start;
+  margin-bottom: 6px;
+}
+
+.agri-product-name {
+  font-size: 1.3rem;
+  font-weight: 850;
+  color: #065f46;
+  margin: 0 0 10px 0;
+  line-height: 1.25;
+}
+
+.med-product-name {
+  font-size: 1.3rem;
+  font-weight: 850;
+  color: #0c4a6e;
+  margin: 0 0 10px 0;
+  line-height: 1.25;
+}
+
+.cosm-product-name {
+  font-size: 1.3rem;
+  font-weight: 850;
+  color: #881337;
+  margin: 0 0 10px 0;
+  line-height: 1.25;
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Spec listing rows */
+.agri-specs-list, .med-specs-list, .cosm-specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  padding-bottom: 4px;
+}
+
+.scan-public-page:not(.light-theme):not(.theme-agriculture):not(.theme-functional_food):not(.theme-cosmetics) .spec-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.spec-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.spec-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.scan-public-page:not(.light-theme):not(.theme-agriculture):not(.theme-functional_food):not(.theme-cosmetics) .spec-label {
+  color: #9ca3af;
+}
+
+.spec-value {
+  font-weight: 600;
+  text-align: right;
+}
+
+.spec-value.highlight-green {
+  color: #059669;
+}
+
+.spec-value.highlight-blue {
+  color: #0284c7;
+}
+
+.spec-value.highlight-pink {
+  color: #ec4899;
+}
+
+/* Traceability Steps Stepper Flow */
+.traceability-section {
+  margin-top: 20px;
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #047857;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.section-title.cosm {
+  color: #be185d;
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: 1px;
+}
+
+.trace-flow-stepper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  padding: 0 10px;
+}
+
+.trace-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  z-index: 2;
+  flex: 1;
+}
+
+.step-icon-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.trace-flow-stepper.blue .step-icon-circle {
+  background-color: #0284c7;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2);
+}
+
+.trace-flow-stepper.pink .step-icon-circle {
+  background-color: #ec4899;
+  box-shadow: 0 4px 10px rgba(236, 72, 153, 0.2);
+}
+
+.step-icon-circle:hover {
+  transform: scale(1.15);
+}
+
+.step-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.step-desc {
+  font-size: 0.65rem;
+  opacity: 0.7;
+  margin-top: 2px;
+  max-width: 80px;
+  line-height: 1.2;
+}
+
+.trace-line {
+  height: 3px;
+  background-color: #e2e8f0;
+  flex-grow: 1;
+  margin-top: -26px; /* align with circles center */
+  z-index: 1;
+}
+
+.trace-line.completed {
+  background-color: #10b981;
+}
+
+.trace-flow-stepper.blue .trace-line.completed {
+  background-color: #0284c7;
+}
+
+.trace-flow-stepper.pink .trace-line.completed {
+  background-color: #ec4899;
+}
+
+/* Info segments */
+.agri-info-card, .med-info-card, .cosm-info-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(16, 185, 129, 0.1);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+}
+
+.med-info-card {
+  border-color: rgba(2, 132, 199, 0.1);
+}
+
+.cosm-info-card {
+  border-color: rgba(236, 72, 153, 0.1);
+  border-radius: 24px;
+}
+
+.enterprise-logo-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.enterprise-name-styled {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #065f46;
+  display: block;
+}
+
+.enterprise-name-styled.text-blue {
+  color: #0c4a6e;
+}
+
+.enterprise-name-styled.text-pink {
+  color: #be185d;
+}
+
+.enterprise-mst {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-line {
+  font-size: 0.85rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.icon-agri {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.icon-blue {
+  color: #0284c7;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.icon-pink {
+  color: #ec4899;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.agri-link {
+  color: #059669;
+  text-decoration: underline;
+}
+
+/* Map scan section */
+.map-section {
+  margin-bottom: 24px;
+}
+
+.map-wrapper {
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+}
+
+/* Metadata box */
+.agri-metadata-box, .med-metadata-box, .cosm-metadata-box {
+  background-color: #f4fbf7;
+  border: 1px solid rgba(16, 185, 129, 0.08);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.med-metadata-box {
+  background-color: #f0f9ff;
+  border-color: rgba(2, 132, 199, 0.08);
+}
+
+.cosm-metadata-box {
+  background-color: #fff5f5;
+  border-color: rgba(236, 72, 153, 0.08);
+  border-radius: 20px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+}
+
+.meta-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.meta-row:first-child {
+  padding-top: 0;
+}
+
+/* Alerts customizations */
+.scan-alert.agri-alert {
+  background-color: #e6fdf4;
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #065f46;
+}
+
+.scan-alert.agri-alert-warn {
+  background-color: #fffbeb;
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #b45309;
+}
+
+.scan-alert.med-alert {
+  background-color: #f0f9ff;
+  border-color: rgba(2, 132, 199, 0.25);
+  color: #0369a1;
+}
+
+.scan-alert.cosm-alert {
+  background-color: #fff1f2;
+  border-color: rgba(236, 72, 153, 0.25);
+  color: #be185d;
+}
+
+/* Keyframes */
+@keyframes scale-glow {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.3); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+@keyframes scan-move {
+  0% { top: 0%; }
+  50% { top: 100%; }
+  100% { top: 0%; }
+}
+
+.scan-line-blue {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #0284c7, transparent);
+  box-shadow: 0 0 10px #0284c7, 0 0 20px #0284c7;
+  animation: scan-move 4s linear infinite;
+  pointer-events: none;
+}
+
+.scan-line-pink {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(to right, transparent, #ec4899, transparent);
+  box-shadow: 0 0 10px #ec4899, 0 0 20px #ec4899;
+  animation: scan-move 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 480px) {
+  .product-details-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    justify-items: center;
+  }
+  .product-image-col {
+    width: 100%;
+    max-width: 200px;
+    height: 200px;
+  }
+  .trace-flow-stepper {
+    flex-wrap: wrap;
+    gap: 12px 6px;
+    justify-content: center;
+  }
+  .trace-step {
+    flex: none;
+    width: 45%;
+  }
+  .trace-line {
+    display: none;
+  }
+  .theme-title {
+    font-size: 1.3rem;
+  }
+}
+
 

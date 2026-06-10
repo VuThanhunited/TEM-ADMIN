@@ -49,7 +49,7 @@ router.get('/:id', auth, async (req, res) => {
 // POST /api/products
 router.post('/', auth, requireOwnership, async (req, res) => {
   try {
-    const { name, images, description, category, sku, barcode, distributors } = req.body;
+    const { name, images, description, category, sku, barcode, distributors, specifications } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
 
     const product = new Product({
@@ -60,7 +60,8 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       category,
       sku,
       barcode,
-      distributors: distributors || []
+      distributors: distributors || [],
+      specifications: specifications || {}
     });
     await product.save();
     
@@ -75,10 +76,10 @@ router.post('/', auth, requireOwnership, async (req, res) => {
 // PUT /api/products/:id
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { name, images, description, category, sku, barcode, distributors, isActive } = req.body;
+    const { name, images, description, category, sku, barcode, distributors, specifications, isActive } = req.body;
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, images, description, category, sku, barcode, distributors, isActive },
+      { name, images, description, category, sku, barcode, distributors, specifications, isActive },
       { new: true }
     ).populate('enterpriseId', 'name');
 

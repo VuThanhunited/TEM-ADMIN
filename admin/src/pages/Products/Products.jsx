@@ -17,7 +17,7 @@ export default function Products() {
   const [modalError, setModalError] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [form, setForm] = useState({
-    name: '', description: '', category: '', sku: '', barcode: '', images: [''], distributors: [], enterpriseId: ''
+    name: '', description: '', category: '', sku: '', barcode: '', images: [''], distributors: [], specifications: [], enterpriseId: ''
   });
 
   useEffect(() => {
@@ -49,18 +49,20 @@ export default function Products() {
   const openCreate = () => {
     setEditing(null);
     setModalError(null);
-    setForm({ name: '', description: '', category: '', sku: '', barcode: '', images: [''], distributors: [], enterpriseId: '' });
+    setForm({ name: '', description: '', category: '', sku: '', barcode: '', images: [''], distributors: [], specifications: [], enterpriseId: '' });
     setShowModal(true);
   };
 
   const openEdit = (product) => {
     setEditing(product);
     setModalError(null);
+    const specList = product.specifications ? Object.entries(product.specifications).map(([key, value]) => ({ key, value })) : [];
     setForm({
       name: product.name, description: product.description, category: product.category,
       sku: product.sku, barcode: product.barcode,
       images: product.images?.length ? product.images : [''],
       distributors: product.distributors || [],
+      specifications: specList,
       enterpriseId: product.enterpriseId?._id || product.enterpriseId || ''
     });
     setShowModal(true);
@@ -74,7 +76,18 @@ export default function Products() {
       return;
     }
     try {
-      const data = { ...form, enterpriseId: isAdmin ? form.enterpriseId : enterpriseId };
+      const specObj = form.specifications.reduce((acc, curr) => {
+        if (curr.key.trim()) {
+          acc[curr.key.trim()] = curr.value;
+        }
+        return acc;
+      }, {});
+
+      const data = { 
+        ...form, 
+        enterpriseId: isAdmin ? form.enterpriseId : enterpriseId,
+        specifications: specObj
+      };
       if (editing) {
         await api.updateProduct(editing._id, data);
       } else {
@@ -105,6 +118,20 @@ export default function Products() {
 
   const removeDistributor = (idx) => {
     setForm({...form, distributors: form.distributors.filter((_, i) => i !== idx)});
+  };
+
+  const addSpecification = () => {
+    setForm({...form, specifications: [...form.specifications, { key: '', value: '' }]});
+  };
+
+  const updateSpecification = (idx, field, value) => {
+    const updated = [...form.specifications];
+    updated[idx][field] = value;
+    setForm({...form, specifications: updated});
+  };
+
+  const removeSpecification = (idx) => {
+    setForm({...form, specifications: form.specifications.filter((_, i) => i !== idx)});
   };
 
   return (
@@ -212,6 +239,21 @@ export default function Products() {
                 </div>
                 <div className="input-group"><label>URL Hình ảnh</label><input className="input" value={form.images[0] || ''} onChange={e => setForm({...form, images: [e.target.value]})} placeholder="https://..." /></div>
                 <div className="input-group"><label>Mô tả chi tiết</label><textarea className="input textarea" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3} /></div>
+
+                {/* Specifications */}
+                <div className="distributors-section" style={{ marginBottom: 20 }}>
+                  <div className="section-header">
+                    <label>Thông số kỹ thuật / Thuộc tính (VD: Ngày thu hoạch, Tiêu chuẩn...)</label>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={addSpecification}><Plus size={14}/> Thêm thuộc tính</button>
+                  </div>
+                  {form.specifications?.map((spec, idx) => (
+                    <div key={idx} className="distributor-row" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 10, marginBottom: 8, alignItems: 'center' }}>
+                      <input className="input" placeholder="Tên thuộc tính (VD: Tiêu chuẩn)" value={spec.key} onChange={e => updateSpecification(idx, 'key', e.target.value)} />
+                      <input className="input" placeholder="Giá trị (VD: VietGAP)" value={spec.value} onChange={e => updateSpecification(idx, 'value', e.target.value)} />
+                      <button type="button" className="btn-icon" onClick={() => removeSpecification(idx)}><X size={16}/></button>
+                    </div>
+                  ))}
+                </div>
 
                 {/* Distributors */}
                 <div className="distributors-section">
