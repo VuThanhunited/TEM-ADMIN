@@ -8,7 +8,7 @@ import {
   ArrowLeft, MoreVertical, Download, Share2, Sprout, Droplet,
   ClipboardCheck, FlaskConical, Beaker, Award, Link2,
   ChevronLeft, ChevronRight, QrCode, FileText, ScanLine, History,
-  BookOpen, Gift, BadgeCheck, Star
+  BookOpen, Gift, BadgeCheck, Star, ShieldCheck, Bot
 } from 'lucide-react';
 import './Scan.css';
 
@@ -206,6 +206,201 @@ export default function Scan() {
   const mapUrl = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
   const specs = product?.specifications ? Object.entries(product.specifications) : [];
 
+  const splitBrandName = (name) => {
+    if (!name) return { top: '', bottom: '' };
+    const words = name.trim().split(/\s+/);
+    if (words.length <= 2) return { top: words[0] || '', bottom: words.slice(1).join(' ') || '' };
+    const mid = Math.ceil(words.length / 2);
+    return { top: words.slice(0, mid).join(' '), bottom: words.slice(mid).join(' ') };
+  };
+
+  const getGalleryImages = () => {
+    const imgs = product?.images?.filter(Boolean) || [];
+    if (imgs.length >= 3) return imgs.slice(0, 3);
+    if (imgs.length === 2) return [imgs[0], imgs[1], imgs[0]];
+    if (imgs.length === 1) return [imgs[0], imgs[0], imgs[0]];
+    return [];
+  };
+
+  const isHubTheme = theme === 'agriculture' || theme === 'functional_food';
+  const hubVariant = theme === 'agriculture' ? 'agri' : 'food';
+  const brandLines = splitBrandName(enterprise.name);
+  const galleryImages = getGalleryImages();
+
+  const hubGridItems = [
+    { id: 'product', icon: Package, label: 'THÔNG TIN\nSẢN PHẨM' },
+    { id: 'manufacturer', icon: Factory, label: 'THÔNG TIN\nNHÀ SẢN XUẤT' },
+    { id: 'distributor', icon: Truck, label: 'THÔNG TIN\nNHÀ PHÂN PHỐI' },
+    { id: 'label', icon: QrCode, label: 'THÔNG TIN\nTEM SẢN PHẨM' },
+    { id: 'history', icon: History, label: 'LỊCH SỬ\nSCAN' },
+    { id: 'cert', icon: BadgeCheck, label: 'CHỨNG\nNHẬN' },
+    { id: 'guide', icon: BookOpen, label: 'HƯỚNG DẪN\nSỬ DỤNG' },
+    { id: 'points', icon: Gift, label: 'TÍCH\nĐIỂM' },
+  ];
+
+  const renderHubExpandSection = () => {
+    if (!activeSection) return null;
+
+    const cardClass = 'expand-section-card agri';
+    const headerClass = 'expand-section-header agri';
+
+    if (activeSection === 'product' && template.showProductInfo && product) {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><Package size={16} /> <span>Thông tin sản phẩm</span></div>
+          <div className="expand-section-body">
+            <div className="spec-row-new"><span className="spec-label-new">Tên sản phẩm:</span><span className="spec-value-new">{product.name}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Danh mục:</span><span className="spec-value-new">{product.category || (hubVariant === 'agri' ? 'Nông sản' : 'Thực phẩm chức năng')}</span></div>
+            {product.sku && <div className="spec-row-new"><span className="spec-label-new">Mã SKU:</span><span className="spec-value-new">{product.sku}</span></div>}
+            {product.description && <div className="spec-row-new"><span className="spec-label-new">Mô tả:</span><span className="spec-value-new text-left">{product.description}</span></div>}
+            {specs.map(([key, val], idx) => (
+              <div className="spec-row-new" key={idx}><span className="spec-label-new">{key}:</span><span className="spec-value-new">{val}</span></div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === 'manufacturer') {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><Factory size={16} /> <span>Thông tin nhà sản xuất</span></div>
+          <div className="expand-section-body">
+            <div className="spec-row-new"><span className="spec-label-new">Tên đơn vị:</span><span className="spec-value-new">{enterprise.name}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Địa chỉ:</span><span className="spec-value-new text-left">{enterprise.address || '—'}</span></div>
+            {enterprise.phone && <div className="spec-row-new"><span className="spec-label-new">Điện thoại:</span><span className="spec-value-new">{enterprise.phone}</span></div>}
+            {enterprise.taxCode && <div className="spec-row-new"><span className="spec-label-new">Mã số thuế:</span><span className="spec-value-new">{enterprise.taxCode}</span></div>}
+            {enterprise.website && <div className="spec-row-new"><span className="spec-label-new">Website:</span><span className="spec-value-new text-left">{enterprise.website.replace(/^https?:\/\//, '')}</span></div>}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === 'distributor') {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><Truck size={16} /> <span>Thông tin nhà phân phối</span></div>
+          <div className="expand-section-body">
+            {label.distributorName ? (
+              <>
+                <div className="spec-row-new"><span className="spec-label-new">Tên điểm bán:</span><span className="spec-value-new">{label.distributorName}</span></div>
+                {label.distributorAddress && <div className="spec-row-new"><span className="spec-label-new">Địa chỉ:</span><span className="spec-value-new text-left">{label.distributorAddress}</span></div>}
+              </>
+            ) : (
+              <p className="expand-empty">Chưa có thông tin nhà phân phối.</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === 'label') {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><QrCode size={16} /> <span>Thông tin tem sản phẩm</span></div>
+          <div className="expand-section-body">
+            <div className="spec-row-new"><span className="spec-label-new">Mã Serial:</span><span className="spec-value-new highlight-green">{label.serialNumber}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Lô tem:</span><span className="spec-value-new">{label.batchId?.batchCode || '—'}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Trạng thái:</span><span className="spec-value-new">{label.status === 'ACTIVE' ? 'Hoạt động' : label.status}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Lần quét đầu:</span><span className="spec-value-new">{formatDateTime(firstScanTime) || '—'}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Tổng lượt quét:</span><span className="spec-value-new">{label.scanCount || 0}</span></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === 'history') {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><History size={16} /> <span>Lịch sử scan</span></div>
+          <div className="expand-section-body">
+            <div className="spec-row-new"><span className="spec-label-new">Tổng lần quét:</span><span className="spec-value-new">{label.scanCount || 0}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Lần quét đầu tiên:</span><span className="spec-value-new">{formatDateTime(firstScanTime) || '—'}</span></div>
+            <div className="spec-row-new"><span className="spec-label-new">Lần quét gần nhất:</span><span className="spec-value-new">{formatDateTime(label.lastScannedAt) || '—'}</span></div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === 'cert') {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><BadgeCheck size={16} /> <span>Chứng nhận</span></div>
+          {hubVariant === 'agri' ? (
+            <div className="certifications-grid hub-cert-grid">
+              <div className="cert-item">
+                <div className="cert-badge-wrapper vietgap"><div className="vietgap-badge-design"><span className="vgap-main-text">Viet</span><span className="vgap-sub-text">GAP</span></div></div>
+                <span className="cert-name-label">VietGAP</span>
+                <span className="cert-number-label">Số: {specs.find(s => s[0].includes('VietGAP'))?.[1] || 'VietGAP-TT-13-23-45'}</span>
+              </div>
+              <div className="cert-item">
+                <div className="cert-badge-wrapper organic"><div className="organic-badge-design"><span className="org-text-top">HỮU CƠ</span><span className="org-text-bottom">ORGANIC</span></div></div>
+                <span className="cert-name-label">Hữu cơ Việt Nam</span>
+                <span className="cert-number-label">Số: {specs.find(s => s[0].includes('Hữu cơ'))?.[1] || 'HC-23-1087'}</span>
+              </div>
+              <div className="cert-item">
+                <div className="cert-badge-wrapper iso"><div className="iso-badge-design"><span className="iso-quacert">QUACERT</span><span className="iso-number">ISO 22000</span></div></div>
+                <span className="cert-name-label">ISO 22000:2018</span>
+                <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '22000-23-01'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="certifications-grid hub-cert-grid">
+              <div className="cert-item">
+                <div className="cert-badge-wrapper sdk"><div className="sdk-badge-design"><span className="sdk-main-text">SDK</span><span className="sdk-sub-text">BỘ Y TẾ</span></div></div>
+                <span className="cert-name-label">Công bố sản phẩm</span>
+                <span className="cert-number-label">Số: {specs.find(s => s[0].includes('SDK') || s[0].includes('công bố'))?.[1] || 'SDK-2024-0589'}</span>
+              </div>
+              <div className="cert-item">
+                <div className="cert-badge-wrapper gmp"><div className="gmp-badge-design"><span className="gmp-text-top">GMP</span><span className="gmp-text-bottom">WHO</span></div></div>
+                <span className="cert-name-label">Tiêu chuẩn GMP</span>
+                <span className="cert-number-label">Số: {specs.find(s => s[0].includes('GMP'))?.[1] || 'GMP-VN-2023-12'}</span>
+              </div>
+              <div className="cert-item">
+                <div className="cert-badge-wrapper iso"><div className="iso-badge-design"><span className="iso-quacert">QUACERT</span><span className="iso-number">ISO 22000</span></div></div>
+                <span className="cert-name-label">ISO 22000:2018</span>
+                <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '22000-24-02'}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (activeSection === 'guide') {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><BookOpen size={16} /> <span>Hướng dẫn sử dụng</span></div>
+          <div className="expand-section-body">
+            <p className="expand-guide-text">
+              {product?.description || (hubVariant === 'agri'
+                ? `Sản phẩm ${product?.name || ''} được sản xuất theo quy trình nông nghiệp sạch. Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp.`
+                : `Sản phẩm ${product?.name || ''} là thực phẩm chức năng theo tiêu chuẩn GMP. Dùng theo hướng dẫn nhà sản xuất hoặc chuyên gia y tế.`)}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeSection === 'points') {
+      return (
+        <div className={cardClass}>
+          <div className={headerClass}><Gift size={16} /> <span>Tích điểm</span></div>
+          <div className="expand-section-body">
+            <div className="points-info-box agri">
+              <Star size={32} className="points-star" />
+              <p>Mỗi lần quét tem, bạn nhận được <strong>10 điểm</strong> thưởng tích lũy.</p>
+              <p>Liên hệ {enterprise.name} để đổi quà hấp dẫn!</p>
+              {enterprise.phone && <p>📞 {enterprise.phone}</p>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className={`scan-public-page ${lightClass} ${layoutClass} ${themeClass}`} style={getPageStyle()}>
       {!template?.backgroundImage && (
@@ -217,358 +412,77 @@ export default function Scan() {
 
       <div className="scan-container">
         {/* Dynamic Layout Based on Theme */}
-        {theme === 'agriculture' && (
-          <>
-            {/* Brand Top Header */}
+        {isHubTheme && (
+          <div className="hub-page-shell">
             <div className="brand-top-header agri">
               <div className="brand-header-left">
                 <div className="brand-logo-circle agri">
                   {enterprise.logo ? (
                     <img src={enterprise.logo} alt={enterprise.name} className="brand-logo-img" />
-                  ) : (
+                  ) : hubVariant === 'agri' ? (
                     <Leaf size={22} className="brand-logo-icon" />
-                  )}
-                </div>
-                <div className="brand-name-col">
-                  <span className="brand-name-top">{enterprise.name?.split(' ').slice(-2).join(' ') || enterprise.name}</span>
-                  <span className="brand-name-bottom">{enterprise.name?.split(' ').slice(0, -2).join(' ') || ''}</span>
-                </div>
-              </div>
-              <div className="brand-divider-v"></div>
-              <span className="brand-slogan">{enterprise.description || 'Chất lượng tạo niềm tin'}</span>
-            </div>
-
-            {/* Product Image Slider */}
-            {template.showProductInfo && product && product.images && product.images.length > 0 && (
-              <div className="product-slider-wrapper">
-                <div className="slider-track" style={{ transform: `translateX(-${sliderIndex * 100}%)` }}>
-                  {product.images.map((img, idx) => (
-                    <div className="slide-item" key={idx}>
-                      <img src={img} alt={`${product.name} ${idx + 1}`} className="slide-img" />
-                    </div>
-                  ))}
-                  {product.images.length === 1 && [
-                    <div className="slide-item" key="dup1"><img src={product.images[0]} alt={product.name} className="slide-img" /></div>,
-                    <div className="slide-item" key="dup2"><img src={product.images[0]} alt={product.name} className="slide-img" /></div>
-                  ]}
-                </div>
-                {product.images.length > 1 && (
-                  <>
-                    <button className="slider-btn prev" onClick={() => setSliderIndex(i => Math.max(0, i - 1))}><ChevronLeft size={20}/></button>
-                    <button className="slider-btn next" onClick={() => setSliderIndex(i => Math.min(product.images.length - 1, i + 1))}><ChevronRight size={20}/></button>
-                  </>
-                )}
-                <div className="slider-dots">
-                  {(product.images.length > 1 ? product.images : [1,2,3]).map((_, idx) => (
-                    <span key={idx} className={`slider-dot ${sliderIndex === idx ? 'active' : ''}`} onClick={() => setSliderIndex(idx)} />
-                  ))}
-                </div>
-              </div>
-            )}
-            {!(template.showProductInfo && product && product.images && product.images.length > 0) && (
-              <div className="product-slider-placeholder agri">
-                <Leaf size={48} />
-                <span>Sản phẩm nông nghiệp</span>
-              </div>
-            )}
-
-            {/* Verification Banner */}
-            <div className="verify-banner-new agri">
-              <div className="verify-banner-icon agri">
-                <Shield size={32} />
-              </div>
-              <div className="verify-banner-text">
-                <h3 className="verify-banner-title">SẢN PHẨM ĐÃ ĐƯỢC XÁC THỰC</h3>
-                <p className="verify-banner-desc">Nguồn gốc sản phẩm được xác nhận<br/>trực tiếp từ nhà sản xuất.</p>
-              </div>
-              <div className="verify-banner-bg-icon"><Shield size={64} /></div>
-            </div>
-
-            {/* Product Summary Card */}
-            {template.showProductInfo && product && (
-              <div className="product-summary-card">
-                <div className="psc-image-col">
-                  {product.images && product.images[0] ? (
-                    <img src={product.images[0]} alt={product.name} className="psc-product-img" />
-                  ) : (
-                    <div className="psc-product-img placeholder">🌿</div>
-                  )}
-                </div>
-                <div className="psc-info-col">
-                  <h2 className="psc-product-name">{product.name.toUpperCase()}</h2>
-                  <p className="psc-manufacturer">Đơn vị sản xuất:</p>
-                  <p className="psc-manufacturer-name">{enterprise.name.toUpperCase()}</p>
-                  <div className="psc-origin">
-                    <MapPin size={13} className="psc-origin-icon" />
-                    <span>Xuất xứ: {specs.find(s => s[0] === 'Xuất xứ')?.[1] || specs.find(s => s[0] === 'Nguồn gốc')?.[1] || 'Việt Nam'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 8-Button Action Grid */}
-            <div className="action-grid-8">
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'product' ? null : 'product')}>
-                <div className="agb-icon-circle agri"><Package size={22} /></div>
-                <span>THÔNG TIN<br/>SẢN PHẨM</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'manufacturer' ? null : 'manufacturer')}>
-                <div className="agb-icon-circle agri"><Factory size={22} /></div>
-                <span>THÔNG TIN<br/>NHÀ SẢN XUẤT</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'distributor' ? null : 'distributor')}>
-                <div className="agb-icon-circle agri"><Truck size={22} /></div>
-                <span>THÔNG TIN<br/>NHÀ PHÂN PHỐI</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'label' ? null : 'label')}>
-                <div className="agb-icon-circle agri"><QrCode size={22} /></div>
-                <span>THÔNG TIN<br/>TEM SẢN PHẨM</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'history' ? null : 'history')}>
-                <div className="agb-icon-circle agri"><History size={22} /></div>
-                <span>LỊCH SỬ<br/>SCAN</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'cert' ? null : 'cert')}>
-                <div className="agb-icon-circle agri"><BadgeCheck size={22} /></div>
-                <span>CHỨNG<br/>NHẬN</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'guide' ? null : 'guide')}>
-                <div className="agb-icon-circle agri"><BookOpen size={22} /></div>
-                <span>HƯỚNG DẪN<br/>SỬ DỤNG</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'points' ? null : 'points')}>
-                <div className="agb-icon-circle agri"><Gift size={22} /></div>
-                <span>TÍCH<br/>ĐIỂM</span>
-              </button>
-            </div>
-
-            {/* Expandable Sections */}
-            {activeSection === 'product' && template.showProductInfo && product && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <Package size={16} /> <span>Thông tin sản phẩm</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Tên sản phẩm:</span>
-                    <span className="spec-value-new">{product.name}</span>
-                  </div>
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Danh mục:</span>
-                    <span className="spec-value-new">{product.category || 'Nông sản'}</span>
-                  </div>
-                  {specs.map(([key, val], idx) => (
-                    <div className="spec-row-new" key={idx}>
-                      <span className="spec-label-new">{key}:</span>
-                      <span className="spec-value-new">{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'manufacturer' && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <Factory size={16} /> <span>Thông tin nhà sản xuất</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Tên đơn vị:</span>
-                    <span className="spec-value-new">{enterprise.name}</span>
-                  </div>
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Địa chỉ:</span>
-                    <span className="spec-value-new text-left">{enterprise.address || '—'}</span>
-                  </div>
-                  {enterprise.phone && <div className="spec-row-new"><span className="spec-label-new">Điện thoại:</span><span className="spec-value-new">{enterprise.phone}</span></div>}
-                  {enterprise.taxCode && <div className="spec-row-new"><span className="spec-label-new">Mã số thuế:</span><span className="spec-value-new">{enterprise.taxCode}</span></div>}
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'distributor' && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <Truck size={16} /> <span>Thông tin nhà phân phối</span>
-                </div>
-                <div className="expand-section-body">
-                  {label.distributorName ? (
-                    <>
-                      <div className="spec-row-new"><span className="spec-label-new">Tên điểm bán:</span><span className="spec-value-new">{label.distributorName}</span></div>
-                      {label.distributorAddress && <div className="spec-row-new"><span className="spec-label-new">Địa chỉ:</span><span className="spec-value-new text-left">{label.distributorAddress}</span></div>}
-                    </>
-                  ) : (
-                    <p className="expand-empty">Chưa có thông tin nhà phân phối.</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'label' && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <QrCode size={16} /> <span>Thông tin tem sản phẩm</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new"><span className="spec-label-new">Mã Serial:</span><span className="spec-value-new highlight-green">{label.serialNumber}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lô tem:</span><span className="spec-value-new">{label.batchId?.batchCode || '—'}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Trạng thái:</span><span className="spec-value-new">{label.status === 'ACTIVE' ? 'Hoạt động' : label.status}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lần quét đầu:</span><span className="spec-value-new">{formatDateTime(firstScanTime) || '—'}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Tổng lượt quét:</span><span className="spec-value-new">{label.scanCount || 0}</span></div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'history' && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <History size={16} /> <span>Lịch sử scan</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new"><span className="spec-label-new">Tổng lần quét:</span><span className="spec-value-new">{label.scanCount || 0}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lần quét đầu tiên:</span><span className="spec-value-new">{formatDateTime(firstScanTime) || '—'}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lần quét gần nhất:</span><span className="spec-value-new">{formatDateTime(label.lastScannedAt) || '—'}</span></div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'cert' && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <BadgeCheck size={16} /> <span>Chứng nhận</span>
-                </div>
-                <div className="certifications-grid" style={{marginTop: 0}}>
-                  <div className="cert-item">
-                    <div className="cert-badge-wrapper vietgap">
-                      <div className="vietgap-badge-design"><span className="vgap-main-text">Viet</span><span className="vgap-sub-text">GAP</span></div>
-                    </div>
-                    <span className="cert-name-label">VietGAP</span>
-                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('VietGAP'))?.[1] || 'VietGAP-TT-13-23-45'}</span>
-                  </div>
-                  <div className="cert-item">
-                    <div className="cert-badge-wrapper organic">
-                      <div className="organic-badge-design"><span className="org-text-top">HỮU CƠ</span><span className="org-text-bottom">ORGANIC</span></div>
-                    </div>
-                    <span className="cert-name-label">Hữu cơ Việt Nam</span>
-                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('Hữu cơ'))?.[1] || 'HC-23-1087'}</span>
-                  </div>
-                  <div className="cert-item">
-                    <div className="cert-badge-wrapper iso">
-                      <div className="iso-badge-design"><span className="iso-quacert">QUACERT</span><span className="iso-number">ISO 22000</span></div>
-                    </div>
-                    <span className="cert-name-label">ISO 22000:2018</span>
-                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '22000-23-01'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'guide' && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <BookOpen size={16} /> <span>Hướng dẫn sử dụng</span>
-                </div>
-                <div className="expand-section-body">
-                  <p className="expand-guide-text">
-                    {product?.description || `Sản phẩm ${product?.name || ''} được sản xuất theo quy trình nông nghiệp sạch, đảm bảo chất lượng. Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp.`}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'points' && (
-              <div className="expand-section-card agri">
-                <div className="expand-section-header agri">
-                  <Gift size={16} /> <span>Tích điểm</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="points-info-box agri">
-                    <Star size={32} className="points-star" />
-                    <p>Mỗi lần quét tem, bạn nhận được <strong>10 điểm</strong> thưởng tích lũy.</p>
-                    <p>Liên hệ {enterprise.name} để đổi quà hấp dẫn!</p>
-                    {enterprise.phone && <p>📞 {enterprise.phone}</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-        {theme === 'functional_food' && (
-          <>
-            {/* Brand Top Header */}
-            <div className="brand-top-header food">
-              <div className="brand-header-left">
-                <div className="brand-logo-circle food">
-                  {enterprise.logo ? (
-                    <img src={enterprise.logo} alt={enterprise.name} className="brand-logo-img" />
                   ) : (
                     <FlaskConical size={22} className="brand-logo-icon" />
                   )}
                 </div>
                 <div className="brand-name-col">
-                  <span className="brand-name-top">{enterprise.name?.split(' ').slice(-2).join(' ') || enterprise.name}</span>
-                  <span className="brand-name-bottom">{enterprise.name?.split(' ').slice(0, -2).join(' ') || ''}</span>
+                  <span className="brand-name-top">{brandLines.top || enterprise.name}</span>
+                  <span className="brand-name-bottom">{brandLines.bottom}</span>
                 </div>
               </div>
               <div className="brand-divider-v"></div>
-              <span className="brand-slogan">{enterprise.description || 'Chất lượng tạo niềm tin'}</span>
+              <span className="brand-slogan">Chất lượng tạo niềm tin</span>
             </div>
 
-            {/* Product Image Slider */}
-            {template.showProductInfo && product && product.images && product.images.length > 0 && (
-              <div className="product-slider-wrapper">
-                <div className="slider-track" style={{ transform: `translateX(-${sliderIndex * 100}%)` }}>
-                  {product.images.map((img, idx) => (
-                    <div className="slide-item" key={idx}>
-                      <img src={img} alt={`${product.name} ${idx + 1}`} className="slide-img" />
-                    </div>
-                  ))}
-                  {product.images.length === 1 && [
-                    <div className="slide-item" key="dup1"><img src={product.images[0]} alt={product.name} className="slide-img" /></div>,
-                    <div className="slide-item" key="dup2"><img src={product.images[0]} alt={product.name} className="slide-img" /></div>
-                  ]}
-                </div>
-                {product.images.length > 1 && (
-                  <>
-                    <button className="slider-btn prev" onClick={() => setSliderIndex(i => Math.max(0, i - 1))}><ChevronLeft size={20}/></button>
-                    <button className="slider-btn next" onClick={() => setSliderIndex(i => Math.min(product.images.length - 1, i + 1))}><ChevronRight size={20}/></button>
-                  </>
-                )}
-                <div className="slider-dots">
-                  {(product.images.length > 1 ? product.images : [1,2,3]).map((_, idx) => (
-                    <span key={idx} className={`slider-dot ${sliderIndex === idx ? 'active food' : ''}`} onClick={() => setSliderIndex(idx)} />
+            {galleryImages.length > 0 ? (
+              <>
+                <div className="product-gallery-strip">
+                  {galleryImages.map((img, idx) => (
+                    <button
+                      type="button"
+                      key={idx}
+                      className={`gallery-strip-item ${sliderIndex === idx ? 'active' : ''}`}
+                      onClick={() => setSliderIndex(idx)}
+                    >
+                      <img src={img} alt={`${product?.name || 'Sản phẩm'} ${idx + 1}`} />
+                    </button>
                   ))}
                 </div>
-              </div>
-            )}
-            {!(template.showProductInfo && product && product.images && product.images.length > 0) && (
-              <div className="product-slider-placeholder food">
-                <FlaskConical size={48} />
-                <span>Thực phẩm chức năng</span>
+                <div className="slider-dots gallery-dots">
+                  {galleryImages.map((_, idx) => (
+                    <span
+                      key={idx}
+                      className={`slider-dot ${sliderIndex === idx ? 'active' : ''}`}
+                      onClick={() => setSliderIndex(idx)}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="product-slider-placeholder agri">
+                {hubVariant === 'agri' ? <Leaf size={48} /> : <FlaskConical size={48} />}
+                <span>{hubVariant === 'agri' ? 'Sản phẩm nông nghiệp' : 'Thực phẩm chức năng'}</span>
               </div>
             )}
 
-            {/* Verification Banner */}
-            <div className="verify-banner-new food">
-              <div className="verify-banner-icon food">
-                <Shield size={32} />
+            <div className="verify-banner-new agri">
+              <div className="verify-banner-icon agri">
+                <ShieldCheck size={34} strokeWidth={2.5} />
               </div>
               <div className="verify-banner-text">
                 <h3 className="verify-banner-title">SẢN PHẨM ĐÃ ĐƯỢC XÁC THỰC</h3>
-                <p className="verify-banner-desc">Nguồn gốc sản phẩm được xác nhận<br/>trực tiếp từ nhà sản xuất.</p>
+                <p className="verify-banner-desc">Nguồn gốc sản phẩm được xác nhận trực tiếp từ nhà sản xuất.</p>
               </div>
-              <div className="verify-banner-bg-icon"><Shield size={64} /></div>
+              <div className="verify-banner-bg-icon"><ShieldCheck size={72} strokeWidth={1.5} /></div>
             </div>
 
-            {/* Product Summary Card */}
             {template.showProductInfo && product && (
               <div className="product-summary-card">
                 <div className="psc-image-col">
                   {product.images && product.images[0] ? (
-                    <img src={product.images[0]} alt={product.name} className="psc-product-img" />
+                    <img src={galleryImages[sliderIndex] || product.images[0]} alt={product.name} className="psc-product-img" />
                   ) : (
-                    <div className="psc-product-img placeholder">💊</div>
+                    <div className="psc-product-img placeholder">{hubVariant === 'agri' ? '🌿' : '💊'}</div>
                   )}
                 </div>
                 <div className="psc-info-col">
@@ -576,195 +490,33 @@ export default function Scan() {
                   <p className="psc-manufacturer">Đơn vị sản xuất:</p>
                   <p className="psc-manufacturer-name">{enterprise.name.toUpperCase()}</p>
                   <div className="psc-origin">
-                    <MapPin size={13} className="psc-origin-icon" />
+                    <MapPin size={13} className="psc-origin-icon agri" />
                     <span>Xuất xứ: {specs.find(s => s[0] === 'Xuất xứ')?.[1] || specs.find(s => s[0] === 'Nguồn gốc')?.[1] || 'Việt Nam'}</span>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* 8-Button Action Grid */}
             <div className="action-grid-8">
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'product' ? null : 'product')}>
-                <div className="agb-icon-circle food"><Package size={22} /></div>
-                <span>THÔNG TIN<br/>SẢN PHẨM</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'manufacturer' ? null : 'manufacturer')}>
-                <div className="agb-icon-circle food"><Factory size={22} /></div>
-                <span>THÔNG TIN<br/>NHÀ SẢN XUẤT</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'distributor' ? null : 'distributor')}>
-                <div className="agb-icon-circle food"><Truck size={22} /></div>
-                <span>THÔNG TIN<br/>NHÀ PHÂN PHỐI</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'label' ? null : 'label')}>
-                <div className="agb-icon-circle food"><QrCode size={22} /></div>
-                <span>THÔNG TIN<br/>TEM SẢN PHẨM</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'history' ? null : 'history')}>
-                <div className="agb-icon-circle food"><History size={22} /></div>
-                <span>LỊCH SỬ<br/>SCAN</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'cert' ? null : 'cert')}>
-                <div className="agb-icon-circle food"><BadgeCheck size={22} /></div>
-                <span>CHỨNG<br/>NHẬN</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'guide' ? null : 'guide')}>
-                <div className="agb-icon-circle food"><BookOpen size={22} /></div>
-                <span>HƯỚNG DẪN<br/>SỬ DỤNG</span>
-              </button>
-              <button className="action-grid-btn" onClick={() => setActiveSection(activeSection === 'points' ? null : 'points')}>
-                <div className="agb-icon-circle food"><Gift size={22} /></div>
-                <span>TÍCH<br/>ĐIỂM</span>
-              </button>
+              {hubGridItems.map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`action-grid-btn ${activeSection === id ? 'active' : ''}`}
+                  onClick={() => setActiveSection(activeSection === id ? null : id)}
+                >
+                  <div className="agb-icon-circle agri"><Icon size={22} strokeWidth={1.75} /></div>
+                  <span>{label.split('\n').map((line, i, arr) => (
+                    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+                  ))}</span>
+                </button>
+              ))}
             </div>
 
-            {/* Expandable Sections */}
-            {activeSection === 'product' && template.showProductInfo && product && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <Package size={16} /> <span>Thông tin sản phẩm</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Tên sản phẩm:</span>
-                    <span className="spec-value-new">{product.name}</span>
-                  </div>
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Danh mục:</span>
-                    <span className="spec-value-new">{product.category || 'Thực phẩm chức năng'}</span>
-                  </div>
-                  {specs.map(([key, val], idx) => (
-                    <div className="spec-row-new" key={idx}>
-                      <span className="spec-label-new">{key}:</span>
-                      <span className="spec-value-new">{val}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'manufacturer' && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <Factory size={16} /> <span>Thông tin nhà sản xuất</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Tên đơn vị:</span>
-                    <span className="spec-value-new">{enterprise.name}</span>
-                  </div>
-                  <div className="spec-row-new">
-                    <span className="spec-label-new">Địa chỉ:</span>
-                    <span className="spec-value-new text-left">{enterprise.address || '—'}</span>
-                  </div>
-                  {enterprise.phone && <div className="spec-row-new"><span className="spec-label-new">Điện thoại:</span><span className="spec-value-new">{enterprise.phone}</span></div>}
-                  {enterprise.taxCode && <div className="spec-row-new"><span className="spec-label-new">Mã số thuế:</span><span className="spec-value-new">{enterprise.taxCode}</span></div>}
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'distributor' && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <Truck size={16} /> <span>Thông tin nhà phân phối</span>
-                </div>
-                <div className="expand-section-body">
-                  {label.distributorName ? (
-                    <>
-                      <div className="spec-row-new"><span className="spec-label-new">Tên điểm bán:</span><span className="spec-value-new">{label.distributorName}</span></div>
-                      {label.distributorAddress && <div className="spec-row-new"><span className="spec-label-new">Địa chỉ:</span><span className="spec-value-new text-left">{label.distributorAddress}</span></div>}
-                    </>
-                  ) : (
-                    <p className="expand-empty">Chưa có thông tin nhà phân phối.</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'label' && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <QrCode size={16} /> <span>Thông tin tem sản phẩm</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new"><span className="spec-label-new">Mã Serial:</span><span className="spec-value-new highlight-blue">{label.serialNumber}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lô tem:</span><span className="spec-value-new">{label.batchId?.batchCode || '—'}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Trạng thái:</span><span className="spec-value-new">{label.status === 'ACTIVE' ? 'Hoạt động' : label.status}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lần quét đầu:</span><span className="spec-value-new">{formatDateTime(firstScanTime) || '—'}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Tổng lượt quét:</span><span className="spec-value-new">{label.scanCount || 0}</span></div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'history' && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <History size={16} /> <span>Lịch sử scan</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="spec-row-new"><span className="spec-label-new">Tổng lần quét:</span><span className="spec-value-new">{label.scanCount || 0}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lần quét đầu tiên:</span><span className="spec-value-new">{formatDateTime(firstScanTime) || '—'}</span></div>
-                  <div className="spec-row-new"><span className="spec-label-new">Lần quét gần nhất:</span><span className="spec-value-new">{formatDateTime(label.lastScannedAt) || '—'}</span></div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'cert' && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <BadgeCheck size={16} /> <span>Chứng nhận</span>
-                </div>
-                <div className="certifications-grid med" style={{marginTop: 0}}>
-                  <div className="cert-item">
-                    <div className="cert-badge-wrapper sdk"><div className="sdk-badge-design"><span className="sdk-main-text">SDK</span><span className="sdk-sub-text">BỘ Y TẾ</span></div></div>
-                    <span className="cert-name-label">Công bố sản phẩm</span>
-                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('SDK') || s[0].includes('công bố'))?.[1] || 'SDK-2024-0589'}</span>
-                  </div>
-                  <div className="cert-item">
-                    <div className="cert-badge-wrapper gmp"><div className="gmp-badge-design"><span className="gmp-text-top">GMP</span><span className="gmp-text-bottom">WHO</span></div></div>
-                    <span className="cert-name-label">Tiêu chuẩn GMP</span>
-                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('GMP'))?.[1] || 'GMP-VN-2023-12'}</span>
-                  </div>
-                  <div className="cert-item">
-                    <div className="cert-badge-wrapper iso-med"><div className="iso-badge-design"><span className="iso-quacert">QUACERT</span><span className="iso-number">ISO 22000</span></div></div>
-                    <span className="cert-name-label">ISO 22000:2018</span>
-                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '22000-24-02'}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'guide' && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <BookOpen size={16} /> <span>Hướng dẫn sử dụng</span>
-                </div>
-                <div className="expand-section-body">
-                  <p className="expand-guide-text">
-                    {product?.description || `Sản phẩm ${product?.name || ''} là thực phẩm chức năng được sản xuất theo tiêu chuẩn GMP. Dùng theo hướng dẫn của nhà sản xuất hoặc chuyên gia y tế. Bảo quản nơi khô ráo, thoáng mát.`}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {activeSection === 'points' && (
-              <div className="expand-section-card food">
-                <div className="expand-section-header food">
-                  <Gift size={16} /> <span>Tích điểm</span>
-                </div>
-                <div className="expand-section-body">
-                  <div className="points-info-box food">
-                    <Star size={32} className="points-star food" />
-                    <p>Mỗi lần quét tem, bạn nhận được <strong>10 điểm</strong> thưởng tích lũy.</p>
-                    <p>Liên hệ {enterprise.name} để đổi quà hấp dẫn!</p>
-                    {enterprise.phone && <p>📞 {enterprise.phone}</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+            {renderHubExpandSection()}
+          </div>
         )}
+
         {theme === 'cosmetics' && (
           <>
             <div className="cosm-header-bar">
@@ -1228,10 +980,10 @@ export default function Scan() {
         <div className="scan-chatbot-widget animate-fade-in">
           {!chatOpen ? (
             <button className="chatbot-toggle-btn" onClick={() => setChatOpen(true)}>
-              {(theme === 'agriculture' || theme === 'functional_food') ? (
+              {isHubTheme ? (
                 <div className="chatbot-toggle-label">
                   <div className="chatbot-toggle-icon-wrap">
-                    <MessageSquare size={20} />
+                    <Bot size={22} />
                   </div>
                   <span className="chatbot-toggle-text"><strong>CHAT BOT</strong><br/>Hỏi và Đáp</span>
                 </div>

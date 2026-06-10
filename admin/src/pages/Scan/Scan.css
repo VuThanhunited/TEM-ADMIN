@@ -3029,6 +3029,18 @@
    Matches the Tân Đồng Tân Mộc mockup design
    ========================================================================== */
 
+/* Hub page shell - green bordered card container */
+.hub-page-shell {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 2px solid #007d32;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 125, 50, 0.08);
+}
+
 /* Brand Top Header */
 .brand-top-header {
   width: 100%;
@@ -3037,10 +3049,9 @@
   align-items: center;
   padding: 14px 16px;
   gap: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  position: sticky;
-  top: 0;
-  z-index: 200;
+  border-bottom: 1px solid #e8f5e9;
+  position: relative;
+  z-index: 10;
 }
 
 .brand-header-left {
@@ -3063,14 +3074,14 @@
 
 .brand-logo-circle.agri {
   background-color: #e8f5e9;
-  border: 2px solid #2e7d32;
-  color: #1a5c38;
+  border: 2px solid #007d32;
+  color: #007d32;
 }
 
 .brand-logo-circle.food {
-  background-color: #e3f2fd;
-  border: 2px solid #1565c0;
-  color: #1565c0;
+  background-color: #e8f5e9;
+  border: 2px solid #007d32;
+  color: #007d32;
 }
 
 .brand-logo-img {
@@ -3091,14 +3102,16 @@
 }
 
 .brand-name-top {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  color: #1a5c38;
+  color: #007d32;
   letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
-.brand-top-header.food .brand-name-top {
-  color: #1565c0;
+.brand-top-header.food .brand-name-top,
+.theme-functional_food .brand-name-top {
+  color: #007d32;
 }
 
 .brand-name-bottom {
@@ -3115,11 +3128,55 @@
 }
 
 .brand-slogan {
-  font-size: 0.85rem;
-  color: #6b7280;
+  font-size: 0.9rem;
+  color: #007d32;
   font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
   line-height: 1.35;
   flex: 1;
+  text-align: right;
+}
+
+/* Product gallery strip - 3 images side by side like mockup */
+.product-gallery-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 10px 10px 0;
+  background: #ffffff;
+}
+
+.gallery-strip-item {
+  border: none;
+  padding: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 110px;
+  cursor: pointer;
+  opacity: 0.72;
+  transition: opacity 0.2s, box-shadow 0.2s, transform 0.2s;
+  background: #f3f4f6;
+}
+
+.gallery-strip-item.active {
+  opacity: 1;
+  box-shadow: 0 0 0 2px #007d32;
+  transform: scale(1.02);
+}
+
+.gallery-strip-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-dots {
+  position: static;
+  transform: none;
+  justify-content: center;
+  padding: 8px 0 4px;
+  background: #ffffff;
 }
 
 /* Product Image Slider */
@@ -3195,14 +3252,14 @@
 }
 
 .slider-dot.active {
-  background: #1a5c38;
+  background: #007d32;
   transform: scale(1.2);
-  border-color: #1a5c38;
+  border-color: #007d32;
 }
 
 .slider-dot.active.food {
-  background: #1565c0;
-  border-color: #1565c0;
+  background: #007d32;
+  border-color: #007d32;
 }
 
 /* Placeholder when no images */
@@ -3218,14 +3275,10 @@
   font-weight: 600;
 }
 
-.product-slider-placeholder.agri {
-  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
-  color: #1a5c38;
-}
-
+.product-slider-placeholder.agri,
 .product-slider-placeholder.food {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  color: #1565c0;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  color: #007d32;
 }
 
 /* Verification Banner */
@@ -3241,14 +3294,16 @@
   border: 1.5px solid;
 }
 
-.verify-banner-new.agri {
-  background: #f0fdf4;
+.verify-banner-new.agri,
+.verify-banner-new.food {
+  background: #f0f9f1;
   border-color: #86efac;
+  margin: 10px 12px 0;
 }
 
 .verify-banner-new.food {
-  background: #eff6ff;
-  border-color: #93c5fd;
+  background: #f0f9f1;
+  border-color: #86efac;
 }
 
 .verify-banner-icon {
@@ -3261,16 +3316,11 @@
   flex-shrink: 0;
 }
 
-.verify-banner-icon.agri {
-  background: #16a34a;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(22,163,74,0.3);
-}
-
+.verify-banner-icon.agri,
 .verify-banner-icon.food {
-  background: #1d4ed8;
+  background: #007d32;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(29,78,216,0.3);
+  box-shadow: 0 4px 12px rgba(0, 125, 50, 0.3);
 }
 
 .verify-banner-text {
@@ -3281,13 +3331,14 @@
 .verify-banner-title {
   font-size: 0.95rem;
   font-weight: 900;
-  color: #1a5c38;
+  color: #007d32;
   margin: 0 0 4px 0;
   letter-spacing: 0.3px;
 }
 
-.verify-banner-new.food .verify-banner-title {
-  color: #1e40af;
+.verify-banner-new.food .verify-banner-title,
+.theme-functional_food .verify-banner-title {
+  color: #007d32;
 }
 
 .verify-banner-desc {
@@ -3303,11 +3354,12 @@
   top: 50%;
   transform: translateY(-50%);
   opacity: 0.07;
-  color: #16a34a;
+  color: #007d32;
 }
 
-.verify-banner-new.food .verify-banner-bg-icon {
-  color: #1d4ed8;
+.verify-banner-new.food .verify-banner-bg-icon,
+.theme-functional_food .verify-banner-bg-icon {
+  color: #007d32;
 }
 
 /* Product Summary Card */
@@ -3355,14 +3407,18 @@
 .psc-product-name {
   font-size: 1.05rem;
   font-weight: 900;
-  color: #1a5c38;
+  color: #007d32;
   margin: 0 0 4px 0;
   line-height: 1.2;
   word-break: break-word;
 }
 
 .theme-functional_food .psc-product-name {
-  color: #1e40af;
+  color: #007d32;
+}
+
+.psc-origin-icon.agri {
+  color: #007d32;
 }
 
 .psc-manufacturer {
@@ -3436,16 +3492,20 @@
   transition: transform 0.2s;
 }
 
-.agb-icon-circle.agri {
-  background: #e8f5e9;
-  color: #1a5c38;
-  border: 1.5px solid #a7f3d0;
+.agb-icon-circle.agri,
+.agb-icon-circle.food {
+  background: #ffffff;
+  color: #007d32;
+  border: 2px solid #007d32;
 }
 
-.agb-icon-circle.food {
-  background: #eff6ff;
-  color: #1e40af;
-  border: 1.5px solid #bfdbfe;
+.action-grid-btn.active {
+  background: #f0fdf4;
+}
+
+.action-grid-btn.active .agb-icon-circle {
+  background: #007d32;
+  color: #ffffff;
 }
 
 .action-grid-btn:hover .agb-icon-circle {
@@ -3472,12 +3532,23 @@
   animation: expand-fade-in 0.2s ease;
 }
 
-.expand-section-card.agri {
+.expand-section-card.agri,
+.expand-section-card.food {
   border-color: #bbf7d0;
+  margin: 10px 12px 12px;
 }
 
-.expand-section-card.food {
-  border-color: #bfdbfe;
+.expand-section-header.agri,
+.expand-section-header.food {
+  background: #f0f9f1;
+  color: #007d32;
+}
+
+.hub-cert-grid {
+  margin: 0;
+  padding: 12px 8px 16px;
+  border: none;
+  background: transparent;
 }
 
 @keyframes expand-fade-in {
@@ -3493,16 +3564,6 @@
   font-size: 0.85rem;
   font-weight: 800;
   border-bottom: 1px solid #f3f4f6;
-}
-
-.expand-section-header.agri {
-  background: #f0fdf4;
-  color: #1a5c38;
-}
-
-.expand-section-header.food {
-  background: #eff6ff;
-  color: #1e40af;
 }
 
 .expand-section-body {
@@ -3573,17 +3634,17 @@
   display: flex;
   align-items: center;
   gap: 0;
-  background: #1a5c38;
+  background: #007d32;
   border-radius: 28px;
   padding: 8px 14px 8px 8px;
-  box-shadow: 0 6px 20px rgba(26,92,56,0.35);
+  box-shadow: 0 6px 20px rgba(0, 125, 50, 0.35);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .scan-public-page.theme-functional_food .chatbot-toggle-label {
-  background: #1d4ed8;
-  box-shadow: 0 6px 20px rgba(29,78,216,0.35);
+  background: #007d32;
+  box-shadow: 0 6px 20px rgba(0, 125, 50, 0.35);
 }
 
 .chatbot-toggle-label:hover {
@@ -3614,15 +3675,21 @@
 /* Page layout override for new themes */
 .scan-public-page.theme-agriculture,
 .scan-public-page.theme-functional_food {
-  background-color: #f3f4f6;
-  padding: 0 0 100px 0;
-  align-items: flex-start;
+  background-color: #eef2ef;
+  padding: 12px 12px 100px;
+  align-items: center;
 }
 
 .scan-public-page.theme-agriculture .scan-container,
 .scan-public-page.theme-functional_food .scan-container {
   padding: 0;
   padding-bottom: 100px;
+  max-width: 480px;
+}
+
+.scan-public-page.theme-agriculture .scan-bg-effects,
+.scan-public-page.theme-functional_food .scan-bg-effects {
+  display: none;
 }
 
 /* Spec value highlight colors for new themes */
