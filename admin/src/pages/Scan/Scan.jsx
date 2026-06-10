@@ -4,7 +4,8 @@ import api from '../../services/api';
 import {
   Shield, CheckCircle, AlertTriangle, XCircle, MessageSquare, Send,
   Globe, Phone, MapPin, Building, Calendar, X, Eye, Info,
-  Leaf, Factory, Truck, Store, Sparkles, Activity, Package
+  Leaf, Factory, Truck, Store, Sparkles, Activity, Package,
+  ArrowLeft, MoreVertical, Download, Share2, Sprout, Droplet
 } from 'lucide-react';
 import './Scan.css';
 
@@ -210,8 +211,8 @@ export default function Scan() {
       )}
 
       <div className="scan-container">
-        {/* Brand Header Logo */}
-        {(template?.logo || enterprise.logo) && (
+        {/* Brand Header Logo (only if not agriculture theme) */}
+        {theme !== 'agriculture' && (template?.logo || enterprise.logo) && (
           <div className="scan-brand-header animate-fade-in">
             <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="brand-header-logo" />
           </div>
@@ -219,148 +220,215 @@ export default function Scan() {
 
         {/* Dynamic Layout Based on Theme */}
         {theme === 'agriculture' && (
-          <div className="scan-card theme-agri-card">
-            {/* Header section inspired by screenshot */}
-            <div className="theme-header-block agriculture">
-              <div className="check-outer-circle">
-                <CheckCircle size={40} className="check-inner-icon" />
-              </div>
-              <h1 className="theme-title">XÁC THỰC THÀNH CÔNG</h1>
-              <p className="theme-subtitle">Sản phẩm chính hãng có nguồn gốc rõ ràng</p>
+          <>
+            {/* Top header bar */}
+            <div className="agri-header-bar">
+              <button className="header-back-btn" onClick={() => window.history.back()}><ArrowLeft size={20} /></button>
+              <span className="header-title">Kết quả truy xuất</span>
+              <button className="header-more-btn"><MoreVertical size={20} /></button>
             </div>
-
-            {/* Verification Alert Message */}
-            {label.scanCount === 1 || isFirstScan ? (
-              <div className="scan-alert success agri-alert">
-                <Shield size={20} className="info-icon" style={{ marginTop: 2 }} />
-                <div>
-                  <div className="alert-title">Xác thực lần đầu tiên</div>
-                  <p>Chúc mừng! Bạn đã quét tem nhãn chính hãng của <strong>{enterprise.name}</strong>. Đây là lần quét đầu tiên.</p>
+            
+            {/* Verification card */}
+            <div className="scan-card theme-agri-card">
+              <div className="agri-verification-block">
+                <div className="agri-success-circle">
+                  <svg className="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                    <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="agri-verif-text-col">
+                  <h2 className="agri-verif-title">XÁC THỰC THÀNH CÔNG</h2>
+                  <h3 className="agri-verif-subtitle">Sản phẩm chính hãng</h3>
+                  <p className="agri-verif-desc">Cảm ơn bạn đã tin tưởng sản phẩm nông nghiệp Việt Nam</p>
                 </div>
               </div>
-            ) : (
-              <div className="scan-alert warning agri-alert-warn">
-                <AlertTriangle size={20} className="info-icon" style={{ marginTop: 2 }} />
-                <div>
-                  <div className="alert-title">Cảnh báo quét lặp lại!</div>
-                  <p>Mã này đã quét <strong>{label.scanCount} lần</strong>. Lần đầu vào lúc: <strong>{formatDateTime(firstScanTime)}</strong>.</p>
-                </div>
-              </div>
-            )}
 
-            {/* Product Details Section - 2 columns layout */}
-            {template.showProductInfo && product && (
-              <div className="product-details-grid">
-                <div className="product-image-col">
-                  {product.images && product.images[0] ? (
-                    <img src={product.images[0]} alt={product.name} className="agri-product-img" />
-                  ) : (
-                    <div className="agri-product-img placeholder">🥦</div>
-                  )}
-                  <div className="scan-line"></div>
-                </div>
-                <div className="product-info-col">
-                  <span className="agri-category-badge">{product.category || 'Nông sản'}</span>
-                  <h2 className="agri-product-name">{product.name}</h2>
-                  
-                  <div className="agri-specs-list">
-                    <div className="spec-row">
-                      <span className="spec-label">Mã sản phẩm:</span>
-                      <span className="spec-value">{product.sku || 'Chưa cập nhật'}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Nhà sản xuất:</span>
-                      <span className="spec-value">{enterprise.name}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Ngày thu hoạch:</span>
-                      <span className="spec-value">{specs.find(s => s[0] === 'Ngày thu hoạch')?.[1] || 'Đang cập nhật'}</span>
-                    </div>
-                    <div className="spec-row">
-                      <span className="spec-label">Tiêu chuẩn:</span>
-                      <span className="spec-value highlight-green">{specs.find(s => s[0] === 'Tiêu chuẩn')?.[1] || 'VietGAP'}</span>
-                    </div>
-                    {specs.filter(s => s[0] !== 'Ngày thu hoạch' && s[0] !== 'Tiêu chuẩn').map(([key, val], idx) => (
-                      <div className="spec-row" key={idx}>
-                        <span className="spec-label">{key}:</span>
-                        <span className="spec-value">{val}</span>
+              {/* Product Details Section - 2 columns layout */}
+              {template.showProductInfo && product && (
+                <div className="product-details-grid-agri">
+                  <div className="product-image-col-agri">
+                    {product.images && product.images[0] ? (
+                      <img src={product.images[0]} alt={product.name} className="agri-product-img" />
+                    ) : (
+                      <div className="agri-product-img placeholder">🥦</div>
+                    )}
+                    <div className="scan-line"></div>
+                  </div>
+                  <div className="product-info-col-agri">
+                    <h2 className="agri-product-title-bold">{product.name.toUpperCase()}</h2>
+                    
+                    <div className="agri-specs-list-new">
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã lô hàng:</span>
+                        <span className="spec-value-new highlight-green">{label.batchId?.batchCode || specs.find(s => s[0] === 'Mã lô hàng')?.[1] || 'VL20240518-001'}</span>
                       </div>
-                    ))}
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Ngày thu hoạch:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Ngày thu hoạch')?.[1] || '18/05/2024'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Trọng lượng:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Trọng lượng')?.[1] || '300g'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Quy cách đóng gói:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Quy cách đóng gói')?.[1] || 'Túi 300g'}</span>
+                      </div>
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Hạn sử dụng:</span>
+                        <span className="spec-value-new">{specs.find(s => s[0] === 'Hạn sử dụng')?.[1] || '7 ngày kể từ ngày thu hoạch'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Farm Info Section */}
+              <div className="agri-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-green"><Building size={16} /></div>
+                  <span className="section-title-bold">THÔNG TIN TRANG TRẠI</span>
+                </div>
+                <div className="section-body-specs">
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Tên trang trại:</span>
+                    <span className="spec-value-new">{enterprise.name || 'Trang trại An Nông'}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Địa chỉ:</span>
+                    <span className="spec-value-new text-left">{enterprise.address || 'Thôn 3, Xã Hòa Phú, Huyện Củ Chi, TP. Hồ Chí Minh'}</span>
+                  </div>
+                  <div className="spec-row-new">
+                    <span className="spec-label-new">Diện tích:</span>
+                    <span className="spec-value-new">{specs.find(s => s[0] === 'Diện tích')?.[1] || '2 ha'}</span>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* Traceability Step Flow */}
-            <div className="traceability-section">
-              <h4 className="section-title">THÔNG TIN TRUY XUẤT NGUỒN GỐC</h4>
-              <div className="trace-flow-stepper">
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Leaf size={16} /></div>
-                  <div className="step-label">Sản xuất</div>
-                  <div className="step-desc">Gieo trồng chuẩn</div>
+              {/* Production Process (Quy trình sản xuất) */}
+              <div className="agri-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-green"><Leaf size={16} /></div>
+                  <span className="section-title-bold">QUY TRÌNH SẢN XUẤT</span>
                 </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Package size={16} /></div>
-                  <div className="step-label">Đóng gói</div>
-                  <div className="step-desc">Sơ chế vô trùng</div>
-                </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Truck size={16} /></div>
-                  <div className="step-label">Vận chuyển</div>
-                  <div className="step-desc">Chuỗi lạnh khép kín</div>
-                </div>
-                <div className="trace-line completed"></div>
-                <div className="trace-step completed">
-                  <div className="step-icon-circle"><Store size={16} /></div>
-                  <div className="step-label">Bán lẻ</div>
-                  <div className="step-desc">{label.distributorName || 'Điểm phân phối'}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Enterprise Owner details */}
-            <div className="agri-info-card">
-              <div className="enterprise-logo-title">
-                {template?.logo || enterprise.logo ? (
-                  <img src={template?.logo || enterprise.logo} alt={enterprise.name} className="enterprise-logo" />
-                ) : (
-                  <div className="enterprise-logo text-green">NS</div>
-                )}
-                <div>
-                  <span className="enterprise-name-styled">{enterprise.name}</span>
-                  <span className="enterprise-mst">MST: {enterprise.taxCode || '—'}</span>
-                </div>
-              </div>
-              <div className="info-body">
-                <div className="info-line"><MapPin size={14} className="icon-agri" /> {enterprise.address || '—'}</div>
-                {enterprise.phone && <div className="info-line"><Phone size={14} className="icon-agri" /> {enterprise.phone}</div>}
-                {enterprise.website && (
-                  <div className="info-line">
-                    <Globe size={14} className="icon-agri" /> 
-                    <a href={enterprise.website} target="_blank" rel="noopener noreferrer" className="agri-link">{enterprise.website}</a>
+                <div className="production-process-stepper">
+                  <div className="process-step-box">
+                    <div className="step-square">
+                      <Sprout size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Gieo trồng</span>
                   </div>
-                )}
+                  <div className="process-arrow">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square">
+                      <Droplet size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Chăm sóc</span>
+                  </div>
+                  <div className="process-arrow">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square">
+                      <svg className="step-square-icon custom-fertilizer" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                      </svg>
+                    </div>
+                    <span className="step-square-label">Bón phân hữu cơ</span>
+                  </div>
+                  <div className="process-arrow">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square">
+                      <Leaf size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Thu hoạch</span>
+                  </div>
+                  <div className="process-arrow">→</div>
+                  <div className="process-step-box">
+                    <div className="step-square">
+                      <Package size={22} className="step-square-icon" />
+                    </div>
+                    <span className="step-square-label">Đóng gói</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Certifications (Chứng nhận đạt được) */}
+              <div className="agri-card-section">
+                <div className="section-header-styled">
+                  <div className="header-icon-circle-green"><Shield size={16} /></div>
+                  <span className="section-title-bold">CHỨNG NHẬN ĐẠT ĐƯỢC</span>
+                </div>
+                <div className="certifications-grid">
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper vietgap">
+                      <div className="vietgap-badge-design">
+                        <span className="vgap-main-text">Viet</span>
+                        <span className="vgap-sub-text">GAP</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">VietGAP</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('VietGAP'))?.[1] || 'VietGAP-TT-13-23-45'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper organic">
+                      <div className="organic-badge-design">
+                        <span className="org-text-top">HỮU CƠ</span>
+                        <span className="org-text-bottom">ORGANIC</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">Hữu cơ Việt Nam</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('Hữu cơ'))?.[1] || 'HC-23-1087'}</span>
+                  </div>
+                  <div className="cert-item">
+                    <div className="cert-badge-wrapper iso">
+                      <div className="iso-badge-design">
+                        <span className="iso-quacert">QUACERT</span>
+                        <span className="iso-number">ISO 22000</span>
+                      </div>
+                    </div>
+                    <span className="cert-name-label">ISO 22000:2018</span>
+                    <span className="cert-number-label">Số: {specs.find(s => s[0].includes('ISO'))?.[1] || '22000-23-01'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Farm Location Map Section */}
+              <div className="agri-card-section">
+                <div className="section-header-styled map-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="header-icon-circle-green"><MapPin size={16} /></div>
+                    <span className="section-title-bold">VỊ TRÍ TRANG TRẠI</span>
+                  </div>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="view-map-link">
+                    Xem trên bản đồ <span className="arrow-right-icon">→</span>
+                  </a>
+                </div>
+                <div className="map-wrapper-new">
+                  <iframe src={mapUrl} width="100%" height="200" style={{ border: 0 }} allowFullScreen="" loading="lazy"></iframe>
+                  <div className="map-location-label">
+                    <MapPin size={14} className="icon-map-label" />
+                    <span>{enterprise.name || 'Trang trại An Nông'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer action buttons */}
+              <div className="agri-action-buttons-row">
+                <button className="action-footer-btn" onClick={() => alert('Đang tải chứng nhận...')}>
+                  <Download size={16} className="btn-footer-icon" /> Tải chứng nhận
+                </button>
+                <button className="action-footer-btn" onClick={() => alert('Sao chép link để chia sẻ!')}>
+                  <Share2 size={16} className="btn-footer-icon" /> Chia sẻ
+                </button>
+                <button className="action-footer-btn report" onClick={() => alert('Gửi báo cáo vi phạm thành công!')}>
+                  <AlertTriangle size={16} className="btn-footer-icon" /> Báo cáo
+                </button>
+              </div>
+
+              <div className="agri-last-updated">
+                Dữ liệu được cập nhật lần cuối: {specs.find(s => s[0] === 'Cập nhật')?.[1] || '18/05/2024 08:30'}
               </div>
             </div>
-
-            {/* Map GPS Scan Section */}
-            <div className="map-section">
-              <h4 className="section-title">BẢN ĐỒ ĐIỂM XÁC THỰC</h4>
-              <div className="map-wrapper">
-                <iframe src={mapUrl} width="100%" height="220" style={{ border: 0, borderRadius: 16 }} allowFullScreen="" loading="lazy"></iframe>
-              </div>
-            </div>
-
-            {/* Serial code details */}
-            <div className="agri-metadata-box">
-              <div className="meta-row"><span>Mã Serial:</span><strong>{label.serialNumber}</strong></div>
-              {template.showScanCount && <div className="meta-row"><span>Lượt quét:</span><strong>{label.scanCount} lần</strong></div>}
-              <div className="meta-row"><span>Thời gian quét:</span><span>{formatDateTime(label.lastScannedAt)}</span></div>
-            </div>
-          </div>
+          </>
         )}
 
         {theme === 'functional_food' && (
