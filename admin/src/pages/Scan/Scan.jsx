@@ -419,15 +419,15 @@ export default function Scan() {
                 <div className="brand-logo-circle agri">
                   {enterprise.logo ? (
                     <img src={enterprise.logo} alt={enterprise.name} className="brand-logo-img" />
-                  ) : hubVariant === 'agri' ? (
-                    <Leaf size={22} className="brand-logo-icon" />
                   ) : (
-                    <FlaskConical size={22} className="brand-logo-icon" />
+                    <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#007d32', textAlign: 'center', lineHeight: 1.1, padding: '2px' }}>
+                      {enterprise.name.split(' ').map(w => w[0]).join('').slice(0, 4).toUpperCase()}
+                    </span>
                   )}
                 </div>
                 <div className="brand-name-col">
                   <span className="brand-name-top">{brandLines.top || enterprise.name}</span>
-                  <span className="brand-name-bottom">{brandLines.bottom}</span>
+                  {brandLines.bottom && <span className="brand-name-bottom">{brandLines.bottom}</span>}
                 </div>
               </div>
               <div className="brand-divider-v"></div>
@@ -467,13 +467,13 @@ export default function Scan() {
 
             <div className="verify-banner-new agri">
               <div className="verify-banner-icon agri">
-                <ShieldCheck size={34} strokeWidth={2.5} />
+                <ShieldCheck size={38} strokeWidth={2.5} />
               </div>
               <div className="verify-banner-text">
                 <h3 className="verify-banner-title">SẢN PHẨM ĐÃ ĐƯỢC XÁC THỰC</h3>
                 <p className="verify-banner-desc">Nguồn gốc sản phẩm được xác nhận trực tiếp từ nhà sản xuất.</p>
               </div>
-              <div className="verify-banner-bg-icon"><ShieldCheck size={72} strokeWidth={1.5} /></div>
+              <div className="verify-banner-bg-icon"><ShieldCheck size={80} strokeWidth={1.2} /></div>
             </div>
 
             {template.showProductInfo && product && (
@@ -505,7 +505,7 @@ export default function Scan() {
                   className={`action-grid-btn ${activeSection === id ? 'active' : ''}`}
                   onClick={() => setActiveSection(activeSection === id ? null : id)}
                 >
-                  <div className="agb-icon-circle agri"><Icon size={22} strokeWidth={1.75} /></div>
+                  <div className={`agb-icon-circle ${hubVariant}`}><Icon size={22} strokeWidth={1.75} /></div>
                   <span>{label.split('\n').map((line, i, arr) => (
                     <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
                   ))}</span>
@@ -514,6 +514,7 @@ export default function Scan() {
             </div>
 
             {renderHubExpandSection()}
+            <div style={{ height: 16 }} />
           </div>
         )}
 
