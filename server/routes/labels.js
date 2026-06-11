@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const { requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
-const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-ten.vercel.app';
+const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-kappa.vercel.app';
 
 // ======= BATCH ROUTES =======
 
