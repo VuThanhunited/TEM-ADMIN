@@ -66,7 +66,7 @@
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 2.5px solid rgba(255, 255, 255, 0.16);
   border-radius: 24px;
   padding: 24px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -76,7 +76,7 @@
 /* For light background template */
 .scan-public-page.light-theme .scan-card {
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 2.5px solid rgba(0, 0, 0, 0.12);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
@@ -560,7 +560,7 @@
 }
 
 .scan-public-page.layout-premium .scan-card {
-  border: 1px solid rgba(251, 191, 36, 0.2); /* gold tint */
+  border: 2.5px solid rgba(251, 191, 36, 0.35); /* gold tint */
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
 }
 
@@ -676,7 +676,7 @@
 
 .scan-public-page.theme-agriculture .scan-card {
   background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  border: 2.5px solid rgba(16, 185, 129, 0.28);
   box-shadow: 0 10px 30px rgba(16, 185, 129, 0.08);
 }
 
@@ -760,7 +760,7 @@
 
 .scan-public-page.theme-functional_food .scan-card {
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(2, 132, 199, 0.15);
+  border: 2.5px solid rgba(2, 132, 199, 0.28);
   box-shadow: 0 10px 30px rgba(2, 132, 199, 0.08);
 }
 
@@ -849,7 +849,7 @@
 
 .scan-public-page.theme-cosmetics .scan-card {
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(236, 72, 153, 0.15);
+  border: 2.5px solid rgba(236, 72, 153, 0.28);
   box-shadow: 0 10px 30px rgba(236, 72, 153, 0.08);
   border-radius: 30px;
 }
@@ -1537,7 +1537,7 @@
   background: #ffffff !important;
   color: #1f2937 !important;
   border-radius: 16px !important;
-  border: 1px solid #e5e7eb !important;
+  border: 2.5px solid #cbd5e1 !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
   margin-top: 12px !important;
   padding: 20px 16px !important;
@@ -2065,7 +2065,7 @@
   background: #ffffff !important;
   color: #1f2937 !important;
   border-radius: 16px !important;
-  border: 1px solid #e5e7eb !important;
+  border: 2.5px solid #cbd5e1 !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
   margin-top: 12px !important;
   padding: 20px 16px !important;
@@ -2336,7 +2336,7 @@
   background: #ffffff !important;
   color: #1f2937 !important;
   border-radius: 16px !important;
-  border: 1px solid #e5e7eb !important;
+  border: 2.5px solid #cbd5e1 !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
   margin-top: 12px !important;
   padding: 20px 16px !important;
@@ -2685,7 +2685,7 @@
   background: #ffffff !important;
   color: #1f2937 !important;
   border-radius: 16px !important;
-  border: 1px solid #e5e7eb !important;
+  border: 2.5px solid #cbd5e1 !important;
   box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
   margin-top: 12px !important;
   padding: 20px 16px !important;
@@ -3392,7 +3392,7 @@
   margin: 10px 12px 0;
   background: #ffffff;
   border-radius: 14px;
-  border: 1px solid #e5e7eb;
+  border: 2.5px solid #cbd5e1;
   padding: 14px 16px;
   display: flex;
   gap: 16px;
