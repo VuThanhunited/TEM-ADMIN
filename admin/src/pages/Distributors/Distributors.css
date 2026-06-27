@@ -1,0 +1,73 @@
+.distributors-page {
+  padding: var(--spacing-xl);
+  animation: pageFadeIn 0.3s ease-out;
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dist-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.dist-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-size-md);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.dist-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+}
+
+.dist-address-cell,
+.dist-email-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  max-width: 250px;
+}
+
+.dist-address-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dist-icon {
+  color: var(--color-accent-light);
+  flex-shrink: 0;
+}
+
+.renew-info {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.renew-info strong {
+  color: var(--color-text-primary);
+}

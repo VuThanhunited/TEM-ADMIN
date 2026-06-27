@@ -1,0 +1,344 @@
+/* ==========================================
+   ProductInfo – Trang xem thông tin sản phẩm (Guest)
+   Public page – không cần đăng nhập
+   ========================================== */
+
+.product-info-page {
+  min-height: 100vh;
+  background: #f4f7f4;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.product-info-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e8e0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.product-info-back {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.product-info-back:hover {
+  background: #f0f0f0;
+}
+
+.product-info-header-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  margin-right: 38px;
+}
+
+/* Body */
+.product-info-body {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Verification badge */
+.product-info-verify {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #E8F5E9;
+  border-radius: 14px;
+  border: 1px solid #A5D6A7;
+}
+
+.product-info-verify-icon {
+  width: 44px;
+  height: 44px;
+  background: #2E7D32;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.product-info-verify-text h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1B5E20;
+  margin-bottom: 2px;
+}
+
+.product-info-verify-text p {
+  font-size: 0.78rem;
+  color: #2E7D32;
+}
+
+.product-info-verify--warning {
+  background: #FFF3E0;
+  border-color: #FFB74D;
+}
+
+.product-info-verify--warning .product-info-verify-icon {
+  background: #E65100;
+}
+
+.product-info-verify--warning h3 {
+  color: #E65100;
+}
+
+.product-info-verify--warning p {
+  color: #BF360C;
+}
+
+/* Product card */
+.product-info-card {
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8ece8;
+}
+
+.product-info-image-area {
+  height: 200px;
+  background: linear-gradient(135deg, #f0faf0, #e8f5e9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.product-info-image-area img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-info-image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #81C784;
+}
+
+.product-info-image-placeholder span {
+  font-size: 0.78rem;
+  color: #999;
+}
+
+.product-info-details {
+  padding: 18px;
+}
+
+.product-info-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.product-info-desc {
+  font-size: 0.85rem;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* Info rows */
+.product-info-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.product-info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.product-info-row:last-child {
+  border-bottom: none;
+}
+
+.product-info-row-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #f5f8f5;
+  color: #2E7D32;
+}
+
+.product-info-row-label {
+  font-size: 0.78rem;
+  color: #999;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.product-info-row-value {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #333;
+  text-align: right;
+}
+
+/* Enterprise section */
+.product-info-enterprise {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8ece8;
+}
+
+.product-info-enterprise-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.product-info-enterprise-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.product-info-enterprise-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.82rem;
+  color: #666;
+}
+
+.product-info-enterprise-row svg {
+  color: #2E7D32;
+  flex-shrink: 0;
+}
+
+/* Scan stats */
+.product-info-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.product-info-stat {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8ece8;
+}
+
+.product-info-stat-number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #2E7D32;
+  display: block;
+}
+
+.product-info-stat-label {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Distributor info */
+.product-info-distributor {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e8ece8;
+}
+
+.product-info-distributor-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.product-info-distributor-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+.product-info-distributor-addr {
+  font-size: 0.82rem;
+  color: #777;
+}
+
+/* Back button at bottom */
+.product-info-bottom {
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.product-info-home-btn {
+  width: 100%;
+  padding: 14px;
+  background: #2E7D32;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.product-info-home-btn:hover {
+  background: #1B5E20;
+}

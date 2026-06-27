@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
     default: null
+  },
+  address: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

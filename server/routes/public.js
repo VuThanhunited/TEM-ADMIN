@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const Label = require('../models/Label');
 const LabelBatch = require('../models/LabelBatch');
 const Product = require('../models/Product');
 const Enterprise = require('../models/Enterprise');
 const Template = require('../models/Template');
 const ScanLog = require('../models/ScanLog');
+const User = require('../models/User');
 
 // GET /api/public/scan/:serial
 router.get('/scan/:serial', async (req, res) => {
@@ -218,4 +221,249 @@ router.post('/scan/:serial/location', async (req, res) => {
   }
 });
 
+// GET /api/public/distributors/:enterpriseId - Get list of NPP accounts for an enterprise
+router.get('/distributors/:enterpriseId', async (req, res) => {
+  try {
+    const { enterpriseId } = req.params;
+    const distributors = await User.find({
+      enterpriseId,
+      role: 'NPP',
+      isActive: true
+    }).select('fullName username _id');
+
+    // Also include enterprise name as option
+    const enterprise = await Enterprise.findById(enterpriseId).select('name');
+
+    res.json({
+      distributors,
+      enterpriseName: enterprise?.name || ''
+    });
+  } catch (error) {
+    console.error('Get distributors error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách nhà phân phối' });
+  }
+});
+
+// POST /api/public/npp-login - NPP login from user-facing scan page
+router.post('/npp-login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu' });
+    }
+
+    const user = await User.findOne({
+      $or: [{ username }, { email: username }],
+      role: 'NPP'
+    }).populate('enterpriseId');
+
+    if (!user) {
+      return res.status(401).json({ error: 'Tài khoản NPP không tồn tại hoặc không hợp lệ' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
+    }
+
+    if (user.subscriptionExpiry && new Date() > new Date(user.subscriptionExpiry)) {
+      return res.status(403).json({ error: 'Tài khoản đã hết hạn. Vui lòng liên hệ Admin để gia hạn.' });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
+      { expiresIn: '7d' }
+    );
+
+    const userData = user.toObject();
+    delete userData.password;
+
+    res.json({ token, user: userData });
+  } catch (error) {
+    console.error('NPP login error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi đăng nhập' });
+  }
+});
+
+// POST /api/public/distributor-entry - NPP submits serial range distribution data
+router.post('/distributor-entry', async (req, res) => {
+  try {
+    // Verify JWT token from Authorization header
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Yêu cầu đăng nhập để thực hiện chức năng này' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+    } catch {
+      return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
+    }
+
+    // Verify user is NPP
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user || user.role !== 'NPP') {
+      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được nhập dữ liệu phân phối' });
+    }
+
+    const { batchId, serialStart, serialEnd, distributorName, distributorAddress } = req.body;
+
+    if (!batchId || !serialStart || !serialEnd) {
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc: Lô tem, Serial bắt đầu, Serial kết thúc' });
+    }
+
+    // Check batch belongs to same enterprise
+    const batch = await LabelBatch.findById(batchId);
+    if (!batch) {
+      return res.status(404).json({ error: 'Không tìm thấy lô tem' });
+    }
+
+    // Find labels in range
+    const query = {
+      batchId,
+      serialNumber: { $gte: serialStart, $lte: serialEnd }
+    };
+
+    const totalInRange = await Label.countDocuments(query);
+    if (totalInRange === 0) {
+      return res.status(404).json({ error: 'Không tìm thấy tem nào trong khoảng serial này' });
+    }
+
+    const updateData = {
+      distributorName: distributorName || user.fullName || user.username,
+      distributorAddress: distributorAddress || user.enterpriseId?.address || ''
+    };
+
+    const result = await Label.updateMany(query, updateData);
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật thành công ${result.modifiedCount} tem nhãn cho nhà phân phối.`,
+      modifiedCount: result.modifiedCount,
+      serialStart,
+      serialEnd,
+      distributorName: updateData.distributorName
+    });
+  } catch (error) {
+    console.error('Distributor entry error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi nhập dữ liệu phân phối' });
+  }
+});
+
+// GET /api/public/npp-stores - Get list of distributor stores for the logged-in NPP
+router.get('/npp-stores', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+    } catch {
+      return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user || user.role !== 'NPP') {
+      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
+    }
+
+    // Get all NPP accounts in the same enterprise as distribution points
+    const enterpriseId = user.enterpriseId?._id || user.enterpriseId;
+    const stores = await User.find({
+      enterpriseId,
+      role: 'NPP',
+      isActive: true
+    }).select('fullName username address _id');
+
+    res.json({
+      stores: stores.map(s => ({
+        id: s._id,
+        name: s.fullName || s.username,
+        address: s.address || ''
+      })),
+      enterpriseName: user.enterpriseId?.name || ''
+    });
+  } catch (error) {
+    console.error('Get NPP stores error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách điểm bán' });
+  }
+});
+
+// POST /api/public/distributor-entry-single - NPP records single item at a store
+router.post('/distributor-entry-single', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Yêu cầu đăng nhập để thực hiện chức năng này' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+    } catch {
+      return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
+    }
+
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user || user.role !== 'NPP') {
+      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được nhập dữ liệu phân phối' });
+    }
+
+    const { serialNumber, distributorName, distributorAddress } = req.body;
+
+    if (!serialNumber) {
+      return res.status(400).json({ error: 'Thiếu mã serial sản phẩm' });
+    }
+
+    // Find the label
+    const label = await Label.findOne({
+      $or: [
+        { serialNumber },
+        { legacyQrCode: { $regex: new RegExp(serialNumber + '$', 'i') } },
+        { activeCode: serialNumber }
+      ]
+    });
+
+    if (!label) {
+      return res.status(404).json({ error: 'Không tìm thấy tem nhãn với serial này' });
+    }
+
+    // Update the label
+    label.distributorName = distributorName || user.fullName || user.username;
+    label.distributorAddress = distributorAddress || user.enterpriseId?.address || '';
+    await label.save();
+
+    // Get total count for this store
+    const totalForStore = await Label.countDocuments({
+      enterpriseId: label.enterpriseId,
+      distributorName: label.distributorName
+    });
+
+    res.json({
+      success: true,
+      message: 'Đã nhập hàng thành công.',
+      serialNumber: label.serialNumber,
+      distributorName: label.distributorName,
+      totalForStore
+    });
+  } catch (error) {
+    console.error('Distributor entry single error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi nhập dữ liệu phân phối' });
+  }
+});
+
 module.exports = router;
+

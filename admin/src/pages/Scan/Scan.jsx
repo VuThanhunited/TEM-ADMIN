@@ -10,6 +10,8 @@ import {
   ChevronLeft, ChevronRight, QrCode, FileText, ScanLine, History,
   BookOpen, Gift, BadgeCheck, Star, ShieldCheck, Bot
 } from 'lucide-react';
+import NPPLogin from './NPPLogin';
+import DistributorEntry from './DistributorEntry';
 import './Scan.css';
 
 const getEffectiveTheme = (themeName, category) => {
@@ -56,8 +58,23 @@ export default function Scan() {
   const [userCoords, setUserCoords] = useState(null);
   const chatEndRef = useRef(null);
 
+  // Choice screen & NPP states
+  const [scanMode, setScanMode] = useState('choice'); // 'choice' | 'info' | 'distributor'
+  const [showNPPLogin, setShowNPPLogin] = useState(false);
+  const [nppUser, setNppUser] = useState(null);
+  const [nppToken, setNppToken] = useState(null);
+
   useEffect(() => {
     loadScanData();
+    // Restore NPP session if exists
+    const savedToken = localStorage.getItem('npp_scan_token');
+    const savedUser = localStorage.getItem('npp_scan_user');
+    if (savedToken && savedUser) {
+      try {
+        setNppToken(savedToken);
+        setNppUser(JSON.parse(savedUser));
+      } catch { /* ignore */ }
+    }
   }, [serial]);
 
   useEffect(() => {
@@ -76,6 +93,7 @@ export default function Scan() {
   const loadScanData = async () => {
     setLoading(true);
     setError(null);
+    setScanMode('choice');
     try {
       const res = await api.getPublicScan(serial);
       setData(res);
@@ -108,6 +126,39 @@ export default function Scan() {
       setLoading(false);
     }
   };
+
+  const handleChooseInfo = () => setScanMode('info');
+
+  const handleChooseDistributor = () => {
+    const savedToken = localStorage.getItem('npp_scan_token');
+    const savedUser = localStorage.getItem('npp_scan_user');
+    if (savedToken && savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setNppToken(savedToken);
+        setNppUser(user);
+        setScanMode('distributor');
+        return;
+      } catch { /* ignore */ }
+    }
+    setShowNPPLogin(true);
+  };
+
+  const handleNPPLoginSuccess = (user, token) => {
+    setNppUser(user);
+    setNppToken(token);
+    setShowNPPLogin(false);
+    setScanMode('distributor');
+  };
+
+  const handleNPPLogout = () => {
+    localStorage.removeItem('npp_scan_token');
+    localStorage.removeItem('npp_scan_user');
+    setNppUser(null);
+    setNppToken(null);
+    setScanMode('choice');
+  };
+
 
   const applyTheme = (template, themeName) => {
     const root = document.documentElement;
@@ -218,11 +269,142 @@ export default function Scan() {
     );
   }
 
+  // ─── CHOICE SCREEN ───
+  if (scanMode === 'choice' && data) {
+    const { enterprise: ent, product: prod, label: lbl } = data;
+    const isNPPLoggedIn = !!nppToken;
+    return (
+      <div className="scan-choice-page">
+        <div className="scan-choice-bg">
+          <div className="choice-bg-orb orb-a" />
+          <div className="choice-bg-orb orb-b" />
+          <div className="choice-bg-orb orb-c" />
+        </div>
+
+        {showNPPLogin && (
+          <NPPLogin
+            onSuccess={handleNPPLoginSuccess}
+            onClose={() => setShowNPPLogin(false)}
+            scanSerial={serial}
+          />
+        )}
+
+        <div className="scan-choice-content">
+          <div className="choice-brand-header">
+            {ent?.logo ? (
+              <img src={ent.logo} alt={ent.name} className="choice-brand-logo" />
+            ) : (
+              <div className="choice-brand-avatar">
+                {(ent?.name || 'T')[0].toUpperCase()}
+              </div>
+            )}
+            <div className="choice-brand-info">
+              <h1 className="choice-brand-name">{ent?.name || 'Thương hiệu'}</h1>
+              <p className="choice-brand-slogan">Chất lượng tạo niềm tin</p>
+            </div>
+          </div>
+
+          <div className="choice-verified-badge">
+            <ShieldCheck size={20} strokeWidth={2.5} />
+            <span>Tem đã được xác thực</span>
+          </div>
+
+          <div className="choice-product-card">
+            {prod?.images?.[0] ? (
+              <img src={prod.images[0]} alt={prod.name} className="choice-product-img" />
+            ) : (
+              <div className="choice-product-img-placeholder">
+                <Package size={36} />
+              </div>
+            )}
+            <div className="choice-product-details">
+              <h2 className="choice-product-name">{prod?.name || 'Sản phẩm'}</h2>
+              <p className="choice-product-serial">
+                <QrCode size={13} /> Serial: <strong>{lbl?.serialNumber}</strong>
+              </p>
+              <p className="choice-product-cat">{prod?.category || 'Sản phẩm chính hãng'}</p>
+            </div>
+          </div>
+
+          <div className="choice-prompt">
+            <p>Bạn muốn làm gì với tem này?</p>
+          </div>
+
+          <div className="choice-buttons">
+            <button
+              id="scan-choice-view-info"
+              className="choice-btn choice-btn-info"
+              onClick={handleChooseInfo}
+            >
+              <div className="choice-btn-icon-wrap info">
+                <Eye size={30} strokeWidth={1.8} />
+              </div>
+              <div className="choice-btn-text">
+                <span className="choice-btn-title">Xem thông tin chi tiết</span>
+                <span className="choice-btn-desc">Kiểm tra nguồn gốc, chứng nhận, nhà sản xuất</span>
+              </div>
+              <div className="choice-btn-arrow">›</div>
+            </button>
+
+            <button
+              id="scan-choice-distributor"
+              className="choice-btn choice-btn-dist"
+              onClick={handleChooseDistributor}
+            >
+              <div className="choice-btn-icon-wrap dist">
+                <Truck size={30} strokeWidth={1.8} />
+              </div>
+              <div className="choice-btn-text">
+                <span className="choice-btn-title">Nhập dữ liệu phân phối</span>
+                <span className="choice-btn-desc">
+                  {isNPPLoggedIn
+                    ? `Đã đăng nhập: ${nppUser?.fullName || nppUser?.username}`
+                    : 'Dành cho Nhà phân phối (NPP) – Yêu cầu đăng nhập'}
+                </span>
+              </div>
+              <div className="choice-btn-arrow">›</div>
+            </button>
+          </div>
+
+          {isNPPLoggedIn && (
+            <div className="choice-npp-status">
+              <Truck size={13} />
+              <span>NPP: <strong>{nppUser?.fullName || nppUser?.username}</strong></span>
+              <button className="choice-npp-logout" onClick={handleNPPLogout}>Đăng xuất</button>
+            </div>
+          )}
+
+          <p className="choice-footer-note">
+            🔓 Guest có thể xem thông tin miễn phí.<br/>
+            NPP đăng nhập để nhập dữ liệu phân phối.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── DISTRIBUTOR ENTRY SCREEN ───
+  if (scanMode === 'distributor' && data && nppUser && nppToken) {
+    return (
+      <DistributorEntry
+        scanData={data}
+        nppUser={nppUser}
+        nppToken={nppToken}
+        onLogout={handleNPPLogout}
+        onBack={() => setScanMode('choice')}
+      />
+    );
+  }
+
+  // Guard: only show scan info if scanMode === 'info'
+  if (!data || scanMode !== 'info') return null;
+
   const { label, product, enterprise, template, isFirstScan, firstScanTime, theme } = data;
   const effectiveTheme = getEffectiveTheme(theme, product?.category);
   const lightClass = isLightTheme() ? 'light-theme' : '';
   const layoutClass = `layout-${template.layout || 'default'}`;
   const themeClass = `theme-${effectiveTheme || 'default'}`;
+
 
   const getPageStyle = () => {
     if (!template?.backgroundImage) return {};

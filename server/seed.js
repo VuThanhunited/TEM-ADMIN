@@ -112,6 +112,61 @@ const seed = async (shouldExit = true) => {
         isActive: true
       },
       {
+        username: 'anhtuan',
+        email: 'anhtuan@saovang.vn',
+        password: nppPassword,
+        fullName: 'ĐIỂM BÁN 01 – TẠP HÓA ANH TUẤN',
+        address: '12 Đường số 5, P. Hiệp Bình, TP. Thủ Đức',
+        role: 'NPP',
+        enterpriseId: enterprise2._id,
+        subscriptionExpiry: enterprise2.subscriptionExpiry,
+        isActive: true
+      },
+      {
+        username: 'minhchau',
+        email: 'minhchau@saovang.vn',
+        password: nppPassword,
+        fullName: 'ĐIỂM BÁN 02 – TẠP HÓA MINH CHÂU',
+        address: '45 Kha Vạn Cân, P. Linh Đông, TP. Thủ Đức',
+        role: 'NPP',
+        enterpriseId: enterprise2._id,
+        subscriptionExpiry: enterprise2.subscriptionExpiry,
+        isActive: true
+      },
+      {
+        username: 'hongphat',
+        email: 'hongphat@saovang.vn',
+        password: nppPassword,
+        fullName: 'ĐIỂM BÁN 03 – TẠP HÓA HỒNG PHÁT',
+        address: '100 Phạm Văn Đồng, P. Linh Tây, TP. Thủ Đức',
+        role: 'NPP',
+        enterpriseId: enterprise2._id,
+        subscriptionExpiry: enterprise2.subscriptionExpiry,
+        isActive: true
+      },
+      {
+        username: 'baoan',
+        email: 'baoan@saovang.vn',
+        password: nppPassword,
+        fullName: 'ĐIỂM BÁN 04 – TẠP HÓA BẢO AN',
+        address: '23 Quốc lộ 13, P. Hiệp Bình Phước, TP. Thủ Đức',
+        role: 'NPP',
+        enterpriseId: enterprise2._id,
+        subscriptionExpiry: enterprise2.subscriptionExpiry,
+        isActive: true
+      },
+      {
+        username: 'thanhha',
+        email: 'thanhha@saovang.vn',
+        password: nppPassword,
+        fullName: 'ĐIỂM BÁN 05 – TẠP HÓA THANH HÀ',
+        address: '88 Đường số 7, P. Hiệp Bình Chánh, TP. Thủ Đức',
+        role: 'NPP',
+        enterpriseId: enterprise2._id,
+        subscriptionExpiry: enterprise2.subscriptionExpiry,
+        isActive: true
+      },
+      {
         username: 'hoasen',
         email: 'manager@hoasen.vn',
         password: nsxPassword,

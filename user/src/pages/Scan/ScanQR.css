@@ -1,0 +1,340 @@
+/* ==========================================
+   ScanQR Page
+   ========================================== */
+
+.scan-qr-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0D1B2A;
+}
+
+/* ── Header ── */
+.scan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: transparent;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+}
+
+.scan-header-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  flex: 1;
+}
+
+.scan-header-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: rgba(255,255,255,0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.scan-header-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ── Camera Area ── */
+.scan-camera-area {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  background: #000;
+  overflow: hidden;
+  min-height: 70vh;
+}
+
+.scan-camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* QR Frame overlay */
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Dark mask outside frame */
+.scan-mask-top,
+.scan-mask-bottom {
+  width: 100%;
+  flex: 1;
+  background: rgba(0,0,0,0.55);
+}
+
+.scan-mask-middle {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  align-items: stretch;
+}
+
+.scan-mask-side {
+  flex: 1;
+  background: rgba(0,0,0,0.55);
+}
+
+/* QR scan frame */
+.scan-frame {
+  width: 240px;
+  height: 240px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.scan-frame-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: #4CAF50;
+  border-style: solid;
+  border-width: 0;
+}
+
+.scan-frame-corner.tl {
+  top: 0; left: 0;
+  border-top-width: 4px;
+  border-left-width: 4px;
+  border-radius: 4px 0 0 0;
+}
+.scan-frame-corner.tr {
+  top: 0; right: 0;
+  border-top-width: 4px;
+  border-right-width: 4px;
+  border-radius: 0 4px 0 0;
+}
+.scan-frame-corner.bl {
+  bottom: 0; left: 0;
+  border-bottom-width: 4px;
+  border-left-width: 4px;
+  border-radius: 0 0 0 4px;
+}
+.scan-frame-corner.br {
+  bottom: 0; right: 0;
+  border-bottom-width: 4px;
+  border-right-width: 4px;
+  border-radius: 0 0 4px 0;
+}
+
+/* Scan line animation */
+.scan-line {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #4CAF50, transparent);
+  animation: scanLine 2s linear infinite;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.8);
+}
+
+@keyframes scanLine {
+  0% { top: 4px; }
+  50% { top: calc(100% - 6px); }
+  100% { top: 4px; }
+}
+
+/* Hint text */
+.scan-hint-box {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.6);
+  border-radius: 20px;
+  padding: 6px 18px;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.scan-hint-text {
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* ── Bottom controls ── */
+.scan-bottom-bar {
+  background: #0D1B2A;
+  padding: 20px 16px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.scan-history-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.75);
+  transition: color 0.2s;
+}
+
+.scan-history-btn:hover {
+  color: #fff;
+}
+
+.scan-history-icon {
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scan-history-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* ── Permission denied ── */
+.scan-no-camera {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.scan-no-camera h3 {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.scan-no-camera p {
+  color: rgba(255,255,255,0.6);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.scan-retry-btn {
+  padding: 12px 28px;
+  background: #1565C0;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.scan-retry-btn:hover {
+  background: #0D47A1;
+}
+
+/* Loading camera */
+.scan-camera-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #0D1B2A;
+}
+
+.scan-camera-loading p {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.9rem;
+}
+
+/* Detected indicator */
+.scan-detected {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(76, 175, 80, 0.15);
+  z-index: 10;
+}
+
+.scan-detected-badge {
+  background: #4CAF50;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: popIn 0.25s ease-out;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* NPP info chip on scan page */
+.scan-npp-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.scan-npp-chip-name {
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.scan-npp-logout {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  font-family: 'Inter', sans-serif;
+  padding: 0;
+}
+
+/* Scanner canvas (hidden) */
+#qr-canvas {
+  display: none;
+}

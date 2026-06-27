@@ -37,6 +37,12 @@ const menuItems = [
     path: '/products',
   },
   {
+    label: 'Quản lý NPP / Cửa hàng',
+    icon: Users,
+    path: '/distributors',
+    enterpriseOnly: true,
+  },
+  {
     label: 'Quản lý Tem nhãn',
     icon: Tag,
     path: '/labels',

@@ -10,6 +10,7 @@ import Labels from './pages/Labels/Labels';
 import Templates from './pages/Templates/Templates';
 import Analytics from './pages/Analytics/Analytics';
 import Scan from './pages/Scan/Scan';
+import Distributors from './pages/Distributors/Distributors';
 import './App.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -59,6 +60,7 @@ function AppRoutes() {
         <Route path="enterprise/domain" element={<Enterprise />} />
         <Route path="enterprise/chatbot" element={<Enterprise />} />
         <Route path="products" element={<Products />} />
+        <Route path="distributors" element={<Distributors />} />
         <Route path="labels" element={<Labels />} />
         <Route path="labels/activate" element={<Labels />} />
         <Route path="labels/migrate" element={<Labels />} />

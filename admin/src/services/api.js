@@ -58,6 +58,12 @@ class ApiService {
   renewAccount(id, data) { return this.request('PUT', `/accounts/${id}/renew`, data); }
   deleteAccount(id) { return this.request('DELETE', `/accounts/${id}`); }
 
+  // Distributors
+  getDistributors(params) { return this.request('GET', '/accounts/distributors', null, params); }
+  createDistributor(data) { return this.request('POST', '/accounts/distributors', data); }
+  updateDistributor(id, data) { return this.request('PUT', `/accounts/distributors/${id}`, data); }
+  deleteDistributor(id) { return this.request('DELETE', `/accounts/distributors/${id}`); }
+
   // Enterprises
   getEnterprises() { return this.request('GET', '/enterprises'); }
   getEnterprise(id) { return this.request('GET', `/enterprises/${id}`); }
@@ -100,6 +106,11 @@ class ApiService {
   // Public scan
   getPublicScan(serial) { return this.request('GET', `/public/scan/${serial}`); }
   sendScanLocation(serial, data) { return this.request('POST', `/public/scan/${serial}/location`, data); }
+
+  // Public NPP distributor features
+  nppLogin(credentials) { return this.request('POST', '/public/npp-login', credentials); }
+  getPublicDistributors(enterpriseId) { return this.request('GET', `/public/distributors/${enterpriseId}`); }
+  submitDistributorEntry(data) { return this.request('POST', '/public/distributor-entry', data); }
 }
 
 const api = new ApiService();
