@@ -465,5 +465,52 @@ router.post('/distributor-entry-single', async (req, res) => {
   }
 });
 
+// GET /api/public/npp-scan-history - Get scan/distribution history for the logged-in NPP
+router.get('/npp-scan-history', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+    } catch {
+      return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user || user.role !== 'NPP') {
+      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
+    }
+
+    const enterpriseId = user.enterpriseId?._id || user.enterpriseId;
+    
+    // Find labels distributed by this enterprise (NPP)
+    const labels = await Label.find({
+      enterpriseId,
+      distributorName: { $ne: null }
+    })
+      .populate('productId')
+      .sort({ updatedAt: -1 })
+      .limit(50);
+
+    const historyList = labels.map(l => ({
+      productName: l.productId?.name || 'Sản phẩm',
+      serial: l.serialNumber,
+      storeName: l.distributorName,
+      time: l.updatedAt
+    }));
+
+    res.json({ history: historyList });
+  } catch (error) {
+    console.error('Get NPP scan history error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy lịch sử quét' });
+  }
+});
+
 module.exports = router;
+
 

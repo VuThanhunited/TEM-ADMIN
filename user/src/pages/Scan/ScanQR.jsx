@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Zap, ZapOff, Clock, CheckCircle, Camera } from 'lucide-react';
+import jsQR from 'jsqr';
 import { useAuth } from '../../contexts/AuthContext';
 import userApi from '../../services/api';
 import './ScanQR.css';
@@ -82,8 +83,6 @@ export default function ScanQR() {
 
       try {
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        // Dynamic import jsQR
-        const jsQR = (await import('jsqr')).default;
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: 'dontInvert'
         });

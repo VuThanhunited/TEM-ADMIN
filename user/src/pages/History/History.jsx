@@ -1,12 +1,32 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Package, QrCode } from 'lucide-react';
+import { ArrowLeft, Clock, QrCode } from 'lucide-react';
+import userApi from '../../services/api';
 import './History.css';
 
 export default function History() {
   const navigate = useNavigate();
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // In a real implementation, fetch from API
-  const history = JSON.parse(localStorage.getItem('npp_scan_history') || '[]');
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    setLoading(true);
+    try {
+      const res = await userApi.getNppScanHistory();
+      setHistory(res.history || []);
+    } catch (err) {
+      console.error('Fetch scan history error:', err);
+      // Fallback to local storage if API fails
+      const localHistory = JSON.parse(localStorage.getItem('npp_scan_history') || '[]');
+      setHistory(localHistory);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatDateTime = (iso) => {
     if (!iso) return '—';
@@ -27,7 +47,12 @@ export default function History() {
       </div>
 
       <div className="history-body">
-        {history.length === 0 ? (
+        {loading ? (
+          <div className="history-empty">
+            <div className="loading-ring" />
+            <p>Đang tải lịch sử...</p>
+          </div>
+        ) : history.length === 0 ? (
           <div className="history-empty">
             <Clock size={52} color="#B0BEC5" />
             <p>Chưa có lịch sử quét</p>
@@ -57,3 +82,4 @@ export default function History() {
     </div>
   );
 }
+
