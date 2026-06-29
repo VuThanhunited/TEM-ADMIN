@@ -141,6 +141,17 @@ export default function Login() {
             )}
           </button>
         </form>
+
+        <p className="login-register-text" style={{ fontSize: '0.85rem', color: '#546E7A', marginTop: '18px', textAlign: 'center' }}>
+          Chưa có tài khoản?{' '}
+          <span 
+            className="login-register-link" 
+            style={{ color: '#1565C0', fontWeight: '600', cursor: 'pointer' }}
+            onClick={() => navigate('/register')}
+          >
+            Đăng ký NPP ngay
+          </span>
+        </p>
       </div>
 
       <p className="login-footer">Phiên bản 1.0.0</p>

@@ -509,6 +509,76 @@ router.get('/npp-scan-history', async (req, res) => {
     console.error('Get NPP scan history error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi lấy lịch sử quét' });
   }
+// GET /api/public/enterprises - Get list of active enterprises (manufacturers)
+router.get('/enterprises', async (req, res) => {
+  try {
+    const enterprises = await Enterprise.find({
+      type: 'NSX',
+      isActive: true
+    }).select('name _id');
+    res.json(enterprises);
+  } catch (error) {
+    console.error('Get enterprises error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách doanh nghiệp' });
+  }
+});
+
+// POST /api/public/npp-register - Register a new NPP account
+router.post('/npp-register', async (req, res) => {
+  try {
+    const { username, email, password, fullName, address, enterpriseId } = req.body;
+
+    if (!username || !email || !password || !fullName || !enterpriseId) {
+      return res.status(400).json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc' });
+    }
+
+    // Check existing user
+    const existing = await User.findOne({
+      $or: [{ username }, { email }]
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
+    }
+
+    // Get enterprise to copy subscriptionExpiry
+    const enterprise = await Enterprise.findById(enterpriseId);
+    if (!enterprise) {
+      return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp liên kết' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      password: hashedPassword,
+      fullName: fullName.trim(),
+      address: address ? address.trim() : '',
+      role: 'NPP',
+      enterpriseId,
+      subscriptionExpiry: enterprise.subscriptionExpiry,
+      isActive: true
+    });
+    await user.save();
+
+    // Auto-login after registration: generate token
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
+      { expiresIn: '7d' }
+    );
+
+    const userData = user.toObject();
+    delete userData.password;
+
+    res.status(201).json({
+      token,
+      user: userData
+    });
+  } catch (error) {
+    console.error('NPP register error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi đăng ký tài khoản' });
+  }
 });
 
 module.exports = router;

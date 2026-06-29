@@ -86,6 +86,16 @@ class UserApiService {
   getNppScanHistory() {
     return this.request('GET', '/public/npp-scan-history');
   }
+
+  // Get active enterprises for registration dropdown
+  getPublicEnterprises() {
+    return this.request('GET', '/public/enterprises', null, {}, false);
+  }
+
+  // Register new NPP account
+  nppRegister(data) {
+    return this.request('POST', '/public/npp-register', data, {}, false);
+  }
 }
 
 const userApi = new UserApiService();
