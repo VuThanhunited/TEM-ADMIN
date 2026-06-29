@@ -103,13 +103,23 @@ export default function Home() {
               <button className="home-navbar-logout-btn" onClick={logout}>Đăng xuất</button>
             </div>
           ) : (
-            <a
-              href="#"
-              className="home-navbar-login-btn"
-              onClick={(e) => { e.preventDefault(); navigate('/login'); }}
-            >
-              Đăng nhập
-            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
+              <a
+                href="#"
+                className="home-navbar-login-btn"
+                onClick={(e) => { e.preventDefault(); navigate('/login'); }}
+                style={{ marginRight: 0 }}
+              >
+                Đăng nhập
+              </a>
+              <a
+                href="#"
+                className="home-navbar-register-btn"
+                onClick={(e) => { e.preventDefault(); navigate('/register'); }}
+              >
+                Đăng ký
+              </a>
+            </div>
           )}
 
           <a
@@ -150,13 +160,22 @@ export default function Home() {
             </button>
           </div>
         ) : (
-          <a
-            href="#"
-            className="home-mobile-login-btn"
-            onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/login'); }}
-          >
-            Đăng nhập
-          </a>
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+            <a
+              href="#"
+              className="home-mobile-login-btn"
+              onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/login'); }}
+            >
+              Đăng nhập
+            </a>
+            <a
+              href="#"
+              className="home-mobile-register-btn"
+              onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/register'); }}
+            >
+              Đăng ký
+            </a>
+          </div>
         )}
 
         <a

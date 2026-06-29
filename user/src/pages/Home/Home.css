@@ -172,6 +172,23 @@
   background: var(--home-green-bg);
 }
 
+.home-navbar-register-btn {
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: white;
+  background: var(--home-green);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: var(--home-transition);
+  white-space: nowrap;
+}
+
+.home-navbar-register-btn:hover {
+  background: var(--home-green-dark);
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.2);
+}
+
 .home-navbar-user-info {
   display: flex;
   align-items: center;
@@ -251,6 +268,23 @@
 .home-mobile-login-btn:hover {
   color: var(--home-green);
   background: var(--home-green-bg);
+}
+
+.home-mobile-register-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--home-green);
+  background: var(--home-green-bg);
+  text-decoration: none;
+  border-bottom: 1px solid var(--home-border);
+}
+
+.home-mobile-register-btn:hover {
+  background: var(--home-green-bg-soft);
 }
 
 /* Mobile menu toggle */

@@ -68,6 +68,7 @@ function PublicRoute({ children }) {
     return <Navigate to="/home" replace />;
   }
 
+  return children;
 }
 
 function AppRoutes() {
