@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Home from './pages/Home/Home';
 import Login from './pages/Login/Login';
 import Register from './pages/Register/Register';
+import NppLogin from './pages/NppLogin/NppLogin';
+import NppRegister from './pages/NppRegister/NppRegister';
 import ScanQR from './pages/Scan/ScanQR';
 import SelectStore from './pages/SelectStore/SelectStore';
 import Success from './pages/Success/Success';
@@ -29,8 +31,27 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function NppProtectedRoute({ children }) {
+  const { isLoggedIn, user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="app-loading">
+        <div className="loading-ring" />
+        <p style={{ color: '#546E7A', fontSize: '0.9rem' }}>Đang tải...</p>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn || user?.role !== 'NPP') {
+    return <Navigate to="/npp/login" replace />;
+  }
+
+  return children;
+}
+
 function PublicRoute({ children }) {
-  const { isLoggedIn, loading } = useAuth();
+  const { isLoggedIn, user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -41,10 +62,12 @@ function PublicRoute({ children }) {
   }
 
   if (isLoggedIn) {
-    return <Navigate to="/scan" replace />;
+    if (user?.role === 'NPP') {
+      return <Navigate to="/scan" replace />;
+    }
+    return <Navigate to="/home" replace />;
   }
 
-  return children;
 }
 
 function AppRoutes() {
@@ -68,35 +91,51 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/npp/login"
+        element={
+          <PublicRoute>
+            <NppLogin />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/npp/register"
+        element={
+          <PublicRoute>
+            <NppRegister />
+          </PublicRoute>
+        }
+      />
+      <Route
         path="/scan"
         element={
-          <ProtectedRoute>
+          <NppProtectedRoute>
             <ScanQR />
-          </ProtectedRoute>
+          </NppProtectedRoute>
         }
       />
       <Route
         path="/select-store"
         element={
-          <ProtectedRoute>
+          <NppProtectedRoute>
             <SelectStore />
-          </ProtectedRoute>
+          </NppProtectedRoute>
         }
       />
       <Route
         path="/success"
         element={
-          <ProtectedRoute>
+          <NppProtectedRoute>
             <Success />
-          </ProtectedRoute>
+          </NppProtectedRoute>
         }
       />
       <Route
         path="/history"
         element={
-          <ProtectedRoute>
+          <NppProtectedRoute>
             <History />
-          </ProtectedRoute>
+          </NppProtectedRoute>
         }
       />
       <Route path="/trace/:code" element={<ScanChoice />} />

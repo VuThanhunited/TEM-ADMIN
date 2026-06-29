@@ -7,10 +7,12 @@ import {
   BarChart3, TrendingUp, Lock, ArrowRight, Scan,
   User, Sparkles, Battery, Wifi, Plus, Smartphone, Store, ArrowLeft, Clock
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import './Home.css';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { isLoggedIn, user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [traceCode, setTraceCode] = useState('');
@@ -95,6 +97,21 @@ export default function Home() {
             ))}
           </ul>
 
+          {isLoggedIn ? (
+            <div className="home-navbar-user-info">
+              <span className="home-navbar-user-welcome">Xin chào, <strong>{user?.fullName || user?.username}</strong></span>
+              <button className="home-navbar-logout-btn" onClick={logout}>Đăng xuất</button>
+            </div>
+          ) : (
+            <a
+              href="#"
+              className="home-navbar-login-btn"
+              onClick={(e) => { e.preventDefault(); navigate('/login'); }}
+            >
+              Đăng nhập
+            </a>
+          )}
+
           <a
             href="#"
             className="home-navbar-cta"
@@ -125,10 +142,27 @@ export default function Home() {
             {link.label}
           </a>
         ))}
+        {isLoggedIn ? (
+          <div className="home-mobile-user-info">
+            <span className="home-mobile-user-welcome">Xin chào, {user?.fullName || user?.username}</span>
+            <button className="home-mobile-logout-btn" onClick={() => { logout(); setMobileMenuOpen(false); }}>
+              Đăng xuất
+            </button>
+          </div>
+        ) : (
+          <a
+            href="#"
+            className="home-mobile-login-btn"
+            onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/login'); }}
+          >
+            Đăng nhập
+          </a>
+        )}
+
         <a
           href="#"
           className="home-navbar-cta"
-          onClick={(e) => { e.preventDefault(); scrollToSection('cta'); }}
+          onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); scrollToSection('cta'); }}
         >
           <QrCode size={16} />
           Quét mã ngay

@@ -96,6 +96,16 @@ class UserApiService {
   nppRegister(data) {
     return this.request('POST', '/public/npp-register', data, {}, false);
   }
+
+  // Register new Guest (Consumer) account
+  guestRegister(data) {
+    return this.request('POST', '/public/guest-register', data, {}, false);
+  }
+
+  // Guest (Consumer) login
+  guestLogin(credentials) {
+    return this.request('POST', '/public/guest-login', credentials, {}, false);
+  }
 }
 
 const userApi = new UserApiService();

@@ -1,5 +1,5 @@
 /* ==========================================
-   Register Page – NPP App
+   Register Page – Guest / Consumer App
    ========================================== */
 
 .register-page {
@@ -21,7 +21,7 @@
   transform: translateX(-50%);
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(21,101,192,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(46,125,50,0.12) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -44,7 +44,7 @@
 .register-logo-wrap {
   width: 72px;
   height: 72px;
-  background: #E3F2FD;
+  background: #E8F5E9;
   border-radius: 18px;
   display: flex;
   align-items: center;
@@ -54,7 +54,7 @@
 }
 
 .register-logo-icon {
-  color: #1565C0;
+  color: #2E7D32;
 }
 
 .register-brand-name {
@@ -110,42 +110,13 @@
 }
 
 .register-input:focus {
-  border-color: #1976D2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+  border-color: #2E7D32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
   background: #fff;
 }
 
 .register-input::placeholder {
   color: #B0BEC5;
-}
-
-.register-select {
-  width: 100%;
-  padding: 12px 35px 12px 44px;
-  border: 1.5px solid #E0E7EF;
-  border-radius: 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 0.92rem;
-  color: #0D1B2A;
-  background: #F8FAFC;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  appearance: none;
-  cursor: pointer;
-}
-
-.register-select:focus {
-  border-color: #1976D2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
-  background: #fff;
-}
-
-/* Custom select arrow */
-.register-select-arrow {
-  position: absolute;
-  right: 14px;
-  color: #90A4AE;
-  pointer-events: none;
 }
 
 .register-pw-toggle {
@@ -188,7 +159,7 @@
   gap: 8px;
   width: 100%;
   padding: 14px;
-  background: #1565C0;
+  background: #2E7D32;
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -201,7 +172,7 @@
 }
 
 .register-submit-btn:hover:not(:disabled) {
-  background: #0D47A1;
+  background: #1B5E20;
 }
 
 .register-submit-btn:active:not(:disabled) {
@@ -221,7 +192,7 @@
 }
 
 .register-link-login {
-  color: #1565C0;
+  color: #2E7D32;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;

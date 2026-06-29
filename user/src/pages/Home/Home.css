@@ -155,6 +155,104 @@
   box-shadow: 0 6px 20px rgba(46, 125, 50, 0.4);
 }
 
+.home-navbar-login-btn {
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--home-text);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: var(--home-transition);
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+.home-navbar-login-btn:hover {
+  color: var(--home-green);
+  background: var(--home-green-bg);
+}
+
+.home-navbar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 16px;
+  font-size: 0.85rem;
+  color: var(--home-text);
+  white-space: nowrap;
+}
+
+.home-navbar-user-welcome {
+  color: var(--home-text-secondary);
+}
+
+.home-navbar-user-welcome strong {
+  color: var(--home-green);
+}
+
+.home-navbar-logout-btn {
+  background: transparent;
+  border: 1px solid var(--home-green);
+  color: var(--home-green);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--home-transition);
+}
+
+.home-navbar-logout-btn:hover {
+  background: var(--home-green);
+  color: white;
+}
+
+/* Mobile menu user info & login */
+.home-mobile-user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-bottom: 1px solid var(--home-border);
+}
+
+.home-mobile-user-welcome {
+  font-size: 0.9rem;
+  color: var(--home-text-secondary);
+  font-weight: 600;
+}
+
+.home-mobile-logout-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--home-green);
+  color: var(--home-green);
+  padding: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.home-mobile-login-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--home-text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--home-border);
+}
+
+.home-mobile-login-btn:hover {
+  color: var(--home-green);
+  background: var(--home-green-bg);
+}
+
 /* Mobile menu toggle */
 .home-navbar-toggle {
   display: none;

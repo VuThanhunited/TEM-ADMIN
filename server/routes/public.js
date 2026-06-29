@@ -579,6 +579,95 @@ router.post('/npp-register', async (req, res) => {
     console.error('NPP register error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi đăng ký tài khoản' });
   }
+// POST /api/public/guest-register - Register a new Guest (Consumer) account
+router.post('/guest-register', async (req, res) => {
+  try {
+    const { username, email, password, fullName, address } = req.body;
+
+    if (!username || !email || !password || !fullName) {
+      return res.status(400).json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc' });
+    }
+
+    const existing = await User.findOne({
+      $or: [{ username }, { email }]
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      password: hashedPassword,
+      fullName: fullName.trim(),
+      address: address ? address.trim() : '',
+      role: 'GUEST',
+      isActive: true
+    });
+    await user.save();
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
+      { expiresIn: '7d' }
+    );
+
+    const userData = user.toObject();
+    delete userData.password;
+
+    res.status(201).json({
+      token,
+      user: userData
+    });
+  } catch (error) {
+    console.error('Guest register error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi đăng ký tài khoản' });
+  }
+});
+
+// POST /api/public/guest-login - Guest (Consumer) login
+router.post('/guest-login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu' });
+    }
+
+    const user = await User.findOne({
+      $or: [{ username }, { email: username }],
+      role: 'GUEST'
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Tài khoản người dùng không tồn tại' });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
+      { expiresIn: '7d' }
+    );
+
+    const userData = user.toObject();
+    delete userData.password;
+
+    res.json({ token, user: userData });
+  } catch (error) {
+    console.error('Guest login error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi đăng nhập' });
+  }
 });
 
 module.exports = router;

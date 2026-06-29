@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Leaf, User, Lock, Eye, EyeOff, AlertCircle, LogIn } from 'lucide-react';
+import { Store, User, Lock, Eye, EyeOff, AlertCircle, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import userApi from '../../services/api';
-import './Login.css';
+import './NppLogin.css';
 
-export default function Login() {
+export default function NppLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -18,27 +18,27 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username.trim()) { setError('Vui lòng nhập tên đăng nhập hoặc email'); return; }
+    if (!username.trim()) { setError('Vui lòng nhập tên đăng nhập'); return; }
     if (!password) { setError('Vui lòng nhập mật khẩu'); return; }
 
     setLoading(true);
     setError('');
 
     try {
-      const result = await userApi.guestLogin({ username: username.trim(), password });
+      const result = await userApi.nppLogin({ username: username.trim(), password });
       login(result.user, result.token);
 
-      // Check if there's a redirect after login (e.g. from product details)
-      const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
+      // Check if there's a redirect from ScanChoice (NPP chose "Nhập hàng" before login)
+      const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
       if (savedRedirect) {
         try {
           const { path, state } = JSON.parse(savedRedirect);
-          sessionStorage.removeItem('guest_redirect_after_login');
+          sessionStorage.removeItem('npp_redirect_after_login');
           navigate(path, { state, replace: true });
           return;
         } catch { /* ignore parse error */ }
       }
-      navigate('/home', { replace: true });
+      navigate('/scan', { replace: true });
     } catch (err) {
       setError(err.message || 'Tên đăng nhập hoặc mật khẩu không đúng');
     } finally {
@@ -52,12 +52,12 @@ export default function Login() {
 
       <div className="login-card">
         {/* Logo */}
-        <div className="login-logo-wrap" style={{ background: '#E8F5E9' }}>
-          <Leaf size={42} className="login-logo-icon" style={{ color: '#2E7D32' }} strokeWidth={1.6} />
+        <div className="login-logo-wrap">
+          <Store size={42} className="login-logo-icon" strokeWidth={1.6} />
         </div>
 
-        <h1 className="login-brand-name">KHÁCH HÀNG</h1>
-        <p className="login-brand-sub">Xác thực sản phẩm chính hãng</p>
+        <h1 className="login-brand-name">NHÀ PHÂN PHỐI</h1>
+        <p className="login-brand-sub">Quản lý nhập hàng</p>
 
         {/* Form */}
         <form className="login-form" onSubmit={handleSubmit} noValidate>
@@ -72,10 +72,10 @@ export default function Login() {
           <div className="login-input-wrap">
             <User size={17} className="login-input-icon" />
             <input
-              id="guest-username"
+              id="npp-username"
               type="text"
               className="login-input"
-              placeholder="Tên đăng nhập hoặc email"
+              placeholder="Tên đăng nhập"
               value={username}
               onChange={(e) => { setUsername(e.target.value); setError(''); }}
               autoComplete="username"
@@ -88,7 +88,7 @@ export default function Login() {
           <div className="login-input-wrap">
             <Lock size={17} className="login-input-icon" />
             <input
-              id="guest-password"
+              id="npp-password"
               type={showPw ? 'text' : 'password'}
               className="login-input"
               placeholder="Mật khẩu"
@@ -116,18 +116,16 @@ export default function Login() {
                 className="login-remember-check"
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
-                style={{ accentColor: '#2E7D32' }}
               />
               <span className="login-remember-label">Ghi nhớ đăng nhập</span>
             </label>
-            <button type="button" className="login-forgot" style={{ color: '#2E7D32' }}>Quên mật khẩu?</button>
+            <button type="button" className="login-forgot">Quên mật khẩu</button>
           </div>
 
           <button
             type="submit"
-            id="guest-login-submit"
+            id="npp-login-submit"
             className="login-submit-btn"
-            style={{ background: '#2E7D32' }}
             disabled={loading}
           >
             {loading ? (
@@ -148,10 +146,10 @@ export default function Login() {
           Chưa có tài khoản?{' '}
           <span 
             className="login-register-link" 
-            style={{ color: '#2E7D32', fontWeight: '600', cursor: 'pointer' }}
-            onClick={() => navigate('/register')}
+            style={{ color: '#1565C0', fontWeight: '600', cursor: 'pointer' }}
+            onClick={() => navigate('/npp/register')}
           >
-            Đăng ký ngay
+            Đăng ký NPP ngay
           </span>
         </p>
       </div>

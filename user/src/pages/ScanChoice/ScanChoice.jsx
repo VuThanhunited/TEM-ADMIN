@@ -10,7 +10,7 @@ import './ScanChoice.css';
 export default function ScanChoice() {
   const navigate = useNavigate();
   const { code } = useParams();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,13 +45,13 @@ export default function ScanChoice() {
   };
 
   const handleNppEntry = () => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || user?.role !== 'NPP') {
       // Save intended destination and redirect to login
       sessionStorage.setItem('npp_redirect_after_login', JSON.stringify({
         path: '/select-store',
         state: { scanData, serial: code }
       }));
-      navigate('/login');
+      navigate('/npp/login');
     } else {
       // Already logged in, go to select store
       navigate('/select-store', {

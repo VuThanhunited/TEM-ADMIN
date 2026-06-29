@@ -3,8 +3,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [nppUser, setNppUser] = useState(null);
-  const [nppToken, setNppToken] = useState(null);
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,8 +13,8 @@ export function AuthProvider({ children }) {
     const savedUser = localStorage.getItem('npp_scan_user');
     if (savedToken && savedUser) {
       try {
-        setNppToken(savedToken);
-        setNppUser(JSON.parse(savedUser));
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
       } catch {
         // corrupted data, clear it
         localStorage.removeItem('npp_scan_token');
@@ -24,22 +24,31 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  const login = (user, token) => {
-    localStorage.setItem('npp_scan_token', token);
-    localStorage.setItem('npp_scan_user', JSON.stringify(user));
-    setNppToken(token);
-    setNppUser(user);
+  const login = (userData, userToken) => {
+    localStorage.setItem('npp_scan_token', userToken);
+    localStorage.setItem('npp_scan_user', JSON.stringify(userData));
+    setToken(userToken);
+    setUser(userData);
   };
 
   const logout = () => {
     localStorage.removeItem('npp_scan_token');
     localStorage.removeItem('npp_scan_user');
-    setNppToken(null);
-    setNppUser(null);
+    setToken(null);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ nppUser, nppToken, loading, login, logout, isLoggedIn: !!nppToken }}>
+    <AuthContext.Provider value={{
+      user,
+      token,
+      nppUser: user,
+      nppToken: token,
+      loading,
+      login,
+      logout,
+      isLoggedIn: !!token
+    }}>
       {children}
     </AuthContext.Provider>
   );
