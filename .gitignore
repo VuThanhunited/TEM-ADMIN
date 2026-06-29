@@ -18,6 +18,9 @@ server/.env
 # Logs and system generated files
 logs/
 *.log
-npm-debug.log*
 .system_generated/
 .gemini/
+
+# Excel data files
+*.xls
+*.xlsx

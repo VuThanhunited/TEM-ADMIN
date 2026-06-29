@@ -217,21 +217,26 @@ export default function Home() {
               Xây dựng niềm tin – Khẳng định thương hiệu – Mở rộng thị trường.
             </p>
 
-            <div className="home-hero-buttons">
-              <button
-                className="home-hero-btn home-hero-btn--primary"
-                onClick={() => scrollToSection('cta')}
-              >
-                <Scan size={18} />
-                Quét mã truy xuất
-              </button>
-              <button
-                className="home-hero-btn home-hero-btn--outline"
-                onClick={() => scrollToSection('about')}
-              >
-                Xem sản phẩm mẫu
-                <ChevronRight size={16} />
-              </button>
+            <div className="home-hero-search animate-fade-in-up">
+              <div className="home-hero-search-label">
+                Hãy quét mã QRCode hoặc nhập số serial để truy xuất nguồn gốc
+              </div>
+              <form className="home-hero-search-form" onSubmit={handleTraceSubmit}>
+                <div className="home-hero-search-input-wrapper">
+                  <input
+                    type="text"
+                    className="home-hero-search-input"
+                    placeholder="Nhập mã serial sản phẩm..."
+                    value={traceCode}
+                    onChange={(e) => setTraceCode(e.target.value)}
+                    id="hero-trace-input"
+                  />
+                </div>
+                <button type="submit" className="home-hero-search-submit">
+                  <Search size={16} />
+                  Tra cứu
+                </button>
+              </form>
             </div>
           </div>
 
@@ -797,20 +802,20 @@ export default function Home() {
         <div className="home-cta-inner home-animate">
           <h2 className="home-cta-title">BẮT ĐẦU TRUY XUẤT NGUỒN GỐC NGAY HÔM NAY</h2>
           <p className="home-cta-desc">
-            Hãy quét mã QR trên sản phẩm hoặc nhập mã truy xuất để kiểm tra thông tin.
+            Hãy quét mã QRCode hoặc nhập số serial để truy xuất nguồn gốc.
           </p>
           <form className="home-cta-form" onSubmit={handleTraceSubmit}>
             <input
               type="text"
               className="home-cta-input"
-              placeholder="Nhập mã truy xuất (ID, mã lô,...)"
+              placeholder="Nhập mã serial sản phẩm..."
               value={traceCode}
               onChange={(e) => setTraceCode(e.target.value)}
               id="trace-code-input"
             />
             <button type="submit" className="home-cta-submit" id="trace-submit-btn">
               <Search size={18} />
-              Kiểm tra ngay
+              Tra cứu
             </button>
           </form>
         </div>
