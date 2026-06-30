@@ -509,6 +509,8 @@ router.get('/npp-scan-history', async (req, res) => {
     console.error('Get NPP scan history error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi lấy lịch sử quét' });
   }
+});
+
 // GET /api/public/enterprises - Get list of active enterprises (manufacturers)
 router.get('/enterprises', async (req, res) => {
   try {
@@ -579,6 +581,8 @@ router.post('/npp-register', async (req, res) => {
     console.error('NPP register error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi đăng ký tài khoản' });
   }
+});
+
 // POST /api/public/guest-register - Register a new Guest (Consumer) account
 router.post('/guest-register', async (req, res) => {
   try {
