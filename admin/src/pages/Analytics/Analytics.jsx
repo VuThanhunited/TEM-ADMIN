@@ -11,6 +11,7 @@ import {
   LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler
 } from 'chart.js';
 import './Analytics.css';
+import Pagination from '../../components/Pagination';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
@@ -156,14 +157,11 @@ export default function Analytics() {
                 </div>
               </div>
               {scanPagination.totalPages > 1 && (
-                <div className="pagination">
-                  <button className="pagination-btn" disabled={scanPagination.page <= 1} onClick={() => setScanPagination(p => ({...p, page: p.page - 1}))}>‹</button>
-                  {Array.from({length: Math.min(scanPagination.totalPages, 10)}, (_, i) => (
-                    <button key={i+1} className={`pagination-btn ${scanPagination.page === i+1 ? 'active' : ''}`}
-                      onClick={() => setScanPagination(p => ({...p, page: i+1}))}>{i+1}</button>
-                  ))}
-                  <button className="pagination-btn" disabled={scanPagination.page >= scanPagination.totalPages} onClick={() => setScanPagination(p => ({...p, page: p.page + 1}))}>›</button>
-                </div>
+                <Pagination
+                  page={scanPagination.page}
+                  totalPages={scanPagination.totalPages}
+                  onPageChange={(newPage) => setScanPagination(prev => ({ ...prev, page: newPage }))}
+                />
               )}
             </>
           )}

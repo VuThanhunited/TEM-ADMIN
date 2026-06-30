@@ -5,6 +5,7 @@ import {
   Package, Plus, Search, Edit, Trash2, X, Eye, Image, XCircle
 } from 'lucide-react';
 import './Products.css';
+import Pagination from '../../components/Pagination';
 
 export default function Products() {
   const { isAdmin, enterpriseId } = useAuth();
@@ -189,12 +190,11 @@ export default function Products() {
       </div>
 
       {pagination.totalPages > 1 && (
-        <div className="pagination">
-          {Array.from({length: pagination.totalPages}, (_, i) => (
-            <button key={i+1} className={`pagination-btn ${pagination.page === i+1 ? 'active' : ''}`}
-              onClick={() => setPagination(p => ({...p, page: i+1}))}>{i+1}</button>
-          ))}
-        </div>
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={(newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
+        />
       )}
 
       {/* Create/Edit Modal */}

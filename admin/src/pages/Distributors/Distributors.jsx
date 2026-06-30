@@ -5,6 +5,7 @@ import {
   X, CheckCircle, XCircle, MapPin, Mail, Key
 } from 'lucide-react';
 import './Distributors.css';
+import Pagination from '../../components/Pagination';
 
 export default function Distributors() {
   const [distributors, setDistributors] = useState([]);
@@ -223,14 +224,11 @@ export default function Distributors() {
 
       {/* Pagination */}
       {pagination.totalPages > 1 && (
-        <div className="pagination">
-          <button className="pagination-btn" disabled={pagination.page <= 1} onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}>‹</button>
-          {Array.from({ length: pagination.totalPages }, (_, i) => (
-            <button key={i + 1} className={`pagination-btn ${pagination.page === i + 1 ? 'active' : ''}`}
-              onClick={() => setPagination(p => ({ ...p, page: i + 1 }))}>{i + 1}</button>
-          ))}
-          <button className="pagination-btn" disabled={pagination.page >= pagination.totalPages} onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}>›</button>
-        </div>
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={(newPage) => setPagination(prev => ({ ...prev, page: newPage }))}
+        />
       )}
 
       {/* Create / Edit Modal */}

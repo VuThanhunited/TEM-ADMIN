@@ -9,6 +9,7 @@ import {
   Package, MapPin, Calendar, ExternalLink, Download
 } from 'lucide-react';
 import './Labels.css';
+import Pagination from '../../components/Pagination';
 
 export default function Labels() {
   const { isAdmin, enterpriseId } = useAuth();
@@ -732,13 +733,19 @@ export default function Labels() {
       )}
 
       {/* Pagination */}
-      {((activeTab === 'batches' && batchPagination.totalPages > 1) || (activeTab === 'activate' && labelPagination.totalPages > 1)) && (
-        <div className="pagination">
-          {Array.from({length: (activeTab === 'batches' ? batchPagination : labelPagination).totalPages}, (_, i) => (
-            <button key={i+1} className={`pagination-btn ${(activeTab === 'batches' ? batchPagination : labelPagination).page === i+1 ? 'active' : ''}`}
-              onClick={() => (activeTab === 'batches' ? setBatchPagination : setLabelPagination)(p => ({...p, page: i+1}))}>{i+1}</button>
-          ))}
-        </div>
+      {activeTab === 'batches' && batchPagination.totalPages > 1 && (
+        <Pagination
+          page={batchPagination.page}
+          totalPages={batchPagination.totalPages}
+          onPageChange={(newPage) => setBatchPagination(prev => ({ ...prev, page: newPage }))}
+        />
+      )}
+      {activeTab === 'activate' && labelPagination.totalPages > 1 && (
+        <Pagination
+          page={labelPagination.page}
+          totalPages={labelPagination.totalPages}
+          onPageChange={(newPage) => setLabelPagination(prev => ({ ...prev, page: newPage }))}
+        />
       )}
 
       {/* Create Batch Modal */}
