@@ -11,7 +11,7 @@ const ScanLog = require('./models/ScanLog');
 const Template = require('./models/Template');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_admin';
-const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-sigma.vercel.app';
+const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-eight.vercel.app';
 
 const seed = async (shouldExit = true) => {
   try {
