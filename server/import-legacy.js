@@ -10,7 +10,13 @@ const LabelBatch = require('./models/LabelBatch');
 const Label = require('./models/Label');
 
 const MONGO_URI = process.env.MONGO_URI;
-const excelPath = path.join(__dirname, '../cagai.mdq.xls');
+
+// CLI arguments: node import-legacy.js [filename] [productName]
+const args = process.argv.slice(2);
+const excelFileName = args[0] || 'cagai.mdq.xls';
+const targetProductName = args[1] || 'Trà Cà Gai Leo';
+
+const excelPath = path.join(__dirname, '../', excelFileName);
 
 async function run() {
   try {
@@ -40,15 +46,15 @@ async function run() {
     }
 
     // 2. Get or create Product for legacy labels
-    let product = await Product.findOne({ name: 'Tem truy xuất nguồn gốc', enterpriseId: enterprise._id });
+    let product = await Product.findOne({ name: targetProductName, enterpriseId: enterprise._id });
     if (!product) {
-      console.log('Creating legacy Product...');
+      console.log(`Creating legacy Product "${targetProductName}"...`);
       product = await Product.create({
-        name: 'Tem truy xuất nguồn gốc',
+        name: targetProductName,
         enterpriseId: enterprise._id,
-        description: 'Sản phẩm truy xuất nguồn gốc được in và quản lý bởi In Thương Gia.',
-        category: 'Tem nhãn',
-        sku: 'TEM-LEGACY',
+        description: `Sản phẩm ${targetProductName} được in và quản lý bởi In Thương Gia.`,
+        category: targetProductName.includes('Trà') ? 'Trà' : 'Sản phẩm',
+        sku: `LEGACY-${targetProductName.toUpperCase().replace(/[^A-Z0-9]/g, '-')}`,
         isActive: true
       });
       console.log('✅ Legacy Product created with ID:', product._id);
@@ -76,9 +82,10 @@ async function run() {
     }
 
     // 4. Get or create LabelBatch for legacy labels
-    let batch = await LabelBatch.findOne({ batchCode: 'LEGACY_IMPORT', enterpriseId: enterprise._id });
+    const batchCode = `LEGACY_IMPORT_${excelFileName.split('.')[0].toUpperCase()}`;
+    let batch = await LabelBatch.findOne({ batchCode, enterpriseId: enterprise._id });
     if (!batch) {
-      console.log('Creating legacy LabelBatch...');
+      console.log(`Creating legacy LabelBatch for batchCode "${batchCode}"...`);
       
       // Calculate serial boundaries
       const sortedIds = validRows.map(r => Number(r.ID)).sort((a, b) => a - b);
@@ -87,8 +94,8 @@ async function run() {
       console.log(`Computed Serial boundaries: Start=${minId}, End=${maxId}`);
 
       batch = await LabelBatch.create({
-        name: 'Lô tem cũ (Imported)',
-        batchCode: 'LEGACY_IMPORT',
+        name: `Lô tem cũ - ${targetProductName} (Imported)`,
+        batchCode,
         enterpriseId: enterprise._id,
         productId: product._id,
         totalLabels: validRows.length,
@@ -98,7 +105,7 @@ async function run() {
         status: 'ACTIVE',
         isActive: true,
         isMigrated: true,
-        migrationSource: 'cagai.mdq.xls'
+        migrationSource: excelFileName
       });
       console.log('✅ Legacy LabelBatch created with ID:', batch._id);
     } else {
