@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, Package, QrCode,
   Building2, MapPin, Phone, Globe, Mail, Clock, Hash,
-  Truck, Home
+  Truck, Home, MessageSquare, Send, X, Bot
 } from 'lucide-react';
 import './ProductInfo.css';
 
@@ -32,6 +32,73 @@ export default function ProductInfo() {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
+  };
+
+  // Chatbot State
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    if (chatOpen && chatMessages.length === 0 && scanData) {
+      const welcome = enterprise?.chatbotConfig?.welcomeMessage || 
+        `Chào bạn! Cảm ơn bạn đã tin dùng sản phẩm của ${enterprise?.name || 'chúng tôi'}. Bạn có câu hỏi nào về sản phẩm "${product?.name || 'này'}" không?`;
+      setChatMessages([{ sender: 'bot', text: welcome, time: new Date() }]);
+    }
+  }, [chatOpen, scanData]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    const newUserMsg = { sender: 'user', text: userText, time: new Date() };
+    setChatMessages(prev => [...prev, newUserMsg]);
+    setChatInput('');
+
+    setTimeout(() => {
+      let botResponse = '';
+      const textLower = userText.toLowerCase().trim();
+
+      const allQAs = [
+        ...(product?.chatbotQA || []),
+        ...(enterprise?.chatbotConfig?.qaList || [])
+      ];
+
+      let foundQA = null;
+      for (const qa of allQAs) {
+        if (qa.question && qa.answer) {
+          const qClean = qa.question.toLowerCase().trim();
+          if (textLower.includes(qClean) || qClean.includes(textLower)) {
+            foundQA = qa;
+            break;
+          }
+        }
+      }
+
+      if (foundQA) {
+        botResponse = foundQA.answer;
+      } else {
+        if (textLower.includes('chào') || textLower.includes('hi') || textLower.includes('hello')) {
+          botResponse = `Xin chào! Tôi có thể giúp gì cho bạn về sản phẩm ${product?.name || ''}?`;
+        } else if (textLower.includes('hạn sử dụng') || textLower.includes('hsd') || textLower.includes('hạn')) {
+          botResponse = `Sản phẩm này có thời hạn sử dụng được in trên bao bì. Hạn quét bảo hành hiển thị trên hệ thống là ${formatDate(label?.expiryDate || scanData?.label?.batchId?.expiryDate)}.`;
+        } else if (textLower.includes('giá') || textLower.includes('bao nhiêu') || textLower.includes('tiền')) {
+          botResponse = `Vui lòng tham khảo giá bán trực tiếp tại cửa hàng hoặc đại lý phân phối chính thức của chúng tôi.`;
+        } else if (textLower.includes('địa chỉ') || textLower.includes('công ty') || textLower.includes('ở đâu')) {
+          botResponse = `${enterprise?.name} có địa chỉ tại: ${enterprise?.address || 'N/A'}. Số điện thoại: ${enterprise?.phone || 'N/A'}.`;
+        } else {
+          botResponse = `Cảm ơn bạn đã quan tâm đến sản phẩm "${product?.name}". Bạn có thể truy cập website ${enterprise?.website || 'của chúng tôi'} để biết thêm thông tin chi tiết!`;
+        }
+      }
+
+      setChatMessages(prev => [...prev, { sender: 'bot', text: botResponse, time: new Date() }]);
+    }, 1000);
   };
 
   return (
@@ -188,6 +255,47 @@ export default function ProductInfo() {
           Quay lại trang chủ
         </button>
       </div>
+
+      {/* Floating Chatbot Widget */}
+      {enterprise?.chatbotConfig?.enabled !== false && (
+        <div className="product-info-chatbot-widget">
+          {!chatOpen ? (
+            <button className="chatbot-toggle-btn" onClick={() => setChatOpen(true)}>
+              <MessageSquare size={20} />
+              <span>Trò chuyện</span>
+            </button>
+          ) : (
+            <div className="chatbot-window">
+              <div className="chatbot-header">
+                <span>Trợ lý AI {enterprise?.name ? enterprise.name.split(' ').pop() : ''}</span>
+                <button className="chatbot-close-btn" onClick={() => setChatOpen(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="chatbot-messages">
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} className={`chat-msg ${msg.sender}`}>
+                    {msg.text}
+                  </div>
+                ))}
+                <div ref={chatEndRef}></div>
+              </div>
+              <form onSubmit={handleSendMessage} className="chatbot-input-area">
+                <input
+                  type="text"
+                  className="chatbot-input"
+                  placeholder="Hỏi đáp về sản phẩm..."
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                />
+                <button type="submit" className="chatbot-send-btn">
+                  <Send size={16} />
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
