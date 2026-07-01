@@ -73,7 +73,8 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       prefix: numPrefix,
       expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       notes,
-      createdDate: new Date()
+      createdDate: new Date(),
+      status: productId ? 'ACTIVE' : 'INACTIVE'
     });
     await batch.save();
 
@@ -324,9 +325,14 @@ router.post('/bulk-map', auth, async (req, res) => {
 
     const result = await Label.updateMany(query, updateData);
 
-    // If productId was changed and batch doesn't have a product yet, set it as default
-    if (productId && !batch.productId) {
-      batch.productId = productId;
+    // If productId was changed, set it as default if not set, and auto-activate the batch status to ACTIVE
+    if (productId) {
+      if (!batch.productId) {
+        batch.productId = productId;
+      }
+      if (batch.status === 'INACTIVE') {
+        batch.status = 'ACTIVE';
+      }
       await batch.save();
     }
 
