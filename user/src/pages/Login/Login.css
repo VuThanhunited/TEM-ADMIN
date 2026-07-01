@@ -322,3 +322,121 @@
   color: #B0BEC5;
   text-align: center;
 }
+
+/* ==========================================
+   Responsive Design for Tablets & Mobile
+   ========================================== */
+
+/* Tablet Optimization */
+@media (max-width: 768px) {
+  .login-card {
+    max-width: 360px;
+    padding: 28px 20px 24px;
+  }
+}
+
+/* Mobile Portrait Optimization */
+@media (max-width: 480px) {
+  .login-page {
+    padding: 16px 12px 30px;
+    justify-content: flex-start; /* Start from top to prevent keyboard overlapping on small screens */
+    padding-top: 6vh;
+  }
+  
+  .login-card {
+    max-width: 100%;
+    padding: 24px 16px 20px;
+    border-radius: 16px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+  }
+  
+  .auth-tabs {
+    margin-bottom: 20px;
+  }
+  
+  .auth-tab {
+    padding: 8px;
+    font-size: 0.8rem;
+    gap: 4px;
+  }
+  
+  .login-logo-wrap {
+    width: 68px;
+    height: 68px;
+    border-radius: 16px;
+    margin-bottom: 14px;
+  }
+  
+  .login-logo-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .login-brand-name {
+    font-size: 1.15rem;
+  }
+  
+  .login-brand-sub {
+    font-size: 0.8rem;
+    margin-bottom: 20px;
+  }
+  
+  .login-form {
+    gap: 12px;
+  }
+  
+  .login-input {
+    padding: 11px 12px 11px 40px;
+    font-size: 0.9rem;
+  }
+  
+  .login-select {
+    padding: 11px 12px 11px 40px;
+    font-size: 0.9rem;
+    background-size: 14px;
+    background-position: right 10px center;
+  }
+  
+  .login-input-icon {
+    left: 12px;
+    width: 16px !important;
+    height: 16px !important;
+  }
+  
+  .login-pw-toggle {
+    right: 10px;
+  }
+  
+  .login-options-row {
+    margin-top: -2px;
+  }
+  
+  .login-remember-label,
+  .login-forgot {
+    font-size: 0.8rem;
+  }
+  
+  .login-submit-btn {
+    padding: 13px;
+    font-size: 0.95rem;
+    border-radius: 10px;
+  }
+}
+
+/* Landscape/Short Screen Optimization */
+@media (max-height: 600px) {
+  .login-page {
+    padding-top: 20px;
+    justify-content: flex-start;
+  }
+  .login-card {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .login-logo-wrap {
+    display: none; /* Hide logo to save space */
+  }
+  .login-brand-sub {
+    margin-bottom: 12px;
+  }
+}
