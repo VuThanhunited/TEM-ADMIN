@@ -379,13 +379,8 @@ router.get('/npp-stores', async (req, res) => {
       return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
     }
 
-    // Get all NPP accounts in the same enterprise as distribution points
-    const enterpriseId = user.enterpriseId?._id || user.enterpriseId;
-    const stores = await User.find({
-      enterpriseId,
-      role: 'NPP',
-      isActive: true
-    }).select('fullName username address _id');
+    // Get only the logged-in NPP account itself as the distribution point
+    const stores = [user];
 
     res.json({
       stores: stores.map(s => ({

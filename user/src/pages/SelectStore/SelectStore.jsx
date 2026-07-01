@@ -38,6 +38,9 @@ export default function SelectStore() {
       const res = await userApi.getNppStores();
       if (res.stores && res.stores.length > 0) {
         setStores(res.stores);
+        if (res.stores.length === 1) {
+          setSelectedStoreId(res.stores[0].id || res.stores[0]._id);
+        }
         return;
       }
       // Fallback: get distributors by enterprise
@@ -49,6 +52,9 @@ export default function SelectStore() {
           address: d.address || '',
         }));
         setStores(storeList.length > 0 ? storeList : getSampleStores());
+        if (storeList.length === 1) {
+          setSelectedStoreId(storeList[0].id);
+        }
       } else {
         setStores(getSampleStores());
       }
@@ -64,6 +70,9 @@ export default function SelectStore() {
             address: d.address || '',
           }));
           setStores(storeList.length > 0 ? storeList : getSampleStores());
+          if (storeList.length === 1) {
+            setSelectedStoreId(storeList[0].id);
+          }
         } else {
           setStores(getSampleStores());
         }
