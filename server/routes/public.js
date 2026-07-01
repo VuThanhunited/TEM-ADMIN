@@ -674,6 +674,84 @@ router.post('/guest-login', async (req, res) => {
   }
 });
 
+// GET /api/public/barcode/:barcode
+router.get('/barcode/:barcode', async (req, res) => {
+  try {
+    const { barcode } = req.params;
+    const product = await Product.findOne({ barcode }).populate('enterpriseId');
+    if (!product) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm nào có mã vạch này trên hệ thống!' });
+    }
+
+    const enterprise = product.enterpriseId;
+    if (!enterprise || !enterprise.isActive) {
+      return res.status(400).json({ error: 'Doanh nghiệp sở hữu sản phẩm hiện đang tạm khóa hoặc không tồn tại!' });
+    }
+
+    let template = await Template.findOne({ enterpriseId: enterprise._id, isDefault: true });
+    if (!template) {
+      template = await Template.findOne({ enterpriseId: enterprise._id });
+    }
+    if (!template) {
+      template = {
+        primaryColor: '#6366f1',
+        secondaryColor: '#4f46e5',
+        backgroundColor: '#0f172a',
+        textColor: '#f8fafc',
+        layout: 'default',
+        showVerificationBadge: true,
+        showProductInfo: true,
+        showDistributorInfo: true,
+        showScanCount: true
+      };
+    }
+
+    let responseTheme = 'default';
+    const cat = (product.category || '').toLowerCase().trim();
+    
+    const agriKeywords = [
+      'nông nghiệp', 'nông sản', 'trồng trọt', 'chăn nuôi', 'thủy sản', 
+      'hải sản', 'lâm sản', 'trái cây', 'rau củ', 'hoa quả', 'gạo', 
+      'sâm', 'chè', 'agri'
+    ];
+    
+    const foodKeywords = [
+      'thực phẩm', 'gia vị', 'dầu ăn', 'nước uống', 'nước ngọt', 
+      'nước đóng chai', 'nước ép', 'nước khoáng', 'bia', 'rượu', 
+      'bánh kẹo', 'bánh', 'kẹo', 'sữa', 'ăn uống', 'dinh dưỡng', 
+      'trà', 'cà phê', 'mật ong', 'yến sào', 'mật', 'mứt', 'food', 
+      'beverage', 'snack', 'candy', 'milk'
+    ];
+
+    const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
+    const isFood = foodKeywords.some(keyword => cat.includes(keyword));
+
+    if (isAgri) {
+      responseTheme = 'agriculture';
+    } else if (isFood) {
+      responseTheme = 'functional_food';
+    }
+
+    res.json({
+      product,
+      enterprise,
+      template,
+      theme: responseTheme,
+      isBarcode: true,
+      label: {
+        serialNumber: barcode,
+        scanCount: 1,
+        status: 'ACTIVE',
+        isActive: true,
+        lastScannedAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Barcode lookup error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi tra cứu mã vạch' });
+  }
+});
+
 module.exports = router;
 
 

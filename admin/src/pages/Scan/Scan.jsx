@@ -15,7 +15,7 @@ import DistributorEntry from './DistributorEntry';
 import './Scan.css';
 
 const getEffectiveTheme = (themeName, category) => {
-  if (themeName === 'agriculture' || themeName === 'functional_food') {
+  if (themeName === 'agriculture' || themeName === 'functional_food' || themeName === 'food' || themeName === 'medical' || themeName === 'cosmetics') {
     return themeName;
   }
   const cat = (category || '').toLowerCase().trim();
@@ -40,49 +40,60 @@ const getEffectiveTheme = (themeName, category) => {
   if (isAgri) {
     return 'agriculture';
   } else if (isFood) {
-    return 'functional_food';
+    return 'food';
   }
   return themeName || 'default';
 };
 
 export default function Scan() {
   const { serial } = useParams();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [sliderIndex, setSliderIndex] = useState(0);
-  const [activeSection, setActiveSection] = useState(null);
-  const [error, setError] = useState(null);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const [userCoords, setUserCoords] = useState(null);
-  const chatEndRef = useRef(null);
+   const [data, setData] = useState(null);
+   const [loading, setLoading] = useState(true);
+   const [sliderIndex, setSliderIndex] = useState(0);
+   const [activeSection, setActiveSection] = useState(null);
+   const [error, setError] = useState(null);
+   const [chatOpen, setChatOpen] = useState(false);
+   const [chatInput, setChatInput] = useState('');
+   const [chatMessages, setChatMessages] = useState([]);
+   const [userCoords, setUserCoords] = useState(null);
+   const [activeCertDoc, setActiveCertDoc] = useState(null);
+   const chatEndRef = useRef(null);
+ 
+   // Choice screen & NPP states
+   const [scanMode, setScanMode] = useState('choice'); // 'choice' | 'info' | 'distributor'
+   const [showNPPLogin, setShowNPPLogin] = useState(false);
+   const [nppUser, setNppUser] = useState(null);
+   const [nppToken, setNppToken] = useState(null);
+ 
+   // Images carousel auto-transition
+   useEffect(() => {
+     const imgs = data?.product?.images?.filter(Boolean) || [];
+     if (imgs.length <= 1) return;
+     const interval = setInterval(() => {
+       setSliderIndex(prev => (prev + 1) % imgs.length);
+     }, 3000);
+     return () => clearInterval(interval);
+   }, [data]);
 
-  // Choice screen & NPP states
-  const [scanMode, setScanMode] = useState('choice'); // 'choice' | 'info' | 'distributor'
-  const [showNPPLogin, setShowNPPLogin] = useState(false);
-  const [nppUser, setNppUser] = useState(null);
-  const [nppToken, setNppToken] = useState(null);
-
-  useEffect(() => {
-    loadScanData();
-    // Restore NPP session if exists
-    const savedToken = localStorage.getItem('npp_scan_token');
-    const savedUser = localStorage.getItem('npp_scan_user');
-    if (savedToken && savedUser) {
-      try {
-        setNppToken(savedToken);
-        setNppUser(JSON.parse(savedUser));
-      } catch { /* ignore */ }
-    }
-  }, [serial]);
-
-  useEffect(() => {
-    if (chatOpen && chatMessages.length === 0 && data) {
-      // Set initial chatbot welcome message
-      const welcome = data.enterprise.chatbotConfig?.welcomeMessage || 
-        `Chào bạn! Cảm ơn bạn đã tin dùng sản phẩm của ${data.enterprise.name}. Bạn có câu hỏi nào về sản phẩm "${data.product?.name}" không?`;
-      setChatMessages([{ sender: 'bot', text: welcome, time: new Date() }]);
+   useEffect(() => {
+     loadScanData();
+     // Restore NPP session if exists
+     const savedToken = localStorage.getItem('npp_scan_token');
+     const savedUser = localStorage.getItem('npp_scan_user');
+     if (savedToken && savedUser) {
+       try {
+         setNppToken(savedToken);
+         setNppUser(JSON.parse(savedUser));
+       } catch { /* ignore */ }
+     }
+   }, [serial]);
+ 
+   useEffect(() => {
+     if (chatOpen && chatMessages.length === 0 && data) {
+       // Set initial chatbot welcome message
+       const welcome = data.enterprise.chatbotConfig?.welcomeMessage || 
+         `Chào bạn! Cảm ơn bạn đã tin dùng sản phẩm của ${data.enterprise.name}. Bạn có câu hỏi nào về sản phẩm "${data.product?.name}" không?`;
+       setChatMessages([{ sender: 'bot', text: welcome, time: new Date() }]);
     }
   }, [chatOpen, data]);
 
@@ -95,7 +106,13 @@ export default function Scan() {
     setError(null);
     setScanMode('choice');
     try {
-      const res = await api.getPublicScan(serial);
+      let res;
+      try {
+        res = await api.getPublicScan(serial);
+      } catch (err) {
+        // Fallback to barcode lookup
+        res = await api.getPublicBarcode(serial);
+      }
       setData(res);
       const effTheme = getEffectiveTheme(res.theme, res.product?.category);
       applyTheme(res.template, effTheme);
@@ -211,21 +228,44 @@ export default function Scan() {
     setChatMessages(prev => [...prev, newUserMsg]);
     setChatInput('');
 
-    // Simulate bot response
+    // Bot response matching Q&A pairs
     setTimeout(() => {
       let botResponse = '';
-      const textLower = userText.toLowerCase();
+      const textLower = userText.toLowerCase().trim();
 
-      if (textLower.includes('chào') || textLower.includes('hi') || textLower.includes('hello')) {
-        botResponse = `Xin chào! Tôi có thể giúp gì cho bạn về sản phẩm ${data.product?.name}?`;
-      } else if (textLower.includes('hạn sử dụng') || textLower.includes('hsd') || textLower.includes('hạn')) {
-        botResponse = `Sản phẩm này thuộc lô tem ${data.label?.batchId ? 'VH-2024-001' : 'mới'}. Hạn hiển thị của lô tem bảo hành đến ngày ${formatDateTime(data.label?.batchId?.expiryDate || new Date(Date.now() + 365*24*60*60*1000))}.`;
-      } else if (textLower.includes('giá') || textLower.includes('bao nhiêu') || textLower.includes('tiền')) {
-        botResponse = `Để biết giá bán lẻ chính xác của sản phẩm "${data.product?.name}", vui lòng tham khảo trực tiếp tại các điểm phân phối hoặc website chính thức ${data.enterprise?.website || ''}.`;
-      } else if (textLower.includes('địa chỉ') || textLower.includes('công ty') || textLower.includes('ở đâu') || textLower.includes('liên hệ')) {
-        botResponse = `Bạn có thể liên hệ ${data.enterprise?.name} tại địa chỉ: ${data.enterprise?.address || 'N/A'}. Số điện thoại: ${data.enterprise?.phone || 'N/A'}.`;
+      // Gather all Q&As from product and enterprise
+      const allQAs = [
+        ...(data?.product?.chatbotQA || []),
+        ...(data?.enterprise?.chatbotConfig?.qaList || [])
+      ];
+
+      let foundQA = null;
+      for (const qa of allQAs) {
+        if (qa.question && qa.answer) {
+          const qClean = qa.question.toLowerCase().trim();
+          // Check for substring match in either direction
+          if (textLower.includes(qClean) || qClean.includes(textLower)) {
+            foundQA = qa;
+            break;
+          }
+        }
+      }
+
+      if (foundQA) {
+        botResponse = foundQA.answer;
       } else {
-        botResponse = `Cảm ơn bạn đã hỏi. Sản phẩm "${data.product?.name}" được sản xuất theo quy trình nghiêm ngặt và phân phối chính hãng. Bạn có thể ghé thăm website ${data.enterprise?.website || 'của chúng tôi'} để biết thêm chi tiết!`;
+        // Fallback hardcoded matching
+        if (textLower.includes('chào') || textLower.includes('hi') || textLower.includes('hello')) {
+          botResponse = `Xin chào! Tôi có thể giúp gì cho bạn về sản phẩm ${data?.product?.name}?`;
+        } else if (textLower.includes('hạn sử dụng') || textLower.includes('hsd') || textLower.includes('hạn')) {
+          botResponse = `Sản phẩm này thuộc lô tem ${data?.label?.batchId?.batchCode || 'mới'}. Hạn hiển thị của lô tem bảo hành đến ngày ${formatDateTime(data?.label?.batchId?.expiryDate || new Date(Date.now() + 365*24*60*60*1000))}.`;
+        } else if (textLower.includes('giá') || textLower.includes('bao nhiêu') || textLower.includes('tiền')) {
+          botResponse = `Để biết giá bán lẻ chính xác của sản phẩm "${data?.product?.name}", vui lòng tham khảo trực tiếp tại các điểm phân phối hoặc website chính thức ${data?.enterprise?.website || ''}.`;
+        } else if (textLower.includes('địa chỉ') || textLower.includes('công ty') || textLower.includes('ở đâu') || textLower.includes('liên hệ')) {
+          botResponse = `Bạn có thể liên hệ ${data?.enterprise?.name} tại địa chỉ: ${data?.enterprise?.address || 'N/A'}. Số điện thoại: ${data?.enterprise?.phone || 'N/A'}.`;
+        } else {
+          botResponse = `Cảm ơn bạn đã hỏi. Sản phẩm "${data?.product?.name}" được sản xuất theo quy trình nghiêm ngặt và phân phối chính hãng. Bạn có thể ghé thăm website ${data?.enterprise?.website || 'của chúng tôi'} để biết thêm chi tiết!`;
+        }
       }
 
       setChatMessages(prev => [...prev, { sender: 'bot', text: botResponse, time: new Date() }]);
@@ -405,6 +445,32 @@ export default function Scan() {
   const layoutClass = `layout-${template.layout || 'default'}`;
   const themeClass = `theme-${effectiveTheme || 'default'}`;
 
+  const getCertList = () => {
+    const list = [];
+    const certLabels = {
+      iso: { name: 'Chứng nhận ISO 22000', class: 'iso', badgeText: 'ISO' },
+      vetinhATTP: { name: 'Vệ sinh An toàn Thực phẩm (ATTP)', class: 'attp', badgeText: 'ATTP' },
+      gmp: { name: 'Tiêu chuẩn GMP', class: 'gmp', badgeText: 'GMP' },
+      cgmp: { name: 'Tiêu chuẩn CGMP', class: 'cgmp', badgeText: 'CGMP' },
+      vietgap: { name: 'Tiêu chuẩn VietGAP', class: 'vietgap', badgeText: 'VietGAP' },
+      organic: { name: 'Chứng nhận Hữu cơ (Organic)', class: 'organic', badgeText: 'ORGANIC' }
+    };
+    Object.entries(product?.certifications || {}).forEach(([key, val]) => {
+      if (val && val.checked) {
+        list.push({
+          key,
+          label: certLabels[key]?.name || key.toUpperCase(),
+          badgeClass: certLabels[key]?.class || 'default',
+          badgeText: certLabels[key]?.badgeText || 'CERT',
+          certNo: val.certNo || 'N/A',
+          image: val.image
+        });
+      }
+    });
+    return list;
+  };
+  const certList = getCertList();
+
 
   const getPageStyle = () => {
     if (!template?.backgroundImage) return {};
@@ -437,8 +503,8 @@ export default function Scan() {
     return [];
   };
 
-  const isHubTheme = effectiveTheme === 'agriculture' || effectiveTheme === 'functional_food';
-  const hubVariant = effectiveTheme === 'agriculture' ? 'agri' : 'food';
+  const isHubTheme = effectiveTheme === 'agriculture' || effectiveTheme === 'functional_food' || effectiveTheme === 'food' || effectiveTheme === 'medical';
+  const hubVariant = effectiveTheme === 'agriculture' ? 'agri' : (effectiveTheme === 'medical' ? 'med' : 'food');
   const brandLines = splitBrandName(enterprise.name);
   const galleryImages = getGalleryImages();
 
@@ -629,107 +695,256 @@ export default function Scan() {
         {/* Dynamic Layout Based on Theme */}
         {isHubTheme && (
           <div className="hub-page-shell">
-            <div className="brand-top-header agri">
-              <div className="brand-header-left">
-                <div className="brand-logo-circle agri">
-                  {enterprise.logo ? (
-                    <img src={enterprise.logo} alt={enterprise.name} className="brand-logo-img" />
-                  ) : (
-                    <span style={{ fontSize: '0.55rem', fontWeight: 900, color: '#007d32', textAlign: 'center', lineHeight: 1.15, letterSpacing: '0.3px', padding: '4px 2px', display: 'block' }}>
-                      {enterprise.name.split(' ').filter(w => w.length > 0).map(w => w[0]).join('').slice(0, 4).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div className="brand-name-col">
-                  <span className="brand-name-top">{brandLines.top || enterprise.name}</span>
-                  {brandLines.bottom && <span className="brand-name-bottom">{brandLines.bottom}</span>}
-                </div>
-              </div>
-              <div className="brand-divider-v"></div>
-              <span className="brand-slogan">Ch&#7845;t l&#432;&#7907;ng t&#7841;o ni&#7873;m tin</span>
+            {/* Header bar */}
+            <div className="def-header-bar" style={{ backgroundColor: 'var(--primary-color, #2e7d32)', borderBottom: 'none' }}>
+              <button className="header-back-btn" onClick={() => window.history.back()} style={{ color: 'white' }}><ArrowLeft size={20} /></button>
+              <span className="header-title" style={{ color: 'white' }}>Kết quả truy xuất</span>
+              <button className="header-more-btn" style={{ color: 'white' }}><MoreVertical size={20} /></button>
             </div>
 
-            {galleryImages.length > 0 ? (
-              <>
-                <div className="product-gallery-strip">
-                  {galleryImages.map((img, idx) => (
-                    <button
-                      type="button"
-                      key={idx}
-                      className={`gallery-strip-item ${sliderIndex === idx ? 'active' : ''}`}
-                      onClick={() => setSliderIndex(idx)}
-                    >
-                      <img src={img} alt={`${product?.name || 'Sản phẩm'} ${idx + 1}`} />
-                    </button>
-                  ))}
-                </div>
-                <div className="slider-dots gallery-dots">
-                  {galleryImages.map((_, idx) => (
-                    <span
-                      key={idx}
-                      className={`slider-dot ${sliderIndex === idx ? 'active' : ''}`}
-                      onClick={() => setSliderIndex(idx)}
-                    />
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="product-slider-placeholder agri">
-                {hubVariant === 'agri' ? <Leaf size={48} /> : <FlaskConical size={48} />}
-                <span>{hubVariant === 'agri' ? 'Sản phẩm nông nghiệp' : 'Thực phẩm chức năng'}</span>
+            {/* Verification Block */}
+            <div className="def-verification-block" style={{ backgroundColor: 'white', border: '1px solid rgba(0,0,0,0.06)', borderRadius: '12px', padding: '16px', marginTop: '12px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <div className="def-success-circle" style={{ backgroundColor: '#2e7d32', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'white', flexShrink: 0 }}>
+                <svg className="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" style={{ width: '24px', height: '24px' }}>
+                  <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
-            )}
-
-            <div className="verify-banner-new agri">
-              <div className="verify-banner-icon agri">
-                <ShieldCheck size={38} strokeWidth={2.5} />
+              <div className="def-verif-text-col" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {(() => {
+                  const verifText = product?.verificationText || 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng';
+                  const lines = verifText.split('\n');
+                  return (
+                    <>
+                      <h2 className="def-verif-title" style={{ color: '#2e7d32', fontWeight: 800, fontSize: '1.05rem', margin: 0 }}>{lines[0] || 'SẢN PHẨM ĐÃ MINH BẠCH THÔNG TIN'}</h2>
+                      {lines[1] && <h3 className="def-verif-subtitle" style={{ color: '#374151', fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>{lines[1]}</h3>}
+                      {lines[2] && <p className="def-verif-desc" style={{ color: '#6b7280', fontSize: '0.8rem', margin: 0 }}>{lines[2]}</p>}
+                    </>
+                  );
+                })()}
               </div>
-              <div className="verify-banner-text">
-                <h3 className="verify-banner-title">SẢN PHẨM ĐÃ ĐƯỢC XÁC THỰC</h3>
-                <p className="verify-banner-desc">Nguồn gốc sản phẩm được xác nhận trực tiếp từ nhà sản xuất.</p>
-              </div>
-              <div className="verify-banner-bg-icon"><ShieldCheck size={80} strokeWidth={1.2} /></div>
             </div>
 
-            {template.showProductInfo && product && (
-              <div className="product-summary-card">
-                <div className="psc-image-col">
-                  {product.images && product.images[0] ? (
-                    <img src={galleryImages[sliderIndex] || product.images[0]} alt={product.name} className="psc-product-img" />
-                  ) : (
-                    <div className="psc-product-img placeholder">{hubVariant === 'agri' ? '🌿' : '💊'}</div>
-                  )}
-                </div>
-                <div className="psc-info-col">
-                  <h2 className="psc-product-name">{product.name.toUpperCase()}</h2>
-                  <p className="psc-manufacturer">Đơn vị sản xuất:</p>
-                  <p className="psc-manufacturer-name">{enterprise.name.toUpperCase()}</p>
-                  <div className="psc-origin">
-                    <MapPin size={13} className="psc-origin-icon agri" />
-                    <span>Xuất xứ: {specs.find(s => s[0] === 'Xuất xứ')?.[1] || specs.find(s => s[0] === 'Nguồn gốc')?.[1] || 'Việt Nam'}</span>
+            {/* Product summary card with sliding image carousel */}
+            <div className="product-summary-card" style={{ display: 'flex', flexDirection: 'column', padding: '0', overflow: 'hidden', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', backgroundColor: 'white', marginTop: '16px' }}>
+              {galleryImages.length > 0 ? (
+                <div style={{ position: 'relative', width: '100%', height: '220px' }}>
+                  <img src={galleryImages[sliderIndex]} alt={product?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', bottom: '12px', left: '0', right: '0', display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                    {galleryImages.map((_, idx) => (
+                      <span
+                        key={idx}
+                        className={`slider-dot ${sliderIndex === idx ? 'active' : ''}`}
+                        onClick={() => setSliderIndex(idx)}
+                        style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: sliderIndex === idx ? '#2e7d32' : 'rgba(255,255,255,0.6)', cursor: 'pointer' }}
+                      />
+                    ))}
                   </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="product-slider-placeholder agri" style={{ height: '150px', backgroundColor: '#f3f4f6', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                  <Package size={48} style={{ opacity: 0.5 }} />
+                  <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>Chưa có hình ảnh sản phẩm</span>
+                </div>
+              )}
 
-            <div className="action-grid-8">
-              {hubGridItems.map(({ id, icon: Icon, label }) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={`action-grid-btn ${activeSection === id ? 'active agri' : ''}`}
-                  onClick={() => setActiveSection(activeSection === id ? null : id)}
-                >
-                  <div className="agb-icon-circle agri"><Icon size={22} strokeWidth={1.75} /></div>
-                  <span>{label.split('\n').map((line, i, arr) => (
-                    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
-                  ))}</span>
-                </button>
-              ))}
+              <div style={{ padding: '16px' }}>
+                <h2 className="psc-product-name" style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0 0 12px 0', color: '#111827' }}>{product?.name?.toUpperCase()}</h2>
+                
+                <div className="specs-list-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="spec-row-new" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', paddingBottom: '6px', fontSize: '0.85rem' }}>
+                    <span className="spec-label-new" style={{ color: '#6b7280' }}>Mã lô hàng:</span>
+                    <span className="spec-value-new" style={{ fontWeight: 600, color: '#111827' }}>{label?.batchId?.batchCode || specs.find(s => s[0] === 'Mã lô hàng')?.[1] || 'VL-2026-001'}</span>
+                  </div>
+                  {label?.batchId?.expiryDate && (
+                    <div className="spec-row-new" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', paddingBottom: '6px', fontSize: '0.85rem' }}>
+                      <span className="spec-label-new" style={{ color: '#6b7280' }}>Hạn sử dụng:</span>
+                      <span className="spec-value-new" style={{ fontWeight: 600, color: '#111827' }}>{formatDateTime(label.batchId.expiryDate).split(' ')[0]}</span>
+                    </div>
+                  )}
+                  {specs.filter(s => !['Mã lô hàng'].includes(s[0])).map(([key, val], idx) => (
+                    <div className="spec-row-new" key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', paddingBottom: '6px', fontSize: '0.85rem' }}>
+                      <span className="spec-label-new" style={{ color: '#6b7280' }}>{key}:</span>
+                      <span className="spec-value-new" style={{ fontWeight: 600, color: '#111827' }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {renderHubExpandSection()}
-            <div style={{ height: 16 }} />
+            {/* Farm / Manufacturer Information */}
+            <div className="expand-section-card agri" style={{ marginTop: '16px', display: 'block', backgroundColor: 'white', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                <Building size={16} style={{ color: '#2e7d32' }} />
+                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>THÔNG TIN NHÀ SẢN XUẤT</span>
+              </div>
+              <div className="expand-section-body" style={{ padding: '16px' }}>
+                {product?.producerInfo ? (
+                  <p style={{ fontSize: '0.85rem', color: '#4b5563', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{product.producerInfo}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div className="spec-row-new" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: '#6b7280' }}>Tên đơn vị:</span><span style={{ fontWeight: 600 }}>{enterprise.name}</span></div>
+                    <div className="spec-row-new" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: '#6b7280' }}>Địa chỉ:</span><span style={{ fontWeight: 600 }}>{enterprise.address || '—'}</span></div>
+                    {enterprise.phone && <div className="spec-row-new" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: '#6b7280' }}>Điện thoại:</span><span style={{ fontWeight: 600 }}>{enterprise.phone}</span></div>}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Production Process Stepper */}
+            <div className="expand-section-card agri" style={{ marginTop: '16px', display: 'block', backgroundColor: 'white', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                <Activity size={16} style={{ color: '#2e7d32' }} />
+                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>QUY TRÌNH SẢN XUẤT</span>
+              </div>
+              <div className="expand-section-body" style={{ padding: '16px' }}>
+                {product?.productionProcess?.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {product.productionProcess.map((step, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#e8f5e9', border: '2px solid #2e7d32', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '0.75rem', fontWeight: 800, color: '#2e7d32', zIndex: 2 }}>
+                            {idx + 1}
+                          </div>
+                          {idx < product.productionProcess.length - 1 && (
+                            <div style={{ width: '2px', flexGrow: 1, backgroundColor: '#e5e7eb', marginTop: '4px', marginBottom: '4px' }}></div>
+                          )}
+                        </div>
+                        <div style={{ paddingBottom: '8px' }}>
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', fontWeight: 700, color: '#1f2937' }}>{step.title}</h4>
+                          <p style={{ margin: 0, fontSize: '0.8rem', color: '#4b5563', lineHeight: 1.4 }}>{step.description}</p>
+                          {step.image && (
+                            <img src={step.image} alt={step.title} style={{ marginTop: '8px', maxWidth: '100%', maxHeight: '120px', borderRadius: '6px', objectFit: 'cover' }} />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="production-process-stepper agri" style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '8px 0' }}>
+                    <div className="process-step-box">
+                      <div className="step-square agri"><Leaf size={22} className="step-square-icon" /></div>
+                      <span className="step-square-label">Gieo trồng</span>
+                    </div>
+                    <div className="process-arrow agri">→</div>
+                    <div className="process-step-box">
+                      <div className="step-square agri"><Activity size={22} className="step-square-icon" /></div>
+                      <span className="step-square-label">Chăm sóc</span>
+                    </div>
+                    <div className="process-arrow agri">→</div>
+                    <div className="process-step-box">
+                      <div className="step-square agri"><Package size={22} className="step-square-icon" /></div>
+                      <span className="step-square-label">Thu hoạch</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Certifications Block */}
+            <div className="expand-section-card agri" style={{ marginTop: '16px', display: 'block', backgroundColor: 'white', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                <Award size={16} style={{ color: '#2e7d32' }} />
+                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>CHỨNG NHẬN ĐẠT ĐƯỢC</span>
+              </div>
+              <div className="expand-section-body" style={{ padding: '16px' }}>
+                {certList.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {certList.map((cert) => (
+                      <div key={cert.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(0,0,0,0.01)', border: '1px solid rgba(0,0,0,0.03)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div className={`cert-badge-wrapper ${cert.badgeClass}`} style={{ width: '40px', height: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 900, color: 'white', backgroundColor: '#2e7d32' }}>
+                            {cert.badgeText}
+                          </div>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#1f2937' }}>{cert.label}</h4>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Số: {cert.certNo}</p>
+                          </div>
+                        </div>
+                        {cert.image && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => setActiveCertDoc(cert.image)}
+                            style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2e7d32', border: '1px solid #2e7d32', borderRadius: '6px', padding: '4px 10px' }}
+                          >
+                            Chi tiết
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="certifications-grid hub-cert-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+                    <div className="cert-item">
+                      <div className="cert-badge-wrapper vietgap"><div className="vietgap-badge-design"><span className="vgap-main-text">Viet</span><span className="vgap-sub-text">GAP</span></div></div>
+                      <span className="cert-name-label">VietGAP</span>
+                      <span className="cert-number-label">Số: VietGAP-TT-13-23</span>
+                    </div>
+                    <div className="cert-item">
+                      <div className="cert-badge-wrapper organic"><div className="organic-badge-design"><span className="org-text-top">HỮU CƠ</span><span className="org-text-bottom">ORGANIC</span></div></div>
+                      <span className="cert-name-label">Hữu cơ VN</span>
+                      <span className="cert-number-label">Số: HC-23-1087</span>
+                    </div>
+                    <div className="cert-item">
+                      <div className="cert-badge-wrapper iso"><div className="iso-badge-design"><span className="iso-quacert">QUACERT</span><span className="iso-number">ISO 22000</span></div></div>
+                      <span className="cert-name-label">ISO 22000</span>
+                      <span className="cert-number-label">Số: 22000-23-01</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Farm / Factory Location Map */}
+            <div className="expand-section-card agri" style={{ marginTop: '16px', display: 'block', backgroundColor: 'white', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                <MapPin size={16} style={{ color: '#2e7d32' }} />
+                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>VỊ TRÍ TRANG TRẠI / XƯỞNG</span>
+              </div>
+              <div className="expand-section-body" style={{ padding: '16px' }}>
+                <div className="map-wrapper-new" style={{ borderRadius: '8px', overflow: 'hidden' }}>
+                  <iframe src={mapUrl} width="100%" height="200" style={{ border: 0 }} allowFullScreen="" loading="lazy"></iframe>
+                </div>
+              </div>
+            </div>
+
+            {/* Distributor / Store Information */}
+            <div className="expand-section-card agri" style={{ marginTop: '16px', display: 'block', backgroundColor: 'white', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+              <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                <Truck size={16} style={{ color: '#2e7d32' }} />
+                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>THÔNG TIN NHÀ PHÂN PHỐI / ĐIỂM BÁN</span>
+              </div>
+              <div className="expand-section-body" style={{ padding: '16px' }}>
+                {product?.distributorInfo ? (
+                  <p style={{ fontSize: '0.85rem', color: '#4b5563', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{product.distributorInfo}</p>
+                ) : label?.distributorName ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div className="spec-row-new" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: '#6b7280' }}>Đại lý / Cửa hàng:</span><span style={{ fontWeight: 600 }}>{label.distributorName}</span></div>
+                    {label.distributorAddress && <div className="spec-row-new" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}><span style={{ color: '#6b7280' }}>Địa chỉ:</span><span style={{ fontWeight: 600 }}>{label.distributorAddress}</span></div>}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '0.85rem', color: '#9ca3af', fontStyle: 'italic', margin: 0 }}>Chưa có thông tin điểm bán cụ thể cho tem này.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Action buttons row */}
+            <div className="agri-action-buttons-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '20px' }}>
+              <button className="action-footer-btn agri" onClick={() => alert('Đang tải chứng nhận...')}>
+                <Download size={16} className="btn-footer-icon" /> Tải chứng nhận
+              </button>
+              <button className="action-footer-btn agri" onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Đã sao chép link liên kết để chia sẻ!'); }}>
+                <Share2 size={16} className="btn-footer-icon" /> Chia sẻ
+              </button>
+              <button className="action-footer-btn report" onClick={() => alert('Đã gửi phản hồi / báo cáo vi phạm sản phẩm này!')}>
+                <AlertTriangle size={16} className="btn-footer-icon" /> Báo cáo
+              </button>
+            </div>
+
+            {/* Last updated information */}
+            <div className="agri-last-updated" style={{ textAlign: 'center', fontSize: '0.75rem', opacity: 0.6, margin: '24px 0 16px 0' }}>
+              Dữ liệu được cập nhật lần cuối: {formatDateTime(label?.lastScannedAt || new Date()).split(' ')[0]}
+            </div>
           </div>
         )}
 
@@ -1237,6 +1452,16 @@ export default function Scan() {
               </form>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Certificate details modal popup */}
+      {activeCertDoc && (
+        <div className="modal-overlay" onClick={() => setActiveCertDoc(null)} style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.85)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <button className="btn-icon" onClick={() => setActiveCertDoc(null)} style={{ position: 'absolute', top: '-40px', right: 0, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '6px', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+            <img src={activeCertDoc} alt="Giấy chứng nhận" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', border: '3px solid white' }} />
+          </div>
         </div>
       )}
     </div>

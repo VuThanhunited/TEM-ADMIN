@@ -46,7 +46,7 @@ export default function Labels() {
   const [showBulkMapModal, setShowBulkMapModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' });
 
-  const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: 'TEM', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+  const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '100', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [renewMonths, setRenewMonths] = useState(12);
   const [migrateForm, setMigrateForm] = useState({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: '' });
   const [mapForm, setMapForm] = useState({ productId: '', theme: 'default', distributorName: '', distributorAddress: '' });
@@ -542,14 +542,14 @@ export default function Labels() {
             <button className="btn btn-ghost" onClick={() => { setModalError(null); setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' }); setShowBulkMapModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <Link2 size={16} /> Gắn kết hàng loạt
             </button>
-            {activeTab === 'batches' && (
-              <button className="btn btn-primary" onClick={() => { setModalError(null); setBatchForm({ batchCode: '', totalLabels: 100, prefix: 'TEM', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' }); setShowCreateBatch(true); }}>
+            {activeTab === 'batches' && isAdmin && (
+              <button className="btn btn-primary" onClick={() => { setModalError(null); setBatchForm({ batchCode: '', totalLabels: 100, prefix: '100', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' }); setShowCreateBatch(true); }}>
                 <Plus size={18}/> Tạo lô tem mới
               </button>
             )}
           </div>
         )}
-        {activeTab === 'migrate' && (
+        {activeTab === 'migrate' && isAdmin && (
           <button className="btn btn-primary" onClick={() => { setModalError(null); setMigrateForm({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: '' }); setShowMigrateModal(true); }}>
             <Upload size={18}/> Import tem cũ
           </button>
@@ -610,17 +610,18 @@ export default function Labels() {
                 <th>Sản phẩm</th>
                 <th>Số lượng</th>
                 <th>Serial</th>
-                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
                 <th>Hết hạn</th>
                 <th>Di trú</th>
+                <th>Trạng thái</th>
                 <th>Hành động</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8}><div className="loading-overlay"><div className="loading-spinner"></div></div></td></tr>
+                <tr><td colSpan={9}><div className="loading-overlay"><div className="loading-spinner"></div></div></td></tr>
               ) : batches.length === 0 ? (
-                <tr><td colSpan={8}><div className="empty-state"><Tag size={40}/><h3>Chưa có lô tem nào</h3></div></td></tr>
+                <tr><td colSpan={9}><div className="empty-state"><Tag size={40}/><h3>Chưa có lô tem nào</h3></div></td></tr>
               ) : (
                 batches.map(batch => (
                   <tr key={batch._id}>
@@ -628,9 +629,10 @@ export default function Labels() {
                     <td>{batch.productId?.name || <span className="text-muted">Chưa gắn</span>}</td>
                     <td><strong>{batch.totalLabels}</strong></td>
                     <td><span className="serial-range">{batch.serialStart} → {batch.serialEnd}</span></td>
-                    <td><span className={`badge badge-dot ${getStatusBadge(batch.status)}`}>{getStatusLabel(batch.status)}</span></td>
+                    <td>{formatDate(batch.createdDate || batch.createdAt)}</td>
                     <td className={new Date(batch.expiryDate) < new Date() ? 'text-danger' : ''}>{formatDate(batch.expiryDate)}</td>
                     <td>{batch.isMigrated ? <span className="badge badge-info">Di trú</span> : '—'}</td>
+                    <td><span className={`badge badge-dot ${getStatusBadge(batch.status)}`}>{getStatusLabel(batch.status)}</span></td>
                     <td>
                       <div className="action-buttons">
                         <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
@@ -785,7 +787,7 @@ export default function Labels() {
                 )}
                 <div className="form-row">
                   <div className="input-group"><label>Mã lô *</label><input className="input" value={batchForm.batchCode} onChange={e => setBatchForm({...batchForm, batchCode: e.target.value})} required placeholder="VD: VH-2024-003" /></div>
-                  <div className="input-group"><label>Prefix Serial</label><input className="input" value={batchForm.prefix} onChange={e => setBatchForm({...batchForm, prefix: e.target.value})} /></div>
+                  <div className="input-group"><label>Prefix Serial (Chỉ nhập số) *</label><input className="input" value={batchForm.prefix} onChange={e => setBatchForm({...batchForm, prefix: e.target.value.replace(/\D/g, '')})} required placeholder="VD: 100" /></div>
                 </div>
                 <div className="form-row">
                   <div className="input-group"><label>Số lượng tem *</label><input className="input" type="number" min={1} max={10000} value={batchForm.totalLabels} onChange={e => setBatchForm({...batchForm, totalLabels: parseInt(e.target.value) || 0})} onFocus={e => e.target.select()} required /></div>
@@ -813,9 +815,11 @@ export default function Labels() {
                   <div className="input-group">
                     <label>Chủ đề giao diện (Theme) *</label>
                     <select className="input select" value={batchForm.theme} onChange={e => setBatchForm({...batchForm, theme: e.target.value})} required>
-                      <option value="default">Mặc định hệ thống</option>
+                      <option value="default">Mặc định (Hiển thị chung)</option>
                       <option value="agriculture">Nông nghiệp (Lá xanh)</option>
-                      <option value="functional_food">Thực phẩm chức năng (Xanh dương)</option>
+                      <option value="food">Thực phẩm</option>
+                      <option value="functional_food">Thực phẩm chức năng</option>
+                      <option value="medical">Y tế / Dược phẩm</option>
                       <option value="cosmetics">Mỹ phẩm (Hồng thanh lịch)</option>
                     </select>
                   </div>
@@ -851,9 +855,11 @@ export default function Labels() {
                 <div className="input-group">
                   <label>Chủ đề giao diện (Theme)</label>
                   <select className="input select" value={mapForm.theme} onChange={e => setMapForm({...mapForm, theme: e.target.value})}>
-                    <option value="default">Mặc định hệ thống</option>
+                    <option value="default">Mặc định (Hiển thị chung)</option>
                     <option value="agriculture">Nông nghiệp (Lá xanh)</option>
-                    <option value="functional_food">Thực phẩm chức năng (Xanh dương)</option>
+                    <option value="food">Thực phẩm</option>
+                    <option value="functional_food">Thực phẩm chức năng</option>
+                    <option value="medical">Y tế / Dược phẩm</option>
                     <option value="cosmetics">Mỹ phẩm (Hồng thanh lịch)</option>
                   </select>
                 </div>
@@ -960,9 +966,11 @@ export default function Labels() {
                   <div className="input-group">
                     <label>Chủ đề giao diện (Theme)</label>
                     <select className="input select" value={migrateForm.theme} onChange={e => setMigrateForm({...migrateForm, theme: e.target.value})}>
-                      <option value="default">Mặc định hệ thống</option>
+                      <option value="default">Mặc định (Hiển thị chung)</option>
                       <option value="agriculture">Nông nghiệp (Lá xanh)</option>
-                      <option value="functional_food">Thực phẩm chức năng (Xanh dương)</option>
+                      <option value="food">Thực phẩm</option>
+                      <option value="functional_food">Thực phẩm chức năng</option>
+                      <option value="medical">Y tế / Dược phẩm</option>
                       <option value="cosmetics">Mỹ phẩm (Hồng thanh lịch)</option>
                     </select>
                   </div>

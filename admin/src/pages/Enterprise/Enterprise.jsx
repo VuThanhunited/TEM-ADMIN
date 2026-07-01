@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Building2, Globe, MessageSquare, Save, ExternalLink
+  Building2, Globe, MessageSquare, Save, ExternalLink, Plus, Trash2
 } from 'lucide-react';
 import './Enterprise.css';
 
@@ -36,13 +36,38 @@ export default function Enterprise() {
         setEnterprise(data);
         setForm({ name: data.name, address: data.address, phone: data.phone, email: data.email, website: data.website, taxCode: data.taxCode });
         setDomainForm({ domain: data.domain || '', subdomain: data.subdomain || '' });
-        setChatbotForm(data.chatbotConfig || { enabled: false, script: '', welcomeMessage: '' });
+        setChatbotForm(data.chatbotConfig || { enabled: false, script: '', welcomeMessage: '', qaList: [] });
       }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const addQA = () => {
+    const list = chatbotForm.qaList || [];
+    setChatbotForm({
+      ...chatbotForm,
+      qaList: [...list, { question: '', answer: '' }]
+    });
+  };
+
+  const updateQA = (idx, field, val) => {
+    const list = [...(chatbotForm.qaList || [])];
+    list[idx] = { ...list[idx], [field]: val };
+    setChatbotForm({
+      ...chatbotForm,
+      qaList: list
+    });
+  };
+
+  const removeQA = (idx) => {
+    const list = (chatbotForm.qaList || []).filter((_, i) => i !== idx);
+    setChatbotForm({
+      ...chatbotForm,
+      qaList: list
+    });
   };
 
   const handleSaveInfo = async () => {
@@ -178,7 +203,7 @@ export default function Enterprise() {
 
         {activeTab === 'chatbot' && (
           <>
-            <div className="card-header">
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 className="card-title">Cài đặt Chatbot</h3>
             </div>
             <div className="form-grid">
@@ -191,16 +216,44 @@ export default function Enterprise() {
               </div>
               <div className="input-group" style={{gridColumn:'span 2'}}>
                 <label>Lời chào mừng</label>
-                <input className="input" value={chatbotForm.welcomeMessage} onChange={e => setChatbotForm({...chatbotForm, welcomeMessage: e.target.value})} />
+                <input className="input" value={chatbotForm.welcomeMessage || ''} onChange={e => setChatbotForm({...chatbotForm, welcomeMessage: e.target.value})} />
               </div>
               <div className="input-group" style={{gridColumn:'span 2'}}>
-                <label>Script Chatbot (embed code)</label>
-                <textarea className="input textarea" value={chatbotForm.script} onChange={e => setChatbotForm({...chatbotForm, script: e.target.value})} placeholder="Dán embed code chatbot tại đây..." rows={6} />
+                <label>Script Chatbot (embed code - nếu có)</label>
+                <textarea className="input textarea" value={chatbotForm.script || ''} onChange={e => setChatbotForm({...chatbotForm, script: e.target.value})} placeholder="Dán embed code chatbot tại đây..." rows={3} />
               </div>
             </div>
-            <div className="form-actions">
+
+            <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--primary-color)' }}>Bộ câu hỏi - trả lời (Q&A FAQ)</h4>
+                <button type="button" className="btn btn-sm btn-ghost" onClick={addQA} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Plus size={14} /> Thêm câu hỏi
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {(!chatbotForm.qaList || chatbotForm.qaList.length === 0) ? (
+                  <p style={{ fontSize: '0.9rem', opacity: 0.5, fontStyle: 'italic', margin: '8px 0' }}>Chưa cấu hình bộ câu hỏi nào. Chatbot sẽ sử dụng các câu trả lời mặc định.</p>
+                ) : (
+                  chatbotForm.qaList.map((qa, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'flex-start', padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div className="input-group" style={{ margin: 0 }}>
+                        <input className="input" placeholder="Câu hỏi (Ví dụ: Hạn sử dụng bao lâu?)" value={qa.question || ''} onChange={e => updateQA(idx, 'question', e.target.value)} />
+                      </div>
+                      <div className="input-group" style={{ margin: 0 }}>
+                        <textarea className="input textarea" placeholder="Câu trả lời tương ứng..." value={qa.answer || ''} onChange={e => updateQA(idx, 'answer', e.target.value)} rows={1} style={{ minHeight: '38px', resize: 'vertical' }} />
+                      </div>
+                      <button type="button" className="btn-icon" onClick={() => removeQA(idx)} style={{ color: '#ef4444', height: '38px' }}><Trash2 size={16}/></button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="form-actions" style={{ marginTop: '24px' }}>
               <button className="btn btn-primary" onClick={handleSaveChatbot} disabled={saving}>
-                <Save size={16} /> Lưu cài đặt Chatbot
+                <Save size={16} /> {saving ? 'Đang lưu...' : 'Lưu cấu hình Chatbot'}
               </button>
             </div>
           </>

@@ -2,7 +2,7 @@ const express = require('express');
 const LabelBatch = require('../models/LabelBatch');
 const Label = require('../models/Label');
 const auth = require('../middleware/auth');
-const { requireOwnership } = require('../middleware/rbac');
+const { requireRole, requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
 const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-eight.vercel.app';
@@ -10,6 +10,7 @@ const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-eight.vercel.app';
 // ======= BATCH ROUTES =======
 
 // GET /api/labels/batches
+// Allow reading batches, but only ADMIN creates them
 router.get('/batches', auth, requireOwnership, async (req, res) => {
   try {
     const { page = 1, limit = 20, status = '', search = '' } = req.query;
@@ -39,16 +40,26 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
   }
 });
 
-// POST /api/labels/batches - Create batch and individual labels
-router.post('/batches', auth, requireOwnership, async (req, res) => {
+// POST /api/labels/batches - Create batch and individual labels (ADMIN ONLY)
+router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   try {
-    const { batchCode, totalLabels, prefix = 'TEM', productId, templateId, theme, expiryDate, notes } = req.body;
+    const { batchCode, totalLabels, prefix = '100', productId, templateId, theme, expiryDate, notes } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
+
+    if (!enterpriseId) {
+      return res.status(400).json({ error: 'Thiếu thông tin doanh nghiệp sở hữu' });
+    }
+
+    // Enforce digit-only prefix
+    const numPrefix = String(prefix || '100').trim();
+    if (!/^\d+$/.test(numPrefix)) {
+      return res.status(400).json({ error: 'Mã Prefix Serial chỉ được phép chứa chữ số (0-9) để hỗ trợ mã hoá số!' });
+    }
 
     const startNum = 1;
     const endNum = totalLabels;
-    const serialStart = `${prefix}-${String(startNum).padStart(6, '0')}`;
-    const serialEnd = `${prefix}-${String(endNum).padStart(6, '0')}`;
+    const serialStart = `${numPrefix}${String(startNum).padStart(6, '0')}`;
+    const serialEnd = `${numPrefix}${String(endNum).padStart(6, '0')}`;
 
     const batch = new LabelBatch({
       enterpriseId,
@@ -59,9 +70,10 @@ router.post('/batches', auth, requireOwnership, async (req, res) => {
       totalLabels,
       serialStart,
       serialEnd,
-      prefix,
+      prefix: numPrefix,
       expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      notes
+      notes,
+      createdDate: new Date()
     });
     await batch.save();
 
@@ -72,8 +84,8 @@ router.post('/batches', auth, requireOwnership, async (req, res) => {
         batchId: batch._id,
         enterpriseId,
         productId: productId || null,
-        serialNumber: `${prefix}-${String(i).padStart(6, '0')}`,
-        qrUrl: `${ADMIN_URL}/scan/${prefix}-${String(i).padStart(6, '0')}`,
+        serialNumber: `${numPrefix}${String(i).padStart(6, '0')}`,
+        qrUrl: `${ADMIN_URL}/scan/${numPrefix}${String(i).padStart(6, '0')}`,
         status: 'INACTIVE'
       });
     }
@@ -166,8 +178,8 @@ router.put('/batches/:id/renew', auth, async (req, res) => {
   }
 });
 
-// POST /api/labels/migrate - Import old labels
-router.post('/migrate', auth, requireOwnership, async (req, res) => {
+// POST /api/labels/migrate - Import old labels (ADMIN ONLY)
+router.post('/migrate', auth, requireRole('ADMIN'), async (req, res) => {
   try {
     const { batchCode, labels: labelData, migrationSource, migrationOldLink, productId, templateId, theme } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;

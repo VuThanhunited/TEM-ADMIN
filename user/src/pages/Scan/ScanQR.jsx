@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Zap, ZapOff, Clock, CheckCircle, Camera } from 'lucide-react';
-import jsQR from 'jsqr';
+import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../../contexts/AuthContext';
 import userApi from '../../services/api';
 import './ScanQR.css';
@@ -10,10 +10,7 @@ export default function ScanQR() {
   const navigate = useNavigate();
   const { nppUser, logout } = useAuth();
 
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const animFrameRef = useRef(null);
+  const html5QrcodeRef = useRef(null);
   const lastScanRef = useRef(null);
 
   const [cameraStatus, setCameraStatus] = useState('loading'); // 'loading' | 'active' | 'denied' | 'error'
@@ -25,24 +22,31 @@ export default function ScanQR() {
   const startCamera = useCallback(async () => {
     setCameraStatus('loading');
     try {
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setCameraStatus('active');
-        startScanLoop();
+      if (!html5QrcodeRef.current) {
+        html5QrcodeRef.current = new Html5Qrcode("reader");
       }
+
+      await html5QrcodeRef.current.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: (width, height) => {
+            const size = Math.min(width, height) * 0.7;
+            return { width: size, height: size };
+          }
+        },
+        (decodedText, decodedResult) => {
+          handleScanSuccess(decodedText, decodedResult);
+        },
+        () => {
+          // Failure callback is ignored to avoid console spam
+        }
+      );
+      setCameraStatus('active');
     } catch (err) {
       console.error('Camera error:', err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      const errStr = String(err);
+      if (errStr.includes('NotAllowedError') || errStr.includes('PermissionDeniedError')) {
         setCameraStatus('denied');
       } else {
         setCameraStatus('error');
@@ -51,112 +55,93 @@ export default function ScanQR() {
   }, []);
 
   // Stop camera
-  const stopCamera = useCallback(() => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
+  const stopCamera = useCallback(async () => {
+    if (html5QrcodeRef.current && html5QrcodeRef.current.isScanning) {
+      try {
+        await html5QrcodeRef.current.stop();
+      } catch (err) {
+        console.error('Failed to stop html5-qrcode:', err);
+      }
     }
   }, []);
 
   useEffect(() => {
     startCamera();
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+    };
   }, [startCamera, stopCamera]);
 
-  // QR scan loop using jsQR (loaded dynamically)
-  const startScanLoop = () => {
-    const scan = async () => {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (!video || !canvas || video.readyState !== 4) {
-        animFrameRef.current = requestAnimationFrame(scan);
-        return;
-      }
-
-      const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      try {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-          inversionAttempts: 'dontInvert'
-        });
-
-        if (code && code.data) {
-          const now = Date.now();
-          // Debounce: don't re-scan same code within 3 seconds
-          if (lastScanRef.current !== code.data || (now - (lastScanRef._time || 0)) > 3000) {
-            lastScanRef.current = code.data;
-            lastScanRef._time = now;
-            handleQRDetected(code.data);
-            return; // stop loop
-          }
-        }
-      } catch {
-        // jsQR load error or decode error – continue
-      }
-
-      animFrameRef.current = requestAnimationFrame(scan);
-    };
-
-    animFrameRef.current = requestAnimationFrame(scan);
-  };
-
-  const handleQRDetected = async (qrData) => {
-    // Extract serial from QR URL or use as-is
-    let serial = qrData;
-
-    // Try to parse URL patterns like /scan/XXXX or /qrcode/XXXX or /temqr/XXXX
-    try {
-      const url = new URL(qrData);
-      const parts = url.pathname.split('/').filter(Boolean);
-      // Last segment is the serial
-      if (parts.length >= 1) {
-        serial = parts[parts.length - 1];
-      }
-    } catch {
-      // Not a URL, use raw value
-      serial = qrData.trim();
+  const handleScanSuccess = async (decodedText, decodedResult) => {
+    const now = Date.now();
+    // Debounce: don't re-scan same code within 3 seconds
+    if (lastScanRef.current === decodedText && (now - (lastScanRef.current_time || 0)) < 3000) {
+      return;
     }
+    lastScanRef.current = decodedText;
+    lastScanRef.current_time = now;
 
-    if (!serial) return;
+    const format = decodedResult?.result?.format?.formatName || '';
+    const isBarcode = format && format !== 'QR_CODE' && format !== 'DATA_MATRIX' && format !== 'AZTEC' && format !== 'PDF_417';
 
     setDetected(true);
-    setDetectedSerial(serial);
-    stopCamera();
+    setDetectedSerial(decodedText);
+    await stopCamera();
 
-    // Fetch scan data from server
-    try {
-      const scanData = await userApi.getPublicScan(serial);
-      // Navigate to select-store with scan data
-      navigate('/select-store', {
-        state: { scanData, serial }
-      });
-    } catch (err) {
-      // Serial not found – show error and restart
-      alert(`Không tìm thấy tem: ${serial}\n${err.message}`);
-      setDetected(false);
-      setDetectedSerial('');
-      await startCamera();
+    if (isBarcode) {
+      const barcode = decodedText.trim();
+      try {
+        const scanData = await userApi.getPublicBarcode(barcode);
+        // Navigate to select-store with scan data
+        navigate('/select-store', {
+          state: { scanData, serial: barcode, isBarcode: true }
+        });
+      } catch (err) {
+        alert(`Không tìm thấy sản phẩm có mã vạch: ${barcode}\n${err.message}`);
+        setDetected(false);
+        setDetectedSerial('');
+        await startCamera();
+      }
+    } else {
+      // Extract serial from QR URL or use as-is
+      let serial = decodedText.trim();
+      try {
+        const url = new URL(decodedText);
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts.length >= 1) {
+          serial = parts[parts.length - 1];
+        }
+      } catch {
+        // Not a URL, use raw value
+      }
+
+      if (!serial) return;
+
+      try {
+        const scanData = await userApi.getPublicScan(serial);
+        navigate('/select-store', {
+          state: { scanData, serial }
+        });
+      } catch (err) {
+        alert(`Không tìm thấy tem: ${serial}\n${err.message}`);
+        setDetected(false);
+        setDetectedSerial('');
+        await startCamera();
+      }
     }
   };
 
   const toggleFlash = async () => {
-    if (!streamRef.current) return;
+    if (!html5QrcodeRef.current || !html5QrcodeRef.current.isScanning) return;
     try {
-      const track = streamRef.current.getVideoTracks()[0];
+      const track = html5QrcodeRef.current.getRunningTrack();
       const caps = track.getCapabilities?.() || {};
       if (caps.torch) {
         await track.applyConstraints({ advanced: [{ torch: !flashOn }] });
         setFlashOn(!flashOn);
       }
     } catch {
-      // Flash not supported
+      // Flash/torch not supported
     }
   };
 
@@ -167,7 +152,7 @@ export default function ScanQR() {
         <button className="scan-header-btn" onClick={() => navigate('/scan')} aria-label="Quay lại">
           <ArrowLeft size={20} />
         </button>
-        <span className="scan-header-title">Quét QR Code</span>
+        <span className="scan-header-title">Quét QR Code / Mã vạch</span>
         <button
           className="scan-header-btn"
           onClick={toggleFlash}
@@ -191,21 +176,14 @@ export default function ScanQR() {
           <div className="scan-no-camera">
             <Camera size={56} color="rgba(255,255,255,0.4)" />
             <h3>Không thể truy cập camera</h3>
-            <p>Vui lòng cho phép ứng dụng sử dụng camera trong cài đặt trình duyệt để quét QR Code.</p>
+            <p>Vui lòng cho phép ứng dụng sử dụng camera trong cài đặt trình duyệt để quét.</p>
             <button className="scan-retry-btn" onClick={startCamera}>Thử lại</button>
           </div>
         )}
 
         {(cameraStatus === 'active' || cameraStatus === 'error') && (
           <>
-            <video
-              ref={videoRef}
-              className="scan-camera-video"
-              muted
-              playsInline
-              autoPlay
-            />
-            <canvas ref={canvasRef} id="qr-canvas" />
+            <div id="reader" style={{ width: '100%', height: '100%', overflow: 'hidden' }}></div>
 
             {/* Overlay with frame */}
             {!detected && (
@@ -229,7 +207,7 @@ export default function ScanQR() {
             {/* Hint */}
             {!detected && (
               <div className="scan-hint-box">
-                <span className="scan-hint-text">Đưa mã QR vào khung để quét</span>
+                <span className="scan-hint-text">Đưa mã QR hoặc mã vạch vào khung quét</span>
               </div>
             )}
 

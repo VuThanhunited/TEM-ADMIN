@@ -17,9 +17,25 @@ export default function Products() {
   const [editing, setEditing] = useState(null);
   const [modalError, setModalError] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
-  const [form, setForm] = useState({
-    name: '', description: '', category: '', sku: '', barcode: '', images: [''], distributors: [], specifications: [], enterpriseId: ''
-  });
+  const initialForm = {
+    name: '', description: '', category: '', sku: '', barcode: '',
+    images: ['', '', ''], distributors: [], specifications: [], enterpriseId: '',
+    verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
+    productionProcess: [],
+    certifications: {
+      iso: { checked: false, certNo: '', image: '' },
+      vetinhATTP: { checked: false, certNo: '', image: '' },
+      gmp: { checked: false, certNo: '', image: '' },
+      cgmp: { checked: false, certNo: '', image: '' },
+      vietgap: { checked: false, certNo: '', image: '' },
+      organic: { checked: false, certNo: '', image: '' }
+    },
+    producerInfo: '',
+    distributorInfo: '',
+    chatbotQA: []
+  };
+
+  const [form, setForm] = useState({ ...initialForm });
 
   useEffect(() => {
     loadProducts();
@@ -50,7 +66,7 @@ export default function Products() {
   const openCreate = () => {
     setEditing(null);
     setModalError(null);
-    setForm({ name: '', description: '', category: '', sku: '', barcode: '', images: [''], distributors: [], specifications: [], enterpriseId: '' });
+    setForm({ ...initialForm });
     setShowModal(true);
   };
 
@@ -58,13 +74,37 @@ export default function Products() {
     setEditing(product);
     setModalError(null);
     const specList = product.specifications ? Object.entries(product.specifications).map(([key, value]) => ({ key, value })) : [];
+    
+    let imgList = [...(product.images || [])];
+    while (imgList.length < 3) {
+      imgList.push('');
+    }
+
+    const certs = {
+      iso: { checked: false, certNo: '', image: '', ...(product.certifications?.iso || {}) },
+      vetinhATTP: { checked: false, certNo: '', image: '', ...(product.certifications?.vetinhATTP || {}) },
+      gmp: { checked: false, certNo: '', image: '', ...(product.certifications?.gmp || {}) },
+      cgmp: { checked: false, certNo: '', image: '', ...(product.certifications?.cgmp || {}) },
+      vietgap: { checked: false, certNo: '', image: '', ...(product.certifications?.vietgap || {}) },
+      organic: { checked: false, certNo: '', image: '', ...(product.certifications?.organic || {}) }
+    };
+
     setForm({
-      name: product.name, description: product.description, category: product.category,
-      sku: product.sku, barcode: product.barcode,
-      images: product.images?.length ? product.images : [''],
+      name: product.name || '',
+      description: product.description || '',
+      category: product.category || '',
+      sku: product.sku || '',
+      barcode: product.barcode || '',
+      images: imgList,
       distributors: product.distributors || [],
       specifications: specList,
-      enterpriseId: product.enterpriseId?._id || product.enterpriseId || ''
+      enterpriseId: product.enterpriseId?._id || product.enterpriseId || '',
+      verificationText: product.verificationText || 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
+      productionProcess: product.productionProcess || [],
+      certifications: certs,
+      producerInfo: product.producerInfo || '',
+      distributorInfo: product.distributorInfo || '',
+      chatbotQA: product.chatbotQA || []
     });
     setShowModal(true);
   };
@@ -84,9 +124,12 @@ export default function Products() {
         return acc;
       }, {});
 
+      const cleanedImages = form.images.filter(img => img.trim() !== '');
+
       const data = { 
         ...form, 
         enterpriseId: isAdmin ? form.enterpriseId : enterpriseId,
+        images: cleanedImages,
         specifications: specObj
       };
       if (editing) {
@@ -133,6 +176,46 @@ export default function Products() {
 
   const removeSpecification = (idx) => {
     setForm({...form, specifications: form.specifications.filter((_, i) => i !== idx)});
+  };
+
+  const addProductionStep = () => {
+    setForm({
+      ...form,
+      productionProcess: [...form.productionProcess, { title: '', description: '', image: '' }]
+    });
+  };
+
+  const updateProductionStep = (idx, field, value) => {
+    const steps = [...form.productionProcess];
+    steps[idx][field] = value;
+    setForm({ ...form, productionProcess: steps });
+  };
+
+  const removeProductionStep = (idx) => {
+    setForm({
+      ...form,
+      productionProcess: form.productionProcess.filter((_, i) => i !== idx)
+    });
+  };
+
+  const addProductQA = () => {
+    setForm({
+      ...form,
+      chatbotQA: [...form.chatbotQA, { question: '', answer: '' }]
+    });
+  };
+
+  const updateProductQA = (idx, field, value) => {
+    const qas = [...form.chatbotQA];
+    qas[idx][field] = value;
+    setForm({ ...form, chatbotQA: qas });
+  };
+
+  const removeProductQA = (idx) => {
+    setForm({
+      ...form,
+      chatbotQA: form.chatbotQA.filter((_, i) => i !== idx)
+    });
   };
 
   return (
@@ -237,35 +320,137 @@ export default function Products() {
                   <div className="input-group"><label>Danh mục</label><input className="input" value={form.category} onChange={e => setForm({...form, category: e.target.value})} /></div>
                   <div className="input-group"><label>Mã SKU</label><input className="input" value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} /></div>
                 </div>
-                <div className="input-group"><label>URL Hình ảnh</label><input className="input" value={form.images[0] || ''} onChange={e => setForm({...form, images: [e.target.value]})} placeholder="https://..." /></div>
+                <div className="form-row">
+                  <div className="input-group"><label>Mã vạch (Barcode EAN/UPC)</label><input className="input" value={form.barcode} onChange={e => setForm({...form, barcode: e.target.value})} placeholder="VD: 8931234567890" /></div>
+                  <div className="input-group"><label>Dòng thông tin xác thực tùy chỉnh (CMS)</label><input className="input" value={form.verificationText} onChange={e => setForm({...form, verificationText: e.target.value})} placeholder="VD: XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng" /></div>
+                </div>
+                <div className="input-group">
+                  <label>Hình ảnh sản phẩm (Tối đa 3 hình ảnh làm banner tự chuyển động)</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input className="input" placeholder="Ảnh banner 1 URL..." value={form.images[0] || ''} onChange={e => {
+                      const imgs = [...form.images];
+                      imgs[0] = e.target.value;
+                      setForm({...form, images: imgs});
+                    }} />
+                    <input className="input" placeholder="Ảnh banner 2 URL (Tùy chọn)..." value={form.images[1] || ''} onChange={e => {
+                      const imgs = [...form.images];
+                      imgs[1] = e.target.value;
+                      setForm({...form, images: imgs});
+                    }} />
+                    <input className="input" placeholder="Ảnh banner 3 URL (Tùy chọn)..." value={form.images[2] || ''} onChange={e => {
+                      const imgs = [...form.images];
+                      imgs[2] = e.target.value;
+                      setForm({...form, images: imgs});
+                    }} />
+                  </div>
+                </div>
                 <div className="input-group"><label>Mô tả chi tiết</label><textarea className="input textarea" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3} /></div>
 
-                {/* Specifications */}
+                {/* Certifications checklist */}
+                <div className="distributors-section" style={{ marginBottom: 20 }}>
+                  <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '8px', color: 'var(--primary-color)' }}>Chứng nhận đạt được</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    {Object.keys(form.certifications || {}).map((key) => {
+                      const certLabels = {
+                        iso: 'Chứng nhận ISO',
+                        vetinhATTP: 'Vệ sinh An toàn Thực phẩm',
+                        gmp: 'Tiêu chuẩn GMP',
+                        cgmp: 'Tiêu chuẩn CGMP',
+                        vietgap: 'Tiêu chuẩn VietGAP',
+                        organic: 'Chứng nhận Hữu cơ (Organic)'
+                      };
+                      const cert = form.certifications[key] || { checked: false, certNo: '', image: '' };
+                      return (
+                        <div key={key} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
+                            <input type="checkbox" checked={cert.checked} onChange={e => {
+                              const certs = { ...form.certifications };
+                              certs[key] = { ...certs[key], checked: e.target.checked };
+                              setForm({ ...form, certifications: certs });
+                            }} />
+                            <span style={{ fontSize: '0.85rem' }}>{certLabels[key]}</span>
+                          </label>
+                          {cert.checked && (
+                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <input className="input" style={{ fontSize: '0.8rem', padding: '4px 8px' }} placeholder="Số chứng nhận..." value={cert.certNo || ''} onChange={e => {
+                                const certs = { ...form.certifications };
+                                certs[key] = { ...certs[key], certNo: e.target.value };
+                                setForm({ ...form, certifications: certs });
+                              }} />
+                              <input className="input" style={{ fontSize: '0.8rem', padding: '4px 8px' }} placeholder="URL ảnh giấy chứng nhận..." value={cert.image || ''} onChange={e => {
+                                const certs = { ...form.certifications };
+                                certs[key] = { ...certs[key], image: e.target.value };
+                                setForm({ ...form, certifications: certs });
+                              }} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Production process */}
                 <div className="distributors-section" style={{ marginBottom: 20 }}>
                   <div className="section-header">
-                    <label>Thông số kỹ thuật / Thuộc tính (VD: Ngày thu hoạch, Tiêu chuẩn...)</label>
+                    <label>Quy trình sản xuất (Từng bước thực hiện)</label>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={addProductionStep}><Plus size={14}/> Thêm bước</button>
+                  </div>
+                  {form.productionProcess?.map((step, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 10, marginBottom: 8, alignItems: 'center' }}>
+                      <input className="input" placeholder="Tên bước (VD: Gieo trồng)" value={step.title || ''} onChange={e => updateProductionStep(idx, 'title', e.target.value)} />
+                      <input className="input" placeholder="Mô tả công việc của bước..." value={step.description || ''} onChange={e => updateProductionStep(idx, 'description', e.target.value)} />
+                      <button type="button" className="btn-icon" onClick={() => removeProductionStep(idx)}><X size={16}/></button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Dynamic Specifications */}
+                <div className="distributors-section" style={{ marginBottom: 20 }}>
+                  <div className="section-header">
+                    <label>Thông số kỹ thuật / Thuộc tính chung (VD: Trọng lượng, Hạn sử dụng...)</label>
                     <button type="button" className="btn btn-sm btn-ghost" onClick={addSpecification}><Plus size={14}/> Thêm thuộc tính</button>
                   </div>
                   {form.specifications?.map((spec, idx) => (
                     <div key={idx} className="distributor-row" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 10, marginBottom: 8, alignItems: 'center' }}>
-                      <input className="input" placeholder="Tên thuộc tính (VD: Tiêu chuẩn)" value={spec.key} onChange={e => updateSpecification(idx, 'key', e.target.value)} />
-                      <input className="input" placeholder="Giá trị (VD: VietGAP)" value={spec.value} onChange={e => updateSpecification(idx, 'value', e.target.value)} />
+                      <input className="input" placeholder="Tên thuộc tính (VD: Trọng lượng)" value={spec.key || ''} onChange={e => updateSpecification(idx, 'key', e.target.value)} />
+                      <input className="input" placeholder="Giá trị (VD: 300g)" value={spec.value || ''} onChange={e => updateSpecification(idx, 'value', e.target.value)} />
                       <button type="button" className="btn-icon" onClick={() => removeSpecification(idx)}><X size={16}/></button>
                     </div>
                   ))}
                 </div>
 
+                {/* Chatbot QA */}
+                <div className="distributors-section" style={{ marginBottom: 20 }}>
+                  <div className="section-header">
+                    <label>Hỏi - Đáp Chatbot sản phẩm (FAQ 1 câu hỏi - 1 câu trả lời)</label>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={addProductQA}><Plus size={14}/> Thêm Q&A</button>
+                  </div>
+                  {form.chatbotQA?.map((qa, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr auto', gap: 10, marginBottom: 8, alignItems: 'center' }}>
+                      <input className="input" placeholder="Câu hỏi của khách..." value={qa.question || ''} onChange={e => updateProductQA(idx, 'question', e.target.value)} />
+                      <input className="input" placeholder="Câu trả lời của bot..." value={qa.answer || ''} onChange={e => updateProductQA(idx, 'answer', e.target.value)} />
+                      <button type="button" className="btn-icon" onClick={() => removeProductQA(idx)}><X size={16}/></button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="form-row" style={{ marginBottom: 20 }}>
+                  <div className="input-group"><label>Giới thiệu Nhà sản xuất</label><textarea className="input textarea" value={form.producerInfo || ''} onChange={e => setForm({...form, producerInfo: e.target.value})} rows={2} placeholder="Nhập giới thiệu nhà sản xuất..." /></div>
+                  <div className="input-group"><label>Giới thiệu Nhà phân phối</label><textarea className="input textarea" value={form.distributorInfo || ''} onChange={e => setForm({...form, distributorInfo: e.target.value})} rows={2} placeholder="Nhập giới thiệu nhà phân phối..." /></div>
+                </div>
+
                 {/* Distributors */}
                 <div className="distributors-section">
                   <div className="section-header">
-                    <label>Điểm bán / Nhà phân phối</label>
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={addDistributor}><Plus size={14}/> Thêm</button>
+                    <label>Điểm bán / Nhà phân phối liên kết trực tiếp</label>
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={addDistributor}><Plus size={14}/> Thêm điểm bán</button>
                   </div>
                   {form.distributors.map((dist, idx) => (
                     <div key={idx} className="distributor-row">
-                      <input className="input" placeholder="Tên điểm bán" value={dist.name} onChange={e => updateDistributor(idx, 'name', e.target.value)} />
-                      <input className="input" placeholder="Địa chỉ" value={dist.address} onChange={e => updateDistributor(idx, 'address', e.target.value)} />
-                      <input className="input" placeholder="SĐT" value={dist.phone} onChange={e => updateDistributor(idx, 'phone', e.target.value)} />
+                      <input className="input" placeholder="Tên điểm bán" value={dist.name || ''} onChange={e => updateDistributor(idx, 'name', e.target.value)} />
+                      <input className="input" placeholder="Địa chỉ" value={dist.address || ''} onChange={e => updateDistributor(idx, 'address', e.target.value)} />
+                      <input className="input" placeholder="SĐT" value={dist.phone || ''} onChange={e => updateDistributor(idx, 'phone', e.target.value)} />
                       <button type="button" className="btn-icon" onClick={() => removeDistributor(idx)}><X size={16}/></button>
                     </div>
                   ))}

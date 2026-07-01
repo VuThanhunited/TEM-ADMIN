@@ -58,6 +58,10 @@ class UserApiService {
     return this.request('GET', `/public/scan/${serial}`, null, {}, false);
   }
 
+  getPublicBarcode(barcode) {
+    return this.request('GET', `/public/barcode/${barcode}`, null, {}, false);
+  }
+
   sendScanLocation(serial, data) {
     return this.request('POST', `/public/scan/${serial}/location`, data, {}, false);
   }

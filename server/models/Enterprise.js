@@ -46,7 +46,11 @@ const enterpriseSchema = new mongoose.Schema({
   chatbotConfig: {
     enabled: { type: Boolean, default: false },
     script: { type: String, default: '' },
-    welcomeMessage: { type: String, default: 'Xin chào! Tôi có thể giúp gì cho bạn?' }
+    welcomeMessage: { type: String, default: 'Xin chào! Tôi có thể giúp gì cho bạn?' },
+    qaList: [{
+      question: { type: String, default: '' },
+      answer: { type: String, default: '' }
+    }]
   },
   brandConfig: {
     primaryColor: { type: String, default: '#6366f1' },

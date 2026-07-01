@@ -105,6 +105,7 @@ class ApiService {
   
   // Public scan
   getPublicScan(serial) { return this.request('GET', `/public/scan/${serial}`); }
+  getPublicBarcode(barcode) { return this.request('GET', `/public/barcode/${barcode}`); }
   sendScanLocation(serial, data) { return this.request('POST', `/public/scan/${serial}/location`, data); }
 
   // Public NPP distributor features
