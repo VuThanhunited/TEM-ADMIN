@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Leaf, QrCode, ShieldCheck, Eye, Heart, Search,
   Phone, Mail, MapPin, Globe, Menu, X, ChevronRight,
   Sprout, Truck, PackageCheck, Users, CheckCircle,
   BarChart3, TrendingUp, Lock, ArrowRight, Scan,
-  User, Sparkles, Battery, Wifi, Plus, Smartphone, Store, ArrowLeft, Clock
+  User, Sparkles, Battery, Wifi, Plus, Smartphone, Store, ArrowLeft, Clock,
+  MessageSquare, Send, Bot
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Home.css';
@@ -23,6 +24,59 @@ export default function Home() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Chatbot State
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    if (chatOpen && chatMessages.length === 0) {
+      setChatMessages([
+        {
+          sender: 'bot',
+          text: 'Xin chào! Tôi là Trợ lý Hệ thống TEM. Tôi có thể giúp gì cho bạn? Bạn có thể hỏi tôi về cách truy xuất sản phẩm, lợi ích của hệ thống hoặc cách đăng nhập!',
+          time: new Date()
+        }
+      ]);
+    }
+  }, [chatOpen]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userText = chatInput.trim();
+    const newUserMsg = { sender: 'user', text: userText, time: new Date() };
+    setChatMessages(prev => [...prev, newUserMsg]);
+    setChatInput('');
+
+    setTimeout(() => {
+      let botResponse = '';
+      const textLower = userText.toLowerCase().trim();
+
+      if (textLower.includes('chào') || textLower.includes('hi') || textLower.includes('hello')) {
+        botResponse = 'Xin chào! Tôi có thể hỗ trợ gì cho bạn hôm nay?';
+      } else if (textLower.includes('quét') || textLower.includes('scan') || textLower.includes('qr')) {
+        botResponse = 'Để quét QR, bạn hãy dùng ứng dụng Camera điện thoại hoặc Zalo để quét mã dán trên sản phẩm. Hệ thống sẽ tự động xác minh nguồn gốc cho bạn.';
+      } else if (textLower.includes('nhập') || textLower.includes('serial') || textLower.includes('tra cứu')) {
+        botResponse = 'Bạn có thể nhập mã serial vào ô nhập liệu ở phần đầu trang chủ hoặc phần cuối trang này rồi nhấn nút "Tra cứu" để tìm thông tin.';
+      } else if (textLower.includes('đăng nhập') || textLower.includes('đăng ký') || textLower.includes('tài khoản') || textLower.includes('npp')) {
+        botResponse = 'Bạn có thể nhấp vào nút "Đăng nhập" ở góc phải của thanh điều hướng (Navbar) trên cùng để chuyển sang trang Đăng nhập / Đăng ký dùng chung dành cho cả khách hàng và nhà phân phối.';
+      } else if (textLower.includes('lợi ích') || textLower.includes('chống giả') || textLower.includes('vì sao')) {
+        botResponse = 'Hệ thống giúp kiểm soát chuỗi cung ứng, minh bạch thông tin sản xuất từ trang trại tới bàn ăn, bảo vệ quyền lợi người tiêu dùng và uy tín của doanh nghiệp.';
+      } else {
+        botResponse = 'Cảm ơn bạn đã nhắn tin. Nếu có bất kỳ thắc mắc nào khác về hệ thống Truy xuất nguồn gốc TEM, xin vui lòng gọi hotline 0123 456 789 để được tư vấn trực tiếp nhé!';
+      }
+
+      setChatMessages(prev => [...prev, { sender: 'bot', text: botResponse, time: new Date() }]);
+    }, 1000);
+  };
 
   // Intersection Observer for scroll animations
   useEffect(() => {
@@ -869,6 +923,45 @@ export default function Home() {
           © 2024 Truy Xuất Nguồn Gốc. All rights reserved.
         </div>
       </footer>
+
+      {/* Floating System Chatbot Widget */}
+      <div className="product-info-chatbot-widget">
+        {!chatOpen ? (
+          <button className="chatbot-toggle-btn" onClick={() => setChatOpen(true)}>
+            <MessageSquare size={20} />
+            <span>Trợ giúp</span>
+          </button>
+        ) : (
+          <div className="chatbot-window">
+            <div className="chatbot-header">
+              <span>Trợ lý Hệ thống TEM</span>
+              <button className="chatbot-close-btn" onClick={() => setChatOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="chatbot-messages">
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`chat-msg ${msg.sender}`}>
+                  {msg.text}
+                </div>
+              ))}
+              <div ref={chatEndRef}></div>
+            </div>
+            <form onSubmit={handleSendMessage} className="chatbot-input-area">
+              <input
+                type="text"
+                className="chatbot-input"
+                placeholder="Hỏi đáp về hệ thống..."
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+              />
+              <button type="submit" className="chatbot-send-btn">
+                <Send size={16} />
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
