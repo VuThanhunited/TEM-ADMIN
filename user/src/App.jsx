@@ -151,4 +151,5 @@ export default function App() {
       </AuthProvider>
     </BrowserRouter>
   );
-}
+
+// Trigger Vercel rebuild
