@@ -1,8 +1,12 @@
 /* ==========================================
-   Login Page – Guest / Consumer App
+   Consolidated Login & Register Page CSS
    ========================================== */
 
 .login-page {
+  --primary-color: #2E7D32; /* default guest green */
+  --primary-bg: #E8F5E9;
+  --glow-color: rgba(46,125,50,0.12);
+  
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -11,6 +15,13 @@
   padding: 24px 20px 40px;
   background: #F4F6FA;
   position: relative;
+  transition: background 0.3s ease;
+}
+
+.login-page.npp-mode {
+  --primary-color: #1565C0; /* npp blue */
+  --primary-bg: #E3F2FD;
+  --glow-color: rgba(21,101,192,0.12);
 }
 
 /* Background decoration */
@@ -21,8 +32,9 @@
   transform: translateX(-50%);
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(46,125,50,0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, var(--glow-color) 0%, transparent 70%);
   pointer-events: none;
+  transition: background 0.3s ease;
 }
 
 /* Card */
@@ -31,29 +43,66 @@
   max-width: 390px;
   background: #fff;
   border-radius: 20px;
-  padding: 36px 28px 28px;
+  padding: 30px 24px 28px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0;
+  z-index: 1;
+}
+
+/* Auth tabs selector */
+.auth-tabs {
+  display: flex;
+  width: 100%;
+  background: #ECEFF1;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.auth-tab {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #78909C;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.auth-tab.active {
+  background: #fff;
+  color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 /* Logo section */
 .login-logo-wrap {
   width: 84px;
   height: 84px;
-  background: #E8F5E9;
+  background: var(--primary-bg);
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 18px;
   position: relative;
+  transition: background 0.3s ease;
 }
 
 .login-logo-icon {
-  color: #2E7D32;
+  color: var(--primary-color);
+  transition: color 0.3s ease;
 }
 
 .login-brand-name {
@@ -68,7 +117,7 @@
 .login-brand-sub {
   font-size: 0.875rem;
   color: #546E7A;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   text-align: center;
 }
 
@@ -109,8 +158,8 @@
 }
 
 .login-input:focus {
-  border-color: #2E7D32;
-  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--glow-color);
   background: #fff;
 }
 
@@ -154,7 +203,7 @@
 .login-remember-check {
   width: 16px;
   height: 16px;
-  accent-color: #2E7D32;
+  accent-color: var(--primary-color);
   cursor: pointer;
 }
 
@@ -166,7 +215,7 @@
 
 .login-forgot {
   font-size: 0.85rem;
-  color: #2E7D32;
+  color: var(--primary-color);
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
@@ -178,6 +227,32 @@
 
 .login-forgot:hover {
   text-decoration: underline;
+}
+
+/* Select dropdown wrapper (NPP register) */
+.login-select {
+  width: 100%;
+  padding: 13px 14px 13px 44px;
+  border: 1.5px solid #E0E7EF;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  color: #0D1B2A;
+  background: #F8FAFC;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2390A4AE' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.login-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--glow-color);
+  background-color: #fff;
 }
 
 /* Error */
@@ -201,7 +276,7 @@
   gap: 8px;
   width: 100%;
   padding: 15px;
-  background: #2E7D32;
+  background: var(--primary-color);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -209,12 +284,12 @@
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition: background 0.2s, transform 0.1s, filter 0.2s;
   margin-top: 4px;
 }
 
 .login-submit-btn:hover:not(:disabled) {
-  background: #1B5E20;
+  filter: brightness(0.9);
 }
 
 .login-submit-btn:active:not(:disabled) {

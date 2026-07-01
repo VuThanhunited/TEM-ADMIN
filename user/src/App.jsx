@@ -3,8 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Home from './pages/Home/Home';
 import Login from './pages/Login/Login';
 import Register from './pages/Register/Register';
-import NppLogin from './pages/NppLogin/NppLogin';
-import NppRegister from './pages/NppRegister/NppRegister';
+// Unified Login and Register views replace separate NPP auth pages
 import ScanQR from './pages/Scan/ScanQR';
 import SelectStore from './pages/SelectStore/SelectStore';
 import Success from './pages/Success/Success';
@@ -44,7 +43,7 @@ function NppProtectedRoute({ children }) {
   }
 
   if (!isLoggedIn || user?.role !== 'NPP') {
-    return <Navigate to="/npp/login" replace />;
+    return <Navigate to="/login?tab=npp" replace />;
   }
 
   return children;
@@ -91,22 +90,8 @@ function AppRoutes() {
           </PublicRoute>
         }
       />
-      <Route
-        path="/npp/login"
-        element={
-          <PublicRoute>
-            <NppLogin />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/npp/register"
-        element={
-          <PublicRoute>
-            <NppRegister />
-          </PublicRoute>
-        }
-      />
+      <Route path="/npp/login" element={<Navigate to="/login?tab=npp" replace />} />
+      <Route path="/npp/register" element={<Navigate to="/register?tab=npp" replace />} />
       <Route
         path="/scan"
         element={
