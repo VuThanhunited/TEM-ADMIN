@@ -191,16 +191,18 @@ export default function NppScan() {
       </div>
 
       {/* Camera area */}
-      <div className="npp-scan-camera-area">
+      <div className="npp-scan-camera-area" style={{ position: 'relative' }}>
+        <div id="npp-reader" style={{ width: '100%', height: '100%', overflow: 'hidden' }} />
+
         {cameraStatus === 'loading' && (
-          <div className="npp-scan-camera-loading">
+          <div className="npp-scan-camera-loading" style={{ position: 'absolute', inset: 0, zIndex: 5, background: 'var(--color-bg-secondary, #ffffff)' }}>
             <div className="loading-spinner" style={{ width: 48, height: 48 }} />
             <p>Đang khởi động camera...</p>
           </div>
         )}
 
         {cameraStatus === 'denied' && (
-          <div className="npp-scan-no-camera">
+          <div className="npp-scan-no-camera" style={{ position: 'absolute', inset: 0, zIndex: 5, background: 'var(--color-bg-secondary, #ffffff)' }}>
             <Camera size={60} opacity={0.4} />
             <h3>Không thể truy cập camera</h3>
             <p>Vui lòng cho phép trình duyệt sử dụng camera và thử lại.</p>
@@ -212,8 +214,6 @@ export default function NppScan() {
 
         {(cameraStatus === 'active' || cameraStatus === 'error') && (
           <>
-            <div id="npp-reader" style={{ width: '100%', height: '100%', overflow: 'hidden' }} />
-
             {/* Scan overlay frame */}
             {!detected && (
               <div className="npp-scan-overlay">

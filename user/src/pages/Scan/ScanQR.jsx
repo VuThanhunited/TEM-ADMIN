@@ -197,16 +197,18 @@ export default function ScanQR() {
       </div>
 
       {/* Camera area */}
-      <div className="scan-camera-area">
+      <div className="scan-camera-area" style={{ position: 'relative' }}>
+        <div id="reader" style={{ width: '100%', height: '100%', overflow: 'hidden' }}></div>
+
         {cameraStatus === 'loading' && (
-          <div className="scan-camera-loading">
+          <div className="scan-camera-loading" style={{ position: 'absolute', inset: 0, zIndex: 5, background: '#121212' }}>
             <div className="loading-ring" style={{ borderTopColor: '#4CAF50' }} />
             <p>Đang khởi động camera...</p>
           </div>
         )}
 
         {cameraStatus === 'denied' && (
-          <div className="scan-no-camera">
+          <div className="scan-no-camera" style={{ position: 'absolute', inset: 0, zIndex: 5, background: '#121212' }}>
             <Camera size={56} color="rgba(255,255,255,0.4)" />
             <h3>Không thể truy cập camera</h3>
             <p>Vui lòng cho phép ứng dụng sử dụng camera trong cài đặt trình duyệt để quét.</p>
@@ -216,8 +218,6 @@ export default function ScanQR() {
 
         {(cameraStatus === 'active' || cameraStatus === 'error') && (
           <>
-            <div id="reader" style={{ width: '100%', height: '100%', overflow: 'hidden' }}></div>
-
             {/* Overlay with frame */}
             {!detected && (
               <div className="scan-overlay">
