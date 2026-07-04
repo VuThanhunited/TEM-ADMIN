@@ -114,25 +114,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          {/* Role Info */}
-          <div className="login-demo">
-            <p className="demo-title">Phân quyền đăng nhập</p>
-            <div className="demo-accounts">
-              <div className="demo-account" style={{ cursor: 'default' }}>
-                <span className="badge badge-dot badge-danger">
-                  <Settings size={10} style={{ marginRight: 3 }} />Admin / NSX
-                </span>
-                <span className="demo-cred">Quản lý toàn hệ thống</span>
-              </div>
-              <div className="demo-account" style={{ cursor: 'default' }}>
-                <span className="badge badge-dot badge-warning">
-                  <Store size={10} style={{ marginRight: 3 }} />NPP
-                </span>
-                <span className="demo-cred">Quét tem &amp; Lịch sử phân phối</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
