@@ -14,17 +14,6 @@ export default function Login() {
   const queryTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(queryTab === 'npp' ? 'npp' : 'guest');
 
-  useEffect(() => {
-    const getAdminUrl = () => {
-      const { hostname, protocol } = window.location;
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return `${protocol}//localhost:5173/login`;
-      }
-      return 'https://tem-admin-eight.vercel.app/login';
-    };
-    window.location.href = getAdminUrl();
-  }, []);
-
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -69,32 +58,12 @@ export default function Login() {
       if (activeTab === 'npp') {
         result = await userApi.nppLogin({ username: username.trim(), password });
         login(result.user, result.token);
-
-        // Check NPP redirect
-        const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
-        if (savedRedirect) {
-          try {
-            const { path, state } = JSON.parse(savedRedirect);
-            sessionStorage.removeItem('npp_redirect_after_login');
-            navigate(path, { state, replace: true });
-            return;
-          } catch { /* ignore */ }
-        }
-        navigate('/scan', { replace: true });
+        alert('Đăng nhập thành công!');
+        navigate('/home', { replace: true });
       } else {
         result = await userApi.guestLogin({ username: username.trim(), password });
         login(result.user, result.token);
-
-        // Check Guest redirect
-        const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
-        if (savedRedirect) {
-          try {
-            const { path, state } = JSON.parse(savedRedirect);
-            sessionStorage.removeItem('guest_redirect_after_login');
-            navigate(path, { state, replace: true });
-            return;
-          } catch { /* ignore */ }
-        }
+        alert('Đăng nhập thành công!');
         navigate('/home', { replace: true });
       }
     } catch (err) {

@@ -14,17 +14,6 @@ export default function Register() {
   const queryTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(queryTab === 'npp' ? 'npp' : 'guest');
 
-  useEffect(() => {
-    const getAdminUrl = () => {
-      const { hostname, protocol } = window.location;
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return `${protocol}//localhost:5173/login`;
-      }
-      return 'https://tem-admin-eight.vercel.app/login';
-    };
-    window.location.href = getAdminUrl();
-  }, []);
-
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,21 +26,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Track whether the user is actively submitting the registration form.
-  // This prevents the "already-logged-in" redirect from firing mid-submit.
-  const isSubmittingRef = useRef(false);
-
-  // Redirect if already logged in before reaching this page
-  useEffect(() => {
-    if (isLoggedIn && !isSubmittingRef.current) {
-      if (user?.role === 'NPP') {
-        navigate('/scan', { replace: true });
-      } else {
-        navigate('/home', { replace: true });
-      }
-    }
-  }, [isLoggedIn, user, navigate]);
 
   // Clear inputs and error when switching tabs
   const handleTabChange = (tab) => {
@@ -66,6 +40,15 @@ export default function Register() {
     setSearchParams({ tab });
   };
 
+  // Sync tab state with URL query parameters
+  useEffect(() => {
+    if (queryTab === 'npp' && activeTab !== 'npp') {
+      setActiveTab('npp');
+    } else if (queryTab !== 'npp' && activeTab !== 'guest') {
+      setActiveTab('guest');
+    }
+  }, [queryTab]);
+
   // Fetch enterprises if active tab is NPP
   useEffect(() => {
     if (activeTab === 'npp') {
@@ -74,18 +57,6 @@ export default function Register() {
         try {
           const list = await userApi.getPublicEnterprises();
           setEnterprises(list);
-
-          // Pre-select enterprise if coming from a QR scan redirect
-          const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
-          if (savedRedirect) {
-            try {
-              const { state } = JSON.parse(savedRedirect);
-              const scannedEnterpriseId = state?.scanData?.enterprise?._id;
-              if (scannedEnterpriseId) {
-                setEnterpriseId(scannedEnterpriseId);
-              }
-            } catch { /* ignore */ }
-          }
         } catch (err) {
           console.error('Failed to load enterprises:', err);
           setError('Không thể tải danh sách doanh nghiệp liên kết');
@@ -96,15 +67,6 @@ export default function Register() {
       loadEnterprises();
     }
   }, [activeTab]);
-
-  // Sync tab state with URL query parameters
-  useEffect(() => {
-    if (queryTab === 'npp' && activeTab !== 'npp') {
-      setActiveTab('npp');
-    } else if (queryTab !== 'npp' && activeTab !== 'guest') {
-      setActiveTab('guest');
-    }
-  }, [queryTab]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -125,14 +87,12 @@ export default function Register() {
       return;
     }
 
-    isSubmittingRef.current = true;
     setLoading(true);
     setError('');
 
     try {
-      let result;
       if (activeTab === 'npp') {
-        result = await userApi.nppRegister({
+        await userApi.nppRegister({
           username: username.trim(),
           email: email.trim(),
           password,
@@ -140,43 +100,20 @@ export default function Register() {
           address: address.trim(),
           enterpriseId
         });
-        login(result.user, result.token);
-
-        // Redirect after registration
-        const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
-        if (savedRedirect) {
-          try {
-            const { path, state } = JSON.parse(savedRedirect);
-            sessionStorage.removeItem('npp_redirect_after_login');
-            navigate(path, { state, replace: true });
-            return;
-          } catch { /* ignore parse error */ }
-        }
-        navigate('/scan', { replace: true });
+        alert('Đăng ký tài khoản nhà phân phối thành công! Vui lòng đăng nhập.');
+        navigate('/login?tab=npp', { replace: true });
       } else {
-        result = await userApi.guestRegister({
+        await userApi.guestRegister({
           username: username.trim(),
           email: email.trim(),
           password,
           fullName: fullName.trim(),
           address: address.trim()
         });
-        login(result.user, result.token);
-
-        // Redirect after registration
-        const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
-        if (savedRedirect) {
-          try {
-            const { path, state } = JSON.parse(savedRedirect);
-            sessionStorage.removeItem('guest_redirect_after_login');
-            navigate(path, { state, replace: true });
-            return;
-          } catch { /* ignore parse error */ }
-        }
-        navigate('/home', { replace: true });
+        alert('Đăng ký tài khoản khách hàng thành công! Vui lòng đăng nhập.');
+        navigate('/login?tab=guest', { replace: true });
       }
     } catch (err) {
-      isSubmittingRef.current = false;
       setError(err.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setLoading(false);
