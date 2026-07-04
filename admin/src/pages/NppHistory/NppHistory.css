@@ -1,27 +1,185 @@
 /* ==========================================
-   NppHistory Page
+   NppHistory Page — Standard Admin Theme
    ========================================== */
-.npp-history-page { padding: 24px; max-width: 900px; }
-.npp-history-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
-.npp-history-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary, #e2e8f0); margin: 0 0 4px; }
-.npp-history-sub { font-size: 0.875rem; color: var(--text-secondary, #94a3b8); margin: 0; }
-.npp-refresh-btn { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.npp-history-stats { display: flex; gap: 16px; margin-bottom: 24px; }
-.npp-stat-card { background: var(--bg-card, rgba(30,41,59,0.8)); border: 1px solid var(--border-color, rgba(255,255,255,0.08)); border-radius: 12px; padding: 16px 24px; min-width: 140px; }
-.npp-stat-value { font-size: 2rem; font-weight: 800; color: #6366f1; line-height: 1; margin-bottom: 6px; }
-.npp-stat-label { font-size: 0.78rem; color: var(--text-secondary, #94a3b8); font-weight: 500; }
-.npp-history-loading, .npp-history-empty, .npp-history-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 60px 24px; text-align: center; color: var(--text-secondary, #94a3b8); }
-.npp-history-empty h3 { font-size: 1.1rem; font-weight: 700; color: var(--text-primary, #e2e8f0); margin: 0; }
-.npp-history-empty p { font-size: 0.875rem; margin: 0; }
-.npp-history-error { color: #f87171; }
-.npp-history-list { display: flex; flex-direction: column; gap: 10px; }
-.npp-history-item { display: flex; align-items: center; gap: 14px; background: var(--bg-card, rgba(30,41,59,0.8)); border: 1px solid var(--border-color, rgba(255,255,255,0.08)); border-radius: 12px; padding: 14px 18px; transition: border-color 0.2s; }
-.npp-history-item:hover { border-color: rgba(99,102,241,0.3); }
-.npp-history-item-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(99,102,241,0.12); display: flex; align-items: center; justify-content: center; color: #6366f1; flex-shrink: 0; }
-.npp-history-item-info { flex: 1; min-width: 0; }
-.npp-history-product { display: flex; align-items: center; gap: 5px; font-size: 0.88rem; font-weight: 600; color: var(--text-primary, #e2e8f0); margin-bottom: 3px; }
-.npp-history-serial { font-size: 0.8rem; color: var(--text-secondary, #94a3b8); margin-bottom: 2px; }
-.npp-history-store { font-size: 0.78rem; color: #6366f1; }
-.npp-history-item-time { display: flex; align-items: center; gap: 5px; font-size: 0.75rem; color: var(--text-secondary, #94a3b8); white-space: nowrap; flex-shrink: 0; }
+
+.npp-history-page {
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Top */
+.npp-history-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.npp-history-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #0f172a);
+  margin: 0 0 4px;
+}
+
+.npp-history-sub {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary, #475569);
+  margin: 0;
+}
+
+.npp-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Stats */
+.npp-history-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.npp-stat-card {
+  background: var(--color-bg-card, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 20px 24px;
+  min-width: 160px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.npp-stat-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--color-accent, #4f46e5);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.npp-stat-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #475569);
+  font-weight: 600;
+}
+
+/* Loading / Empty / Error */
+.npp-history-loading,
+.npp-history-empty,
+.npp-history-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--color-text-secondary, #475569);
+  background: var(--color-bg-secondary, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+}
+
+.npp-history-empty h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #0f172a);
+  margin: 0;
+}
+
+.npp-history-empty p {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--color-text-muted, #94a3b8);
+}
+
+.npp-history-error {
+  color: var(--color-danger, #ef4444);
+}
+
+/* List */
+.npp-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.npp-history-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--color-bg-card, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 16px 20px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.npp-history-item:hover {
+  border-color: var(--color-accent-light, #6366f1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.npp-history-item-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--color-accent-glow, rgba(79, 70, 229, 0.05));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent, #4f46e5);
+  flex-shrink: 0;
+}
+
+.npp-history-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.npp-history-product {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #0f172a);
+  margin-bottom: 4px;
+}
+
+.npp-history-serial {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary, #475569);
+  margin-bottom: 2px;
+}
+
+.npp-history-store {
+  font-size: 0.8rem;
+  color: var(--color-accent, #4f46e5);
+  font-weight: 500;
+}
+
+.npp-history-item-time {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #94a3b8);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

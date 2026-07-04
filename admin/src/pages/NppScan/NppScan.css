@@ -1,23 +1,20 @@
 /* ==========================================
-   NppScan Page — Admin Version
+   NppScan Page — Standard Admin Theme
    ========================================== */
 
 .npp-scan-page {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 60px); /* account for admin header */
-  background: #0D1B2A;
-  position: relative;
-  overflow: hidden;
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 /* Toast */
 .npp-scan-toast {
-  position: absolute;
-  top: 70px;
+  position: fixed;
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -26,17 +23,17 @@
   font-size: 0.92rem;
   font-weight: 600;
   color: #fff;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   animation: toastIn 0.3s ease-out;
   white-space: nowrap;
 }
 
 .npp-scan-toast.success {
-  background: #2e7d32;
+  background: var(--color-success, #10b981);
 }
 
 .npp-scan-toast.error {
-  background: #c62828;
+  background: var(--color-danger, #ef4444);
 }
 
 @keyframes toastIn {
@@ -49,11 +46,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  z-index: 20;
-  background: linear-gradient(to bottom, rgba(13,27,42,0.9), transparent);
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
 }
 
 .npp-scan-header-info {
@@ -62,41 +57,47 @@
 }
 
 .npp-scan-title {
-  color: #fff;
-  font-size: 1rem;
+  color: var(--color-text-primary, #0f172a);
+  font-size: 1.5rem;
   font-weight: 700;
-  letter-spacing: 0.3px;
 }
 
 .npp-scan-sub {
-  color: rgba(255,255,255,0.6);
-  font-size: 0.78rem;
+  color: var(--color-text-secondary, #475569);
+  font-size: 0.88rem;
+  margin-top: 4px;
 }
 
 .npp-flash-btn {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: rgba(255,255,255,0.15);
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-bg-secondary, #ffffff);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #fff;
-  transition: background 0.2s;
+  color: var(--color-text-primary, #0f172a);
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .npp-flash-btn:hover {
-  background: rgba(255,255,255,0.25);
+  background: var(--color-bg-hover, #f1f5f9);
+  border-color: var(--color-border-focus, #4f46e5);
+  color: var(--color-accent, #4f46e5);
 }
 
 /* Camera Area */
 .npp-scan-camera-area {
-  flex: 1;
   position: relative;
-  background: #000;
+  background: #1e293b; /* dark overlay for reader */
+  border-radius: 12px;
   overflow: hidden;
+  height: 450px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--color-border, #e2e8f0);
 }
 
 /* Overlay */
@@ -112,7 +113,7 @@
 .npp-scan-mask-bottom {
   flex: 1;
   width: 100%;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.5);
 }
 
 .npp-scan-mask-middle {
@@ -123,21 +124,21 @@
 
 .npp-scan-mask-side {
   flex: 1;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0,0,0,0.5);
 }
 
 .npp-scan-frame {
-  width: 260px;
-  height: 260px;
+  width: 250px;
+  height: 250px;
   position: relative;
   flex-shrink: 0;
 }
 
 .npp-scan-corner {
   position: absolute;
-  width: 30px;
-  height: 30px;
-  border-color: #4CAF50;
+  width: 24px;
+  height: 24px;
+  border-color: var(--color-accent, #4f46e5);
   border-style: solid;
   border-width: 0;
 }
@@ -151,9 +152,9 @@
   position: absolute;
   left: 4px; right: 4px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #4CAF50, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-accent, #4f46e5), transparent);
   animation: nppScanLine 2s linear infinite;
-  box-shadow: 0 0 8px rgba(76,175,80,0.8);
+  box-shadow: 0 0 8px var(--color-accent-light, #6366f1);
 }
 
 @keyframes nppScanLine {
@@ -164,17 +165,18 @@
 
 .npp-scan-hint {
   position: absolute;
-  bottom: 16px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,0.65);
+  background: rgba(15, 23, 42, 0.85);
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 500;
-  padding: 6px 18px;
+  padding: 6px 16px;
   border-radius: 20px;
   white-space: nowrap;
   z-index: 5;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 /* Detected */
@@ -186,7 +188,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  background: rgba(76,175,80,0.15);
+  background: rgba(16, 185, 129, 0.15);
   z-index: 10;
   color: #fff;
   font-size: 0.95rem;
@@ -209,14 +211,14 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: #0D1B2A;
-  color: rgba(255,255,255,0.7);
+  background: var(--color-bg-secondary, #ffffff);
+  color: var(--color-text-secondary, #475569);
   text-align: center;
   padding: 32px;
 }
 
 .npp-scan-no-camera h3 {
-  color: #fff;
+  color: var(--color-text-primary, #0f172a);
   font-size: 1.1rem;
   font-weight: 700;
 }
@@ -225,20 +227,21 @@
   font-size: 0.88rem;
   line-height: 1.6;
   max-width: 280px;
+  color: var(--color-text-muted, #94a3b8);
 }
 
 /* Footer */
 .npp-scan-footer {
-  background: #0D1B2A;
-  padding: 16px 20px 24px;
-  text-align: center;
-  border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .npp-scan-footer p {
-  color: rgba(255,255,255,0.45);
-  font-size: 0.78rem;
-  margin-bottom: 10px;
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 0.8rem;
 }
 
 /* Camera reader overrides */
