@@ -775,7 +775,7 @@ export default function Scan() {
             <div className="expand-section-card agri" style={{ marginTop: '16px', display: 'block', backgroundColor: 'white', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
               <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
                 <Building size={16} style={{ color: '#2e7d32' }} />
-                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>THÔNG TIN NHÀ SẢN XUẤT</span>
+                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>{effectiveTheme === 'agriculture' ? 'THÔNG TIN TRANG TRẠI' : 'THÔNG TIN NHÀ SẢN XUẤT'}</span>
               </div>
               <div className="expand-section-body" style={{ padding: '16px' }}>
                 {product?.producerInfo ? (
@@ -897,9 +897,14 @@ export default function Scan() {
 
             {/* Farm / Factory Location Map */}
             <div className="expand-section-card agri" style={{ marginTop: '16px', display: 'block', backgroundColor: 'white', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-              <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
-                <MapPin size={16} style={{ color: '#2e7d32' }} />
-                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>VỊ TRÍ TRANG TRẠI / XƯỞNG</span>
+              <div className="expand-section-header agri" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MapPin size={16} style={{ color: '#2e7d32' }} />
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>{effectiveTheme === 'agriculture' ? 'VỊ TRÍ TRANG TRẠI' : 'VỊ TRÍ TRANG TRẠI / XƯỞNG'}</span>
+                </div>
+                <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#2e7d32', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  Xem trên bản đồ <ChevronRight size={14} />
+                </a>
               </div>
               <div className="expand-section-body" style={{ padding: '16px' }}>
                 <div className="map-wrapper-new" style={{ borderRadius: '8px', overflow: 'hidden' }}>

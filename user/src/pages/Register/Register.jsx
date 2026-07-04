@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Leaf, Store, User, Mail, Lock, Eye, EyeOff, MapPin, Building2, AlertCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,13 +6,27 @@ import userApi from '../../services/api';
 import '../Login/Login.css'; // Reuse Login styles
 
 export default function Register() {
-  const { login } = useAuth();
+  const { login, isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Determine initial tab from query parameter (?tab=npp)
   const queryTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(queryTab === 'npp' ? 'npp' : 'guest');
+
+  useEffect(() => {
+    const getAdminUrl = () => {
+      const { hostname, protocol } = window.location;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return `${protocol}//localhost:5173/login`;
+      }
+      if (hostname.includes('user')) {
+        return `${protocol}//` + hostname.replace('user', 'admin') + '/login';
+      }
+      return 'https://tem-admin.onrender.com/login';
+    };
+    window.location.href = getAdminUrl();
+  }, []);
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -26,6 +40,21 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Track whether the user is actively submitting the registration form.
+  // This prevents the "already-logged-in" redirect from firing mid-submit.
+  const isSubmittingRef = useRef(false);
+
+  // Redirect if already logged in before reaching this page
+  useEffect(() => {
+    if (isLoggedIn && !isSubmittingRef.current) {
+      if (user?.role === 'NPP') {
+        navigate('/scan', { replace: true });
+      } else {
+        navigate('/home', { replace: true });
+      }
+    }
+  }, [isLoggedIn, user, navigate]);
 
   // Clear inputs and error when switching tabs
   const handleTabChange = (tab) => {
@@ -99,6 +128,7 @@ export default function Register() {
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -149,6 +179,7 @@ export default function Register() {
         navigate('/home', { replace: true });
       }
     } catch (err) {
+      isSubmittingRef.current = false;
       setError(err.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setLoading(false);

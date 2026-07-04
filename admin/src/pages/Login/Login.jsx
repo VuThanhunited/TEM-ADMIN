@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Shield, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { Shield, Eye, EyeOff, LogIn, AlertCircle, Store, Settings } from 'lucide-react';
 import './Login.css';
 
 export default function Login() {
   const { login, error, setError } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +20,13 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await login(username, password);
+      const result = await login(username, password);
+      // Redirect theo role sau khi đăng nhập thành công
+      if (result?.user?.role === 'NPP') {
+        navigate('/npp/scan', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (err) {
       // Error is set in context
     } finally {
@@ -63,7 +71,7 @@ export default function Login() {
                 className="input"
                 placeholder="Nhập tên đăng nhập..."
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => { setUsername(e.target.value); setError(null); }}
                 autoFocus
                 autoComplete="username"
               />
@@ -78,7 +86,7 @@ export default function Login() {
                   className="input"
                   placeholder="Nhập mật khẩu..."
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setError(null); }}
                   autoComplete="current-password"
                 />
                 <button
@@ -107,22 +115,22 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Demo Accounts */}
+          {/* Role Info */}
           <div className="login-demo">
-            <p className="demo-title">Tài khoản demo</p>
+            <p className="demo-title">Phân quyền đăng nhập</p>
             <div className="demo-accounts">
-              <button type="button" className="demo-account" onClick={() => { setUsername('admin'); setPassword('admin123'); }}>
-                <span className="badge badge-dot badge-danger">Admin</span>
-                <span className="demo-cred">admin / admin123</span>
-              </button>
-              <button type="button" className="demo-account" onClick={() => { setUsername('viethuong'); setPassword('nsx123'); }}>
-                <span className="badge badge-dot badge-success">NSX</span>
-                <span className="demo-cred">viethuong / nsx123</span>
-              </button>
-              <button type="button" className="demo-account" onClick={() => { setUsername('saovang'); setPassword('npp123'); }}>
-                <span className="badge badge-dot badge-warning">NPP</span>
-                <span className="demo-cred">saovang / npp123</span>
-              </button>
+              <div className="demo-account" style={{ cursor: 'default' }}>
+                <span className="badge badge-dot badge-danger">
+                  <Settings size={10} style={{ marginRight: 3 }} />Admin / NSX
+                </span>
+                <span className="demo-cred">Quản lý toàn hệ thống</span>
+              </div>
+              <div className="demo-account" style={{ cursor: 'default' }}>
+                <span className="badge badge-dot badge-warning">
+                  <Store size={10} style={{ marginRight: 3 }} />NPP
+                </span>
+                <span className="demo-cred">Quét tem &amp; Lịch sử phân phối</span>
+              </div>
             </div>
           </div>
         </div>

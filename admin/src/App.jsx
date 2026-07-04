@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MainLayout from './components/Layout/MainLayout';
 import Login from './pages/Login/Login';
@@ -11,38 +11,33 @@ import Templates from './pages/Templates/Templates';
 import Analytics from './pages/Analytics/Analytics';
 import Scan from './pages/Scan/Scan';
 import Distributors from './pages/Distributors/Distributors';
+import NppScan from './pages/NppScan/NppScan';
+import NppHistory from './pages/NppHistory/NppHistory';
 import './App.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading, isAdmin } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="app-loading">
-        <div className="loading-spinner" style={{width: 48, height: 48}}></div>
-        <p>Đang tải...</p>
-      </div>
-    );
-  }
-
+  if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div><p>Đang tải...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
+  return children;
+}
 
+function NppRoute({ children }) {
+  const { user, loading, isNPP } = useAuth();
+  if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isNPP) return <Navigate to="/" replace />;
   return children;
 }
 
 function PublicRoute({ children }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="app-loading">
-        <div className="loading-spinner" style={{width: 48, height: 48}}></div>
-      </div>
-    );
+  const { user, loading, isNPP } = useAuth();
+  if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
+  if (user) {
+    if (isNPP) return <Navigate to="/npp/scan" replace />;
+    return <Navigate to="/" replace />;
   }
-
-  if (user) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -53,6 +48,12 @@ function AppRoutes() {
       <Route path="/scan/:serial" element={<Scan />} />
       <Route path="/qrcode/:serial" element={<Scan />} />
       <Route path="/temqr/:serial" element={<Scan />} />
+      <Route path="/npp/scan" element={<NppRoute><MainLayout /></NppRoute>}>
+        <Route index element={<NppScan />} />
+      </Route>
+      <Route path="/npp/history" element={<NppRoute><MainLayout /></NppRoute>}>
+        <Route index element={<NppHistory />} />
+      </Route>
       <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="accounts" element={<ProtectedRoute adminOnly><Accounts /></ProtectedRoute>} />

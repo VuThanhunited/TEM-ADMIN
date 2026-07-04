@@ -27,12 +27,19 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa' });
     }
 
+    // GUEST không được đăng nhập vào hệ thống quản lý
+    if (user.role === 'GUEST') {
+      return res.status(403).json({ 
+        error: 'Tài khoản khách hàng không có quyền truy cập hệ thống quản lý. Vui lòng liên hệ admin.' 
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
 
-    // Check subscription
+    // Check subscription (không áp dụng cho ADMIN)
     if (user.role !== 'ADMIN' && user.subscriptionExpiry) {
       if (new Date() > new Date(user.subscriptionExpiry)) {
         return res.status(403).json({ error: 'Tài khoản đã hết hạn. Vui lòng liên hệ Admin để gia hạn.' });
@@ -61,6 +68,7 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 });
+
 
 // GET /api/auth/me
 router.get('/me', auth, async (req, res) => {

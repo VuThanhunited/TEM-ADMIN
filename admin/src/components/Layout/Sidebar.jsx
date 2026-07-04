@@ -3,28 +3,30 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Building2, Package, Tag,
-  Palette, BarChart3, ChevronLeft, ChevronDown, ChevronRight,
-  Shield, LogOut, Settings
+  Palette, BarChart3, ChevronLeft, ChevronDown,
+  Shield, LogOut, ScanLine, History, Store
 } from 'lucide-react';
 import './Sidebar.css';
 
-const menuItems = [
+// Menu cho ADMIN và NSX
+const adminMenuItems = [
   {
     label: 'Dashboard',
     icon: LayoutDashboard,
     path: '/',
+    roles: ['ADMIN', 'NSX'],
   },
   {
     label: 'Quản lý Tài khoản',
     icon: Users,
     path: '/accounts',
-    adminOnly: true,
+    roles: ['ADMIN'],
   },
   {
     label: 'Cấu hình Doanh nghiệp',
     icon: Building2,
     path: '/enterprise',
-    enterpriseOnly: true,
+    roles: ['ADMIN', 'NSX'],
     children: [
       { label: 'Thông tin công ty', path: '/enterprise' },
       { label: 'Cấu hình Domain', path: '/enterprise/domain' },
@@ -35,17 +37,19 @@ const menuItems = [
     label: 'Quản lý Sản phẩm',
     icon: Package,
     path: '/products',
+    roles: ['ADMIN', 'NSX'],
   },
   {
     label: 'Quản lý NPP / Cửa hàng',
-    icon: Users,
+    icon: Store,
     path: '/distributors',
-    enterpriseOnly: true,
+    roles: ['ADMIN', 'NSX'],
   },
   {
     label: 'Quản lý Tem nhãn',
     icon: Tag,
     path: '/labels',
+    roles: ['ADMIN', 'NSX'],
     children: [
       { label: 'Quản lý Lô tem', path: '/labels' },
       { label: 'Kích hoạt & Gắn Serial', path: '/labels/activate' },
@@ -57,11 +61,13 @@ const menuItems = [
     label: 'Cấu hình Giao diện',
     icon: Palette,
     path: '/templates',
+    roles: ['ADMIN', 'NSX'],
   },
   {
     label: 'Báo cáo & Thống kê',
     icon: BarChart3,
     path: '/analytics',
+    roles: ['ADMIN', 'NSX'],
     children: [
       { label: 'Lịch sử quét tem', path: '/analytics' },
       { label: 'Bản đồ vị trí quét', path: '/analytics/map' },
@@ -70,8 +76,24 @@ const menuItems = [
   },
 ];
 
+// Menu riêng cho NPP
+const nppMenuItems = [
+  {
+    label: 'Quét Tem',
+    icon: ScanLine,
+    path: '/npp/scan',
+    roles: ['NPP'],
+  },
+  {
+    label: 'Lịch Sử Phân Phối',
+    icon: History,
+    path: '/npp/history',
+    roles: ['NPP'],
+  },
+];
+
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }) {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isNPP, logout } = useAuth();
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState({});
 
@@ -84,10 +106,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
     return location.pathname.startsWith(path);
   };
 
-  const filteredItems = menuItems.filter(item => {
-    if (item.adminOnly && !isAdmin) return false;
-    if (item.enterpriseOnly && isAdmin) return false;
-    return true;
+  // Chọn menu theo role
+  const allItems = isNPP ? nppMenuItems : adminMenuItems;
+  const filteredItems = allItems.filter(item => {
+    if (!item.roles) return true;
+    return item.roles.includes(user?.role);
   });
 
   const getRoleLabel = (role) => {
@@ -96,6 +119,15 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
       case 'NSX': return 'Nhà sản xuất';
       case 'NPP': return 'Nhà phân phối';
       default: return role;
+    }
+  };
+
+  const getRoleBadgeColor = (role) => {
+    switch(role) {
+      case 'ADMIN': return '#ef4444';
+      case 'NSX': return '#22c55e';
+      case 'NPP': return '#f59e0b';
+      default: return '#6366f1';
     }
   };
 
@@ -113,7 +145,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
         {!collapsed && (
           <div className="brand-text">
             <span className="brand-name">TEM Admin</span>
-            <span className="brand-sub">Smart Label CMS</span>
+            <span className="brand-sub">{isNPP ? 'Nhà Phân Phối' : 'Smart Label CMS'}</span>
           </div>
         )}
         <button className="sidebar-toggle" onClick={onToggle}>
@@ -123,7 +155,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        <div className="nav-section-label">{!collapsed && 'MENU CHÍNH'}</div>
+        <div className="nav-section-label">
+          {!collapsed && (isNPP ? 'CHỨC NĂNG NPP' : 'MENU CHÍNH')}
+        </div>
         {filteredItems.map((item) => {
           const Icon = item.icon;
           const hasChildren = item.children && item.children.length > 0;
@@ -190,7 +224,10 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
       {!collapsed && (
         <div className="sidebar-footer">
           <div className="user-card">
-            <div className="user-avatar">
+            <div
+              className="user-avatar"
+              style={{ background: getRoleBadgeColor(user?.role) }}
+            >
               {user?.fullName?.charAt(0) || 'U'}
             </div>
             <div className="user-info">

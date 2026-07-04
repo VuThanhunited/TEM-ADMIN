@@ -14,6 +14,20 @@ export default function Login() {
   const queryTab = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(queryTab === 'npp' ? 'npp' : 'guest');
 
+  useEffect(() => {
+    const getAdminUrl = () => {
+      const { hostname, protocol } = window.location;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return `${protocol}//localhost:5173/login`;
+      }
+      if (hostname.includes('user')) {
+        return `${protocol}//` + hostname.replace('user', 'admin') + '/login';
+      }
+      return 'https://tem-admin.onrender.com/login';
+    };
+    window.location.href = getAdminUrl();
+  }, []);
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);

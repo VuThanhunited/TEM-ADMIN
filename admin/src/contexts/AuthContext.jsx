@@ -48,7 +48,9 @@ export function AuthProvider({ children }) {
   };
 
   const isAdmin = user?.role === 'ADMIN';
-  const isEnterprise = user?.role === 'NSX' || user?.role === 'NPP';
+  const isNSX = user?.role === 'NSX';
+  const isNPP = user?.role === 'NPP';
+  const isEnterprise = isNSX || isNPP;
   const enterpriseId = user?.enterpriseId?._id || user?.enterpriseId;
 
   const value = {
@@ -58,6 +60,8 @@ export function AuthProvider({ children }) {
     login,
     logout,
     isAdmin,
+    isNSX,
+    isNPP,
     isEnterprise,
     enterpriseId,
     setError

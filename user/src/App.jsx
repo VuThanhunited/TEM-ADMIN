@@ -84,11 +84,7 @@ function AppRoutes() {
       />
       <Route
         path="/register"
-        element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        }
+        element={<Register />}
       />
       <Route path="/npp/login" element={<Navigate to="/login?tab=npp" replace />} />
       <Route path="/npp/register" element={<Navigate to="/register?tab=npp" replace />} />

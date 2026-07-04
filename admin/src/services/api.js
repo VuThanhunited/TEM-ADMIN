@@ -108,8 +108,9 @@ class ApiService {
   getPublicBarcode(barcode) { return this.request('GET', `/public/barcode/${barcode}`); }
   sendScanLocation(serial, data) { return this.request('POST', `/public/scan/${serial}/location`, data); }
 
-  // Public NPP distributor features
-  nppLogin(credentials) { return this.request('POST', '/public/npp-login', credentials); }
+  // Public NPP distributor features (for NPP users logged into admin)
+  nppScanSerial(data) { return this.request('POST', '/public/distributor-entry-single', data); }
+  nppGetHistory() { return this.request('GET', '/public/npp-scan-history'); }
   getPublicDistributors(enterpriseId) { return this.request('GET', `/public/distributors/${enterpriseId}`); }
   submitDistributorEntry(data) { return this.request('POST', '/public/distributor-entry', data); }
 }
