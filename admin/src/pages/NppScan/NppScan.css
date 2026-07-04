@@ -245,6 +245,16 @@
 }
 
 /* Camera reader overrides */
+#npp-reader {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#npp-reader > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 #npp-reader video {
   width: 100% !important;
   height: 100% !important;
