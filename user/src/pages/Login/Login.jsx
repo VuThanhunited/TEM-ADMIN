@@ -58,12 +58,32 @@ export default function Login() {
       if (activeTab === 'npp') {
         result = await userApi.nppLogin({ username: username.trim(), password });
         login(result.user, result.token);
-        alert('Đăng nhập thành công!');
-        navigate('/home', { replace: true });
+
+        // Check NPP redirect
+        const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
+        if (savedRedirect) {
+          try {
+            const { path, state } = JSON.parse(savedRedirect);
+            sessionStorage.removeItem('npp_redirect_after_login');
+            navigate(path, { state, replace: true });
+            return;
+          } catch { /* ignore */ }
+        }
+        navigate('/scan', { replace: true });
       } else {
         result = await userApi.guestLogin({ username: username.trim(), password });
         login(result.user, result.token);
-        alert('Đăng nhập thành công!');
+
+        // Check Guest redirect
+        const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
+        if (savedRedirect) {
+          try {
+            const { path, state } = JSON.parse(savedRedirect);
+            sessionStorage.removeItem('guest_redirect_after_login');
+            navigate(path, { state, replace: true });
+            return;
+          } catch { /* ignore */ }
+        }
         navigate('/home', { replace: true });
       }
     } catch (err) {

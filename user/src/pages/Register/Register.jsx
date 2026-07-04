@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Leaf, Store, User, Mail, Lock, Eye, EyeOff, MapPin, Building2, AlertCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +6,7 @@ import userApi from '../../services/api';
 import '../Login/Login.css'; // Reuse Login styles
 
 export default function Register() {
-  const { login, isLoggedIn, user } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -40,15 +40,6 @@ export default function Register() {
     setSearchParams({ tab });
   };
 
-  // Sync tab state with URL query parameters
-  useEffect(() => {
-    if (queryTab === 'npp' && activeTab !== 'npp') {
-      setActiveTab('npp');
-    } else if (queryTab !== 'npp' && activeTab !== 'guest') {
-      setActiveTab('guest');
-    }
-  }, [queryTab]);
-
   // Fetch enterprises if active tab is NPP
   useEffect(() => {
     if (activeTab === 'npp') {
@@ -57,6 +48,18 @@ export default function Register() {
         try {
           const list = await userApi.getPublicEnterprises();
           setEnterprises(list);
+
+          // Pre-select enterprise if coming from a QR scan redirect
+          const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
+          if (savedRedirect) {
+            try {
+              const { state } = JSON.parse(savedRedirect);
+              const scannedEnterpriseId = state?.scanData?.enterprise?._id;
+              if (scannedEnterpriseId) {
+                setEnterpriseId(scannedEnterpriseId);
+              }
+            } catch { /* ignore */ }
+          }
         } catch (err) {
           console.error('Failed to load enterprises:', err);
           setError('Không thể tải danh sách doanh nghiệp liên kết');
@@ -67,6 +70,15 @@ export default function Register() {
       loadEnterprises();
     }
   }, [activeTab]);
+
+  // Sync tab state with URL query parameters
+  useEffect(() => {
+    if (queryTab === 'npp' && activeTab !== 'npp') {
+      setActiveTab('npp');
+    } else if (queryTab !== 'npp' && activeTab !== 'guest') {
+      setActiveTab('guest');
+    }
+  }, [queryTab]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,8 +103,9 @@ export default function Register() {
     setError('');
 
     try {
+      let result;
       if (activeTab === 'npp') {
-        await userApi.nppRegister({
+        result = await userApi.nppRegister({
           username: username.trim(),
           email: email.trim(),
           password,
@@ -100,18 +113,40 @@ export default function Register() {
           address: address.trim(),
           enterpriseId
         });
-        alert('Đăng ký tài khoản nhà phân phối thành công! Vui lòng đăng nhập.');
-        navigate('/login?tab=npp', { replace: true });
+        login(result.user, result.token);
+
+        // Redirect after registration
+        const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
+        if (savedRedirect) {
+          try {
+            const { path, state } = JSON.parse(savedRedirect);
+            sessionStorage.removeItem('npp_redirect_after_login');
+            navigate(path, { state, replace: true });
+            return;
+          } catch { /* ignore parse error */ }
+        }
+        navigate('/scan', { replace: true });
       } else {
-        await userApi.guestRegister({
+        result = await userApi.guestRegister({
           username: username.trim(),
           email: email.trim(),
           password,
           fullName: fullName.trim(),
           address: address.trim()
         });
-        alert('Đăng ký tài khoản khách hàng thành công! Vui lòng đăng nhập.');
-        navigate('/login?tab=guest', { replace: true });
+        login(result.user, result.token);
+
+        // Redirect after registration
+        const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
+        if (savedRedirect) {
+          try {
+            const { path, state } = JSON.parse(savedRedirect);
+            sessionStorage.removeItem('guest_redirect_after_login');
+            navigate(path, { state, replace: true });
+            return;
+          } catch { /* ignore parse error */ }
+        }
+        navigate('/home', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');

@@ -50,6 +50,23 @@ function NppProtectedRoute({ children }) {
 }
 
 function PublicRoute({ children }) {
+  const { isLoggedIn, user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="app-loading">
+        <div className="loading-ring" />
+      </div>
+    );
+  }
+
+  if (isLoggedIn) {
+    if (user?.role === 'NPP') {
+      return <Navigate to="/scan" replace />;
+    }
+    return <Navigate to="/home" replace />;
+  }
+
   return children;
 }
 
@@ -67,7 +84,11 @@ function AppRoutes() {
       />
       <Route
         path="/register"
-        element={<Register />}
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        }
       />
       <Route path="/npp/login" element={<Navigate to="/login?tab=npp" replace />} />
       <Route path="/npp/register" element={<Navigate to="/register?tab=npp" replace />} />
