@@ -32,22 +32,58 @@ export default function NppScan() {
         html5QrcodeRef.current = new Html5Qrcode('npp-reader');
       }
 
-      await html5QrcodeRef.current.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: (width, height) => {
-            const size = Math.min(width, height) * 0.65;
-            return { width: size, height: size };
-          }
-        },
-        (decodedText, decodedResult) => {
-          handleScanSuccess(decodedText, decodedResult);
-        },
-        () => { /* ignore failure */ }
-      );
+      let cameras = [];
+      try {
+        cameras = await Html5Qrcode.getCameras();
+      } catch (e) {
+        console.warn('Failed to get cameras list, using constraints fallback', e);
+      }
+
+      const scanConfig = {
+        fps: 10,
+        qrbox: (width, height) => {
+          const size = Math.min(width, height) * 0.65;
+          return { width: size, height: size };
+        }
+      };
+
+      if (cameras && cameras.length > 0) {
+        // Prefer back/rear camera on mobile
+        const backCamera = cameras.find(c => 
+          c.label.toLowerCase().includes('back') || 
+          c.label.toLowerCase().includes('rear') || 
+          c.label.toLowerCase().includes('sau') ||
+          c.label.toLowerCase().includes('environment')
+        );
+        const cameraId = backCamera ? backCamera.id : cameras[0].id;
+        await html5QrcodeRef.current.start(
+          cameraId,
+          scanConfig,
+          (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
+          () => { /* ignore scan failures */ }
+        );
+      } else {
+        // Fallback to constraints
+        try {
+          await html5QrcodeRef.current.start(
+            { facingMode: 'environment' },
+            scanConfig,
+            (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
+            () => { /* ignore scan failures */ }
+          );
+        } catch {
+          // If environment camera fails (e.g. on laptop), try front camera
+          await html5QrcodeRef.current.start(
+            { facingMode: 'user' },
+            scanConfig,
+            (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
+            () => { /* ignore scan failures */ }
+          );
+        }
+      }
       setCameraStatus('active');
     } catch (err) {
+      console.error('Camera start error:', err);
       const errStr = String(err);
       if (errStr.includes('NotAllowedError') || errStr.includes('PermissionDeniedError')) {
         setCameraStatus('denied');
