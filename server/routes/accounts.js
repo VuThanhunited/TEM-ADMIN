@@ -234,20 +234,46 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
   }
 });
 
-// PUT /api/accounts/:id - Update account
+// PUT /api/accounts/:id - Update account (Admin only)
 router.put('/:id', auth, requireRole('ADMIN'), async (req, res) => {
   try {
-    const { fullName, email, role, isActive } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { fullName, email, role, isActive },
-      { new: true }
-    ).select('-password').populate('enterpriseId');
+    const { username, email, password, fullName, role, isActive } = req.body;
+    const user = await User.findById(req.params.id);
 
-    if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
-    res.json(user);
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    }
+
+    if (username && username !== user.username) {
+      const existing = await User.findOne({ username });
+      if (existing) return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại' });
+      user.username = username;
+    }
+
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ email });
+      if (existing) return res.status(400).json({ error: 'Email đã tồn tại' });
+      user.email = email;
+    }
+
+    if (fullName !== undefined) user.fullName = fullName;
+    if (role !== undefined) user.role = role;
+    if (isActive !== undefined) user.isActive = isActive;
+
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
+      }
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    await user.save();
+
+    const userData = await User.findById(user._id).select('-password').populate('enterpriseId');
+    res.json(userData);
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi máy chủ' });
+    console.error('Update account error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật tài khoản' });
   }
 });
 

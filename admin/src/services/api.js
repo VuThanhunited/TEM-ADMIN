@@ -50,6 +50,7 @@ class ApiService {
   login(credentials) { return this.request('POST', '/auth/login', credentials); }
   getMe() { return this.request('GET', '/auth/me'); }
   changePassword(data) { return this.request('POST', '/auth/change-password', data); }
+  updateProfile(data) { return this.request('PUT', '/auth/profile', data); }
 
   // Accounts
   getAccounts(params) { return this.request('GET', '/accounts', null, params); }

@@ -101,4 +101,52 @@ router.post('/change-password', auth, async (req, res) => {
   }
 });
 
+// PUT /api/auth/profile - Update own profile (for ADMIN, NSX, NPP)
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const { username, email, fullName, address, password } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+    }
+
+    // Check if new username already exists
+    if (username && username !== user.username) {
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại' });
+      }
+      user.username = username;
+    }
+
+    // Check if new email already exists
+    if (email && email !== user.email) {
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({ error: 'Email đã tồn tại' });
+      }
+      user.email = email;
+    }
+
+    if (fullName) user.fullName = fullName;
+    if (address !== undefined) user.address = address;
+
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
+      }
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    await user.save();
+
+    const userData = await User.findById(user._id).select('-password').populate('enterpriseId');
+    res.json(userData);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật thông tin' });
+  }
+});
+
 module.exports = router;

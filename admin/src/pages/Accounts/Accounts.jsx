@@ -19,7 +19,7 @@ export default function Accounts() {
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [form, setForm] = useState({
     username: '', email: '', password: '', fullName: '',
-    role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12
+    role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true
   });
 
   useEffect(() => { loadAccounts(); }, [pagination.page, search]);
@@ -40,13 +40,44 @@ export default function Accounts() {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      await api.createAccount(form);
-      setShowModal(false);
-      setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12 });
-      loadAccounts();
+      if (editingAccount) {
+        await api.updateAccount(editingAccount._id, {
+          username: form.username,
+          email: form.email,
+          fullName: form.fullName,
+          role: form.role,
+          isActive: form.isActive,
+          password: form.password || undefined
+        });
+        setShowModal(false);
+        setEditingAccount(null);
+        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+        loadAccounts();
+      } else {
+        await api.createAccount(form);
+        setShowModal(false);
+        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+        loadAccounts();
+      }
     } catch (err) {
       alert(err.message);
     }
+  };
+
+  const handleOpenEdit = (account) => {
+    setEditingAccount(account);
+    setForm({
+      username: account.username,
+      email: account.email,
+      password: '',
+      fullName: account.fullName,
+      role: account.role,
+      enterpriseName: account.enterpriseId?.name || '',
+      enterpriseType: account.role,
+      subscriptionMonths: 12,
+      isActive: account.isActive
+    });
+    setShowModal(true);
   };
 
   const handleDelete = async (id) => {
@@ -96,7 +127,11 @@ export default function Accounts() {
           <h1>Quản lý Tài khoản</h1>
           <p>Quản lý tài khoản NSX/NPP và gia hạn thời gian thuê</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary" onClick={() => {
+          setEditingAccount(null);
+          setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+          setShowModal(true);
+        }}>
           <Plus size={18} /> Tạo tài khoản
         </button>
       </div>
@@ -174,6 +209,13 @@ export default function Accounts() {
                     <div className="action-buttons">
                       <button
                         className="btn btn-sm btn-ghost"
+                        onClick={() => handleOpenEdit(account)}
+                        title="Chỉnh sửa"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        className="btn btn-sm btn-ghost"
                         onClick={() => { setRenewAccount(account); setShowRenewModal(true); }}
                         title="Gia hạn"
                       >
@@ -200,12 +242,12 @@ export default function Accounts() {
         />
       )}
 
-      {/* Create Modal */}
+      {/* Create / Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal">
             <div className="modal-header">
-              <h3 className="modal-title">Tạo tài khoản mới</h3>
+              <h3 className="modal-title">{editingAccount ? 'Cập nhật tài khoản' : 'Tạo tài khoản mới'}</h3>
               <button className="btn-icon" onClick={() => setShowModal(false)}><X size={20}/></button>
             </div>
             <form onSubmit={handleCreate}>
@@ -213,7 +255,7 @@ export default function Accounts() {
                 <div className="form-row">
                   <div className="input-group">
                     <label>Tên đăng nhập *</label>
-                    <input className="input" value={form.username} onChange={e => setForm({...form, username: e.target.value})} required />
+                    <input className="input" value={form.username} onChange={e => setForm({...form, username: e.target.value})} required disabled={!!editingAccount} />
                   </div>
                   <div className="input-group">
                     <label>Email *</label>
@@ -226,8 +268,8 @@ export default function Accounts() {
                     <input className="input" value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required />
                   </div>
                   <div className="input-group">
-                    <label>Mật khẩu *</label>
-                    <input className="input" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required />
+                    <label>Mật khẩu {editingAccount ? '(Để trống để giữ nguyên)' : '*'}</label>
+                    <input className="input" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required={!editingAccount} />
                   </div>
                 </div>
                 <div className="form-row">
@@ -238,19 +280,32 @@ export default function Accounts() {
                       <option value="NPP">NPP - Nhà phân phối</option>
                     </select>
                   </div>
+                  {!editingAccount && (
+                    <div className="input-group">
+                      <label>Thời hạn (tháng)</label>
+                      <input className="input" type="number" min={1} value={form.subscriptionMonths} onChange={e => setForm({...form, subscriptionMonths: e.target.value})} onFocus={e => e.target.select()} />
+                    </div>
+                  )}
+                </div>
+                {!editingAccount && (
                   <div className="input-group">
-                    <label>Thời hạn (tháng)</label>
-                    <input className="input" type="number" min={1} value={form.subscriptionMonths} onChange={e => setForm({...form, subscriptionMonths: e.target.value})} onFocus={e => e.target.select()} />
+                    <label>Tên doanh nghiệp</label>
+                    <input className="input" value={form.enterpriseName} onChange={e => setForm({...form, enterpriseName: e.target.value})} placeholder="Để trống sẽ tự động tạo" />
                   </div>
-                </div>
-                <div className="input-group">
-                  <label>Tên doanh nghiệp</label>
-                  <input className="input" value={form.enterpriseName} onChange={e => setForm({...form, enterpriseName: e.target.value})} placeholder="Để trống sẽ tự động tạo" />
-                </div>
+                )}
+                {editingAccount && (
+                  <div className="input-group">
+                    <label>Trạng thái hoạt động</label>
+                    <select className="input select" value={form.isActive ? 'true' : 'false'} onChange={e => setForm({...form, isActive: e.target.value === 'true'})}>
+                      <option value="true">Hoạt động (Active)</option>
+                      <option value="false">Khóa tài khoản (Locked)</option>
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary">Tạo tài khoản</button>
+                <button type="submit" className="btn btn-primary">{editingAccount ? 'Cập nhật' : 'Tạo tài khoản'}</button>
               </div>
             </form>
           </div>

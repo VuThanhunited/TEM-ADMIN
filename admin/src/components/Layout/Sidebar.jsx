@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Building2, Package, Tag,
@@ -95,6 +95,7 @@ const nppMenuItems = [
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }) {
   const { user, isAdmin, isNPP, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [expandedMenus, setExpandedMenus] = useState({});
 
   const toggleSubmenu = (label) => {
@@ -224,15 +225,25 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
       {!collapsed && (
         <div className="sidebar-footer">
           <div className="user-card">
-            <div
-              className="user-avatar"
-              style={{ background: getRoleBadgeColor(user?.role) }}
+            <div 
+              className="user-clickable" 
+              onClick={() => {
+                onCloseMobile?.();
+                navigate('/profile');
+              }} 
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, cursor: 'pointer' }}
+              title="Xem & sửa thông tin tài khoản"
             >
-              {user?.fullName?.charAt(0) || 'U'}
-            </div>
-            <div className="user-info">
-              <span className="user-name">{user?.fullName || 'User'}</span>
-              <span className="user-role">{getRoleLabel(user?.role)}</span>
+              <div
+                className="user-avatar"
+                style={{ background: getRoleBadgeColor(user?.role) }}
+              >
+                {user?.fullName?.charAt(0) || 'U'}
+              </div>
+              <div className="user-info">
+                <span className="user-name">{user?.fullName || 'User'}</span>
+                <span className="user-role">{getRoleLabel(user?.role)}</span>
+              </div>
             </div>
             <button className="btn-icon logout-btn" onClick={logout} title="Đăng xuất">
               <LogOut size={18} />

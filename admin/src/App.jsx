@@ -13,6 +13,7 @@ import Scan from './pages/Scan/Scan';
 import Distributors from './pages/Distributors/Distributors';
 import NppScan from './pages/NppScan/NppScan';
 import NppHistory from './pages/NppHistory/NppHistory';
+import Profile from './pages/Profile/Profile';
 import './App.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -70,6 +71,7 @@ function AppRoutes() {
         <Route path="analytics" element={<Analytics />} />
         <Route path="analytics/map" element={<Analytics />} />
         <Route path="analytics/demo" element={<Analytics />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
