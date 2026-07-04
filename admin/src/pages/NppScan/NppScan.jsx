@@ -40,11 +40,7 @@ export default function NppScan() {
       }
 
       const scanConfig = {
-        fps: 10,
-        qrbox: (width, height) => {
-          const size = Math.min(width, height) * 0.65;
-          return { width: size, height: size };
-        }
+        fps: 10
       };
 
       if (cameras && cameras.length > 0) {
