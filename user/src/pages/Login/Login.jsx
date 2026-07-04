@@ -20,10 +20,7 @@ export default function Login() {
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         return `${protocol}//localhost:5173/login`;
       }
-      if (hostname.includes('user')) {
-        return `${protocol}//` + hostname.replace('user', 'admin') + '/login';
-      }
-      return 'https://tem-admin.onrender.com/login';
+      return 'https://tem-admin-eight.vercel.app/login';
     };
     window.location.href = getAdminUrl();
   }, []);
