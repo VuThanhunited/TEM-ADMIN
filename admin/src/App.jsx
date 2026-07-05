@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MainLayout from './components/Layout/MainLayout';
 import Login from './pages/Login/Login';
@@ -17,9 +17,10 @@ import Profile from './pages/Profile/Profile';
 import './App.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin, isNPP } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div><p>Đang tải...</p></div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (isNPP) return <Navigate to="/npp/scan" replace />;
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
   return children;
 }
@@ -40,6 +41,12 @@ function PublicRoute({ children }) {
     return <Navigate to="/" replace />;
   }
   return children;
+}
+
+function CatchAllRoute() {
+  const { user, isNPP } = useAuth();
+  if (user && isNPP) return <Navigate to="/npp/scan" replace />;
+  return <Navigate to="/" replace />;
 }
 
 function AppRoutes() {
@@ -73,7 +80,7 @@ function AppRoutes() {
         <Route path="analytics/demo" element={<Analytics />} />
         <Route path="profile" element={<Profile />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<CatchAllRoute />} />
     </Routes>
   );
 }
