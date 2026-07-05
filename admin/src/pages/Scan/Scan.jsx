@@ -409,7 +409,7 @@ export default function Scan() {
           {isNPPLoggedIn && (
             <div className="choice-npp-status">
               <Truck size={13} />
-              <span>NPP: <strong>{nppUser?.fullName || nppUser?.username}</strong></span>
+              <span><strong>{nppUser?.fullName || nppUser?.username || 'Nhà phân phối'}</strong></span>
               <button className="choice-npp-logout" onClick={handleNPPLogout}>Đăng xuất</button>
             </div>
           )}
