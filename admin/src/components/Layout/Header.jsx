@@ -9,7 +9,7 @@ export default function Header({ onMenuToggle }) {
     switch(role) {
       case 'ADMIN': return { label: 'ADMIN', class: 'badge-danger' };
       case 'NSX': return { label: 'NSX', class: 'badge-success' };
-      case 'NPP': return { label: user?.fullName || 'NPP', class: 'badge-warning' };
+      case 'NPP': return { label: 'NPP', class: 'badge-warning' };
       default: return { label: role, class: 'badge-neutral' };
     }
   };

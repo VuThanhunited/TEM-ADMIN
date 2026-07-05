@@ -5,7 +5,7 @@ import { User, Lock, Mail, MapPin, Building, Key, CheckCircle } from 'lucide-rea
 import './Profile.css';
 
 export default function Profile() {
-  const { user, login } = useAuth();
+  const { user, setUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null); // { type: 'success'|'error', text }
 
@@ -47,7 +47,12 @@ export default function Profile() {
       });
 
       // Update user in context/localStorage
-      login(updatedUser, localStorage.getItem('token'));
+      setUser(updatedUser);
+      
+      // Also update NPP scan session in localStorage if NPP
+      if (updatedUser?.role === 'NPP') {
+        localStorage.setItem('npp_scan_user', JSON.stringify(updatedUser));
+      }
       
       showMessage('success', 'Cập nhật thông tin tài khoản thành công!');
       setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));

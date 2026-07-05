@@ -17,8 +17,16 @@ export function AuthProvider({ children }) {
     try {
       const userData = await api.getMe();
       setUser(userData);
+      
+      // Sync scan session if NPP
+      if (userData?.role === 'NPP') {
+        localStorage.setItem('npp_scan_token', token);
+        localStorage.setItem('npp_scan_user', JSON.stringify(userData));
+      }
     } catch (err) {
       localStorage.removeItem('tem_token');
+      localStorage.removeItem('npp_scan_token');
+      localStorage.removeItem('npp_scan_user');
       setUser(null);
     } finally {
       setLoading(false);
@@ -35,6 +43,12 @@ export function AuthProvider({ children }) {
       const result = await api.login({ username, password });
       localStorage.setItem('tem_token', result.token);
       setUser(result.user);
+      
+      // Sync scan session if NPP
+      if (result.user?.role === 'NPP') {
+        localStorage.setItem('npp_scan_token', result.token);
+        localStorage.setItem('npp_scan_user', JSON.stringify(result.user));
+      }
       return result;
     } catch (err) {
       setError(err.message);
@@ -44,6 +58,8 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('tem_token');
+    localStorage.removeItem('npp_scan_token');
+    localStorage.removeItem('npp_scan_user');
     setUser(null);
   };
 
@@ -55,6 +71,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
+    setUser,
     loading,
     error,
     login,

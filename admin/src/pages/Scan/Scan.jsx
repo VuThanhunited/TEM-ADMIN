@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Shield, CheckCircle, AlertTriangle, XCircle, MessageSquare, Send,
   Globe, Phone, MapPin, Building, Calendar, X, Eye, Info,
@@ -47,6 +48,7 @@ const getEffectiveTheme = (themeName, category) => {
 
 export default function Scan() {
   const { serial } = useParams();
+  const { user: authUser, isNPP: isAuthNPP } = useAuth();
    const [data, setData] = useState(null);
    const [loading, setLoading] = useState(true);
    const [sliderIndex, setSliderIndex] = useState(0);
@@ -58,13 +60,13 @@ export default function Scan() {
    const [userCoords, setUserCoords] = useState(null);
    const [activeCertDoc, setActiveCertDoc] = useState(null);
    const chatEndRef = useRef(null);
- 
+
    // Choice screen & NPP states
    const [scanMode, setScanMode] = useState('choice'); // 'choice' | 'info' | 'distributor'
    const [showNPPLogin, setShowNPPLogin] = useState(false);
    const [nppUser, setNppUser] = useState(null);
    const [nppToken, setNppToken] = useState(null);
- 
+
    // Images carousel auto-transition
    useEffect(() => {
      const imgs = data?.product?.images?.filter(Boolean) || [];
@@ -77,16 +79,26 @@ export default function Scan() {
 
    useEffect(() => {
      loadScanData();
-     // Restore NPP session if exists
-     const savedToken = localStorage.getItem('npp_scan_token');
-     const savedUser = localStorage.getItem('npp_scan_user');
-     if (savedToken && savedUser) {
-       try {
-         setNppToken(savedToken);
-         setNppUser(JSON.parse(savedUser));
-       } catch { /* ignore */ }
+     
+     // If logged into admin dashboard as NPP, prioritize that session
+     if (isAuthNPP && authUser) {
+       const token = localStorage.getItem('tem_token');
+       setNppToken(token);
+       setNppUser(authUser);
+       localStorage.setItem('npp_scan_token', token);
+       localStorage.setItem('npp_scan_user', JSON.stringify(authUser));
+     } else {
+       // Restore NPP session if exists
+       const savedToken = localStorage.getItem('npp_scan_token');
+       const savedUser = localStorage.getItem('npp_scan_user');
+       if (savedToken && savedUser) {
+         try {
+           setNppToken(savedToken);
+           setNppUser(JSON.parse(savedUser));
+         } catch { /* ignore */ }
+       }
      }
-   }, [serial]);
+   }, [serial, authUser, isAuthNPP]);
  
    useEffect(() => {
      if (chatOpen && chatMessages.length === 0 && data) {
