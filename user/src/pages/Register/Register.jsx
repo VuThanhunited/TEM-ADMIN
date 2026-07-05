@@ -125,7 +125,7 @@ export default function Register() {
             return;
           } catch { /* ignore parse error */ }
         }
-        navigate('/scan', { replace: true });
+        navigate('/login?tab=npp', { replace: true });
       } else {
         result = await userApi.guestRegister({
           username: username.trim(),
@@ -332,8 +332,8 @@ export default function Register() {
 
         <p className="login-register-text" style={{ fontSize: '0.85rem', color: '#546E7A', marginTop: '18px', textAlign: 'center' }}>
           Đã có tài khoản?{' '}
-          <span 
-            className="login-register-link" 
+          <span
+            className="login-register-link"
             style={{ color: 'var(--primary-color)', fontWeight: '600', cursor: 'pointer' }}
             onClick={() => navigate(`/login?tab=${activeTab}`)}
           >
