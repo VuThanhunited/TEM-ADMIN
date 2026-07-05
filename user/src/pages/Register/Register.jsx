@@ -113,15 +113,13 @@ export default function Register() {
           address: address.trim(),
           enterpriseId
         });
-        login(result.user, result.token);
-
         // Redirect after registration
         const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
         if (savedRedirect) {
           try {
             const { path, state } = JSON.parse(savedRedirect);
             sessionStorage.removeItem('npp_redirect_after_login');
-            navigate(path, { state, replace: true });
+            navigate(`/login?tab=npp&redirect=${encodeURIComponent(path)}`, { state, replace: true });
             return;
           } catch { /* ignore parse error */ }
         }
@@ -134,7 +132,6 @@ export default function Register() {
           fullName: fullName.trim(),
           address: address.trim()
         });
-        login(result.user, result.token);
 
         // Redirect after registration
         const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
@@ -142,11 +139,11 @@ export default function Register() {
           try {
             const { path, state } = JSON.parse(savedRedirect);
             sessionStorage.removeItem('guest_redirect_after_login');
-            navigate(path, { state, replace: true });
+            navigate(`/login?tab=guest&redirect=${encodeURIComponent(path)}`, { state, replace: true });
             return;
           } catch { /* ignore parse error */ }
         }
-        navigate('/home', { replace: true });
+        navigate('/login?tab=guest', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');

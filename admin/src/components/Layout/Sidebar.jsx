@@ -119,6 +119,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
       case 'ADMIN': return 'Quản trị viên';
       case 'NSX': return 'Nhà sản xuất';
       case 'NPP': return 'Nhà phân phối';
+      case 'GUEST': return 'Khách hàng';
       default: return role;
     }
   };
@@ -128,6 +129,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
       case 'ADMIN': return '#ef4444';
       case 'NSX': return '#22c55e';
       case 'NPP': return '#f59e0b';
+      case 'GUEST': return '#06b6d4';
       default: return '#6366f1';
     }
   };

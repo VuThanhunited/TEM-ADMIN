@@ -60,6 +60,11 @@ export default function Login() {
         login(result.user, result.token);
 
         // Check NPP redirect
+        const redirectParam = searchParams.get('redirect');
+        if (redirectParam) {
+          navigate(decodeURIComponent(redirectParam), { replace: true });
+          return;
+        }
         const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
         if (savedRedirect) {
           try {
@@ -75,6 +80,11 @@ export default function Login() {
         login(result.user, result.token);
 
         // Check Guest redirect
+        const redirectParam = searchParams.get('redirect');
+        if (redirectParam) {
+          navigate(decodeURIComponent(redirectParam), { replace: true });
+          return;
+        }
         const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
         if (savedRedirect) {
           try {

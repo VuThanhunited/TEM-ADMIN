@@ -185,8 +185,12 @@ export default function Accounts() {
                   </td>
                   <td>{account.enterpriseId?.name || '—'}</td>
                   <td>
-                    <span className={`badge badge-dot ${account.role === 'NSX' ? 'badge-success' : 'badge-warning'}`}>
-                      {account.role}
+                    <span className={`badge badge-dot ${
+                      account.role === 'NSX' ? 'badge-success' : 
+                      account.role === 'ADMIN' ? 'badge-danger' : 
+                      account.role === 'NPP' ? 'badge-warning' : 'badge-info'
+                    }`}>
+                      {account.role === 'GUEST' ? 'Khách hàng' : account.role}
                     </span>
                   </td>
                   <td>{account.enterpriseId?.subscriptionPlan || 'BASIC'}</td>

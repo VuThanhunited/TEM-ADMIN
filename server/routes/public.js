@@ -529,9 +529,12 @@ router.post('/npp-register', async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc' });
     }
 
-    // Check existing user
+    // Check existing user case-insensitively
     const existing = await User.findOne({
-      $or: [{ username }, { email }]
+      $or: [
+        { username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } }
+      ]
     });
     if (existing) {
       return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
@@ -588,7 +591,10 @@ router.post('/guest-register', async (req, res) => {
     }
 
     const existing = await User.findOne({
-      $or: [{ username }, { email }]
+      $or: [
+        { username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } }
+      ]
     });
     if (existing) {
       return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });

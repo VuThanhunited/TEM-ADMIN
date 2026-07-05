@@ -61,7 +61,12 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
     }
 
     // Check existing
-    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    const existing = await User.findOne({
+      $or: [
+        { username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } }
+      ]
+    });
     if (existing) {
       return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
     }
@@ -155,7 +160,7 @@ router.delete('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req
 router.get('/', auth, requireRole('ADMIN'), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = '', role = '' } = req.query;
-    const query = { role: { $in: ['NSX', 'NPP'] } };
+    const query = { role: { $in: ['NSX', 'NPP', 'GUEST'] } };
     
     if (search) {
       query.$or = [
@@ -194,7 +199,12 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
     const { username, email, password, fullName, role, enterpriseName, enterpriseType, subscriptionMonths = 12 } = req.body;
 
     // Check existing
-    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    const existing = await User.findOne({
+      $or: [
+        { username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } }
+      ]
+    });
     if (existing) {
       return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
     }
