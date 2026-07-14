@@ -115,7 +115,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
       const userSiteBase = import.meta.env.VITE_USER_URL ||
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
           ? 'http://localhost:5174'
-          : 'https://tem-user.vercel.app');
+          : 'https://tem-user-page.vercel.app');
       const url = `${userSiteBase}/login?tab=npp&adminToken=${encodeURIComponent(result.token)}`;
       window.open(url, '_blank');
     } catch (err) {
