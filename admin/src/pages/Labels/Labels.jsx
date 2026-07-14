@@ -49,7 +49,16 @@ export default function Labels() {
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '100', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [renewMonths, setRenewMonths] = useState(12);
   const [migrateForm, setMigrateForm] = useState({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: '' });
-  const [mapForm, setMapForm] = useState({ productId: '', theme: 'default', distributorName: '', distributorAddress: '', customDomain: '' });
+  const [mapForm, setMapForm] = useState({ 
+    productId: '', 
+    theme: 'default', 
+    distributorIdx: '',
+    distributorName: '', 
+    distributorAddress: '', 
+    customDomain: '',
+    serialStart: '',
+    serialEnd: ''
+  });
 
   useEffect(() => {
     loadProducts();
@@ -122,10 +131,28 @@ export default function Labels() {
 
   const handleMapProduct = async () => {
     try {
-      await api.mapBatchProduct(selectedBatch._id, { productId: mapForm.productId, theme: mapForm.theme, customDomain: mapForm.customDomain });
+      // 1. Cập nhật Lô tem (productId, customDomain)
+      await api.mapBatchProduct(selectedBatch._id, { 
+        productId: mapForm.productId, 
+        customDomain: mapForm.customDomain 
+      });
+
+      // 2. Gắn kết dải Serial cho sản phẩm và điểm bán lẻ nếu có
+      if (mapForm.serialStart && mapForm.serialEnd) {
+        await api.bulkMapLabels({
+          batchId: selectedBatch._id,
+          serialStart: mapForm.serialStart,
+          serialEnd: mapForm.serialEnd,
+          productId: mapForm.productId || null,
+          distributorName: mapForm.distributorName || null,
+          distributorAddress: mapForm.distributorAddress || null
+        });
+      }
+
       setShowMapModal(false);
       loadBatches();
-    } catch (err) { alert(err.message); }
+      alert('Cấu hình lô tem và phân phối điểm bán thành công!');
+    } catch (err) { alert(err.message || 'Lỗi cấu hình lô tem'); }
   };
 
   const handleRenew = async () => {
@@ -638,7 +665,20 @@ export default function Labels() {
                         <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
                           {batch.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
                         </button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setMapForm({ productId: batch.productId?._id || '', theme: batch.theme || 'default', distributorName: '', distributorAddress: '', customDomain: batch.customDomain || '' }); setShowMapModal(true); }} title="Gắn sản phẩm & Cấu hình">
+                        <button className="btn btn-sm btn-ghost" onClick={() => { 
+                          setSelectedBatch(batch); 
+                          setMapForm({ 
+                            productId: batch.productId?._id || batch.productId || '', 
+                            theme: batch.theme || 'default', 
+                            distributorIdx: '',
+                            distributorName: '', 
+                            distributorAddress: '', 
+                            customDomain: batch.customDomain || '',
+                            serialStart: batch.serialStart || '',
+                            serialEnd: batch.serialEnd || ''
+                          }); 
+                          setShowMapModal(true); 
+                        }} title="Gắn sản phẩm & Cấu hình">
                           <Link2 size={14}/>
                         </button>
                         <button className="btn btn-sm btn-ghost" onClick={() => {
@@ -868,42 +908,120 @@ export default function Labels() {
             </div>
             <div className="modal-body">
               {!selectedLabel && (
-                <div className="input-group">
-                  <label>Domain riêng cho lô tem (Tùy chọn)</label>
-                  <input 
-                    className="input" 
-                    type="text" 
-                    placeholder="VD: sanphamdocquyen.vn" 
-                    value={mapForm.customDomain || ''} 
-                    onChange={e => setMapForm({...mapForm, customDomain: e.target.value})} 
-                  />
-                </div>
-              )}
-              <div className="input-group">
-                <label>Sản phẩm</label>
-                <select className="input select" value={mapForm.productId} onChange={e => setMapForm({...mapForm, productId: e.target.value})}>
-                  <option value="">-- Chọn sản phẩm --</option>
-                  {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
-              </div>
-              {!selectedLabel && (
-                <div className="input-group">
-                  <label>Chủ đề giao diện (Theme)</label>
-                  <select className="input select" value={mapForm.theme} onChange={e => setMapForm({...mapForm, theme: e.target.value})}>
-                    <option value="default">Mặc định (Hiển thị chung)</option>
-                    <option value="agriculture">Nông nghiệp (Lá xanh)</option>
-                    <option value="food">Thực phẩm</option>
-                    <option value="functional_food">Thực phẩm chức năng</option>
-                    <option value="medical">Y tế / Dược phẩm</option>
-                    <option value="cosmetics">Mỹ phẩm (Hồng thanh lịch)</option>
-                  </select>
-                </div>
+                <>
+                  <div className="input-group">
+                    <label>Domain riêng cho lô tem (Tùy chọn)</label>
+                    <input 
+                      className="input" 
+                      type="text" 
+                      placeholder="VD: sanphamdocquyen.vn" 
+                      value={mapForm.customDomain || ''} 
+                      onChange={e => setMapForm({...mapForm, customDomain: e.target.value})} 
+                    />
+                  </div>
+                  
+                  <div className="input-group">
+                    <label>Sản phẩm</label>
+                    <select className="input select" value={mapForm.productId} onChange={e => {
+                      setMapForm({
+                        ...mapForm, 
+                        productId: e.target.value, 
+                        distributorIdx: '',
+                        distributorName: '',
+                        distributorAddress: ''
+                      });
+                    }}>
+                      <option value="">-- Chọn sản phẩm --</option>
+                      {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="input-group">
+                    <label>Chọn Điểm bán lẻ từ sản phẩm</label>
+                    <select
+                      className="input select"
+                      value={mapForm.distributorIdx}
+                      onChange={e => {
+                        const idx = e.target.value;
+                        const selectedProduct = products.find(p => p._id === mapForm.productId);
+                        const dists = selectedProduct?.distributors || [];
+                        if (idx === '') {
+                          setMapForm(prev => ({ ...prev, distributorIdx: '', distributorName: '', distributorAddress: '' }));
+                        } else {
+                          const dist = dists[idx];
+                          setMapForm(prev => ({ ...prev, distributorIdx: idx, distributorName: dist.name, distributorAddress: dist.address }));
+                        }
+                      }}
+                      disabled={!mapForm.productId}
+                    >
+                      <option value="">-- Chọn từ danh sách đại lý của sản phẩm --</option>
+                      {(() => {
+                        const selProd = products.find(p => p._id === mapForm.productId);
+                        const dists = selProd?.distributors || [];
+                        return dists.map((d, index) => (
+                          <option key={index} value={index}>{d.name} ({d.address})</option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="input-group">
+                      <label>Tên điểm bán</label>
+                      <input 
+                        className="input" 
+                        placeholder="Tên điểm bán..."
+                        value={mapForm.distributorName || ''} 
+                        onChange={e => setMapForm({...mapForm, distributorName: e.target.value, distributorIdx: ''})} 
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label>Địa chỉ điểm bán</label>
+                      <input 
+                        className="input" 
+                        placeholder="Địa chỉ..."
+                        value={mapForm.distributorAddress || ''} 
+                        onChange={e => setMapForm({...mapForm, distributorAddress: e.target.value, distributorIdx: ''})} 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="input-group">
+                      <label>Từ số Serial *</label>
+                      <input
+                        className="input"
+                        value={mapForm.serialStart}
+                        onChange={e => setMapForm({ ...mapForm, serialStart: e.target.value })}
+                        required
+                        placeholder="VD: TEM-000001"
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label>Đến số Serial *</label>
+                      <input
+                        className="input"
+                        value={mapForm.serialEnd}
+                        onChange={e => setMapForm({ ...mapForm, serialEnd: e.target.value })}
+                        required
+                        placeholder="VD: TEM-000020"
+                      />
+                    </div>
+                  </div>
+                </>
               )}
               {selectedLabel && (
                 <>
                   <div className="input-group">
                     <label>Số Serial</label>
                     <input className="input" value={selectedLabel.serialNumber} disabled style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--color-text-muted)', cursor: 'not-allowed' }} />
+                  </div>
+                  <div className="input-group">
+                    <label>Sản phẩm</label>
+                    <select className="input select" value={mapForm.productId} onChange={e => setMapForm({...mapForm, productId: e.target.value})}>
+                      <option value="">-- Chọn sản phẩm --</option>
+                      {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                    </select>
                   </div>
                   <div className="input-group"><label>Tên điểm bán</label><input className="input" value={mapForm.distributorName} onChange={e => setMapForm({...mapForm, distributorName: e.target.value})} /></div>
                   <div className="input-group"><label>Địa chỉ điểm bán</label><input className="input" value={mapForm.distributorAddress} onChange={e => setMapForm({...mapForm, distributorAddress: e.target.value})} /></div>
