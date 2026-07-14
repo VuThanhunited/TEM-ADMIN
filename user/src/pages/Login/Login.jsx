@@ -80,24 +80,13 @@ export default function Login() {
       let result;
       if (activeTab === 'npp') {
         result = await userApi.nppLogin({ username: username.trim(), password });
-        login(result.user, result.token);
-
-        // Check NPP redirect
-        const redirectParam = searchParams.get('redirect');
-        if (redirectParam) {
-          navigate(decodeURIComponent(redirectParam), { replace: true });
-          return;
-        }
-        const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
-        if (savedRedirect) {
-          try {
-            const { path, state } = JSON.parse(savedRedirect);
-            sessionStorage.removeItem('npp_redirect_after_login');
-            navigate(path, { state, replace: true });
-            return;
-          } catch { /* ignore */ }
-        }
-        navigate('/scan', { replace: true });
+        // Chuyển hướng sang trang Admin app kèm token
+        const adminAppUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5173'
+          : 'https://tem-admin-eight.vercel.app';
+        
+        window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
+        return;
       } else {
         result = await userApi.guestLogin({ username: username.trim(), password });
         // Chuyển hướng sang trang Admin app kèm token
