@@ -253,9 +253,10 @@ router.post('/npp-login', async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu' });
     }
 
+    // Tìm tài khoản NPP hoặc ADMIN
     const user = await User.findOne({
       $or: [{ username }, { email: username }],
-      role: 'NPP'
+      role: { $in: ['NPP', 'ADMIN'] }
     }).populate('enterpriseId');
 
     if (!user) {
@@ -271,18 +272,30 @@ router.post('/npp-login', async (req, res) => {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
 
-    if (user.subscriptionExpiry && new Date() > new Date(user.subscriptionExpiry)) {
+    // Kiểm tra hạn sử dụng (không áp dụng với ADMIN)
+    if (user.role !== 'ADMIN' && user.subscriptionExpiry && new Date() > new Date(user.subscriptionExpiry)) {
       return res.status(403).json({ error: 'Tài khoản đã hết hạn. Vui lòng liên hệ Admin để gia hạn.' });
     }
 
+    // Admin đăng nhập vào tab NPP: tạo token với role NPP để dùng tính năng scan
+    const tokenRole = user.role === 'ADMIN' ? 'NPP' : user.role;
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { 
+        userId: user._id, 
+        role: tokenRole,
+        isAdminImpersonating: user.role === 'ADMIN'
+      },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: '7d' }
+      { expiresIn: user.role === 'ADMIN' ? '8h' : '7d' }
     );
 
     const userData = user.toObject();
     delete userData.password;
+    // Trả về role NPP để frontend xử lý đúng
+    userData.role = tokenRole;
+    if (user.role === 'ADMIN') {
+      userData.isAdminImpersonating = true;
+    }
 
     res.json({ token, user: userData });
   } catch (error) {
@@ -661,9 +674,10 @@ router.post('/guest-login', async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu' });
     }
 
+    // Tìm tài khoản GUEST hoặc ADMIN
     const user = await User.findOne({
       $or: [{ username }, { email: username }],
-      role: 'GUEST'
+      role: { $in: ['GUEST', 'ADMIN'] }
     });
 
     if (!user) {
@@ -679,14 +693,24 @@ router.post('/guest-login', async (req, res) => {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
 
+    // Admin đăng nhập vào tab Khách hàng: tạo token với role GUEST
+    const tokenRole = user.role === 'ADMIN' ? 'GUEST' : user.role;
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { 
+        userId: user._id, 
+        role: tokenRole,
+        isAdminImpersonating: user.role === 'ADMIN'
+      },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: '7d' }
+      { expiresIn: user.role === 'ADMIN' ? '8h' : '7d' }
     );
 
     const userData = user.toObject();
     delete userData.password;
+    userData.role = tokenRole;
+    if (user.role === 'ADMIN') {
+      userData.isAdminImpersonating = true;
+    }
 
     res.json({ token, user: userData });
   } catch (error) {
