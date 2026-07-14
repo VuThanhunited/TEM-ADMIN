@@ -713,9 +713,17 @@ export default function Labels() {
                           {label.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
                         </button>
                         <button className="btn btn-sm btn-ghost" onClick={() => {
-                          setSelectedLabel(label);
-                          setMapForm({ productId: label.productId?._id || '', distributorName: label.distributorName || '', distributorAddress: label.distributorAddress || '' });
-                          setShowMapModal(true);
+                          setModalError(null);
+                          setBulkForm({
+                            batchId: label.batchId?._id || label.batchId || '',
+                            serialStart: label.serialNumber,
+                            serialEnd: label.serialNumber,
+                            productId: label.productId?._id || label.productId || '',
+                            distributorIdx: '',
+                            distributorName: label.distributorName || '',
+                            distributorAddress: label.distributorAddress || ''
+                          });
+                          setShowBulkMapModal(true);
                         }} title="Gắn SP/Điểm bán">
                           <Link2 size={14}/>
                         </button>
