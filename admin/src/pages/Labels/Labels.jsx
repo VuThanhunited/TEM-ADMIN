@@ -878,6 +878,10 @@ export default function Labels() {
               )}
               {selectedLabel && (
                 <>
+                  <div className="input-group">
+                    <label>Số Serial</label>
+                    <input className="input" value={selectedLabel.serialNumber} disabled style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--color-text-muted)', cursor: 'not-allowed' }} />
+                  </div>
                   <div className="input-group"><label>Tên điểm bán</label><input className="input" value={mapForm.distributorName} onChange={e => setMapForm({...mapForm, distributorName: e.target.value})} /></div>
                   <div className="input-group"><label>Địa chỉ điểm bán</label><input className="input" value={mapForm.distributorAddress} onChange={e => setMapForm({...mapForm, distributorAddress: e.target.value})} /></div>
                 </>
