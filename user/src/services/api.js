@@ -110,6 +110,11 @@ class UserApiService {
   guestLogin(credentials) {
     return this.request('POST', '/public/guest-login', credentials, {}, false);
   }
+
+  // Submit Contact Form
+  submitContact(data) {
+    return this.request('POST', '/public/contact', data, {}, false);
+  }
 }
 
 const userApi = new UserApiService();

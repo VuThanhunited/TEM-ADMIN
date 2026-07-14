@@ -846,6 +846,36 @@ router.post('/admin-login-as', async (req, res) => {
   }
 });
 
+// POST /api/public/contact - Submit contact form
+router.post('/contact', async (req, res) => {
+  try {
+    const Contact = require('../models/Contact');
+    const { fullName, email, phone, subject, message } = req.body;
+
+    if (!fullName || !email || !message) {
+      return res.status(400).json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc: Họ tên, Email, Nội dung.' });
+    }
+
+    const newContact = new Contact({
+      fullName,
+      email,
+      phone,
+      subject,
+      message
+    });
+
+    await newContact.save();
+
+    res.json({
+      success: true,
+      message: 'Cảm ơn bạn! Thông tin liên hệ của bạn đã được gửi thành công. Chúng tôi sẽ phản hồi sớm nhất có thể.'
+    });
+  } catch (error) {
+    console.error('Contact submit error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi gửi thông tin liên hệ.' });
+  }
+});
+
 module.exports = router;
 
 

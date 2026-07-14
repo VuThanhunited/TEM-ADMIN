@@ -6,9 +6,10 @@ import {
   Sprout, Truck, PackageCheck, Users, CheckCircle,
   BarChart3, TrendingUp, Lock, ArrowRight, Scan,
   User, Sparkles, Battery, Wifi, Plus, Smartphone, Store, ArrowLeft, Clock,
-  MessageSquare, Send, Bot
+  MessageSquare, Send, Bot, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import userApi from '../../services/api';
 import './Home.css';
 
 export default function Home() {
@@ -17,6 +18,47 @@ export default function Home() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [traceCode, setTraceCode] = useState('');
+
+  // Contact Form State
+  const [contactForm, setContactForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: ''
+  });
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactSuccess, setContactSuccess] = useState('');
+  const [contactError, setContactError] = useState('');
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    if (!contactForm.fullName.trim() || !contactForm.email.trim() || !contactForm.message.trim()) {
+      setContactError('Vui lòng nhập đầy đủ các thông tin bắt buộc: Họ tên, Email và Nội dung.');
+      return;
+    }
+
+    setContactLoading(true);
+    setContactError('');
+    setContactSuccess('');
+
+    try {
+      const res = await userApi.submitContact(contactForm);
+      setContactSuccess(res.message || 'Gửi thông tin liên hệ thành công!');
+      setContactForm({
+        fullName: '',
+        email: '',
+        phone: '',
+        subject: '',
+        message: ''
+      });
+    } catch (err) {
+      setContactError(err.message || 'Lỗi khi gửi thông tin liên hệ. Vui lòng thử lại.');
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
 
   // Scroll handler for navbar
   useEffect(() => {
@@ -120,7 +162,7 @@ export default function Home() {
     { label: 'Quy trình', id: 'process' },
     { label: 'Sản phẩm', id: 'hero' },
     { label: 'Tin tức', id: 'hero' },
-    { label: 'Liên hệ', id: 'footer' },
+    { label: 'Liên hệ', id: 'contact' },
   ];
 
   return (
@@ -872,6 +914,162 @@ export default function Home() {
               Tra cứu
             </button>
           </form>
+        </div>
+      </section>
+
+      {/* ══ CONTACT SECTION ══ */}
+      <section className="home-contact" id="contact">
+        <div className="home-contact-container home-animate">
+          <div className="home-contact-header">
+            <h2 className="home-contact-title">LIÊN HỆ VỚI CHÚNG TÔI</h2>
+            <p className="home-contact-desc">
+              Bạn cần hỗ trợ, tư vấn giải pháp hoặc có câu hỏi về hệ thống? Hãy gửi tin nhắn cho chúng tôi.
+            </p>
+          </div>
+
+          <div className="home-contact-content">
+            {/* Left Column: Info */}
+            <div className="home-contact-info">
+              <h3 className="contact-info-title">Thông tin liên hệ</h3>
+              <p className="contact-info-subtitle">Chúng tôi luôn sẵn sàng lắng nghe và hỗ trợ bạn trong mọi thắc mắc.</p>
+
+              <div className="contact-info-list">
+                <div className="contact-info-item">
+                  <div className="contact-info-icon">
+                    <Phone size={20} />
+                  </div>
+                  <div>
+                    <h4>Hotline hỗ trợ</h4>
+                    <p>0123 456 789 (24/7)</p>
+                  </div>
+                </div>
+
+                <div className="contact-info-item">
+                  <div className="contact-info-icon">
+                    <Mail size={20} />
+                  </div>
+                  <div>
+                    <h4>Email liên hệ</h4>
+                    <p>info@truyxuatnguongoc.vn</p>
+                  </div>
+                </div>
+
+                <div className="contact-info-item">
+                  <div className="contact-info-icon">
+                    <MapPin size={20} />
+                  </div>
+                  <div>
+                    <h4>Địa chỉ văn phòng</h4>
+                    <p>123 Đường ABC, Quận 1, TP. Hồ Chí Minh</p>
+                  </div>
+                </div>
+
+                <div className="contact-info-item">
+                  <div className="contact-info-icon">
+                    <Clock size={20} />
+                  </div>
+                  <div>
+                    <h4>Giờ làm việc</h4>
+                    <p>Thứ 2 - Thứ 7: 8:00 - 17:30</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Form */}
+            <div className="home-contact-form-container">
+              <form onSubmit={handleContactSubmit} className="contact-form">
+                {contactSuccess && (
+                  <div className="contact-alert success">
+                    <CheckCircle size={18} />
+                    <span>{contactSuccess}</span>
+                  </div>
+                )}
+                
+                {contactError && (
+                  <div className="contact-alert error">
+                    <AlertCircle size={18} />
+                    <span>{contactError}</span>
+                  </div>
+                )}
+
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label htmlFor="contact-name">Họ và tên <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      id="contact-name"
+                      placeholder="Nguyễn Văn A"
+                      value={contactForm.fullName}
+                      onChange={e => setContactForm({ ...contactForm, fullName: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="contact-email">Email <span className="required">*</span></label>
+                    <input
+                      type="email"
+                      id="contact-email"
+                      placeholder="example@gmail.com"
+                      value={contactForm.email}
+                      onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label htmlFor="contact-phone">Số điện thoại</label>
+                    <input
+                      type="tel"
+                      id="contact-phone"
+                      placeholder="0901234567"
+                      value={contactForm.phone}
+                      onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="contact-subject">Tiêu đề</label>
+                    <input
+                      type="text"
+                      id="contact-subject"
+                      placeholder="Cần hỗ trợ về..."
+                      value={contactForm.subject}
+                      onChange={e => setContactForm({ ...contactForm, subject: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="contact-message">Nội dung tin nhắn <span className="required">*</span></label>
+                  <textarea
+                    id="contact-message"
+                    rows="4"
+                    placeholder="Nhập nội dung cần hỗ trợ tại đây..."
+                    value={contactForm.message}
+                    onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
+                    required
+                  ></textarea>
+                </div>
+
+                <button
+                  type="submit"
+                  className="contact-submit-btn"
+                  disabled={contactLoading}
+                >
+                  {contactLoading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Đang gửi...
+                    </>
+                  ) : 'Gửi yêu cầu liên hệ'}
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </section>
 
