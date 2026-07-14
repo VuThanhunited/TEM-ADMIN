@@ -5,7 +5,7 @@ import api from '../../services/api';
 import {
   LayoutDashboard, Users, Building2, Package, Tag,
   Palette, BarChart3, ChevronLeft, ChevronDown,
-  Shield, LogOut, ScanLine, History, Store, ExternalLink
+  Shield, LogOut, ScanLine, History, Store, ExternalLink, FileText
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -62,6 +62,12 @@ const adminMenuItems = [
     label: 'Cấu hình Giao diện',
     icon: Palette,
     path: '/templates',
+    roles: ['ADMIN', 'NSX'],
+  },
+  {
+    label: 'Quản lý Mẫu tem',
+    icon: FileText,
+    path: '/label-designs',
     roles: ['ADMIN', 'NSX'],
   },
   {

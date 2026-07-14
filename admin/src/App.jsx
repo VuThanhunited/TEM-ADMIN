@@ -14,6 +14,7 @@ import Distributors from './pages/Distributors/Distributors';
 import NppScan from './pages/NppScan/NppScan';
 import NppHistory from './pages/NppHistory/NppHistory';
 import Profile from './pages/Profile/Profile';
+import LabelDesigns from './pages/LabelDesigns/LabelDesigns';
 import './App.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -75,6 +76,7 @@ function AppRoutes() {
         <Route path="labels/migrate" element={<Labels />} />
         <Route path="labels/renew" element={<Labels />} />
         <Route path="templates" element={<Templates />} />
+        <Route path="label-designs" element={<ProtectedRoute><LabelDesigns /></ProtectedRoute>} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="analytics/map" element={<Analytics />} />
         <Route path="analytics/demo" element={<Analytics />} />

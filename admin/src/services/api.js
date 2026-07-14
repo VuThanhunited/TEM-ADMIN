@@ -119,6 +119,13 @@ class ApiService {
 
   // Admin impersonation - lấy token NPP để truy cập trang user
   adminLoginAs() { return this.request('POST', '/public/admin-login-as'); }
+
+  // Label Designs (Quản lý mẫu tem)
+  getLabelDesigns(params) { return this.request('GET', '/label-designs', null, params); }
+  getLabelDesign(id) { return this.request('GET', `/label-designs/${id}`); }
+  createLabelDesign(data) { return this.request('POST', '/label-designs', data); }
+  updateLabelDesign(id, data) { return this.request('PUT', `/label-designs/${id}`, data); }
+  deleteLabelDesign(id) { return this.request('DELETE', `/label-designs/${id}`); }
 }
 
 
