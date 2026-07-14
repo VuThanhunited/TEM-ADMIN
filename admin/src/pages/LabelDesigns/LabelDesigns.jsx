@@ -4,6 +4,7 @@ import api from '../../services/api';
 import {
   FileText, Plus, Trash2, Edit, Download, Upload, X, Image, Info, ShieldAlert
 } from 'lucide-react';
+import defaultLabelImage from '../../assets/anh-xac-thuc.jpg';
 import './LabelDesigns.css';
 
 export default function LabelDesigns() {
@@ -57,11 +58,11 @@ export default function LabelDesigns() {
   const openCreate = () => {
     setEditing(null);
     setModalError(null);
-    setImagePreview(null);
+    setImagePreview(defaultLabelImage);
     setSelectedFile(null);
     setForm({
       name: '',
-      image: '',
+      image: defaultLabelImage,
       fileData: '',
       fileName: '',
       size: '',
