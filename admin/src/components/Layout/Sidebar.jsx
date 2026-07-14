@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
 import {
   LayoutDashboard, Users, Building2, Package, Tag,
   Palette, BarChart3, ChevronLeft, ChevronDown,
-  Shield, LogOut, ScanLine, History, Store
+  Shield, LogOut, ScanLine, History, Store, ExternalLink
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -97,6 +98,26 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
   const location = useLocation();
   const navigate = useNavigate();
   const [expandedMenus, setExpandedMenus] = useState({});
+  const [impersonating, setImpersonating] = useState(false);
+
+  const handleAccessUserSite = async () => {
+    if (impersonating) return;
+    try {
+      setImpersonating(true);
+      const result = await api.adminLoginAs();
+      // Xây dựng URL trang user với token
+      const userSiteBase = import.meta.env.VITE_USER_URL ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5174'
+          : 'https://tem-user.vercel.app');
+      const url = `${userSiteBase}/login?tab=npp&adminToken=${encodeURIComponent(result.token)}`;
+      window.open(url, '_blank');
+    } catch (err) {
+      alert('Không thể truy cập trang người dùng: ' + err.message);
+    } finally {
+      setImpersonating(false);
+    }
+  };
 
   const toggleSubmenu = (label) => {
     setExpandedMenus(prev => ({ ...prev, [label]: !prev[label] }));
@@ -251,6 +272,17 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
               <LogOut size={18} />
             </button>
           </div>
+          {isAdmin && (
+            <button
+              className="access-user-site-btn"
+              onClick={handleAccessUserSite}
+              disabled={impersonating}
+              title="Mở trang khách hàng với quyền Admin"
+            >
+              <ExternalLink size={15} />
+              <span>{impersonating ? 'Đang mở...' : 'Truy cập trang Người dùng'}</span>
+            </button>
+          )}
         </div>
       )}
     </aside>

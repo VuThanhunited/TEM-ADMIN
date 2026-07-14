@@ -21,6 +21,28 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Xử lý tự động đăng nhập khi Admin truy cập trang user với adminToken
+  useEffect(() => {
+    const adminToken = searchParams.get('adminToken');
+    if (!adminToken) return;
+
+    // Decode token để lấy thông tin user tạm thời
+    try {
+      const payload = JSON.parse(atob(adminToken.split('.')[1]));
+      const userData = {
+        _id: payload.userId,
+        role: 'NPP',
+        fullName: 'Admin (Đang xem)',
+        username: 'admin',
+        isAdminImpersonating: true
+      };
+      login(userData, adminToken);
+      navigate('/scan', { replace: true });
+    } catch {
+      setError('Token Admin không hợp lệ');
+    }
+  }, []);
+
   // Clear inputs and error when switching tabs
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -38,6 +60,7 @@ export default function Login() {
       setActiveTab('guest');
     }
   }, [queryTab]);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();

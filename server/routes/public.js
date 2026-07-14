@@ -308,10 +308,15 @@ router.post('/distributor-entry', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
     }
 
-    // Verify user is NPP
-    const user = await User.findById(decoded.userId).populate('enterpriseId');
-    if (!user || user.role !== 'NPP') {
+    // Cho phép NPP hoặc Admin đang impersonate NPP
+    if (decoded.role !== 'NPP') {
       return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được nhập dữ liệu phân phối' });
+    }
+
+    // Verify user exists in DB
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
     const { batchId, serialStart, serialEnd, distributorName, distributorAddress } = req.body;
@@ -374,21 +379,26 @@ router.get('/npp-stores', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
     }
 
-    const user = await User.findById(decoded.userId).populate('enterpriseId');
-    if (!user || user.role !== 'NPP') {
+    // Cho phép NPP hoặc Admin đang impersonate NPP
+    if (decoded.role !== 'NPP') {
       return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
     }
 
-    // Get only the logged-in NPP account itself as the distribution point
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    }
+
+    // Admin impersonating: trả về thông tin admin như một NPP store
     const stores = [user];
 
     res.json({
       stores: stores.map(s => ({
         id: s._id,
-        name: s.fullName || s.username,
+        name: (decoded.isAdminImpersonating ? 'Admin - ' : '') + (s.fullName || s.username),
         address: s.address || ''
       })),
-      enterpriseName: user.enterpriseId?.name || ''
+      enterpriseName: decoded.isAdminImpersonating ? 'Quản trị viên' : (user.enterpriseId?.name || '')
     });
   } catch (error) {
     console.error('Get NPP stores error:', error);
@@ -412,9 +422,14 @@ router.post('/distributor-entry-single', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
     }
 
-    const user = await User.findById(decoded.userId).populate('enterpriseId');
-    if (!user || user.role !== 'NPP') {
+    // Cho phép NPP hoặc Admin đang impersonate NPP
+    if (decoded.role !== 'NPP') {
       return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được nhập dữ liệu phân phối' });
+    }
+
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
     const { serialNumber, distributorName, distributorAddress } = req.body;
@@ -476,9 +491,14 @@ router.get('/npp-scan-history', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
     }
 
-    const user = await User.findById(decoded.userId).populate('enterpriseId');
-    if (!user || user.role !== 'NPP') {
+    // Cho phép NPP hoặc Admin đang impersonate NPP
+    if (decoded.role !== 'NPP') {
       return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
+    }
+
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
     const enterpriseId = user.enterpriseId?._id || user.enterpriseId;
@@ -753,6 +773,56 @@ router.get('/barcode/:barcode', async (req, res) => {
   }
 });
 
+// POST /api/public/admin-login-as - Admin lấy token để truy cập trang user với quyền NPP
+router.post('/admin-login-as', async (req, res) => {
+  try {
+    // Xác thực token Admin
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Yêu cầu đăng nhập Admin' });
+    }
+
+    const adminToken = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(adminToken, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+    } catch {
+      return res.status(401).json({ error: 'Token Admin không hợp lệ hoặc đã hết hạn' });
+    }
+
+    // Kiểm tra quyền ADMIN
+    const adminUser = await User.findById(decoded.userId);
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Chỉ tài khoản ADMIN mới có thể sử dụng chức năng này' });
+    }
+
+    // Tạo token đặc biệt để admin truy cập trang user với quyền NPP
+    // Thêm flag isAdminImpersonating để phân biệt
+    const userToken = jwt.sign(
+      { 
+        userId: adminUser._id, 
+        role: 'NPP',           // Đặt role NPP để dùng được tính năng scan
+        isAdminImpersonating: true
+      },
+      process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
+      { expiresIn: '8h' }      // Token ngắn hạn hơn cho an toàn
+    );
+
+    const userData = adminUser.toObject();
+    delete userData.password;
+    // Trả về user data với role NPP để frontend biết
+    userData.role = 'NPP';
+    userData.isAdminImpersonating = true;
+    userData.fullName = userData.fullName + ' (Admin)';
+
+    res.json({ token: userToken, user: userData });
+  } catch (error) {
+    console.error('Admin login-as error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+});
+
 module.exports = router;
+
 
 

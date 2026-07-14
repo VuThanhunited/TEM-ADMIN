@@ -116,7 +116,11 @@ class ApiService {
   nppGetHistory() { return this.request('GET', '/public/npp-scan-history'); }
   getPublicDistributors(enterpriseId) { return this.request('GET', `/public/distributors/${enterpriseId}`); }
   submitDistributorEntry(data) { return this.request('POST', '/public/distributor-entry', data); }
+
+  // Admin impersonation - lấy token NPP để truy cập trang user
+  adminLoginAs() { return this.request('POST', '/public/admin-login-as'); }
 }
+
 
 const api = new ApiService();
 export default api;
