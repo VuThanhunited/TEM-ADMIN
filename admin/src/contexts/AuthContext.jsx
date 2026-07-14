@@ -81,7 +81,8 @@ export function AuthProvider({ children }) {
     isNPP,
     isEnterprise,
     enterpriseId,
-    setError
+    setError,
+    loadUser
   };
 
   return (

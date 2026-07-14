@@ -1,16 +1,35 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Shield, Eye, EyeOff, LogIn, AlertCircle, Store, Settings } from 'lucide-react';
 import './Login.css';
 
 export default function Login() {
-  const { login, error, setError } = useAuth();
+  const { login, error, setError, loadUser } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const adminToken = searchParams.get('adminToken');
+    if (adminToken) {
+      setLoading(true);
+      localStorage.setItem('tem_token', adminToken);
+      loadUser()
+        .then(() => {
+          navigate('/', { replace: true });
+        })
+        .catch(() => {
+          setError('Đăng nhập tự động thất bại hoặc token không hợp lệ');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [searchParams, loadUser, navigate, setError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

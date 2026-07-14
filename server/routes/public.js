@@ -693,24 +693,20 @@ router.post('/guest-login', async (req, res) => {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
 
-    // Admin đăng nhập vào tab Khách hàng: tạo token với role GUEST
-    const tokenRole = user.role === 'ADMIN' ? 'GUEST' : user.role;
+    // Tạo token với role thực tế của user (không hạ xuống GUEST đối với ADMIN)
+    const tokenRole = user.role;
     const token = jwt.sign(
       { 
         userId: user._id, 
-        role: tokenRole,
-        isAdminImpersonating: user.role === 'ADMIN'
+        role: tokenRole
       },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: user.role === 'ADMIN' ? '8h' : '7d' }
+      { expiresIn: '7d' }
     );
 
     const userData = user.toObject();
     delete userData.password;
     userData.role = tokenRole;
-    if (user.role === 'ADMIN') {
-      userData.isAdminImpersonating = true;
-    }
 
     res.json({ token, user: userData });
   } catch (error) {
