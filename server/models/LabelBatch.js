@@ -76,6 +76,10 @@ const labelBatchSchema = new mongoose.Schema({
     enum: ['default', 'agriculture', 'medical', 'food', 'functional_food', 'cosmetics'],
     default: 'default'
   },
+  customDomain: {
+    type: String,
+    default: null
+  },
   createdDate: {
     type: Date,
     default: Date.now

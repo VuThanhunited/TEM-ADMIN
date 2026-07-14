@@ -49,7 +49,7 @@ export default function Labels() {
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '100', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [renewMonths, setRenewMonths] = useState(12);
   const [migrateForm, setMigrateForm] = useState({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: '' });
-  const [mapForm, setMapForm] = useState({ productId: '', theme: 'default', distributorName: '', distributorAddress: '' });
+  const [mapForm, setMapForm] = useState({ productId: '', theme: 'default', distributorName: '', distributorAddress: '', customDomain: '' });
 
   useEffect(() => {
     loadProducts();
@@ -122,7 +122,7 @@ export default function Labels() {
 
   const handleMapProduct = async () => {
     try {
-      await api.mapBatchProduct(selectedBatch._id, { productId: mapForm.productId, theme: mapForm.theme });
+      await api.mapBatchProduct(selectedBatch._id, { productId: mapForm.productId, theme: mapForm.theme, customDomain: mapForm.customDomain });
       setShowMapModal(false);
       loadBatches();
     } catch (err) { alert(err.message); }
@@ -638,7 +638,7 @@ export default function Labels() {
                         <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
                           {batch.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
                         </button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setMapForm({ productId: batch.productId?._id || '', theme: batch.theme || 'default', distributorName: '', distributorAddress: '' }); setShowMapModal(true); }} title="Gắn sản phẩm & Cấu hình">
+                        <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setMapForm({ productId: batch.productId?._id || '', theme: batch.theme || 'default', distributorName: '', distributorAddress: '', customDomain: batch.customDomain || '' }); setShowMapModal(true); }} title="Gắn sản phẩm & Cấu hình">
                           <Link2 size={14}/>
                         </button>
                         <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
@@ -844,6 +844,18 @@ export default function Labels() {
               <button className="btn-icon" onClick={() => setShowMapModal(false)}><X size={20}/></button>
             </div>
             <div className="modal-body">
+              {!selectedLabel && (
+                <div className="input-group">
+                  <label>Domain riêng cho lô tem (Tùy chọn)</label>
+                  <input 
+                    className="input" 
+                    type="text" 
+                    placeholder="VD: sanphamdocquyen.vn" 
+                    value={mapForm.customDomain || ''} 
+                    onChange={e => setMapForm({...mapForm, customDomain: e.target.value})} 
+                  />
+                </div>
+              )}
               <div className="input-group">
                 <label>Sản phẩm</label>
                 <select className="input select" value={mapForm.productId} onChange={e => setMapForm({...mapForm, productId: e.target.value})}>
@@ -1005,7 +1017,7 @@ export default function Labels() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowBulkMapModal(false)}>
           <div className="modal" style={{ maxWidth: 540 }}>
             <div className="modal-header">
-              <h3 className="modal-title">Gắn kết sản phẩm & Điểm bán hàng loạt</h3>
+              <h3 className="modal-title">Gắn Serial với SP/Điểm bán</h3>
               <button className="btn-icon" onClick={() => setShowBulkMapModal(false)}><X size={20}/></button>
             </div>
             <form onSubmit={handleBulkMapSubmit}>

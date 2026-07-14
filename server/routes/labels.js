@@ -43,7 +43,7 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
 // POST /api/labels/batches - Create batch and individual labels (ADMIN ONLY)
 router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   try {
-    const { batchCode, totalLabels, prefix = '100', productId, templateId, theme, expiryDate, notes } = req.body;
+    const { batchCode, totalLabels, prefix = '100', productId, templateId, theme, expiryDate, notes, customDomain } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
 
     if (!enterpriseId) {
@@ -66,6 +66,7 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       productId: productId || null,
       templateId: templateId || null,
       theme: theme || 'default',
+      customDomain: customDomain || null,
       batchCode,
       totalLabels,
       serialStart,
@@ -80,13 +81,17 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
 
     // Create individual labels
     const labels = [];
+    const domainUrl = customDomain 
+      ? (customDomain.trim().startsWith('http') ? customDomain.trim() : `http://${customDomain.trim()}`)
+      : ADMIN_URL;
+
     for (let i = startNum; i <= endNum; i++) {
       labels.push({
         batchId: batch._id,
         enterpriseId,
         productId: productId || null,
         serialNumber: `${numPrefix}${String(i).padStart(6, '0')}`,
-        qrUrl: `${ADMIN_URL}/scan/${numPrefix}${String(i).padStart(6, '0')}`,
+        qrUrl: `${domainUrl}/scan/${numPrefix}${String(i).padStart(6, '0')}`,
         status: 'INACTIVE'
       });
     }
@@ -129,13 +134,14 @@ router.put('/batches/:id/status', auth, async (req, res) => {
   }
 });
 
-// POST /api/labels/batches/:id/map-product - Map batch to product & theme
+// POST /api/labels/batches/:id/map-product - Map batch to product, theme & customDomain
 router.post('/batches/:id/map-product', auth, async (req, res) => {
   try {
-    const { productId, theme } = req.body;
+    const { productId, theme, customDomain } = req.body;
     const updateData = {};
     if (productId !== undefined) updateData.productId = productId || null;
     if (theme !== undefined) updateData.theme = theme;
+    if (customDomain !== undefined) updateData.customDomain = customDomain ? customDomain.trim() : null;
 
     const batch = await LabelBatch.findByIdAndUpdate(
       req.params.id,
@@ -150,9 +156,34 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
       await Label.updateMany({ batchId: batch._id }, { productId });
     }
 
+    // Update all labels qrUrl in batch if customDomain is updated/changed
+    if (customDomain !== undefined) {
+      const cleanDomain = customDomain ? customDomain.trim() : '';
+      const labels = await Label.find({ batchId: batch._id });
+      
+      // Update each label's qrUrl
+      const bulkOps = labels.map(label => {
+        const domainUrl = cleanDomain 
+          ? (cleanDomain.startsWith('http') ? cleanDomain : `http://${cleanDomain}`)
+          : ADMIN_URL;
+        const newQrUrl = `${domainUrl}/scan/${label.serialNumber}`;
+        return {
+          updateOne: {
+            filter: { _id: label._id },
+            update: { qrUrl: newQrUrl }
+          }
+        };
+      });
+
+      if (bulkOps.length > 0) {
+        await Label.bulkWrite(bulkOps);
+      }
+    }
+
     res.json(batch);
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi máy chủ' });
+    console.error('Map product/domain error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
   }
 });
 
