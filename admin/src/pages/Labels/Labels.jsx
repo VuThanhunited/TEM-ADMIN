@@ -641,6 +641,21 @@ export default function Labels() {
                         <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setMapForm({ productId: batch.productId?._id || '', theme: batch.theme || 'default', distributorName: '', distributorAddress: '', customDomain: batch.customDomain || '' }); setShowMapModal(true); }} title="Gắn sản phẩm & Cấu hình">
                           <Link2 size={14}/>
                         </button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => {
+                          setModalError(null);
+                          setBulkForm({
+                            batchId: batch._id,
+                            serialStart: batch.serialStart,
+                            serialEnd: batch.serialEnd,
+                            productId: batch.productId?._id || batch.productId || '',
+                            distributorIdx: '',
+                            distributorName: '',
+                            distributorAddress: ''
+                          });
+                          setShowBulkMapModal(true);
+                        }} title="Gắn Serial cho Điểm bán">
+                          <MapPin size={14} className="text-primary"/>
+                        </button>
                         <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
                           {exportingBatchId === batch._id ? (
                             <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
