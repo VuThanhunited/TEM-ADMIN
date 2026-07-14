@@ -42,7 +42,9 @@ function NppProtectedRoute({ children }) {
     );
   }
 
-  if (!isLoggedIn || user?.role !== 'NPP') {
+  // Cho phép NPP, NSX và ADMIN (khi impersonating với role NPP)
+  const allowedRoles = ['NPP', 'NSX'];
+  if (!isLoggedIn || !allowedRoles.includes(user?.role)) {
     return <Navigate to="/login?tab=npp" replace />;
   }
 
@@ -61,7 +63,7 @@ function PublicRoute({ children }) {
   }
 
   if (isLoggedIn) {
-    if (user?.role === 'NPP') {
+    if (user?.role === 'NPP' || user?.role === 'NSX') {
       return <Navigate to="/scan" replace />;
     }
     return <Navigate to="/home" replace />;

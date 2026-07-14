@@ -244,7 +244,7 @@ router.get('/distributors/:enterpriseId', async (req, res) => {
   }
 });
 
-// POST /api/public/npp-login - NPP login from user-facing scan page
+// POST /api/public/npp-login - NSX/NPP/Admin login from user-facing scan page
 router.post('/npp-login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -253,14 +253,14 @@ router.post('/npp-login', async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu' });
     }
 
-    // Tìm tài khoản NPP hoặc ADMIN
+    // Tìm tài khoản NSX, NPP hoặc ADMIN
     const user = await User.findOne({
       $or: [{ username }, { email: username }],
-      role: { $in: ['NPP', 'ADMIN'] }
+      role: { $in: ['NPP', 'NSX', 'ADMIN'] }
     }).populate('enterpriseId');
 
     if (!user) {
-      return res.status(401).json({ error: 'Tài khoản NPP không tồn tại hoặc không hợp lệ' });
+      return res.status(401).json({ error: 'Tài khoản NSX/NPP không tồn tại hoặc không hợp lệ' });
     }
 
     if (!user.isActive) {
@@ -277,23 +277,23 @@ router.post('/npp-login', async (req, res) => {
       return res.status(403).json({ error: 'Tài khoản đã hết hạn. Vui lòng liên hệ Admin để gia hạn.' });
     }
 
-    // Admin đăng nhập vào tab NPP: tạo token với role NPP để dùng tính năng scan
-    const tokenRole = user.role === 'ADMIN' ? 'NPP' : user.role;
+    // Admin đăng nhập vào tab NSX/NPP: tạo token với role NPP để dùng tính năng scan
+    const isAdmin = user.role === 'ADMIN';
+    const tokenRole = isAdmin ? 'NPP' : user.role; // NSX giữ nguyên role NSX, NPP giữ NPP
     const token = jwt.sign(
       { 
         userId: user._id, 
         role: tokenRole,
-        isAdminImpersonating: user.role === 'ADMIN'
+        isAdminImpersonating: isAdmin
       },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: user.role === 'ADMIN' ? '8h' : '7d' }
+      { expiresIn: isAdmin ? '8h' : '7d' }
     );
 
     const userData = user.toObject();
     delete userData.password;
-    // Trả về role NPP để frontend xử lý đúng
     userData.role = tokenRole;
-    if (user.role === 'ADMIN') {
+    if (isAdmin) {
       userData.isAdminImpersonating = true;
     }
 
@@ -321,9 +321,9 @@ router.post('/distributor-entry', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
     }
 
-    // Cho phép NPP hoặc Admin đang impersonate NPP
-    if (decoded.role !== 'NPP') {
-      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được nhập dữ liệu phân phối' });
+    // Cho phép NPP, NSX hoặc Admin đang impersonate
+    if (!['NPP', 'NSX'].includes(decoded.role)) {
+      return res.status(403).json({ error: 'Chỉ tài khoản NSX/NPP mới được nhập dữ liệu phân phối' });
     }
 
     // Verify user exists in DB
@@ -392,9 +392,9 @@ router.get('/npp-stores', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
     }
 
-    // Cho phép NPP hoặc Admin đang impersonate NPP
-    if (decoded.role !== 'NPP') {
-      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
+    // Cho phép NPP, NSX hoặc Admin đang impersonate
+    if (!['NPP', 'NSX'].includes(decoded.role)) {
+      return res.status(403).json({ error: 'Chỉ tài khoản NSX/NPP mới được truy cập' });
     }
 
     const user = await User.findById(decoded.userId).populate('enterpriseId');
@@ -435,9 +435,9 @@ router.post('/distributor-entry-single', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
     }
 
-    // Cho phép NPP hoặc Admin đang impersonate NPP
-    if (decoded.role !== 'NPP') {
-      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được nhập dữ liệu phân phối' });
+    // Cho phép NPP, NSX hoặc Admin đang impersonate
+    if (!['NPP', 'NSX'].includes(decoded.role)) {
+      return res.status(403).json({ error: 'Chỉ tài khoản NSX/NPP mới được nhập dữ liệu phân phối' });
     }
 
     const user = await User.findById(decoded.userId).populate('enterpriseId');

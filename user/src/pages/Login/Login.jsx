@@ -97,7 +97,7 @@ export default function Login() {
             return;
           } catch { /* ignore */ }
         }
-        navigate('/home', { replace: true });
+        navigate('/scan', { replace: true });
       } else {
         result = await userApi.guestLogin({ username: username.trim(), password });
         login(result.user, result.token);
@@ -147,7 +147,7 @@ export default function Login() {
             onClick={() => handleTabChange('npp')}
           >
             <Store size={15} />
-            Nhà phân phối
+            NSX / NPP
           </button>
         </div>
 
@@ -161,10 +161,10 @@ export default function Login() {
         </div>
 
         <h1 className="login-brand-name">
-          {activeTab === 'npp' ? 'NHÀ PHÂN PHỐI' : 'KHÁCH HÀNG'}
+          {activeTab === 'npp' ? 'NHÀ SẢN XUẤT / NPP' : 'KHÁCH HÀNG'}
         </h1>
         <p className="login-brand-sub">
-          {activeTab === 'npp' ? 'Quản lý nhập kho & quét sản phẩm' : 'Xác thực sản phẩm chính hãng'}
+          {activeTab === 'npp' ? 'NSX, NPP & Admin quản lý quét sản phẩm' : 'Xác thực sản phẩm chính hãng'}
         </p>
 
         {/* Form */}
@@ -183,7 +183,7 @@ export default function Login() {
               id="auth-username"
               type="text"
               className="login-input"
-              placeholder={activeTab === 'npp' ? 'Tên đăng nhập nhà phân phối' : 'Tên đăng nhập hoặc email'}
+              placeholder={activeTab === 'npp' ? 'Tên đăng nhập NSX / NPP / Admin' : 'Tên đăng nhập hoặc email'}
               value={username}
               onChange={(e) => { setUsername(e.target.value); setError(''); }}
               autoComplete="username"
