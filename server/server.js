@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const seed = require('./seed');
 require('dotenv').config();
 
@@ -46,8 +45,8 @@ let mongoServer = null;
 const startServer = async () => {
   try {
     console.log(`Connecting to MongoDB at ${MONGO_URI}...`);
-    // Connect to the configured URI with a 3-second timeout
-    await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 3000 });
+    // Connect to the configured URI with a 5-second timeout
+    await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
     console.log('✅ Connected to MongoDB');
     
     // Check if database is empty to auto-seed
@@ -58,8 +57,10 @@ const startServer = async () => {
       await seed(false);
     }
   } catch (error) {
-    console.log('⚠️ Local MongoDB connection failed or not running. Starting in-memory MongoDB...');
+    console.log('⚠️ Primary MongoDB connection failed. Trying in-memory fallback (dev only)...');
     try {
+      // Dynamic import so devDependency is not required in production
+      const { MongoMemoryServer } = require('mongodb-memory-server');
       process.env.DEBUG = 'MongoMS:*';
       mongoServer = await MongoMemoryServer.create({
         binary: {
@@ -74,7 +75,7 @@ const startServer = async () => {
       console.log('🌱 Seeding in-memory database...');
       await seed(false);
     } catch (memError) {
-      console.error('❌ Failed to start/seed in-memory MongoDB:', memError.message);
+      console.error('❌ Failed to connect to any MongoDB:', memError.message);
       process.exit(1);
     }
   }
