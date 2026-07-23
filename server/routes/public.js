@@ -146,10 +146,24 @@ router.get('/scan/:serial', async (req, res) => {
       scannedAt: new Date()
     });
 
-    let responseTheme = batch.theme || 'default';
+    // Fetch related products from the same enterprise (up to 6 items)
+    let relatedProducts = [];
+    if (enterprise && enterprise._id) {
+      relatedProducts = await Product.find({
+        enterpriseId: enterprise._id,
+        _id: { $ne: label.productId?._id }
+      }).limit(6).lean();
+    }
+
+    let responseTheme = batch.theme || (template && template.layout ? template.layout : 'default');
     if (responseTheme === 'default' && label.productId) {
       const cat = (label.productId.category || '').toLowerCase().trim();
+      const pName = (label.productId.name || '').toLowerCase().trim();
       
+      const warrantyKeywords = [
+        'bảo hành', 'tem bảo hành', 'warranty', 'homeplus', 'bảo hành điện tử'
+      ];
+
       const agriKeywords = [
         'nông nghiệp', 'nông sản', 'trồng trọt', 'chăn nuôi', 'thủy sản', 
         'hải sản', 'lâm sản', 'trái cây', 'rau củ', 'hoa quả', 'gạo', 
@@ -181,17 +195,20 @@ router.get('/scan/:serial', async (req, res) => {
         'pharmaceutical', 'medical', 'kháng sinh', 'sức khỏe'
       ];
 
+      const isWarranty = warrantyKeywords.some(kw => cat.includes(kw) || pName.includes(kw));
       const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
       const isFood = foodKeywords.some(keyword => cat.includes(keyword));
       const isAppliance = applianceKeywords.some(keyword => cat.includes(keyword));
       const isMedical = medicalKeywords.some(keyword => cat.includes(keyword));
 
-      if (isAgri) {
+      if (isWarranty) {
+        responseTheme = 'warranty_solution';
+      } else if (isAgri) {
         responseTheme = 'agriculture';
       } else if (isFood) {
         responseTheme = 'functional_food';
       } else if (isAppliance) {
-        responseTheme = 'appliance';
+        responseTheme = 'warranty_solution';
       } else if (isMedical) {
         responseTheme = 'medical';
       }
@@ -202,6 +219,7 @@ router.get('/scan/:serial', async (req, res) => {
       product: label.productId,
       enterprise,
       template,
+      relatedProducts,
       isFirstScan,
       firstScanTime,
       theme: responseTheme

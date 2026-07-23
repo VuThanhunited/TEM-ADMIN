@@ -94,6 +94,18 @@ export default function Templates() {
         layout: 'minimal',
         logo: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="20" fill="%23f0fdf4"/><path d="M50 80V40M50 40c0-10-15-15-25-5 0 0 5 15 25 5zm0 15c0-8 15-12 25-2 0 0-5 12-25 2z" stroke="%2316a34a" stroke-width="8" stroke-linecap="round" fill="none"/><circle cx="50" cy="30" r="6" fill="%2384cc16"/></svg>'
       }));
+    } else if (presetType === 'baohanh') {
+      presetName = 'Giao diện Tem Bảo Hành (PDF Standard)';
+      setForm(prev => ({
+        ...prev,
+        name: prev.name || presetName,
+        primaryColor: '#0d47a1',
+        secondaryColor: '#1565c0',
+        backgroundColor: '#f0f4f8',
+        textColor: '#0f172a',
+        layout: 'warranty_solution',
+        logo: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="20" fill="%230d47a1"/><path d="M50 20L75 35V60L50 80L25 60V35L50 20Z" stroke="%23ffffff" stroke-width="6" fill="none"/><path d="M40 50L47 57L62 42" stroke="%234ade80" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      }));
     }
   };
 
@@ -214,6 +226,7 @@ export default function Templates() {
                     onChange={e => applyPreset(e.target.value)}
                   >
                     <option value="">-- Tùy chọn thiết kế mẫu --</option>
+                    <option value="baohanh">Tem Bảo Hành Sản Phẩm (PDF Standard - Blue/Emerald)</option>
                     <option value="duoc">Dược phẩm & Y tế (Xanh Teal, Modern, Light mode)</option>
                     <option value="mypham">Mỹ phẩm & Làm đẹp (Gold/Rose, Premium, Dark mode)</option>
                     <option value="nongnghiep">Nông nghiệp & Thực phẩm (Xanh lá, Minimal, Nature)</option>
@@ -224,6 +237,7 @@ export default function Templates() {
                   <label>Layout</label>
                   <select className="input select" value={form.layout} onChange={e => setForm({...form, layout: e.target.value})}>
                     <option value="default">Default</option>
+                    <option value="warranty_solution">Tem Bảo Hành PDF (Warranty Solution)</option>
                     <option value="minimal">Minimal</option>
                     <option value="premium">Premium</option>
                     <option value="modern">Modern</option>

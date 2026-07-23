@@ -37,12 +37,12 @@ const templateSchema = new mongoose.Schema({
   },
   layout: {
     type: String,
-    enum: ['default', 'minimal', 'premium', 'modern'],
+    enum: ['default', 'minimal', 'premium', 'modern', 'warranty_solution'],
     default: 'default'
   },
   templateType: {
     type: String,
-    enum: ['default', 'minimal', 'premium', 'modern', 'food-agriculture'],
+    enum: ['default', 'minimal', 'premium', 'modern', 'food-agriculture', 'warranty_solution'],
     default: 'default'
   },
   extendedConfig: {
