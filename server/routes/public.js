@@ -174,9 +174,17 @@ router.get('/scan/:serial', async (req, res) => {
         'appliance', 'home appliance', 'thiết bị nhà bếp', 'nhà bếp'
       ];
 
+      // Y tế / Dược phẩm
+      const medicalKeywords = [
+        'dược', 'dược phẩm', 'thuốc', 'y tế', 'vắc xin', 'vaccine',
+        'đông y', 'thuốc nam', 'thuốc bắc', 'bệnh viện', 'pharma',
+        'pharmaceutical', 'medical', 'kháng sinh', 'sức khỏe'
+      ];
+
       const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
       const isFood = foodKeywords.some(keyword => cat.includes(keyword));
       const isAppliance = applianceKeywords.some(keyword => cat.includes(keyword));
+      const isMedical = medicalKeywords.some(keyword => cat.includes(keyword));
 
       if (isAgri) {
         responseTheme = 'agriculture';
@@ -184,6 +192,8 @@ router.get('/scan/:serial', async (req, res) => {
         responseTheme = 'functional_food';
       } else if (isAppliance) {
         responseTheme = 'appliance';
+      } else if (isMedical) {
+        responseTheme = 'medical';
       }
     }
 
@@ -786,9 +796,16 @@ router.get('/barcode/:barcode', async (req, res) => {
       'appliance', 'home appliance', 'thiết bị nhà bếp', 'nhà bếp'
     ];
 
+    const medicalKeywords = [
+      'dược', 'dược phẩm', 'thuốc', 'y tế', 'vắc xin', 'vaccine',
+      'đông y', 'thuốc nam', 'thuốc bắc', 'bệnh viện', 'pharma',
+      'pharmaceutical', 'medical', 'kháng sinh', 'sức khỏe'
+    ];
+
     const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
     const isFood = foodKeywords.some(keyword => cat.includes(keyword));
     const isAppliance = applianceKeywords.some(keyword => cat.includes(keyword));
+    const isMedical = medicalKeywords.some(keyword => cat.includes(keyword));
 
     if (isAgri) {
       responseTheme = 'agriculture';
@@ -796,6 +813,8 @@ router.get('/barcode/:barcode', async (req, res) => {
       responseTheme = 'functional_food';
     } else if (isAppliance) {
       responseTheme = 'appliance';
+    } else if (isMedical) {
+      responseTheme = 'medical';
     }
 
     res.json({
