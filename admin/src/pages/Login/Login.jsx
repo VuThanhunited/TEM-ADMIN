@@ -19,7 +19,7 @@ export default function Login() {
       loadUser()
         .then(() => {
           setStatusText('Đăng nhập thành công! Đang chuyển hướng...');
-          navigate('/', { replace: true });
+          navigate('/dashboard', { replace: true });
         })
         .catch(() => {
           setError('Đăng nhập tự động thất bại hoặc phiên làm việc không hợp lệ.');

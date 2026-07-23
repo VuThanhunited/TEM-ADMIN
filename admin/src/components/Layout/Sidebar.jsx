@@ -14,7 +14,7 @@ const adminMenuItems = [
   {
     label: 'Dashboard',
     icon: LayoutDashboard,
-    path: '/',
+    path: '/dashboard',
     roles: ['ADMIN', 'NSX'],
   },
   {

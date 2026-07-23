@@ -20,18 +20,24 @@ import './App.css';
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading, isAdmin, isNPP } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div><p>Đang tải...</p></div>;
-  // Chưa đăng nhập → về trang giới thiệu (home) để xem trước, sau đó click login
-  if (!user) return <Navigate to="/home" replace />;
+  // Chưa đăng nhập → chuyển hướng cứng về /home để Vercel proxy sang trang giới thiệu user
+  if (!user) {
+    window.location.href = '/home';
+    return null;
+  }
   if (isNPP) return <Navigate to="/npp/scan" replace />;
-  if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
+  if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
 function NppRoute({ children }) {
   const { user, loading, isNPP } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (!isNPP) return <Navigate to="/" replace />;
+  if (!user) {
+    window.location.href = '/login?tab=npp';
+    return null;
+  }
+  if (!isNPP) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -40,7 +46,7 @@ function PublicRoute({ children }) {
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
   if (user) {
     if (isNPP) return <Navigate to="/npp/scan" replace />;
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
@@ -48,7 +54,9 @@ function PublicRoute({ children }) {
 function CatchAllRoute() {
   const { user, isNPP } = useAuth();
   if (user && isNPP) return <Navigate to="/npp/scan" replace />;
-  return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  window.location.href = '/home';
+  return null;
 }
 
 function AppRoutes() {
@@ -66,6 +74,7 @@ function AppRoutes() {
       </Route>
       <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route path="accounts" element={<ProtectedRoute adminOnly><Accounts /></ProtectedRoute>} />
         <Route path="enterprise" element={<Enterprise />} />
         <Route path="enterprise/domain" element={<Enterprise />} />
