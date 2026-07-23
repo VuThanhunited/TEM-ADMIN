@@ -492,6 +492,98 @@
   opacity: 0.4;
 }
 
+/* ==========================================
+   Theme: Medical (Y tế / Dược phẩm)
+   Màu chủ đạo: Xanh y tế / Cyan #0284C7
+   ========================================== */
+.theme-medical {
+  background: #F0F9FF;
+}
+
+.theme-medical .product-info-header {
+  background: linear-gradient(135deg, #0284C7, #0369A1);
+  border-bottom: 1px solid #0284C7;
+  color: white;
+}
+
+.theme-medical .product-info-header-title {
+  color: white;
+}
+
+.theme-medical .product-info-back {
+  color: rgba(255,255,255,0.9);
+}
+
+.theme-medical .product-info-back:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.theme-medical .product-info-verify {
+  background: linear-gradient(135deg, #E0F2FE, #F0F9FF);
+  border-color: #BAE6FD;
+}
+
+.theme-medical .product-info-verify-icon {
+  background: #0284C7;
+}
+
+.theme-medical .product-info-verify-text h3 {
+  color: #0369A1;
+}
+
+.theme-medical .product-info-verify-text p {
+  color: #0284C7;
+}
+
+.theme-medical .product-info-card {
+  border-color: #BAE6FD;
+  box-shadow: 0 2px 16px rgba(2, 132, 199, 0.1);
+}
+
+.theme-medical .product-info-image-area {
+  background: linear-gradient(135deg, #0284C7, #38BDF8, #0369A1);
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-medical .product-info-row-icon {
+  background: #E0F2FE;
+  color: #0284C7;
+}
+
+.theme-medical .product-info-enterprise {
+  border-color: #BAE6FD;
+  border-left: 4px solid #0284C7;
+}
+
+.theme-medical .product-info-enterprise-row svg {
+  color: #0284C7;
+}
+
+.theme-medical .product-info-stat-number {
+  color: #0284C7;
+}
+
+.theme-medical .product-info-distributor {
+  border-color: #BAE6FD;
+}
+
+.theme-medical .product-info-home-btn {
+  background: linear-gradient(135deg, #0284C7, #0369A1);
+}
+
+.theme-medical .product-info-home-btn:hover {
+  background: linear-gradient(135deg, #0369A1, #075985);
+}
+
+/* Medical badge icon */
+.theme-medical .product-info-verify::after {
+  content: '🩺';
+  font-size: 1.2rem;
+  margin-left: auto;
+  opacity: 0.5;
+}
+
 /* CSS Variables cho custom domain branding */
 :root {
   --brand-primary: #6366f1;
