@@ -73,6 +73,31 @@ const templateSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  contentConfig: {
+    headerTitle1: { type: String, default: 'GIẢI PHÁP QRcode' },
+    headerTitle2: { type: String, default: 'TEM BẢO HÀNH SẢN PHẨM' },
+    transparencyLine1: { type: String, default: 'SẢN PHẨM ĐÃ ĐƯỢC NHÀ CUNG CẤP' },
+    transparencyLine2: { type: String, default: 'CAM KẾT MINH BẠCH THÔNG TIN' },
+    
+    spec1Label: { type: String, default: 'Dung tích' },
+    spec1Value: { type: String, default: '1.8L' },
+    spec2Label: { type: String, default: 'Công suất' },
+    spec2Value: { type: String, default: '1200W' },
+    spec3Label: { type: String, default: 'Lòng nồi' },
+    spec3Value: { type: String, default: 'Inox 304' },
+    spec4Label: { type: String, default: 'Bảo hành' },
+    spec4Value: { type: String, default: '24 tháng' },
+
+    checklistCol1: [{ type: String }],
+    checklistCol2: [{ type: String }],
+
+    benefits: [{
+      title: { type: String },
+      desc: { type: String }
+    }],
+
+    manufacturerNote: { type: String, default: '' }
+  },
   isDefault: {
     type: Boolean,
     default: false

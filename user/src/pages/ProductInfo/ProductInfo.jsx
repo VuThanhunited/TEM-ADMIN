@@ -113,13 +113,38 @@ export default function ProductInfo() {
     }, 1000);
   };
 
-  // 4 Specs matching PDF exactly
+  // Content Customization Overrides from Admin Template Config
+  const contentConfig = scanData?.template?.contentConfig || {};
+
+  const headerTitle1 = contentConfig.headerTitle1 || 'GIẢI PHÁP QRcode';
+  const headerTitle2 = contentConfig.headerTitle2 || 'TEM BẢO HÀNH SẢN PHẨM';
+  const transparencyLine1 = contentConfig.transparencyLine1 || 'SẢN PHẨM ĐÃ ĐƯỢC NHÀ CUNG CẤP';
+  const transparencyLine2 = contentConfig.transparencyLine2 || 'CAM KẾT MINH BẠCH THÔNG TIN';
+
+  // 4 Specs matching PDF / Admin config
   const pdfSpecs = [
-    { label: 'Dung tích', value: '1.8L', icon: <Package size={20} color="#0D47A1" strokeWidth={1.5} /> },
-    { label: 'Công suất', value: '1200W', icon: <Activity size={20} color="#0D47A1" strokeWidth={1.5} /> },
-    { label: 'Lòng nồi', value: 'Inox 304', icon: <Layers size={20} color="#0D47A1" strokeWidth={1.5} /> },
-    { label: 'Bảo hành', value: '24 tháng', icon: <ShieldCheck size={20} color="#0D47A1" strokeWidth={1.5} /> }
+    { label: contentConfig.spec1Label || 'Dung tích', value: contentConfig.spec1Value || '1.8L', icon: <Package size={20} color="#0D47A1" strokeWidth={1.5} /> },
+    { label: contentConfig.spec2Label || 'Công suất', value: contentConfig.spec2Value || '1200W', icon: <Activity size={20} color="#0D47A1" strokeWidth={1.5} /> },
+    { label: contentConfig.spec3Label || 'Lòng nồi', value: contentConfig.spec3Value || 'Inox 304', icon: <Layers size={20} color="#0D47A1" strokeWidth={1.5} /> },
+    { label: contentConfig.spec4Label || 'Bảo hành', value: contentConfig.spec4Value || '24 tháng', icon: <ShieldCheck size={20} color="#0D47A1" strokeWidth={1.5} /> }
   ];
+
+  // 5 Benefits Cards from Admin Config or default
+  const defaultBenefits = [
+    { title: 'ĐẢM BẢO CHÍNH HÃNG', desc: 'Xác thực nguồn gốc, nói không với hàng giả', icon: <ShieldCheck size={22} color="#0D47A1" strokeWidth={1.5} /> },
+    { title: 'BẢO HÀNH ĐIỆN TỬ', desc: 'Kích hoạt và tra cứu bảo hành nhanh chóng', icon: <Award size={22} color="#0D47A1" strokeWidth={1.5} /> },
+    { title: 'HỖ TRỢ NHANH CHÓNG', desc: 'Tiếp nhận yêu cầu và hỗ trợ kịp thời', icon: <Headphones size={22} color="#0D47A1" strokeWidth={1.5} /> },
+    { title: 'ƯU ĐÃI ĐẶC QUYỀN', desc: 'Nhận thông tin khuyến mãi, ưu đãi hấp dẫn', icon: <Gift size={22} color="#0D47A1" strokeWidth={1.5} /> },
+    { title: 'BẢO VỆ QUYỀN LỢI', desc: 'An tâm sử dụng, bảo vệ quyền lợi người tiêu dùng', icon: <Lock size={22} color="#0D47A1" strokeWidth={1.5} /> }
+  ];
+
+  const benefitsList = (contentConfig.benefits && contentConfig.benefits.length === 5)
+    ? contentConfig.benefits.map((b, idx) => ({
+        title: b.title || defaultBenefits[idx].title,
+        desc: b.desc || defaultBenefits[idx].desc,
+        icon: defaultBenefits[idx].icon
+      }))
+    : defaultBenefits;
 
   // 6 Checklist features split into 2 columns
   const pdfCol1Features = [
@@ -202,9 +227,9 @@ export default function ProductInfo() {
             {/* Header Title Section */}
             <div className="pdf-header-section">
               <h1 className="pdf-title-line1">
-                GIẢI PHÁP QR<span className="pdf-code-small">code</span>
+                {headerTitle1}
               </h1>
-              <h2 className="pdf-title-line2">TEM BẢO HÀNH SẢN PHẨM</h2>
+              <h2 className="pdf-title-line2">{headerTitle2}</h2>
               
               <div className="pdf-diamond-divider">
                 <span className="pdf-line-left"></span>
@@ -283,141 +308,110 @@ export default function ProductInfo() {
               </div>
             </div>
 
-              {/* 4. Related Products Section */}
-              <div className="pdf-section-container">
-                <h3 className="pdf-section-heading">
-                  THÔNG TIN SẢN PHẨM & SẢN PHẨM CÙNG NHÀ SẢN XUẤT
-                </h3>
+            {/* 4. Related Products Section */}
+            <div className="pdf-section-container">
+              <h3 className="pdf-section-heading">
+                THÔNG TIN SẢN PHẨM & SẢN PHẨM CÙNG NHÀ SẢN XUẤT
+              </h3>
 
-                <div className="pdf-carousel-box">
-                  <button className="pdf-nav-arrow left" onClick={handleScrollLeft} aria-label="Previous">
-                    <ChevronLeft size={18} />
-                  </button>
+              <div className="pdf-carousel-box">
+                <button className="pdf-nav-arrow left" onClick={handleScrollLeft} aria-label="Previous">
+                  <ChevronLeft size={18} />
+                </button>
 
-                  <div className="pdf-related-grid" ref={scrollRef}>
-                    {pdfRelatedProducts.map((item, idx) => (
-                      <div key={idx} className="pdf-related-item-card">
-                        <div className="pdf-related-photo-box">
-                          <img src={item.image} alt={item.name} />
-                        </div>
-                        <div className="pdf-related-item-title">{item.name}</div>
+                <div className="pdf-related-grid" ref={scrollRef}>
+                  {pdfRelatedProducts.map((item, idx) => (
+                    <div key={idx} className="pdf-related-item-card">
+                      <div className="pdf-related-photo-box">
+                        <img src={item.image} alt={item.name} />
                       </div>
-                    ))}
+                      <div className="pdf-related-item-title">{item.name}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <button className="pdf-nav-arrow right" onClick={handleScrollRight} aria-label="Next">
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* 5. Manufacturer Information Section */}
+            <div className="pdf-section-container">
+              <h3 className="pdf-section-heading">THÔNG TIN NHÀ SẢN XUẤT</h3>
+
+              <div className="pdf-manufacturer-layout">
+                {/* Building photo on left */}
+                <div className="pdf-mfg-building-photo">
+                  <img 
+                    src="/pdf_assets/factory_building.png" 
+                    alt="HOMEPLUS Building" 
+                  />
+                </div>
+
+                {/* Company info on right */}
+                <div className="pdf-mfg-content">
+                  <div className="pdf-mfg-field">
+                    <Building2 size={16} className="pdf-mfg-field-icon" />
+                    <span className="pdf-mfg-field-lbl">Tên công ty:</span>
+                    <span className="pdf-mfg-field-val bold">
+                      {enterprise?.name || 'CÔNG TY TNHH HOMEPLUS VIỆT NAM'}
+                    </span>
                   </div>
 
-                  <button className="pdf-nav-arrow right" onClick={handleScrollRight} aria-label="Next">
-                    <ChevronRight size={18} />
-                  </button>
+                  <div className="pdf-mfg-field">
+                    <MapPin size={16} className="pdf-mfg-field-icon" />
+                    <span className="pdf-mfg-field-lbl">Địa chỉ:</span>
+                    <span className="pdf-mfg-field-val">
+                      {enterprise?.address || 'Lô B2-3, KCN Thăng Long, Đông Anh, Hà Nội, Việt Nam'}
+                    </span>
+                  </div>
+
+                  <div className="pdf-mfg-field">
+                    <Phone size={16} className="pdf-mfg-field-icon" />
+                    <span className="pdf-mfg-field-lbl">Điện thoại:</span>
+                    <span className="pdf-mfg-field-val">
+                      {enterprise?.phone || '024 6688 1234'}
+                    </span>
+                  </div>
+
+                  <div className="pdf-mfg-field">
+                    <Mail size={16} className="pdf-mfg-field-icon" />
+                    <span className="pdf-mfg-field-lbl">Email:</span>
+                    <span className="pdf-mfg-field-val">
+                      {enterprise?.email || 'contact@homeplus.vn'}
+                    </span>
+                  </div>
+
+                  <div className="pdf-mfg-field">
+                    <Globe size={16} className="pdf-mfg-field-icon" />
+                    <span className="pdf-mfg-field-lbl">Website:</span>
+                    <span className="pdf-mfg-field-val">
+                      {enterprise?.website || 'www.homeplus.vn'}
+                    </span>
+                  </div>
+
+                  <p className="pdf-mfg-paragraph">
+                    {contentConfig.manufacturerNote || 'HOMEPLUS là thương hiệu uy tín chuyên cung cấp các sản phẩm gia dụng, thiết bị nhà bếp và thiết bị vệ sinh chất lượng cao, đáp ứng tiêu chuẩn quốc tế, đem lại tiện nghi và an toàn cho mọi gia đình.'}
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* 5. Manufacturer Information Section */}
-              <div className="pdf-section-container">
-                <h3 className="pdf-section-heading">THÔNG TIN NHÀ SẢN XUẤT</h3>
+            {/* 6. Benefits Footer Section (5 Items Horizontal) */}
+            <div className="pdf-section-container pdf-benefits-section-container">
+              <h3 className="pdf-section-heading">LỢI ÍCH KHI XÁC THỰC SẢN PHẨM</h3>
 
-                <div className="pdf-manufacturer-layout">
-                  {/* Building photo on left */}
-                  <div className="pdf-mfg-building-photo">
-                    <img 
-                      src="/pdf_assets/factory_building.png" 
-                      alt="HOMEPLUS Building" 
-                    />
-                  </div>
-
-                  {/* Company info on right */}
-                  <div className="pdf-mfg-content">
-                    <div className="pdf-mfg-field">
-                      <Building2 size={16} className="pdf-mfg-field-icon" />
-                      <span className="pdf-mfg-field-lbl">Tên công ty:</span>
-                      <span className="pdf-mfg-field-val bold">
-                        {enterprise?.name || 'CÔNG TY TNHH HOMEPLUS VIỆT NAM'}
-                      </span>
-                    </div>
-
-                    <div className="pdf-mfg-field">
-                      <MapPin size={16} className="pdf-mfg-field-icon" />
-                      <span className="pdf-mfg-field-lbl">Địa chỉ:</span>
-                      <span className="pdf-mfg-field-val">
-                        {enterprise?.address || 'Lô B2-3, KCN Thăng Long, Đông Anh, Hà Nội, Việt Nam'}
-                      </span>
-                    </div>
-
-                    <div className="pdf-mfg-field">
-                      <Phone size={16} className="pdf-mfg-field-icon" />
-                      <span className="pdf-mfg-field-lbl">Điện thoại:</span>
-                      <span className="pdf-mfg-field-val">
-                        {enterprise?.phone || '024 6688 1234'}
-                      </span>
-                    </div>
-
-                    <div className="pdf-mfg-field">
-                      <Mail size={16} className="pdf-mfg-field-icon" />
-                      <span className="pdf-mfg-field-lbl">Email:</span>
-                      <span className="pdf-mfg-field-val">
-                        {enterprise?.email || 'contact@homeplus.vn'}
-                      </span>
-                    </div>
-
-                    <div className="pdf-mfg-field">
-                      <Globe size={16} className="pdf-mfg-field-icon" />
-                      <span className="pdf-mfg-field-lbl">Website:</span>
-                      <span className="pdf-mfg-field-val">
-                        {enterprise?.website || 'www.homeplus.vn'}
-                      </span>
-                    </div>
-
-                    <p className="pdf-mfg-paragraph">
-                      HOMEPLUS là thương hiệu uy tín chuyên cung cấp các sản phẩm gia dụng, thiết bị nhà bếp và thiết bị vệ sinh chất lượng cao, đáp ứng tiêu chuẩn quốc tế, đem lại tiện nghi và an toàn cho mọi gia đình.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 6. Benefits Footer Section (5 Items Horizontal) */}
-              <div className="pdf-section-container pdf-benefits-section-container">
-                <h3 className="pdf-section-heading">LỢI ÍCH KHI XÁC THỰC SẢN PHẨM</h3>
-
-                <div className="pdf-benefits-5cols">
-                  <div className="pdf-benefit-column">
+              <div className="pdf-benefits-5cols">
+                {benefitsList.map((item, idx) => (
+                  <div key={idx} className="pdf-benefit-column">
                     <div className="pdf-benefit-circle-icon">
-                      <ShieldCheck size={22} color="#0D47A1" strokeWidth={1.5} />
+                      {item.icon}
                     </div>
-                    <h4>ĐẢM BẢO CHÍNH HÃNG</h4>
-                    <p>Xác thực nguồn gốc, nói không với hàng giả</p>
+                    <h4>{item.title}</h4>
+                    <p>{item.desc}</p>
                   </div>
-
-                  <div className="pdf-benefit-column">
-                    <div className="pdf-benefit-circle-icon">
-                      <Award size={22} color="#0D47A1" strokeWidth={1.5} />
-                    </div>
-                    <h4>BẢO HÀNH ĐIỆN TỬ</h4>
-                    <p>Kích hoạt và tra cứu bảo hành nhanh chóng</p>
-                  </div>
-
-                  <div className="pdf-benefit-column">
-                    <div className="pdf-benefit-circle-icon">
-                      <Headphones size={22} color="#0D47A1" strokeWidth={1.5} />
-                    </div>
-                    <h4>HỖ TRỢ NHANH CHÓNG</h4>
-                    <p>Tiếp nhận yêu cầu và hỗ trợ kịp thời</p>
-                  </div>
-
-                  <div className="pdf-benefit-column">
-                    <div className="pdf-benefit-circle-icon">
-                      <Gift size={22} color="#0D47A1" strokeWidth={1.5} />
-                    </div>
-                    <h4>ƯU ĐÃI ĐẶC QUYỀN</h4>
-                    <p>Nhận thông tin khuyến mãi, ưu đãi hấp dẫn</p>
-                  </div>
-
-                  <div className="pdf-benefit-column">
-                    <div className="pdf-benefit-circle-icon">
-                      <Lock size={22} color="#0D47A1" strokeWidth={1.5} />
-                    </div>
-                    <h4>BẢO VỆ QUYỀN LỢI</h4>
-                    <p>An tâm sử dụng, bảo vệ quyền lợi người tiêu dùng</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -426,6 +420,7 @@ export default function ProductInfo() {
               <Home size={18} />
               Quay lại trang chủ
             </button>
+          </div>
         </div>
       ) : (
         /* Default Layout */
