@@ -1,6 +1,34 @@
 {
   "rewrites": [
     {
+      "source": "/home",
+      "destination": "https://tem-user-page.vercel.app/home"
+    },
+    {
+      "source": "/register",
+      "destination": "https://tem-user-page.vercel.app/register"
+    },
+    {
+      "source": "/select-store",
+      "destination": "https://tem-user-page.vercel.app/select-store"
+    },
+    {
+      "source": "/success",
+      "destination": "https://tem-user-page.vercel.app/success"
+    },
+    {
+      "source": "/history",
+      "destination": "https://tem-user-page.vercel.app/history"
+    },
+    {
+      "source": "/trace/:code",
+      "destination": "https://tem-user-page.vercel.app/trace/:code"
+    },
+    {
+      "source": "/product-info",
+      "destination": "https://tem-user-page.vercel.app/product-info"
+    },
+    {
       "source": "/((?!assets/|.*\\.).*)",
       "destination": "/index.html"
     }
