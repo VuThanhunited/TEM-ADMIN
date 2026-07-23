@@ -20,7 +20,8 @@ import './App.css';
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading, isAdmin, isNPP } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div><p>Đang tải...</p></div>;
-  if (!user) return <Navigate to="/login" replace />;
+  // Chưa đăng nhập → về trang giới thiệu (home) để xem trước, sau đó click login
+  if (!user) return <Navigate to="/home" replace />;
   if (isNPP) return <Navigate to="/npp/scan" replace />;
   if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
   return children;

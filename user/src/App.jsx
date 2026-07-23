@@ -128,6 +128,10 @@ function AppRoutes() {
         }
       />
       <Route path="/trace/:code" element={<ScanChoice />} />
+      {/* Alias routes – tương thích URL format cũ và custom domain */}
+      <Route path="/scan/:code" element={<ScanChoice />} />
+      <Route path="/qrcode/:code" element={<ScanChoice />} />
+      <Route path="/temqr/:code" element={<ScanChoice />} />
       <Route path="/product-info" element={<ProductInfo />} />
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />

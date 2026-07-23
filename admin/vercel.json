@@ -5,6 +5,10 @@
       "destination": "https://tem-user-page.vercel.app/home"
     },
     {
+      "source": "/login",
+      "destination": "https://tem-user-page.vercel.app/login"
+    },
+    {
       "source": "/register",
       "destination": "https://tem-user-page.vercel.app/register"
     },
@@ -23,6 +27,18 @@
     {
       "source": "/trace/:code",
       "destination": "https://tem-user-page.vercel.app/trace/:code"
+    },
+    {
+      "source": "/scan/:code",
+      "destination": "https://tem-user-page.vercel.app/scan/:code"
+    },
+    {
+      "source": "/qrcode/:code",
+      "destination": "https://tem-user-page.vercel.app/qrcode/:code"
+    },
+    {
+      "source": "/temqr/:code",
+      "destination": "https://tem-user-page.vercel.app/temqr/:code"
     },
     {
       "source": "/product-info",
