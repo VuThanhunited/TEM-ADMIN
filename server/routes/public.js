@@ -164,13 +164,26 @@ router.get('/scan/:serial', async (req, res) => {
         'beverage', 'snack', 'candy', 'milk'
       ];
 
+      // Điện gia dụng / thiết bị điện
+      const applianceKeywords = [
+        'bếp ga', 'bếp từ', 'bếp hồng ngoại', 'bếp điện', 'điện máy',
+        'gia dụng', 'thiết bị điện', 'máy lạnh', 'điều hòa', 'tủ lạnh',
+        'máy giặt', 'lò vi sóng', 'lò nướng', 'máy hút bụi', 'quạt điện',
+        'máy lọc', 'nồi cơm', 'nồi áp suất', 'máy xay', 'máy ép',
+        'bình nóng lạnh', 'máy sưởi', 'đèn led', 'điện tử', 'electronics',
+        'appliance', 'home appliance', 'thiết bị nhà bếp', 'nhà bếp'
+      ];
+
       const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
       const isFood = foodKeywords.some(keyword => cat.includes(keyword));
+      const isAppliance = applianceKeywords.some(keyword => cat.includes(keyword));
 
       if (isAgri) {
         responseTheme = 'agriculture';
       } else if (isFood) {
         responseTheme = 'functional_food';
+      } else if (isAppliance) {
+        responseTheme = 'appliance';
       }
     }
 
@@ -764,13 +777,25 @@ router.get('/barcode/:barcode', async (req, res) => {
       'beverage', 'snack', 'candy', 'milk'
     ];
 
+    const applianceKeywords = [
+      'bếp ga', 'bếp từ', 'bếp hồng ngoại', 'bếp điện', 'điện máy',
+      'gia dụng', 'thiết bị điện', 'máy lạnh', 'điều hòa', 'tủ lạnh',
+      'máy giặt', 'lò vi sóng', 'lò nướng', 'máy hút bụi', 'quạt điện',
+      'máy lọc', 'nồi cơm', 'nồi áp suất', 'máy xay', 'máy ép',
+      'bình nóng lạnh', 'máy sưởi', 'đèn led', 'điện tử', 'electronics',
+      'appliance', 'home appliance', 'thiết bị nhà bếp', 'nhà bếp'
+    ];
+
     const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
     const isFood = foodKeywords.some(keyword => cat.includes(keyword));
+    const isAppliance = applianceKeywords.some(keyword => cat.includes(keyword));
 
     if (isAgri) {
       responseTheme = 'agriculture';
     } else if (isFood) {
       responseTheme = 'functional_food';
+    } else if (isAppliance) {
+      responseTheme = 'appliance';
     }
 
     res.json({
@@ -869,6 +894,57 @@ router.post('/contact', async (req, res) => {
   } catch (error) {
     console.error('Contact submit error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi gửi thông tin liên hệ.' });
+  }
+});
+
+// GET /api/public/enterprise-by-domain?domain=congtya.com
+// Tìm enterprise theo custom domain hoặc subdomain
+router.get('/enterprise-by-domain', async (req, res) => {
+  try {
+    const { domain } = req.query;
+    if (!domain) {
+      return res.status(400).json({ error: 'Thiếu tham số domain' });
+    }
+
+    // Chuẩn hóa domain: bỏ www. và protocol
+    const cleanDomain = domain
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .split('/')[0]
+      .toLowerCase()
+      .trim();
+
+    // Tìm theo domain chính hoặc subdomain
+    const enterprise = await Enterprise.findOne({
+      isActive: true,
+      $or: [
+        { domain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') } },
+        { subdomain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') } }
+      ]
+    }).select('name logo domain subdomain brandConfig chatbotConfig address phone email website _id');
+
+    if (!enterprise) {
+      return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp với domain này' });
+    }
+
+    res.json({
+      enterprise: {
+        _id: enterprise._id,
+        name: enterprise.name,
+        logo: enterprise.logo,
+        domain: enterprise.domain,
+        subdomain: enterprise.subdomain,
+        brandConfig: enterprise.brandConfig,
+        chatbotConfig: enterprise.chatbotConfig,
+        address: enterprise.address,
+        phone: enterprise.phone,
+        email: enterprise.email,
+        website: enterprise.website
+      }
+    });
+  } catch (error) {
+    console.error('Enterprise by domain error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi tìm kiếm domain' });
   }
 });
 

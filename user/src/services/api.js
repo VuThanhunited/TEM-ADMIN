@@ -115,6 +115,20 @@ class UserApiService {
   submitContact(data) {
     return this.request('POST', '/public/contact', data, {}, false);
   }
+
+  // Tìm enterprise theo custom domain (dùng cho custom domain routing)
+  getEnterpriseByDomain(domain) {
+    return this.request('GET', '/public/enterprise-by-domain', null, { domain }, false);
+  }
+
+  // Lấy hostname hiện tại (bỏ www., chỉ lấy domain)
+  getCurrentDomain() {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isVercel = hostname.endsWith('.vercel.app');
+    if (isLocal || isVercel) return null; // Không phải custom domain
+    return hostname.replace(/^www\./, '');
+  }
 }
 
 const userApi = new UserApiService();

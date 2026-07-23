@@ -184,9 +184,55 @@ export default function Enterprise() {
               <Globe size={20} />
               <p>Cấu hình domain/subdomain riêng cho trang hiển thị tem của doanh nghiệp bạn.</p>
             </div>
+
+            {/* Hướng dẫn DNS */}
+            <div className="domain-dns-guide" style={{
+              margin: '0 0 20px 0',
+              padding: '16px',
+              background: 'rgba(99, 102, 241, 0.06)',
+              borderRadius: '12px',
+              border: '1px solid rgba(99, 102, 241, 0.2)',
+              fontSize: '0.85rem',
+              lineHeight: '1.7'
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: '10px', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Globe size={15} /> Hướng dẫn trỏ DNS (CNAME)
+              </div>
+              <p style={{ margin: '0 0 10px 0', opacity: 0.85 }}>
+                Sau khi điền domain bên dưới, bạn cần vào trang quản lý DNS của nhà cung cấp tên miền và thêm bản ghi <strong>CNAME</strong>:
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', background: 'rgba(99,102,241,0.1)', borderRadius: '6px 0 0 0' }}>Loại</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', background: 'rgba(99,102,241,0.1)' }}>Tên (Name)</th>
+                    <th style={{ textAlign: 'left', padding: '6px 10px', background: 'rgba(99,102,241,0.1)', borderRadius: '0 6px 0 0' }}>Trỏ về (Value)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>CNAME</td>
+                    <td style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                        {domainForm.subdomain ? domainForm.subdomain : 'tem'}
+                      </code>
+                    </td>
+                    <td style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <code style={{ background: 'rgba(99,241,99,0.1)', color: '#4ade80', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                        tem-user-page.vercel.app
+                      </code>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p style={{ margin: '10px 0 0 0', opacity: 0.7, fontSize: '0.78rem' }}>
+                ⓘ Sau khi lưu DNS, có thể mất 5–30 phút để domain hoạt động. Không cần cấu hình thêm sau đó.
+              </p>
+            </div>
+
             <div className="form-grid">
-              <div className="input-group"><label>Domain chính</label><input className="input" value={domainForm.domain} onChange={e => setDomainForm({...domainForm, domain: e.target.value})} placeholder="vd: tem.congty.vn" /></div>
-              <div className="input-group"><label>Subdomain</label><input className="input" value={domainForm.subdomain} onChange={e => setDomainForm({...domainForm, subdomain: e.target.value})} placeholder="vd: congty" /></div>
+              <div className="input-group"><label>Domain chính (VD: tem.congtya.com)</label><input className="input" value={domainForm.domain} onChange={e => setDomainForm({...domainForm, domain: e.target.value})} placeholder="vd: tem.congty.vn" /></div>
+              <div className="input-group"><label>Subdomain (phần trước dấu chấm)</label><input className="input" value={domainForm.subdomain} onChange={e => setDomainForm({...domainForm, subdomain: e.target.value})} placeholder="vd: tem" /></div>
             </div>
             {domainForm.domain && (
               <div className="domain-preview">

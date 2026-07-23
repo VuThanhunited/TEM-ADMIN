@@ -343,3 +343,157 @@
   background: #1B5E20;
 }
 
+/* ==========================================
+   Custom Domain Banner
+   ========================================== */
+.product-info-domain-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.product-info-domain-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: rgba(255,255,255,0.15);
+}
+
+.product-info-domain-name {
+  letter-spacing: 0.3px;
+}
+
+/* ==========================================
+   Theme: Appliance (Điện gia dụng)
+   Màu chủ đạo: Xanh dương kỹ thuật #1565C0
+   ========================================== */
+.theme-appliance {
+  background: #EEF2F7;
+}
+
+.theme-appliance .product-info-header {
+  background: #1565C0;
+  border-bottom: 1px solid #0D47A1;
+  color: white;
+}
+
+.theme-appliance .product-info-header-title {
+  color: white;
+}
+
+.theme-appliance .product-info-back {
+  color: rgba(255,255,255,0.9);
+}
+
+.theme-appliance .product-info-back:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.theme-appliance .product-info-verify {
+  background: linear-gradient(135deg, #E3F0FF, #DCEEFF);
+  border-color: #90CAF9;
+}
+
+.theme-appliance .product-info-verify-icon {
+  background: #1565C0;
+}
+
+.theme-appliance .product-info-verify-text h3 {
+  color: #0D47A1;
+}
+
+.theme-appliance .product-info-verify-text p {
+  color: #1565C0;
+}
+
+.theme-appliance .product-info-verify--warning {
+  background: #FFF3E0;
+  border-color: #FFB74D;
+}
+
+.theme-appliance .product-info-verify--warning .product-info-verify-icon {
+  background: #E65100;
+}
+
+.theme-appliance .product-info-card {
+  border-color: #BBDEFB;
+  box-shadow: 0 2px 16px rgba(21, 101, 192, 0.12);
+}
+
+.theme-appliance .product-info-image-area {
+  background: linear-gradient(135deg, #1565C0, #1976D2, #0D47A1);
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-appliance .product-info-image-area::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(255,255,255,0.04) 8px,
+    rgba(255,255,255,0.04) 16px
+  );
+}
+
+.theme-appliance .product-info-image-placeholder {
+  color: rgba(255,255,255,0.7);
+  position: relative;
+  z-index: 1;
+}
+
+.theme-appliance .product-info-image-placeholder span {
+  color: rgba(255,255,255,0.6);
+}
+
+.theme-appliance .product-info-row-icon {
+  background: #E3F2FD;
+  color: #1565C0;
+}
+
+.theme-appliance .product-info-enterprise {
+  border-color: #BBDEFB;
+  border-left: 4px solid #1565C0;
+}
+
+.theme-appliance .product-info-enterprise-row svg {
+  color: #1565C0;
+}
+
+.theme-appliance .product-info-stat-number {
+  color: #1565C0;
+}
+
+.theme-appliance .product-info-distributor {
+  border-color: #BBDEFB;
+}
+
+.theme-appliance .product-info-home-btn {
+  background: linear-gradient(135deg, #1565C0, #1976D2);
+}
+
+.theme-appliance .product-info-home-btn:hover {
+  background: linear-gradient(135deg, #0D47A1, #1565C0);
+}
+
+/* Appliance icon badge */
+.theme-appliance .product-info-verify::after {
+  content: '⚡';
+  font-size: 1.2rem;
+  margin-left: auto;
+  opacity: 0.4;
+}
+
+/* CSS Variables cho custom domain branding */
+:root {
+  --brand-primary: #6366f1;
+  --brand-secondary: #8b5cf6;
+}

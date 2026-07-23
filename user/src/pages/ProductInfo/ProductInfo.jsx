@@ -3,15 +3,21 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, Package, QrCode,
   Building2, MapPin, Phone, Globe, Mail, Clock, Hash,
-  Truck, Home, MessageSquare, Send, X, Bot
+  Truck, Home, MessageSquare, Send, X, Bot, Zap
 } from 'lucide-react';
+import { useDomain } from '../../contexts/DomainContext';
 import './ProductInfo.css';
 
 export default function ProductInfo() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { customEnterprise, isCustomDomain } = useDomain();
 
   const { scanData, serial } = location.state || {};
+
+  // Xác định theme từ scanData
+  const theme = scanData?.theme || 'default';
+  const themeClass = theme !== 'default' ? `theme-${theme}` : '';
 
   useEffect(() => {
     if (!scanData) {
@@ -102,7 +108,21 @@ export default function ProductInfo() {
   };
 
   return (
-    <div className="product-info-page">
+    <div className={`product-info-page ${themeClass}`}>
+      {/* Custom Domain Enterprise Banner */}
+      {isCustomDomain && customEnterprise && (
+        <div className="product-info-domain-banner"
+          style={{
+            background: customEnterprise.brandConfig?.primaryColor || 'var(--brand-primary, #1565C0)',
+          }}
+        >
+          {customEnterprise.logo && (
+            <img src={customEnterprise.logo} alt={customEnterprise.name} className="product-info-domain-logo" />
+          )}
+          <span className="product-info-domain-name">{customEnterprise.name}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="product-info-header">
         <button
