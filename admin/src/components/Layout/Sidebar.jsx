@@ -81,12 +81,18 @@ const adminMenuItems = [
       { label: 'Xem Demo hiển thị', path: '/analytics/demo' },
     ]
   },
+  {
+    label: 'QL Kho (Scan)',
+    icon: ScanLine,
+    path: '/npp/scan',
+    roles: ['ADMIN', 'NSX'],
+  },
 ];
 
 // Menu riêng cho NPP
 const nppMenuItems = [
   {
-    label: 'Quét Tem',
+    label: 'QL Kho (Scan)',
     icon: ScanLine,
     path: '/npp/scan',
     roles: ['NPP'],

@@ -85,6 +85,7 @@ class ApiService {
   updateBatchStatus(id, data) { return this.request('PUT', `/labels/batches/${id}/status`, data); }
   mapBatchProduct(id, data) { return this.request('POST', `/labels/batches/${id}/map-product`, data); }
   renewBatch(id, data) { return this.request('PUT', `/labels/batches/${id}/renew`, data); }
+  deleteBatch(id) { return this.request('DELETE', `/labels/batches/${id}`); }
   migrateLabels(data) { return this.request('POST', '/labels/migrate', data); }
   getLabels(params) { return this.request('GET', '/labels', null, params); }
   mapLabel(id, data) { return this.request('PUT', `/labels/${id}/map`, data); }

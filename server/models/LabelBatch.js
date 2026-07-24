@@ -89,7 +89,6 @@ const labelBatchSchema = new mongoose.Schema({
 });
 
 labelBatchSchema.index({ enterpriseId: 1 });
-labelBatchSchema.index({ batchCode: 1 });
 labelBatchSchema.index({ status: 1 });
 
 module.exports = mongoose.model('LabelBatch', labelBatchSchema);

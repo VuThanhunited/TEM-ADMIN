@@ -80,7 +80,6 @@ const labelSchema = new mongoose.Schema({
 
 labelSchema.index({ batchId: 1 });
 labelSchema.index({ enterpriseId: 1 });
-labelSchema.index({ serialNumber: 1 });
 labelSchema.index({ status: 1 });
 labelSchema.index({ legacyQrCode: 1 });
 labelSchema.index({ legacyTemQr: 1 });

@@ -31,13 +31,12 @@ function ProtectedRoute({ children, adminOnly = false }) {
 }
 
 function NppRoute({ children }) {
-  const { user, loading, isNPP } = useAuth();
+  const { user, loading } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
   if (!user) {
     window.location.href = '/login?tab=npp';
     return null;
   }
-  if (!isNPP) return <Navigate to="/dashboard" replace />;
   return children;
 }
 

@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import {
   Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload,
   Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight,
-  Package, MapPin, Calendar, ExternalLink, Download
+  Package, MapPin, Calendar, ExternalLink, Download, Trash2
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';
@@ -118,9 +118,22 @@ export default function Labels() {
     try {
       await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
       setShowCreateBatch(false);
-      setBatchForm({ batchCode: '', totalLabels: 100, prefix: 'TEM', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+      setBatchForm({ batchCode: '', totalLabels: 100, prefix: '100', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
       loadBatches();
     } catch (err) { setModalError(err.message || 'Lỗi tạo lô tem'); }
+  };
+
+  const handleDeleteBatch = async (batch) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa lô tem "${batch.batchCode}" và toàn bộ tem nhãn thuộc lô này không?`)) {
+      return;
+    }
+    try {
+      await api.deleteBatch(batch._id);
+      loadBatches();
+      alert(`Đã xóa thành công lô tem "${batch.batchCode}"!`);
+    } catch (err) {
+      alert(err.message || 'Lỗi xóa lô tem');
+    }
   };
 
   const handleToggleStatus = async (batch) => {
@@ -703,6 +716,11 @@ export default function Labels() {
                             <Download size={14} className="text-success" />
                           )}
                         </button>
+                        {isAdmin && (
+                          <button className="btn btn-sm btn-ghost" onClick={() => handleDeleteBatch(batch)} title="Xóa lô tem">
+                            <Trash2 size={14} style={{ color: '#ef4444' }} />
+                          </button>
+                        )}
                         {activeTab === 'renew' && (
                           <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setShowRenewModal(true); }} title="Gia hạn">
                             <RefreshCw size={14}/>

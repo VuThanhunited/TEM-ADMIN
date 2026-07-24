@@ -14,19 +14,84 @@ const User = require('../models/User');
 router.get('/scan/:serial', async (req, res) => {
   try {
     const { serial } = req.params;
+    const cleanSerial = String(serial).trim();
 
     // Find the label by serialNumber, legacy QR, legacy TEMQR suffix, activeCode, or smsCode
-    const label = await Label.findOne({
+    let label = await Label.findOne({
       $or: [
-        { serialNumber: serial },
-        { legacyQrCode: { $regex: new RegExp(serial + '$', 'i') } },
-        { legacyTemQr: { $regex: new RegExp(serial + '$', 'i') } },
-        { activeCode: serial },
-        { smsCode: serial }
+        { serialNumber: cleanSerial },
+        { serialNumber: { $regex: new RegExp(cleanSerial + '$', 'i') } },
+        { legacyQrCode: { $regex: new RegExp(cleanSerial + '$', 'i') } },
+        { legacyTemQr: { $regex: new RegExp(cleanSerial + '$', 'i') } },
+        { activeCode: cleanSerial },
+        { smsCode: cleanSerial }
       ]
     })
       .populate('productId')
       .populate('enterpriseId');
+
+    // Auto-repair on the fly if label doesn't exist yet but matching batch exists
+    if (!label) {
+      const matchingBatch = await LabelBatch.findOne({
+        $or: [
+          { serialStart: cleanSerial },
+          { serialEnd: cleanSerial },
+          { batchCode: cleanSerial },
+          { serialStart: { $lte: cleanSerial }, serialEnd: { $gte: cleanSerial } }
+        ]
+      });
+
+      if (matchingBatch) {
+        const numPrefix = matchingBatch.prefix || '100';
+        let serialsToRepair = [];
+        if (matchingBatch.serialStart && matchingBatch.serialEnd && matchingBatch.serialStart === matchingBatch.serialEnd) {
+          serialsToRepair.push(matchingBatch.serialStart);
+        } else if (matchingBatch.serialStart && matchingBatch.serialEnd) {
+          const sMatch = matchingBatch.serialStart.match(/^(\D*?)(\d+)$/);
+          const eMatch = matchingBatch.serialEnd.match(/^(\D*?)(\d+)$/);
+          if (sMatch && eMatch && sMatch[1] === eMatch[1]) {
+            const pStr = sMatch[1];
+            const sN = parseInt(sMatch[2], 10);
+            const eN = parseInt(eMatch[2], 10);
+            const padL = sMatch[2].length;
+            for (let i = sN; i <= eN; i++) {
+              serialsToRepair.push(`${pStr}${String(i).padStart(padL, '0')}`);
+            }
+          }
+        }
+        if (serialsToRepair.length === 0) {
+          for (let i = 1; i <= matchingBatch.totalLabels; i++) {
+            serialsToRepair.push(`${numPrefix}${String(i).padStart(6, '0')}`);
+          }
+        }
+
+        const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-eight.vercel.app';
+        const domainUrl = matchingBatch.customDomain 
+          ? (matchingBatch.customDomain.trim().startsWith('http') ? matchingBatch.customDomain.trim() : `http://${matchingBatch.customDomain.trim()}`)
+          : ADMIN_URL;
+
+        const newLabels = serialsToRepair.map(s => ({
+          batchId: matchingBatch._id,
+          enterpriseId: matchingBatch.enterpriseId,
+          productId: matchingBatch.productId || null,
+          serialNumber: s,
+          qrUrl: `${domainUrl}/scan/${s}`,
+          status: matchingBatch.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
+          isActive: matchingBatch.status === 'ACTIVE'
+        }));
+
+        try {
+          await Label.insertMany(newLabels, { ordered: false });
+        } catch (e) { /* ignore duplicate errors */ }
+
+        label = await Label.findOne({
+          $or: [
+            { serialNumber: cleanSerial },
+            { serialNumber: { $regex: new RegExp(cleanSerial + '$', 'i') } }
+          ]
+        }).populate('productId').populate('enterpriseId');
+      }
+    }
 
     if (!label) {
       return res.status(404).json({ error: 'Không tìm thấy tem nhãn này trên hệ thống!' });
@@ -36,11 +101,6 @@ router.get('/scan/:serial', async (req, res) => {
     const batch = await LabelBatch.findById(label.batchId);
     if (!batch) {
       return res.status(404).json({ error: 'Không tìm thấy lô tem tương ứng!' });
-    }
-
-    // Check if the batch/label is active
-    if (batch.status === 'INACTIVE' || !label.isActive) {
-      return res.status(400).json({ error: 'Tem này chưa được kích hoạt hoặc đã bị khóa!' });
     }
 
     // Check expiry of the batch
@@ -318,25 +378,20 @@ router.post('/npp-login', async (req, res) => {
       return res.status(403).json({ error: 'Tài khoản đã hết hạn. Vui lòng liên hệ Admin để gia hạn.' });
     }
 
-    // Admin đăng nhập vào tab NSX/NPP: tạo token với role NPP để dùng tính năng scan
-    const isAdmin = user.role === 'ADMIN';
-    const tokenRole = isAdmin ? 'NPP' : user.role; // NSX giữ nguyên role NSX, NPP giữ NPP
+    // Đăng nhập giữ nguyên role của tài khoản (ADMIN -> ADMIN, NSX -> NSX, NPP -> NPP)
+    const tokenRole = user.role;
     const token = jwt.sign(
       { 
         userId: user._id, 
-        role: tokenRole,
-        isAdminImpersonating: isAdmin
+        role: tokenRole
       },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: isAdmin ? '8h' : '7d' }
+      { expiresIn: '7d' }
     );
 
     const userData = user.toObject();
     delete userData.password;
     userData.role = tokenRole;
-    if (isAdmin) {
-      userData.isAdminImpersonating = true;
-    }
 
     res.json({ token, user: userData });
   } catch (error) {
@@ -951,14 +1006,36 @@ router.get('/enterprise-by-domain', async (req, res) => {
       .toLowerCase()
       .trim();
 
-    // Tìm theo domain chính hoặc subdomain
-    const enterprise = await Enterprise.findOne({
+    const parts = cleanDomain.split('.');
+    const rootDomain = parts.length >= 2 ? parts.slice(-2).join('.') : cleanDomain;
+    const rootName = parts.length >= 2 ? parts[parts.length - 2] : cleanDomain;
+
+    let enterprise = await Enterprise.findOne({
       isActive: true,
       $or: [
         { domain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') } },
-        { subdomain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') } }
+        { customDomain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') } },
+        { subdomain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') } },
+        { domain: { $regex: new RegExp(rootDomain.replace(/\./g, '\\.'), 'i') } },
+        { website: { $regex: new RegExp(rootDomain.replace(/\./g, '\\.'), 'i') } }
       ]
     }).select('name logo domain subdomain brandConfig chatbotConfig address phone email website _id');
+
+    if (!enterprise && rootName) {
+      enterprise = await Enterprise.findOne({
+        isActive: true,
+        name: { $regex: new RegExp(rootName, 'i') }
+      }).select('name logo domain subdomain brandConfig chatbotConfig address phone email website _id');
+    }
+
+    if (!enterprise) {
+      const batchWithDomain = await LabelBatch.findOne({
+        customDomain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') }
+      }).populate('enterpriseId');
+      if (batchWithDomain && batchWithDomain.enterpriseId) {
+        enterprise = batchWithDomain.enterpriseId;
+      }
+    }
 
     if (!enterprise) {
       return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp với domain này' });
