@@ -9,10 +9,6 @@
       "destination": "https://tem-user-page.vercel.app/home"
     },
     {
-      "source": "/login",
-      "destination": "https://tem-user-page.vercel.app/login"
-    },
-    {
       "source": "/register",
       "destination": "https://tem-user-page.vercel.app/register"
     },
