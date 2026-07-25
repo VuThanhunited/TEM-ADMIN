@@ -16,9 +16,10 @@ router.get('/scan/:serial', async (req, res) => {
     const { serial } = req.params;
     const cleanSerial = String(serial).trim();
 
-    // Find the label by serialNumber, legacy QR, legacy TEMQR suffix, activeCode, or smsCode
+    // Find the label by qrCode, serialNumber, legacy QR, legacy TEMQR suffix, activeCode, or smsCode
     let label = await Label.findOne({
       $or: [
+        { qrCode: cleanSerial },
         { serialNumber: cleanSerial },
         { serialNumber: { $regex: new RegExp(cleanSerial + '$', 'i') } },
         { legacyQrCode: { $regex: new RegExp(cleanSerial + '$', 'i') } },

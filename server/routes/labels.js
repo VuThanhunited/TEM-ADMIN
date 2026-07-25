@@ -174,15 +174,19 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       ? (customDomain.trim().startsWith('http') ? customDomain.trim() : `http://${customDomain.trim()}`)
       : ADMIN_URL;
 
-    const labels = generatedSerials.map(serial => ({
-      batchId: createdBatch._id,
-      enterpriseId,
-      productId: productId || null,
-      serialNumber: serial,
-      qrUrl: `${domainUrl}/scan/${serial}`,
-      status: productId ? 'ACTIVE' : 'INACTIVE',
-      isActive: !!productId
-    }));
+    const labels = generatedSerials.map(serial => {
+      const secretCode = generateRandomCode(8).toLowerCase();
+      return {
+        batchId: createdBatch._id,
+        enterpriseId,
+        productId: productId || null,
+        serialNumber: serial,
+        qrCode: secretCode,
+        qrUrl: `${domainUrl}/scan/${secretCode}`,
+        status: productId ? 'ACTIVE' : 'INACTIVE',
+        isActive: !!productId
+      };
+    });
     
     // Batch insert in chunks of 5,000 for high performance
     const CHUNK_SIZE = 5000;
