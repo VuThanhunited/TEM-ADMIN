@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const LabelBatch = require('../models/LabelBatch');
 const Label = require('../models/Label');
 const auth = require('../middleware/auth');
@@ -6,6 +7,17 @@ const { requireRole, requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
 const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-eight.vercel.app';
+
+// Helper to generate a random secure alphanumeric string (8 chars, readable uppercase + digits)
+function generateRandomCode(length = 8) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  const randomBytes = crypto.randomBytes(length);
+  for (let i = 0; i < length; i++) {
+    result += chars[randomBytes[i] % chars.length];
+  }
+  return result;
+}
 
 // ======= BATCH ROUTES =======
 
@@ -44,7 +56,7 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
 router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   let createdBatch = null;
   try {
-    const { batchCode, totalLabels, prefix = '100', productId, templateId, theme, expiryDate, notes, customDomain } = req.body;
+    const { batchCode, totalLabels, prefix = '100', serialType = 'RANDOM_ALPHANUMERIC', productId, templateId, theme, expiryDate, notes, customDomain } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
 
     if (!enterpriseId) {
@@ -63,21 +75,40 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       return res.status(400).json({ error: `Mã lô tem "${cleanBatchCode}" đã tồn tại trên hệ thống. Vui lòng chọn mã lô tem khác!` });
     }
 
-    // Enforce digit-only prefix
-    const numPrefix = String(prefix || '100').trim();
-    if (!/^\d+$/.test(numPrefix)) {
-      return res.status(400).json({ error: 'Mã Prefix Serial chỉ được phép chứa chữ số (0-9) để hỗ trợ mã hoá số!' });
+    const cleanPrefix = String(prefix || '').trim();
+    const endNum = Math.min(Math.max(parseInt(totalLabels) || 100, 1), 500000);
+    const isRandom = serialType === 'RANDOM_ALPHANUMERIC';
+
+    const generatedSerials = [];
+    const generatedSet = new Set();
+
+    if (isRandom) {
+      // Generate unique random alphanumeric serial numbers
+      while (generatedSerials.length < endNum) {
+        const rCode = generateRandomCode(8);
+        const candidate = cleanPrefix ? `${cleanPrefix}-${rCode}` : rCode;
+        if (!generatedSet.has(candidate)) {
+          generatedSet.add(candidate);
+          generatedSerials.push(candidate);
+        }
+      }
+    } else {
+      // Sequential numbers
+      const startNum = 1;
+      const padLength = Math.max(6, String(endNum).length);
+      for (let i = startNum; i <= endNum; i++) {
+        const candidate = `${cleanPrefix}${String(i).padStart(padLength, '0')}`;
+        generatedSerials.push(candidate);
+      }
     }
 
-    const startNum = 1;
-    const endNum = parseInt(totalLabels) || 100;
-    const serialStart = `${numPrefix}${String(startNum).padStart(6, '0')}`;
-    const serialEnd = `${numPrefix}${String(endNum).padStart(6, '0')}`;
+    const serialStart = generatedSerials[0];
+    const serialEnd = generatedSerials[generatedSerials.length - 1];
 
     // Check if first serial already exists
     const existingLabel = await Label.findOne({ serialNumber: serialStart });
     if (existingLabel) {
-      return res.status(400).json({ error: `Dải mã Serial với Prefix "${numPrefix}" (${serialStart}...) đã tồn tại trên hệ thống. Vui lòng thay đổi mã Prefix khác!` });
+      return res.status(400).json({ error: `Mã Serial "${serialStart}" đã tồn tại trên hệ thống. Vui lòng đổi Prefix hoặc sinh mã khác!` });
     }
 
     createdBatch = new LabelBatch({
@@ -90,7 +121,8 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       totalLabels: endNum,
       serialStart,
       serialEnd,
-      prefix: numPrefix,
+      prefix: cleanPrefix,
+      serialType: isRandom ? 'RANDOM_ALPHANUMERIC' : 'SEQUENTIAL',
       expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       notes,
       createdDate: new Date(),
@@ -99,27 +131,24 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
     await createdBatch.save();
 
     // Create individual labels
-    const labels = [];
     const domainUrl = customDomain 
       ? (customDomain.trim().startsWith('http') ? customDomain.trim() : `http://${customDomain.trim()}`)
       : ADMIN_URL;
 
-    for (let i = startNum; i <= endNum; i++) {
-      const serial = `${numPrefix}${String(i).padStart(6, '0')}`;
-      labels.push({
-        batchId: createdBatch._id,
-        enterpriseId,
-        productId: productId || null,
-        serialNumber: serial,
-        qrUrl: `${domainUrl}/scan/${serial}`,
-        status: productId ? 'ACTIVE' : 'INACTIVE',
-        isActive: !!productId
-      });
-    }
+    const labels = generatedSerials.map(serial => ({
+      batchId: createdBatch._id,
+      enterpriseId,
+      productId: productId || null,
+      serialNumber: serial,
+      qrUrl: `${domainUrl}/scan/${serial}`,
+      status: productId ? 'ACTIVE' : 'INACTIVE',
+      isActive: !!productId
+    }));
     
-    // Batch insert (in chunks of 1000)
-    for (let i = 0; i < labels.length; i += 1000) {
-      await Label.insertMany(labels.slice(i, i + 1000));
+    // Batch insert in chunks of 5,000 for high performance
+    const CHUNK_SIZE = 5000;
+    for (let i = 0; i < labels.length; i += CHUNK_SIZE) {
+      await Label.insertMany(labels.slice(i, i + CHUNK_SIZE), { ordered: false });
     }
 
     const populated = await LabelBatch.findById(createdBatch._id)
@@ -182,7 +211,13 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
   try {
     const { productId, theme, customDomain } = req.body;
     const updateData = {};
-    if (productId !== undefined) updateData.productId = productId || null;
+    if (productId !== undefined) {
+      const targetProductId = productId || null;
+      updateData.productId = targetProductId;
+      if (targetProductId) {
+        updateData.status = 'ACTIVE';
+      }
+    }
     if (theme !== undefined) updateData.theme = theme;
     if (customDomain !== undefined) updateData.customDomain = customDomain ? customDomain.trim() : null;
 
@@ -196,7 +231,13 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
 
     // Update all labels in batch if productId changed
     if (productId !== undefined) {
-      await Label.updateMany({ batchId: batch._id }, { productId });
+      const targetProductId = productId || null;
+      const labelUpdate = { productId: targetProductId };
+      if (targetProductId) {
+        labelUpdate.status = 'ACTIVE';
+        labelUpdate.isActive = true;
+      }
+      await Label.updateMany({ batchId: batch._id }, labelUpdate);
     }
 
     // Update all labels qrUrl in batch if customDomain is updated/changed
