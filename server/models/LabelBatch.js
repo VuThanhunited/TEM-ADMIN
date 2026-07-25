@@ -40,8 +40,8 @@ const labelBatchSchema = new mongoose.Schema({
   },
   serialType: {
     type: String,
-    enum: ['RANDOM_ALPHANUMERIC', 'SEQUENTIAL'],
-    default: 'RANDOM_ALPHANUMERIC'
+    enum: ['GLOBAL_SEQUENTIAL', 'RANDOM_ALPHANUMERIC', 'SEQUENTIAL'],
+    default: 'GLOBAL_SEQUENTIAL'
   },
   status: {
     type: String,

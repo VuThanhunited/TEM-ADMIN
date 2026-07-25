@@ -46,7 +46,8 @@ export default function Labels() {
   const [showBulkMapModal, setShowBulkMapModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' });
 
-  const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: 'TEM', serialType: 'RANDOM_ALPHANUMERIC', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+  const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+  const [nextSerialInfo, setNextSerialInfo] = useState(null);
   const [renewMonths, setRenewMonths] = useState(12);
   const [migrateForm, setMigrateForm] = useState({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: '' });
   const [mapForm, setMapForm] = useState({ 
@@ -118,9 +119,34 @@ export default function Labels() {
     try {
       await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
       setShowCreateBatch(false);
-      setBatchForm({ batchCode: '', totalLabels: 100, prefix: 'TEM', serialType: 'RANDOM_ALPHANUMERIC', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+      setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
       loadBatches();
     } catch (err) { setModalError(err.message || 'Lỗi tạo lô tem'); }
+  };
+
+  const openCreateBatchModal = async () => {
+    setModalError(null);
+    setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+    try {
+      const res = await api.getNextSerial();
+      setNextSerialInfo(res);
+    } catch (e) {}
+    setShowCreateBatch(true);
+  };
+
+  const handleClearAllLabels = async () => {
+    const confirmText = prompt("⚠️ CẢNH BÁO NGUY HIỂM!\n\nThao tác này sẽ XÓA SẠCH toàn bộ Lô tem, Tem nhãn và Lịch sử quét trên toàn hệ thống.\n\nDải mã Serial sẽ được RESET quay về 00000001.\n\nNhập chữ 'RESET' vào ô bên dưới để xác nhận:");
+    if (confirmText !== 'RESET') {
+      if (confirmText !== null) alert("Mã xác nhận không khớp. Đã hủy thao tác xóa!");
+      return;
+    }
+    try {
+      const res = await api.clearAllLabels();
+      alert(res.message || 'Đã xóa toàn bộ dữ liệu tem thành công!');
+      loadBatches();
+    } catch (err) {
+      alert(err.message || 'Lỗi khi xóa dữ liệu');
+    }
   };
 
   const handleDeleteBatch = async (batch) => {
@@ -583,9 +609,14 @@ export default function Labels() {
               <Link2 size={16} /> Gắn kết hàng loạt
             </button>
             {activeTab === 'batches' && isAdmin && (
-              <button className="btn btn-primary" onClick={() => { setModalError(null); setBatchForm({ batchCode: '', totalLabels: 100, prefix: 'TEM', serialType: 'RANDOM_ALPHANUMERIC', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' }); setShowCreateBatch(true); }}>
-                <Plus size={18}/> Tạo lô tem mới
-              </button>
+              <>
+                <button className="btn btn-ghost" onClick={handleClearAllLabels} style={{ border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }} title="Reset dữ liệu tem về 0">
+                  <Trash2 size={16}/> Reset/Clear toàn bộ tem
+                </button>
+                <button className="btn btn-primary" onClick={openCreateBatchModal}>
+                  <Plus size={18}/> Tạo lô tem mới
+                </button>
+              </>
             )}
           </div>
         )}
@@ -868,11 +899,21 @@ export default function Labels() {
                 )}
                 <div className="form-row">
                   <div className="input-group"><label>Mã lô *</label><input className="input" value={batchForm.batchCode} onChange={e => setBatchForm({...batchForm, batchCode: e.target.value})} required placeholder="VD: VH-2024-003" /></div>
-                  <div className="input-group"><label>Prefix Serial (Chữ & Số) *</label><input className="input" value={batchForm.prefix} onChange={e => setBatchForm({...batchForm, prefix: e.target.value.trim()})} required placeholder="VD: TEM, VH, 100" /></div>
+                  <div className="input-group"><label>Prefix Serial (Tùy chọn)</label><input className="input" value={batchForm.prefix} onChange={e => setBatchForm({...batchForm, prefix: e.target.value.trim()})} placeholder="Để trống hoặc gõ Prefix nếu cần" /></div>
                 </div>
                 <div className="input-group" style={{ background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.2)', marginBottom: '16px' }}>
-                  <label style={{ fontWeight: 600, color: '#4f46e5', marginBottom: '8px', display: 'block' }}>Thuật toán Sinh mã Serial (Bảo mật)</label>
+                  <label style={{ fontWeight: 600, color: '#4f46e5', marginBottom: '8px', display: 'block' }}>Quy tắc sinh mã Serial</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="radio" 
+                        name="serialType" 
+                        value="GLOBAL_SEQUENTIAL" 
+                        checked={batchForm.serialType === 'GLOBAL_SEQUENTIAL'} 
+                        onChange={e => setBatchForm({...batchForm, serialType: e.target.value})} 
+                      />
+                      <span><strong>🔢 Số nhảy nối tiếp liên tục toàn hệ thống (Khuyên dùng)</strong> - Không phân biệt NSX/lô tem</span>
+                    </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
                       <input 
                         type="radio" 
@@ -881,19 +922,14 @@ export default function Labels() {
                         checked={batchForm.serialType === 'RANDOM_ALPHANUMERIC'} 
                         onChange={e => setBatchForm({...batchForm, serialType: e.target.value})} 
                       />
-                      <span><strong>🛡️ Mã ngẫu nhiên Chữ + Số bảo mật (Khuyên dùng)</strong> - Sinh mã ngẫu nhiên độc bản không thể suy đoán trước</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
-                      <input 
-                        type="radio" 
-                        name="serialType" 
-                        value="SEQUENTIAL" 
-                        checked={batchForm.serialType === 'SEQUENTIAL'} 
-                        onChange={e => setBatchForm({...batchForm, serialType: e.target.value})} 
-                      />
-                      <span><strong>🔢 Mã số nhảy tuần tự</strong> - Số đếm nối tiếp truyền thống</span>
+                      <span><strong>🛡️ Mã ngẫu nhiên Chữ + Số bảo mật</strong> - Mã hóa bảo mật độc bản</span>
                     </label>
                   </div>
+                  {batchForm.serialType === 'GLOBAL_SEQUENTIAL' && (
+                    <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed rgba(99, 102, 241, 0.2)', fontSize: '0.85rem', color: '#6366f1' }}>
+                      ✨ Dải Serial nối tiếp dự kiến: <strong>{batchForm.prefix}{nextSerialInfo?.nextSerial || '00000001'}</strong> ➔ <strong>{batchForm.prefix}{String((nextSerialInfo?.nextNum || 1) + (batchForm.totalLabels || 0) - 1).padStart(8, '0')}</strong>
+                    </div>
+                  )}
                 </div>
                 <div className="form-row">
                   <div className="input-group"><label>Số lượng tem (Tối đa 500,000) *</label><input className="input" type="number" min={1} max={500000} value={batchForm.totalLabels} onChange={e => setBatchForm({...batchForm, totalLabels: parseInt(e.target.value) || 0})} onFocus={e => e.target.select()} required /></div>

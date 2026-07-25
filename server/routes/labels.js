@@ -21,6 +21,38 @@ function generateRandomCode(length = 8) {
 
 // ======= BATCH ROUTES =======
 
+// GET /api/labels/next-serial - Get next starting serial number for global continuous sequence
+router.get('/next-serial', auth, async (req, res) => {
+  try {
+    const lastBatch = await LabelBatch.findOne({}).sort({ createdAt: -1 });
+    let nextStartNum = 1;
+    if (lastBatch && lastBatch.serialEnd) {
+      const match = lastBatch.serialEnd.match(/(\d+)$/);
+      if (match) {
+        nextStartNum = parseInt(match[1], 10) + 1;
+      }
+    }
+    const formattedNext = String(nextStartNum).padStart(8, '0');
+    res.json({ nextStartNum, nextSerial: formattedNext });
+  } catch (error) {
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+});
+
+// DELETE /api/labels/clear-all - Clear all label batches, labels, and scan logs (ADMIN ONLY)
+router.delete('/clear-all', auth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const ScanLog = require('../models/ScanLog');
+    await LabelBatch.deleteMany({});
+    await Label.deleteMany({});
+    await ScanLog.deleteMany({});
+    res.json({ message: 'Đã xóa toàn bộ dữ liệu lô tem, tem nhãn và lịch sử quét thành công. Hệ thống đã reset về 0!' });
+  } catch (error) {
+    console.error('Clear all labels error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xóa dữ liệu: ' + error.message });
+  }
+});
+
 // GET /api/labels/batches
 // Allow reading batches, but only ADMIN creates them
 router.get('/batches', auth, requireOwnership, async (req, res) => {
@@ -56,7 +88,7 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
 router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   let createdBatch = null;
   try {
-    const { batchCode, totalLabels, prefix = '100', serialType = 'RANDOM_ALPHANUMERIC', productId, templateId, theme, expiryDate, notes, customDomain } = req.body;
+    const { batchCode, totalLabels, prefix = '', serialType = 'GLOBAL_SEQUENTIAL', productId, templateId, theme, expiryDate, notes, customDomain } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
 
     if (!enterpriseId) {
@@ -76,15 +108,13 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
     }
 
     const cleanPrefix = String(prefix || '').trim();
-    const endNum = Math.min(Math.max(parseInt(totalLabels) || 100, 1), 500000);
-    const isRandom = serialType === 'RANDOM_ALPHANUMERIC';
+    const count = Math.min(Math.max(parseInt(totalLabels) || 100, 1), 500000);
 
     const generatedSerials = [];
-    const generatedSet = new Set();
 
-    if (isRandom) {
-      // Generate unique random alphanumeric serial numbers
-      while (generatedSerials.length < endNum) {
+    if (serialType === 'RANDOM_ALPHANUMERIC') {
+      const generatedSet = new Set();
+      while (generatedSerials.length < count) {
         const rCode = generateRandomCode(8);
         const candidate = cleanPrefix ? `${cleanPrefix}-${rCode}` : rCode;
         if (!generatedSet.has(candidate)) {
@@ -93,11 +123,20 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
         }
       }
     } else {
-      // Sequential numbers
-      const startNum = 1;
-      const padLength = Math.max(6, String(endNum).length);
-      for (let i = startNum; i <= endNum; i++) {
-        const candidate = `${cleanPrefix}${String(i).padStart(padLength, '0')}`;
+      // GLOBAL_SEQUENTIAL (default) - Auto continuous serial number across all batches
+      let startNum = 1;
+      const lastBatch = await LabelBatch.findOne({}).sort({ createdAt: -1 });
+      if (lastBatch && lastBatch.serialEnd) {
+        const match = lastBatch.serialEnd.match(/(\d+)$/);
+        if (match) {
+          startNum = parseInt(match[1], 10) + 1;
+        }
+      }
+      const endNumCalculated = startNum + count - 1;
+      const padLength = Math.max(8, String(endNumCalculated).length);
+
+      for (let i = startNum; i <= endNumCalculated; i++) {
+        const candidate = cleanPrefix ? `${cleanPrefix}${String(i).padStart(padLength, '0')}` : String(i).padStart(padLength, '0');
         generatedSerials.push(candidate);
       }
     }
@@ -108,7 +147,7 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
     // Check if first serial already exists
     const existingLabel = await Label.findOne({ serialNumber: serialStart });
     if (existingLabel) {
-      return res.status(400).json({ error: `Mã Serial "${serialStart}" đã tồn tại trên hệ thống. Vui lòng đổi Prefix hoặc sinh mã khác!` });
+      return res.status(400).json({ error: `Mã Serial "${serialStart}" đã tồn tại trên hệ thống. Vui lòng kiểm tra lại!` });
     }
 
     createdBatch = new LabelBatch({
@@ -118,11 +157,11 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       theme: theme || 'default',
       customDomain: customDomain || null,
       batchCode: cleanBatchCode,
-      totalLabels: endNum,
+      totalLabels: count,
       serialStart,
       serialEnd,
       prefix: cleanPrefix,
-      serialType: isRandom ? 'RANDOM_ALPHANUMERIC' : 'SEQUENTIAL',
+      serialType: serialType || 'GLOBAL_SEQUENTIAL',
       expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       notes,
       createdDate: new Date(),
