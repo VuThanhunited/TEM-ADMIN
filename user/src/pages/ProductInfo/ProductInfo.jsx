@@ -6,7 +6,7 @@ import {
   Truck, Home, MessageSquare, Send, X, Bot, Zap,
   Award, CheckCircle2, Layers, Cpu, Sparkles, ChevronLeft, ChevronRight,
   Headphones, Gift, Lock, LayoutGrid, Check, Activity, Shield, Flame, Eye,
-  Wrench, FileText
+  Wrench, FileText, Scan, Handshake, ShoppingBag, Ribbon
 } from 'lucide-react';
 import { useDomain } from '../../contexts/DomainContext';
 import './ProductInfo.css';
@@ -18,10 +18,10 @@ export default function ProductInfo() {
 
   const { scanData, serial } = location.state || {};
 
-  // Theme detection
-  const initialTheme = scanData?.theme || 'default';
+  // Theme detection - Default to appliance theme to match Image 1
+  const initialTheme = scanData?.theme || 'appliance';
   const [activeTheme, setActiveTheme] = useState(
-    initialTheme === 'default' ? 'warranty_solution' : initialTheme
+    initialTheme === 'default' ? 'appliance' : initialTheme
   );
   const [viewMode, setViewMode] = useState('html'); // 'html' or 'pdf_exact'
 
@@ -202,6 +202,29 @@ export default function ProductInfo() {
 
   return (
     <div className={`product-info-page ${themeClass}`}>
+      {/* Top Theme Switcher Bar for Easy Testing */}
+      <div className="appliance-theme-switcher-bar">
+        <span className="switcher-label">Chọn Chế Độ Giao Diện:</span>
+        <button 
+          className={`switcher-btn ${activeTheme === 'appliance' ? 'active' : ''}`} 
+          onClick={() => setActiveTheme('appliance')}
+        >
+          🏆 GIA DỤNG VINSUMI (Mẫu Hình Gửi)
+        </button>
+        <button 
+          className={`switcher-btn ${activeTheme === 'warranty_solution' ? 'active' : ''}`} 
+          onClick={() => setActiveTheme('warranty_solution')}
+        >
+          📄 POSTER BẢO HÀNH QR
+        </button>
+        <button 
+          className={`switcher-btn ${activeTheme === 'default' ? 'active' : ''}`} 
+          onClick={() => setActiveTheme('default')}
+        >
+          📱 MẶC ĐỊNH SẢN PHẨM
+        </button>
+      </div>
+
       {/* Custom Domain Enterprise Banner */}
       {isCustomDomain && customEnterprise && (
         <div className="product-info-domain-banner"
@@ -217,168 +240,179 @@ export default function ProductInfo() {
       )}
 
       {isApplianceView ? (
-        <div className="appliance-warrant-wrapper">
-          {/* Top Back Navigation Bar */}
-          <div className="appliance-top-nav">
-            <button className="pdf-clean-back" onClick={() => navigate(-1)}>
-              <ArrowLeft size={16} /> Quay lại
-            </button>
-            <span className="appliance-nav-title">BẢO HÀNH GIA DỤNG CHÍNH HÃNG</span>
-          </div>
+        <div className="appliance-canvas-outer">
+          <div className="appliance-poster-card">
+            {/* 1. Header Trust Banner */}
+            <div className="appliance-trust-banner">
+              <div className="appliance-trust-logo-box">
+                <div className="appliance-shield-gold-icon">
+                  <ShieldCheck size={28} color="#003366" />
+                </div>
+                <div className="appliance-trust-badge-text">TRUST</div>
+              </div>
+              <div className="appliance-trust-title-wrap">
+                <h2 className="appliance-trust-title">TRUST : SẢN PHẨM CHÍNH HÃNG</h2>
+                <p className="appliance-trust-subtitle">Sản phẩm đã được minh bạch thông tin</p>
+              </div>
+              <div className="appliance-trust-watermark">
+                <ShieldCheck size={72} color="rgba(0, 51, 102, 0.07)" />
+              </div>
+            </div>
 
-          {/* 1. Header Trust Banner */}
-          <div className="appliance-trust-banner">
-            <div className="appliance-trust-logo-box">
-              <ShieldCheck size={28} color="#0D47A1" />
-              <div className="appliance-trust-logo-text">TRUST</div>
+            {/* 2. Hero Appliance Banner Showcase */}
+            <div className="appliance-hero-card">
+              <div className="appliance-hero-image-wrap">
+                <img 
+                  src={product?.images?.[0] || "/pdf_assets/hero_banner.png"} 
+                  alt={product?.name || "Gia dụng VINSUMI"} 
+                  className="appliance-hero-img" 
+                />
+              </div>
+              <div className="appliance-hero-body-row">
+                <div className="appliance-hero-info">
+                  <h3 className="appliance-hero-brand">
+                    Sản phẩm : <span className="appliance-hero-brand-name">{product?.brand || enterprise?.name || "VINSUMI"}</span>
+                  </h3>
+                  <p className="appliance-hero-desc">
+                    {product?.description || `${product?.brand || enterprise?.name || "VINSUMI"} cam kết mang đến những sản phẩm chất lượng cao, an toàn và bền bỉ - đồng hành cùng gia đình bạn trong cuộc sống hiện đại.`}
+                  </p>
+                </div>
+                <button className="appliance-hero-more-btn" onClick={() => setActiveModal('product_detail')}>
+                  Xem thêm <ChevronRight size={14} />
+                </button>
+              </div>
             </div>
-            <div className="appliance-trust-title-wrap">
-              <h2 className="appliance-trust-title">TRUST : SẢN PHẨM CHÍNH HÃNG</h2>
-              <p className="appliance-trust-subtitle">Sản phẩm đã được minh bạch thông tin</p>
-            </div>
-            <div className="appliance-trust-watermark">
-              <ShieldCheck size={64} color="rgba(13, 71, 161, 0.08)" />
-            </div>
-          </div>
 
-          {/* 2. Hero Appliance Banner Showcase */}
-          <div className="appliance-hero-card">
-            <div className="appliance-hero-image-wrap">
-              <img 
-                src={product?.images?.[0] || "/pdf_assets/hero_banner.png"} 
-                alt={product?.name || "Gia dụng VINSUMI"} 
-                className="appliance-hero-img" 
-              />
+            {/* 3. 8 Interactive Quick Info Grid Cards (4 x 2 Layout) */}
+            <div className="appliance-grid-actions">
+              <div className="appliance-action-card" onClick={() => setActiveModal('tem')}>
+                <div className="appliance-action-icon"><ShieldCheck size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Thông tin tem</span>
+              </div>
+              <div className="appliance-action-card" onClick={() => setActiveModal('scan')}>
+                <div className="appliance-action-icon"><Scan size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Thông tin quét</span>
+              </div>
+              <div className="appliance-action-card" onClick={() => setActiveModal('mfg')}>
+                <div className="appliance-action-icon"><Building2 size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Nhà sản xuất</span>
+              </div>
+              <div className="appliance-action-card" onClick={() => setActiveModal('distributor')}>
+                <div className="appliance-action-icon"><Handshake size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Nhà phân phối</span>
+              </div>
+              <div className="appliance-action-card" onClick={() => setActiveModal('cert')}>
+                <div className="appliance-action-icon"><Award size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Chứng nhận</span>
+              </div>
+              <div className="appliance-action-card" onClick={() => setActiveModal('brand')}>
+                <div className="appliance-action-icon"><Sparkles size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Thương hiệu</span>
+              </div>
+              <div className="appliance-action-card" onClick={() => setActiveModal('export')}>
+                <div className="appliance-action-icon"><Globe size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Thông tin XK</span>
+              </div>
+              <div className="appliance-action-card" onClick={() => setActiveModal('reward')}>
+                <div className="appliance-action-icon"><Gift size={28} color="#003366" strokeWidth={1.75} /></div>
+                <span className="appliance-action-label">Tích điểm</span>
+              </div>
             </div>
-            <div className="appliance-hero-body">
-              <h3 className="appliance-hero-brand">
-                Sản phẩm : <span className="appliance-hero-brand-name">{product?.brand || enterprise?.name || "VINSUMI"}</span>
-              </h3>
-              <p className="appliance-hero-desc">
-                {product?.description || `${product?.brand || enterprise?.name || "VINSUMI"} cam kết mang đến những sản phẩm chất lượng cao, an toàn và bền bỉ - đồng hành cùng gia đình bạn trong cuộc sống hiện đại.`}
-              </p>
-              <button className="appliance-hero-more-btn" onClick={() => setActiveModal('product_detail')}>
-                Xem thêm <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
 
-          {/* 3. 8 Quick Info Grid Cards */}
-          <div className="appliance-grid-actions">
-            <div className="appliance-action-card" onClick={() => setActiveModal('tem')}>
-              <div className="appliance-action-icon"><ShieldCheck size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Thông tin tem</span>
-            </div>
-            <div className="appliance-action-card" onClick={() => setActiveModal('scan')}>
-              <div className="appliance-action-icon"><QrCode size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Thông tin quét</span>
-            </div>
-            <div className="appliance-action-card" onClick={() => setActiveModal('mfg')}>
-              <div className="appliance-action-icon"><Building2 size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Nhà sản xuất</span>
-            </div>
-            <div className="appliance-action-card" onClick={() => setActiveModal('distributor')}>
-              <div className="appliance-action-icon"><Truck size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Nhà phân phối</span>
-            </div>
-            <div className="appliance-action-card" onClick={() => setActiveModal('cert')}>
-              <div className="appliance-action-icon"><Award size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Chứng nhận</span>
-            </div>
-            <div className="appliance-action-card" onClick={() => setActiveModal('brand')}>
-              <div className="appliance-action-icon"><Sparkles size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Thương hiệu</span>
-            </div>
-            <div className="appliance-action-card" onClick={() => setActiveModal('export')}>
-              <div className="appliance-action-icon"><Globe size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Thông tin XK</span>
-            </div>
-            <div className="appliance-action-card" onClick={() => setActiveModal('reward')}>
-              <div className="appliance-action-icon"><Gift size={26} color="#0D47A1" /></div>
-              <span className="appliance-action-label">Tích điểm</span>
-            </div>
-          </div>
-
-          {/* 4. Related Products Section */}
-          <div className="appliance-related-section">
-            <div className="appliance-related-header">
-              <h3 className="appliance-related-title">
-                <Package size={18} color="#0D47A1" style={{ marginRight: 6 }} />
-                SẢN PHẨM LIÊN QUAN
-              </h3>
-              <button className="appliance-related-more-link" onClick={() => setActiveModal('all_products')}>
-                Xem thêm <ChevronRight size={16} />
-              </button>
-            </div>
-            <div className="appliance-related-grid">
-              {relatedList.slice(0, 4).map((relItem, idx) => (
-                <div key={idx} className="appliance-related-card">
+            {/* 4. Related Products Section */}
+            <div className="appliance-related-section">
+              <div className="appliance-related-header">
+                <h3 className="appliance-related-title">
+                  <ShoppingBag size={18} color="#003366" style={{ marginRight: 8 }} />
+                  SẢN PHẨM LIÊN QUAN
+                </h3>
+                <button className="appliance-related-more-link" onClick={() => setActiveModal('all_products')}>
+                  Xem thêm <ChevronRight size={14} />
+                </button>
+              </div>
+              <div className="appliance-related-grid">
+                <div className="appliance-related-card">
                   <div className="appliance-related-img-box">
-                    <img src={relItem.image || "/pdf_assets/rel_air_fryer.png"} alt={relItem.name} />
+                    <img src="/pdf_assets/rel_water_heater.png" alt="Tủ lạnh VINSUMI" />
                   </div>
-                  <div className="appliance-related-name">{relItem.name}</div>
-                  <div className="appliance-related-sub">Chính hãng VINSUMI</div>
+                  <div className="appliance-related-name">Tủ lạnh VINSUMI</div>
+                  <div className="appliance-related-sub">Inverter 420L</div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 5. Appliance Warranty Information Card */}
-          <div className="appliance-warranty-box">
-            <div className="appliance-warranty-header-bar">
-              <ShieldCheck size={20} color="#FFFFFF" />
-              <span>THÔNG TIN BẢO HÀNH</span>
-            </div>
-            <div className="appliance-warranty-content">
-              <div className="appliance-warranty-grid4">
-                <div className="appliance-warranty-col">
-                  <div className="appliance-warranty-icon-box">
-                    <ShieldCheck size={24} color="#0D47A1" />
+                <div className="appliance-related-card">
+                  <div className="appliance-related-img-box">
+                    <img src="/pdf_assets/rel_air_fryer.png" alt="Máy giặt VINSUMI" />
                   </div>
-                  <div className="appliance-warranty-label">Thời gian bảo hành</div>
-                  <div className="appliance-warranty-val highlight">
-                    {contentConfig.warrantyPeriod || "24 tháng"}
-                  </div>
+                  <div className="appliance-related-name">Máy giặt VINSUMI</div>
+                  <div className="appliance-related-sub">10kg</div>
                 </div>
-                <div className="appliance-warranty-col">
-                  <div className="appliance-warranty-icon-box">
-                    <Wrench size={24} color="#0D47A1" />
+                <div className="appliance-related-card">
+                  <div className="appliance-related-img-box">
+                    <img src="/pdf_assets/rel_induction.png" alt="Bếp từ VINSUMI" />
                   </div>
-                  <div className="appliance-warranty-label">Hình thức bảo hành</div>
-                  <div className="appliance-warranty-val">
-                    {contentConfig.warrantyType || "Toàn quốc"}
-                  </div>
+                  <div className="appliance-related-name">Bếp từ VINSUMI</div>
+                  <div className="appliance-related-sub">Đôi cảm ứng</div>
                 </div>
-                <div className="appliance-warranty-col">
-                  <div className="appliance-warranty-icon-box">
-                    <FileText size={24} color="#0D47A1" />
+                <div className="appliance-related-card">
+                  <div className="appliance-related-img-box">
+                    <img src="/pdf_assets/rel_blender.png" alt="Máy xay VINSUMI" />
                   </div>
-                  <div className="appliance-warranty-label">Điều kiện bảo hành</div>
-                  <div className="appliance-warranty-val subtext">
-                    {contentConfig.warrantyCondition || "Sản phẩm còn nguyên tem, không rách, không tẩy xóa"}
-                  </div>
-                </div>
-                <div className="appliance-warranty-col">
-                  <div className="appliance-warranty-icon-box">
-                    <Phone size={24} color="#0D47A1" />
-                  </div>
-                  <div className="appliance-warranty-label">Hotline hỗ trợ</div>
-                  <div className="appliance-warranty-val highlight hotline">
-                    {enterprise?.phone || contentConfig.hotline || "1900 1234"}
-                  </div>
+                  <div className="appliance-related-name">Máy xay VINSUMI</div>
+                  <div className="appliance-related-sub">Đa năng</div>
                 </div>
               </div>
-              <p className="appliance-warranty-footer-note">
-                Vui lòng liên hệ trung tâm bảo hành của VINSUMI gần nhất để được hỗ trợ nhanh chóng.
-              </p>
             </div>
-          </div>
 
-          <div style={{ marginTop: '24px', textAlign: 'center' }}>
-            <button className="pdf-canvas-home-btn" onClick={() => navigate('/home')}>
-              <Home size={18} />
-              Quay lại trang chủ
-            </button>
+            {/* 5. Appliance Warranty Information Card */}
+            <div className="appliance-warranty-box">
+              <div className="appliance-warranty-header-bar">
+                <ShieldCheck size={20} color="#003366" />
+                <span>THÔNG TIN BẢO HÀNH</span>
+              </div>
+              <div className="appliance-warranty-content">
+                <div className="appliance-warranty-grid4">
+                  <div className="appliance-warranty-col">
+                    <div className="appliance-warranty-icon-box">
+                      <ShieldCheck size={22} color="#003366" />
+                    </div>
+                    <div className="appliance-warranty-label">Thời gian bảo hành</div>
+                    <div className="appliance-warranty-val">24 tháng</div>
+                  </div>
+                  <div className="appliance-warranty-col">
+                    <div className="appliance-warranty-icon-box">
+                      <Wrench size={22} color="#003366" />
+                    </div>
+                    <div className="appliance-warranty-label">Hình thức bảo hành</div>
+                    <div className="appliance-warranty-val">Toàn quốc</div>
+                  </div>
+                  <div className="appliance-warranty-col">
+                    <div className="appliance-warranty-icon-box">
+                      <FileText size={22} color="#003366" />
+                    </div>
+                    <div className="appliance-warranty-label">Điều kiện bảo hành</div>
+                    <div className="appliance-warranty-val subtext">
+                      Sản phẩm còn nguyên tem, không rách, không tẩy xóa
+                    </div>
+                  </div>
+                  <div className="appliance-warranty-col">
+                    <div className="appliance-warranty-icon-box">
+                      <Phone size={22} color="#003366" />
+                    </div>
+                    <div className="appliance-warranty-label">Hotline hỗ trợ</div>
+                    <div className="appliance-warranty-val hotline">1900 1234</div>
+                  </div>
+                </div>
+                <p className="appliance-warranty-footer-note">
+                  Vui lòng liên hệ trung tâm bảo hành của VINSUMI gần nhất để được hỗ trợ nhanh chóng.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', textAlign: 'center' }}>
+              <button className="pdf-canvas-home-btn" onClick={() => navigate('/home')}>
+                <Home size={18} />
+                Quay lại trang chủ
+              </button>
+            </div>
           </div>
 
           {/* Modal Popups for 8 cards */}

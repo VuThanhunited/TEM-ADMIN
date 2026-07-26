@@ -1258,36 +1258,79 @@
 }
 
 /* ==========================================
-   APPLIANCES (GIA DỤNG) WARRANTY THEME (VINSUMI)
+   THEME SWITCHER BAR
    ========================================== */
-.appliance-warrant-wrapper {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 16px 12px 40px 12px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.appliance-top-nav {
+.appliance-theme-switcher-bar {
+  background: #1E293B;
+  color: #F8FAFC;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-bottom: 8px;
-}
-
-.appliance-nav-title {
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #334155;
   font-size: 0.85rem;
-  font-weight: 700;
-  color: #0D47A1;
-  letter-spacing: 0.5px;
 }
 
-/* 1. Trust Header Banner */
+.switcher-label {
+  font-weight: 600;
+  color: #94A3B8;
+}
+
+.switcher-btn {
+  background: #334155;
+  color: #CBD5E1;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.switcher-btn:hover {
+  background: #475569;
+  color: #FFFFFF;
+}
+
+.switcher-btn.active {
+  background: #0284C7;
+  color: #FFFFFF;
+  border-color: #38BDF8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+/* ==========================================
+   APPLIANCES (GIA DỤNG VINSUMI) WARRANTY THEME
+   Matching Image 1 100%
+   ========================================== */
+.appliance-canvas-outer {
+  background: #333333;
+  min-height: 100vh;
+  padding: 24px 12px 60px 12px;
+  display: flex;
+  justify-content: center;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.appliance-poster-card {
+  width: 100%;
+  max-width: 720px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 1. Header Trust Banner */
 .appliance-trust-banner {
-  background: linear-gradient(135deg, #F0F7FF 0%, #E3F2FD 100%);
-  border: 1px solid #BBDEFB;
+  background: linear-gradient(135deg, #F0F5FF 0%, #E6F0FF 100%);
+  border: 1px solid #D0E2FF;
   border-radius: 12px;
   padding: 16px 20px;
   display: flex;
@@ -1295,14 +1338,14 @@
   gap: 16px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(13, 71, 161, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 51, 102, 0.04);
 }
 
 .appliance-trust-logo-box {
   background: #FFFFFF;
-  border: 1.5px solid #0D47A1;
+  border: 2px solid #003366;
   border-radius: 10px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1310,11 +1353,11 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.appliance-trust-logo-text {
-  font-size: 0.7rem;
+.appliance-trust-badge-text {
+  font-size: 0.68rem;
   font-weight: 900;
-  color: #0D47A1;
-  letter-spacing: 1px;
+  color: #003366;
+  letter-spacing: 1.5px;
   margin-top: 2px;
 }
 
@@ -1324,26 +1367,26 @@
 }
 
 .appliance-trust-title {
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 800;
-  color: #0D47A1;
+  color: #003366;
   margin: 0 0 4px 0;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
 }
 
 .appliance-trust-subtitle {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: #475569;
   margin: 0;
+  font-weight: 500;
 }
 
 .appliance-trust-watermark {
   position: absolute;
-  right: 12px;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  opacity: 0.7;
 }
 
 /* 2. Hero Appliance Card */
@@ -1351,76 +1394,84 @@
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 12px;
-  padding: 20px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
 .appliance-hero-image-wrap {
   width: 100%;
-  max-height: 240px;
-  border-radius: 8px;
-  overflow: hidden;
+  height: 220px;
+  background: #F8FAFC;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F8FAFC;
+  overflow: hidden;
+  border-bottom: 1px solid #F1F5F9;
 }
 
 .appliance-hero-img {
-  max-width: 100%;
-  max-height: 240px;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.appliance-hero-body {
+.appliance-hero-body-row {
+  padding: 16px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.appliance-hero-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .appliance-hero-brand {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #1E293B;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0F172A;
   margin: 0;
 }
 
 .appliance-hero-brand-name {
-  color: #0D47A1;
+  color: #003366;
 }
 
 .appliance-hero-desc {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   color: #475569;
   line-height: 1.5;
   margin: 0;
 }
 
 .appliance-hero-more-btn {
-  align-self: flex-end;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 6px 14px;
-  border: 1px solid #0D47A1;
+  border: 1px solid #003366;
   border-radius: 6px;
-  background: transparent;
-  color: #0D47A1;
+  background: #FFFFFF;
+  color: #003366;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
 .appliance-hero-more-btn:hover {
-  background: #0D47A1;
+  background: #003366;
   color: #FFFFFF;
 }
 
-/* 3. 8 Quick Info Grid Cards (4x2 desktop, 2x4 mobile) */
+/* 3. 8 Quick Info Grid Cards (4x2 layout) */
 .appliance-grid-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1444,28 +1495,28 @@
 
 .appliance-action-card:hover {
   transform: translateY(-2px);
-  border-color: #0D47A1;
-  box-shadow: 0 6px 16px rgba(13, 71, 161, 0.12);
+  border-color: #003366;
+  box-shadow: 0 6px 16px rgba(0, 51, 102, 0.12);
 }
 
 .appliance-action-icon {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #F0F7FF;
+  background: #F0F5FF;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .appliance-action-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #1E293B;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0F172A;
   text-align: center;
 }
 
-/* 4. Related Products */
+/* 4. Related Products Section */
 .appliance-related-section {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
@@ -1473,7 +1524,8 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
 .appliance-related-header {
@@ -1485,16 +1537,17 @@
 .appliance-related-title {
   font-size: 0.95rem;
   font-weight: 800;
-  color: #0D47A1;
+  color: #003366;
   margin: 0;
   display: flex;
   align-items: center;
+  letter-spacing: 0.4px;
 }
 
 .appliance-related-more-link {
   background: transparent;
   border: none;
-  color: #0D47A1;
+  color: #1D4ED8;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
@@ -1525,12 +1578,12 @@
 .appliance-related-card:hover {
   border-color: #93C5FD;
   background: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(13, 71, 161, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 51, 102, 0.08);
 }
 
 .appliance-related-img-box {
   width: 100%;
-  height: 90px;
+  height: 85px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1538,36 +1591,37 @@
 
 .appliance-related-img-box img {
   max-width: 100%;
-  max-height: 90px;
+  max-height: 85px;
   object-fit: contain;
 }
 
 .appliance-related-name {
   font-size: 0.78rem;
   font-weight: 700;
-  color: #1E293B;
+  color: #003366;
   line-height: 1.3;
 }
 
 .appliance-related-sub {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: #64748B;
 }
 
 /* 5. Warranty Information Box */
 .appliance-warranty-box {
-  background: linear-gradient(180deg, #F0F7FF 0%, #E3F2FD 100%);
-  border: 1px solid #BBDEFB;
+  background: linear-gradient(180deg, #F0F5FF 0%, #E6F0FF 100%);
+  border: 1px solid #D0E2FF;
   border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 14px rgba(13, 71, 161, 0.06);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 2px 10px rgba(0, 51, 102, 0.03);
 }
 
 .appliance-warranty-header-bar {
-  background: #0D47A1;
-  color: #FFFFFF;
-  padding: 10px 16px;
-  font-size: 0.9rem;
+  color: #003366;
+  font-size: 0.95rem;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -1576,7 +1630,6 @@
 }
 
 .appliance-warranty-content {
-  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1589,59 +1642,43 @@
 }
 
 .appliance-warranty-col {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  padding: 12px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .appliance-warranty-icon-box {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: #E3F2FD;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin-bottom: 4px;
 }
 
 .appliance-warranty-label {
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
-  color: #0D47A1;
+  color: #003366;
 }
 
 .appliance-warranty-val {
-  font-size: 0.8rem;
-  color: #334155;
-  font-weight: 600;
-}
-
-.appliance-warranty-val.highlight {
-  color: #0D47A1;
-  font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.72rem;
+  color: #475569;
+  font-weight: 500;
 }
 
 .appliance-warranty-val.hotline {
-  color: #DC2626;
+  color: #003366;
+  font-weight: 600;
 }
 
 .appliance-warranty-val.subtext {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: #64748B;
-  font-weight: 400;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .appliance-warranty-footer-note {
-  font-size: 0.78rem;
-  color: #475569;
+  font-size: 0.72rem;
+  color: #64748B;
   text-align: center;
   margin: 0;
   font-style: italic;
@@ -1679,7 +1716,7 @@
 }
 
 .appliance-modal-header {
-  background: #0D47A1;
+  background: #003366;
   color: #FFFFFF;
   padding: 12px 16px;
   display: flex;
@@ -1739,6 +1776,9 @@
 
 /* Responsive adjustments for Appliance theme */
 @media (max-width: 768px) {
+  .appliance-poster-card {
+    padding: 16px 12px;
+  }
   .appliance-grid-actions {
     grid-template-columns: repeat(4, 1fr);
     gap: 8px;

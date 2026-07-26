@@ -268,7 +268,7 @@ const seed = async (shouldExit = true) => {
       status: 'ACTIVE',
       activatedCount: 50,
       scannedCount: 32,
-      theme: 'agriculture',
+      theme: 'appliance',
       expiryDate: new Date(Date.now() + 300 * 24 * 60 * 60 * 1000)
     });
     batches.push(batch1);
