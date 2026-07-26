@@ -202,29 +202,6 @@ export default function ProductInfo() {
 
   return (
     <div className={`product-info-page ${themeClass}`}>
-      {/* Top Theme Switcher Bar for Easy Testing */}
-      <div className="appliance-theme-switcher-bar">
-        <span className="switcher-label">Chọn Chế Độ Giao Diện:</span>
-        <button 
-          className={`switcher-btn ${activeTheme === 'appliance' ? 'active' : ''}`} 
-          onClick={() => setActiveTheme('appliance')}
-        >
-          🏆 GIA DỤNG VINSUMI (Mẫu Hình Gửi)
-        </button>
-        <button 
-          className={`switcher-btn ${activeTheme === 'warranty_solution' ? 'active' : ''}`} 
-          onClick={() => setActiveTheme('warranty_solution')}
-        >
-          📄 POSTER BẢO HÀNH QR
-        </button>
-        <button 
-          className={`switcher-btn ${activeTheme === 'default' ? 'active' : ''}`} 
-          onClick={() => setActiveTheme('default')}
-        >
-          📱 MẶC ĐỊNH SẢN PHẨM
-        </button>
-      </div>
-
       {/* Custom Domain Enterprise Banner */}
       {isCustomDomain && customEnterprise && (
         <div className="product-info-domain-banner"

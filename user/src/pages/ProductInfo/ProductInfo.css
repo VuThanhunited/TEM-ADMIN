@@ -1258,51 +1258,6 @@
 }
 
 /* ==========================================
-   THEME SWITCHER BAR
-   ========================================== */
-.appliance-theme-switcher-bar {
-  background: #1E293B;
-  color: #F8FAFC;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  border-bottom: 1px solid #334155;
-  font-size: 0.85rem;
-}
-
-.switcher-label {
-  font-weight: 600;
-  color: #94A3B8;
-}
-
-.switcher-btn {
-  background: #334155;
-  color: #CBD5E1;
-  border: 1px solid #475569;
-  border-radius: 6px;
-  padding: 5px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.switcher-btn:hover {
-  background: #475569;
-  color: #FFFFFF;
-}
-
-.switcher-btn.active {
-  background: #0284C7;
-  color: #FFFFFF;
-  border-color: #38BDF8;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
-}
-
-/* ==========================================
    APPLIANCES (GIA DỤNG VINSUMI) WARRANTY THEME
    Matching Image 1 100%
    ========================================== */
