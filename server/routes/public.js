@@ -275,14 +275,12 @@ router.get('/scan/:serial', async (req, res) => {
       const isAppliance = applianceKeywords.some(keyword => cat.includes(keyword));
       const isMedical = medicalKeywords.some(keyword => cat.includes(keyword));
 
-      if (isWarranty) {
-        responseTheme = 'warranty_solution';
+      if (isAppliance || isWarranty) {
+        responseTheme = 'appliance';
       } else if (isAgri) {
         responseTheme = 'agriculture';
       } else if (isFood) {
         responseTheme = 'functional_food';
-      } else if (isAppliance) {
-        responseTheme = 'warranty_solution';
       } else if (isMedical) {
         responseTheme = 'medical';
       }

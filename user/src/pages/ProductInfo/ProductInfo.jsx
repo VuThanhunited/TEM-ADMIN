@@ -19,13 +19,11 @@ export default function ProductInfo() {
   const { scanData, serial } = location.state || {};
 
   // Theme detection - Default to appliance theme to match Image 1
-  const initialTheme = scanData?.theme || 'appliance';
-  const [activeTheme, setActiveTheme] = useState(
-    initialTheme === 'default' ? 'appliance' : initialTheme
-  );
-  const [viewMode, setViewMode] = useState('html'); // 'html' or 'pdf_exact'
+  // Household Appliance Warranty Interface matching Image 1
+  const [activeTheme, setActiveTheme] = useState('appliance');
+  const [viewMode, setViewMode] = useState('html');
 
-  const themeClass = activeTheme !== 'default' ? `theme-${activeTheme}` : '';
+  const themeClass = 'theme-appliance';
 
   useEffect(() => {
     if (!scanData) {
@@ -197,8 +195,8 @@ export default function ProductInfo() {
     if (scrollRef.current) scrollRef.current.scrollBy({ left: 220, behavior: 'smooth' });
   };
 
-  const isWarrantyView = activeTheme === 'warranty_solution' || activeTheme === 'warranty';
-  const isApplianceView = activeTheme === 'appliance';
+  const isWarrantyView = false;
+  const isApplianceView = true;
 
   return (
     <div className={`product-info-page ${themeClass}`}>
