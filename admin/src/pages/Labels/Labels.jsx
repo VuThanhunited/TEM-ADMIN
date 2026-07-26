@@ -202,6 +202,17 @@ export default function Labels() {
     } catch (err) { alert(err.message); }
   };
 
+  const handleFixEncryption = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn quét và mã hóa lại tất cả các link QR của tem bị lộ Serial không?')) return;
+    try {
+      const res = await api.fixEncryption();
+      alert(res.message || 'Đã sửa lỗi và mã hóa bảo mật toàn bộ đuôi link QR thành công!');
+      loadBatches();
+    } catch (err) {
+      alert('Lỗi mã hóa đuôi tem: ' + (err.message || err));
+    }
+  };
+
   const handleDownloadBatch = async (batch) => {
     try {
       setExportingBatchId(batch._id);
@@ -610,6 +621,9 @@ export default function Labels() {
             </button>
             {activeTab === 'batches' && isAdmin && (
               <>
+                <button className="btn btn-ghost" onClick={handleFixEncryption} style={{ border: '1px solid rgba(99, 102, 241, 0.3)', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }} title="Khắc phục mã hóa đuôi scan cho toàn bộ tem">
+                  <ShieldCheck size={16}/> Khắc phục mã hóa QR
+                </button>
                 <button className="btn btn-ghost" onClick={handleClearAllLabels} style={{ border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }} title="Reset dữ liệu tem về 0">
                   <Trash2 size={16}/> Reset/Clear toàn bộ tem
                 </button>

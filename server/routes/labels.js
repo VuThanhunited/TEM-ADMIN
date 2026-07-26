@@ -288,16 +288,20 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
       const cleanDomain = customDomain ? customDomain.trim() : '';
       const labels = await Label.find({ batchId: batch._id });
       
-      // Update each label's qrUrl
+      // Update each label's qrUrl (preserving or generating secret qrCode)
       const bulkOps = labels.map(label => {
         const domainUrl = cleanDomain 
           ? (cleanDomain.startsWith('http') ? cleanDomain : `http://${cleanDomain}`)
           : ADMIN_URL;
-        const newQrUrl = `${domainUrl}/scan/${label.serialNumber}`;
+        let secretCode = label.qrCode;
+        if (!secretCode) {
+          secretCode = generateRandomCode(8).toLowerCase();
+        }
+        const newQrUrl = `${domainUrl}/scan/${secretCode}`;
         return {
           updateOne: {
             filter: { _id: label._id },
-            update: { qrUrl: newQrUrl }
+            update: { qrCode: secretCode, qrUrl: newQrUrl }
           }
         };
       });
@@ -483,15 +487,19 @@ router.get('/', auth, requireOwnership, async (req, res) => {
             }
           }
 
-          const newLabels = serialsToRepair.map(serial => ({
-            batchId: batch._id,
-            enterpriseId: batch.enterpriseId,
-            productId: batch.productId || null,
-            serialNumber: serial,
-            qrUrl: `${domainUrl}/scan/${serial}`,
-            status: batch.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
-            isActive: batch.status === 'ACTIVE'
-          }));
+          const newLabels = serialsToRepair.map(serial => {
+            const secretCode = generateRandomCode(8).toLowerCase();
+            return {
+              batchId: batch._id,
+              enterpriseId: batch.enterpriseId,
+              productId: batch.productId || null,
+              serialNumber: serial,
+              qrCode: secretCode,
+              qrUrl: `${domainUrl}/scan/${secretCode}`,
+              status: batch.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
+              isActive: batch.status === 'ACTIVE'
+            };
+          });
           
           for (let i = 0; i < newLabels.length; i += 1000) {
             await Label.insertMany(newLabels.slice(i, i + 1000), { ordered: false });
@@ -604,6 +612,70 @@ router.post('/bulk-map', auth, async (req, res) => {
   } catch (error) {
     console.error('Bulk map error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
+  }
+});
+
+// POST /api/labels/fix-encryption - Backfill secret qrCode and encrypted qrUrl for labels
+router.post('/fix-encryption', auth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const { batchId } = req.body || {};
+    const query = {};
+    if (batchId) query.batchId = batchId;
+
+    const labels = await Label.find(query);
+    let updatedCount = 0;
+    const bulkOps = [];
+
+    const batchesCache = {};
+
+    for (const label of labels) {
+      let needUpdate = false;
+      let secretCode = label.qrCode;
+
+      if (!secretCode) {
+        secretCode = generateRandomCode(8).toLowerCase();
+        needUpdate = true;
+      }
+
+      let currentUrl = label.qrUrl || '';
+      if (!currentUrl || currentUrl.includes(`/scan/${label.serialNumber}`)) {
+        if (!batchesCache[label.batchId]) {
+          batchesCache[label.batchId] = await LabelBatch.findById(label.batchId);
+        }
+        const batch = batchesCache[label.batchId];
+        const domainUrl = (batch && batch.customDomain) 
+          ? (batch.customDomain.trim().startsWith('http') ? batch.customDomain.trim() : `http://${batch.customDomain.trim()}`)
+          : ADMIN_URL;
+        currentUrl = `${domainUrl}/scan/${secretCode}`;
+        needUpdate = true;
+      }
+
+      if (needUpdate) {
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: label._id },
+            update: { qrCode: secretCode, qrUrl: currentUrl }
+          }
+        });
+        updatedCount++;
+      }
+    }
+
+    if (bulkOps.length > 0) {
+      const CHUNK = 5000;
+      for (let i = 0; i < bulkOps.length; i += CHUNK) {
+        await Label.bulkWrite(bulkOps.slice(i, i + CHUNK));
+      }
+    }
+
+    res.json({
+      message: `Đã mã hóa bảo mật thành công cho ${updatedCount}/${labels.length} tem!`,
+      updatedCount,
+      totalChecked: labels.length
+    });
+  } catch (error) {
+    console.error('Fix encryption error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi mã hóa tem: ' + error.message });
   }
 });
 

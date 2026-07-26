@@ -93,6 +93,7 @@ class ApiService {
   mapLabel(id, data) { return this.request('PUT', `/labels/${id}/map`, data); }
   updateLabelStatus(id, data) { return this.request('PUT', `/labels/${id}/status`, data); }
   bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data); }
+  fixEncryption(data) { return this.request('POST', '/labels/fix-encryption', data); }
 
   // Analytics
   getOverview() { return this.request('GET', '/analytics/overview'); }

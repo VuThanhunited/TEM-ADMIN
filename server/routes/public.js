@@ -71,15 +71,28 @@ router.get('/scan/:serial', async (req, res) => {
           ? (matchingBatch.customDomain.trim().startsWith('http') ? matchingBatch.customDomain.trim() : `http://${matchingBatch.customDomain.trim()}`)
           : ADMIN_URL;
 
-        const newLabels = serialsToRepair.map(s => ({
-          batchId: matchingBatch._id,
-          enterpriseId: matchingBatch.enterpriseId,
-          productId: matchingBatch.productId || null,
-          serialNumber: s,
-          qrUrl: `${domainUrl}/scan/${s}`,
-          status: matchingBatch.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
-          isActive: matchingBatch.status === 'ACTIVE'
-        }));
+        const crypto = require('crypto');
+        const generateRandomCode = (len = 8) => {
+          const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+          let resStr = '';
+          const rnd = crypto.randomBytes(len);
+          for (let i = 0; i < len; i++) resStr += chars[rnd[i] % chars.length];
+          return resStr.toLowerCase();
+        };
+
+        const newLabels = serialsToRepair.map(s => {
+          const secretCode = generateRandomCode(8);
+          return {
+            batchId: matchingBatch._id,
+            enterpriseId: matchingBatch.enterpriseId,
+            productId: matchingBatch.productId || null,
+            serialNumber: s,
+            qrCode: secretCode,
+            qrUrl: `${domainUrl}/scan/${secretCode}`,
+            status: matchingBatch.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
+            isActive: matchingBatch.status === 'ACTIVE'
+          };
+        });
 
         try {
           await Label.insertMany(newLabels, { ordered: false });
