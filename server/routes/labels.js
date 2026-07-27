@@ -89,7 +89,7 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   let createdBatch = null;
   try {
     const { batchCode, totalLabels, prefix = '', serialType = 'GLOBAL_SEQUENTIAL', productId, templateId, theme, expiryDate, notes, customDomain } = req.body;
-    const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
+    const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
 
     if (!enterpriseId) {
       return res.status(400).json({ error: 'Thiếu thông tin doanh nghiệp sở hữu' });

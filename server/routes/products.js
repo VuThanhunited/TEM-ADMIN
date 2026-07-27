@@ -53,7 +53,10 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       name, images, description, category, sku, barcode, distributors, specifications,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo, chatbotQA
     } = req.body;
-    const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
+    const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
+    if (!enterpriseId) {
+      return res.status(400).json({ error: 'Vui lòng chọn Doanh nghiệp sở hữu sản phẩm' });
+    }
 
     const product = new Product({
       enterpriseId,

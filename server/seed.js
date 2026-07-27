@@ -20,17 +20,12 @@ const seed = async (shouldExit = true) => {
       console.log('✅ Connected to MongoDB');
     }
 
-    // Clear existing data
-    await Promise.all([
-      User.deleteMany({}),
-      Enterprise.deleteMany({}),
-      Product.deleteMany({}),
-      LabelBatch.deleteMany({}),
-      Label.deleteMany({}),
-      ScanLog.deleteMany({}),
-      Template.deleteMany({})
-    ]);
-    console.log('🗑️  Cleared all collections');
+    // Safe seed check: Only seed if database is completely empty. Do NOT delete existing customer data!
+    const existingUserCount = await User.countDocuments();
+    if (existingUserCount > 0 && !shouldExit) {
+      console.log('ℹ️ Database already has data. Skipping seed wipe.');
+      return;
+    }
 
     // Create enterprises
     const enterprise1 = await Enterprise.create({

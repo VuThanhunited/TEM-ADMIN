@@ -44,35 +44,41 @@ let mongoServer = null;
 
 const startServer = async () => {
   try {
-    console.log(`Connecting to MongoDB at ${MONGO_URI}...`);
-    // Connect to the configured URI with a 5-second timeout
-    await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
-    console.log('✅ Connected to MongoDB');
+    console.log(`Connecting to MongoDB...`);
+    // Connect to the configured URI with a 30-second timeout
+    await mongoose.connect(MONGO_URI, { 
+      serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 30000 
+    });
+    console.log('✅ Connected to MongoDB Atlas/Persistent Database');
     
-    // Check if database is empty to auto-seed
+    // Check if database is empty to auto-seed default system user
     const User = require('./models/User');
     const userCount = await User.countDocuments();
     if (userCount === 0) {
-      console.log('⚠️ Database is empty. Running seed script...');
+      console.log('⚠️ Database is completely empty. Seeding initial system data...');
       await seed(false);
     }
   } catch (error) {
-    console.log('⚠️ Primary MongoDB connection failed. Trying in-memory fallback (dev only)...');
+    console.error('⚠️ Primary MongoDB connection error:', error.message);
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER || process.env.VERCEL;
+    if (isProduction || process.env.MONGO_URI) {
+      console.error('❌ Persistent MongoDB connection failed. Retrying in 5 seconds to preserve customer data...');
+      setTimeout(startServer, 5000);
+      return;
+    }
+
     try {
-      // Dynamic import so devDependency is not required in production
+      console.log('⚠️ Local Dev Only: Trying in-memory fallback...');
       const { MongoMemoryServer } = require('mongodb-memory-server');
-      process.env.DEBUG = 'MongoMS:*';
       mongoServer = await MongoMemoryServer.create({
-        binary: {
-          version: '6.0.14'
-        }
+        binary: { version: '6.0.14' }
       });
       const inMemoryUri = mongoServer.getUri();
       console.log(`🚀 In-memory MongoDB URI: ${inMemoryUri}`);
       await mongoose.connect(inMemoryUri);
       console.log('✅ Connected to in-memory MongoDB');
-      
-      console.log('🌱 Seeding in-memory database...');
       await seed(false);
     } catch (memError) {
       console.error('❌ Failed to connect to any MongoDB:', memError.message);
