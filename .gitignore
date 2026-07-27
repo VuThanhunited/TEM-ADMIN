@@ -20,6 +20,7 @@ logs/
 *.log
 .system_generated/
 .gemini/
+scratch/
 
 # Excel data files
 *.xls

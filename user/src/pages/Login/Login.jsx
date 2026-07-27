@@ -81,18 +81,20 @@ export default function Login() {
       if (activeTab === 'npp') {
         result = await userApi.nppLogin({ username: username.trim(), password });
         // Chuyển hướng sang trang Admin app kèm token
-        const adminAppUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5173'
-          : 'https://tem-admin-eight.vercel.app';
+        const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5173'
+            : window.location.origin);
         
         window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
         return;
       } else {
         result = await userApi.guestLogin({ username: username.trim(), password });
         // Chuyển hướng sang trang Admin app kèm token
-        const adminAppUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5173'
-          : 'https://tem-admin-eight.vercel.app';
+        const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5173'
+            : window.location.origin);
         
         window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
         return;

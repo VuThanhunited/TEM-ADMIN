@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 const { requireRole, requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
-const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-eight.vercel.app';
+const ADMIN_URL = process.env.ADMIN_URL || 'https://giaiphapqrcode.vn';
 
 // Helper to generate a random secure alphanumeric string (8 chars, readable uppercase + digits)
 function generateRandomCode(length = 8) {

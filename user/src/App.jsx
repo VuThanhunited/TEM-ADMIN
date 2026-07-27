@@ -141,7 +141,12 @@ function AppRoutes() {
 
 function AppShell() {
   const location = useLocation();
-  const isFullWidth = location.pathname === '/home';
+  const isFullWidth = location.pathname === '/home' || 
+    location.pathname === '/product-info' || 
+    location.pathname.startsWith('/trace') || 
+    location.pathname.startsWith('/scan') || 
+    location.pathname.startsWith('/qrcode') || 
+    location.pathname.startsWith('/temqr');
 
   return (
     <div className={isFullWidth ? 'app-shell app-shell--fullwidth' : 'app-shell'}>

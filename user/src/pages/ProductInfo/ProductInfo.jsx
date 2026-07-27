@@ -6,24 +6,168 @@ import {
   Truck, Home, MessageSquare, Send, X, Bot, Zap,
   Award, CheckCircle2, Layers, Cpu, Sparkles, ChevronLeft, ChevronRight,
   Headphones, Gift, Lock, LayoutGrid, Check, Activity, Shield, Flame, Eye,
-  Wrench, FileText, Scan, Handshake, ShoppingBag, Ribbon
+  Wrench, FileText, Scan, Handshake, ShoppingBag, Ribbon,
+  Pill, Stethoscope, ShieldAlert, FileCheck, Sprout, Utensils, Heart, Sparkle
 } from 'lucide-react';
 import { useDomain } from '../../contexts/DomainContext';
 import './ProductInfo.css';
+
+// 1. Trust Badge cho Tem Đồ gia dụng
+const TrustShieldBadge = () => (
+  <svg width="56" height="56" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 4L7 11V22C7 32.5 14.2 41.8 24 44C33.8 41.8 41 32.5 41 22V11L24 4Z" fill="#F59E0B" stroke="#D97706" strokeWidth="1.5" />
+    <path d="M24 6.8L10 12.6V22C10 30.7 16 38.4 24 40.5C32 38.4 38 30.7 38 22V12.6L24 6.8Z" fill="#0A369D" />
+    <path d="M19 22.5L22.5 26L29 17.5" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="7" y="32" width="34" height="10" rx="3" fill="#002244" stroke="#F59E0B" strokeWidth="1" />
+    <text x="24" y="39.5" fill="#FBBF24" fontSize="7" fontWeight="900" textAnchor="middle" letterSpacing="0.8">TRUST</text>
+  </svg>
+);
+
+// 2. Medical Badge cho Tem Dược phẩm & Y tế
+const MedicalTrustBadge = () => (
+  <svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="24" r="22" fill="#00897B" stroke="#004D40" strokeWidth="1.5" />
+    <circle cx="24" cy="24" r="18" fill="#00796B" />
+    <path d="M24 12V36M12 24H36" stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" />
+    <path d="M16 16L32 32M32 16L16 32" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+    <rect x="9" y="32" width="30" height="10" rx="3" fill="#004D40" stroke="#80CBC4" strokeWidth="1" />
+    <text x="24" y="39.5" fill="#E0F2F1" fontSize="6.5" fontWeight="900" textAnchor="middle" letterSpacing="0.8">PHARMA</text>
+  </svg>
+);
+
+// 3. Food Badge cho Tem Thực phẩm & TPCN
+const FoodSafetyBadge = () => (
+  <svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 4L42 14V34L24 44L6 34V14L24 4Z" fill="#16A34A" stroke="#15803D" strokeWidth="1.5" />
+    <path d="M24 8L38 16V32L24 40L10 32V16L24 8Z" fill="#15803D" />
+    <path d="M18 24C18 20 21 17 25 17C29 17 31 19 31 22C31 26 27 27 25 29C23.5 30.5 23.5 32 23.5 33" stroke="#FDE047" strokeWidth="3" strokeLinecap="round" />
+    <circle cx="24" cy="24" r="8" fill="#FACC15" />
+    <path d="M20 24L23 27L28 20" stroke="#15803D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <text x="24" y="42" fill="#FFFFFF" fontSize="6" fontWeight="800" textAnchor="middle">ATTP</text>
+  </svg>
+);
+
+// 4. Agri Badge cho Tem Nông sản
+const AgriTrustBadge = () => (
+  <svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="24" r="22" fill="#15803D" stroke="#166534" strokeWidth="1.5" />
+    <path d="M24 10C24 10 32 16 32 24C32 28.4 28.4 32 24 32C19.6 32 16 28.4 16 24C16 16 24 10 24 10Z" fill="#22C55E" />
+    <path d="M24 14V28M24 20L28 17M24 24L20 21" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+    <text x="24" y="40" fill="#FEF08A" fontSize="6.5" fontWeight="900" textAnchor="middle">VIETGAP</text>
+  </svg>
+);
+
+// 5. Cosmetics Badge cho Tem Mỹ phẩm
+const CosmeticsTrustBadge = () => (
+  <svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 4L40 12V24C40 33.5 33.2 41.8 24 44C14.8 41.8 8 33.5 8 24V12L24 4Z" fill="#BE185D" stroke="#9D174D" strokeWidth="1.5" />
+    <path d="M24 14L27 21H34L28.5 25.5L30.5 32.5L24 28L17.5 32.5L19.5 25.5L14 21H21L24 14Z" fill="#F472B6" />
+    <text x="24" y="41" fill="#FCE7F3" fontSize="6" fontWeight="900" textAnchor="middle">BEAUTY</text>
+  </svg>
+);
 
 export default function ProductInfo() {
   const navigate = useNavigate();
   const location = useLocation();
   const { customEnterprise, isCustomDomain } = useDomain();
 
-  const { scanData, serial } = location.state || {};
+  const defaultMockScanData = {
+    theme: 'appliance',
+    product: {
+      name: 'VINSUMI',
+      category: 'Điện gia dụng / Tem Bảo Hành',
+      description: 'VINSUMI cam kết mang đến những sản phẩm chất lượng cao, an toàn và bền bỉ – đồng hành cùng gia đình bạn trong cuộc sống hiện đại.',
+      images: ['/pdf_assets/hero_banner_appliance.png']
+    },
+    enterprise: {
+      name: 'CÔNG TY TNHH VINSUMI VIỆT NAM',
+      address: 'Lô B2-3, KCN Thăng Long, Đông Anh, Hà Nội',
+      phone: '024 6688 1234',
+      email: 'contact@vinsumi.vn',
+      website: 'www.vinsumi.vn'
+    },
+    label: {
+      serialNumber: 'VSM-88392100',
+      qrCode: 'vinsumi_secret_qr_992',
+      status: 'ACTIVE',
+      scanCount: 1,
+      expiryDate: new Date('2028-12-31')
+    }
+  };
 
-  // Theme detection - Default to appliance theme to match Image 1
-  // Household Appliance Warranty Interface matching Image 1
-  const [activeTheme, setActiveTheme] = useState('appliance');
-  const [viewMode, setViewMode] = useState('html');
+  const scanData = location.state?.scanData || defaultMockScanData;
+  const serial = location.state?.serial || scanData.label.serialNumber;
 
-  const themeClass = 'theme-appliance';
+  // Dynamic Automatic Theme Detection based on Batch Theme, Product, & Enterprise Info
+  const getInitialTheme = () => {
+    let t = scanData?.theme || scanData?.label?.batchId?.theme || scanData?.template?.layout;
+    if (t && t !== 'default' && t !== 'warranty') {
+      return t;
+    }
+
+    // Comprehensive automatic detection based on scanned product & enterprise data
+    const cat = (scanData?.product?.category || '').toLowerCase();
+    const pName = (scanData?.product?.name || '').toLowerCase();
+    const desc = (scanData?.product?.description || '').toLowerCase();
+    const entName = (scanData?.enterprise?.name || '').toLowerCase();
+
+    const textToMatch = `${cat} ${pName} ${desc} ${entName}`;
+
+    // 1. Dược phẩm & Y tế
+    const medicalKeywords = [
+      'dược', 'dược phẩm', 'thuốc', 'y tế', 'vắc xin', 'vaccine',
+      'đông y', 'thuốc nam', 'thuốc bắc', 'bệnh viện', 'pharma',
+      'pharmaceutical', 'medical', 'kháng sinh', 'sức khỏe', 'viên nén',
+      'siro', 'sát khuẩn', 'y khoa', 'phano', 'dược trung ương'
+    ];
+    if (medicalKeywords.some(kw => textToMatch.includes(kw))) {
+      return 'medical';
+    }
+
+    // 2. Bảo hành đồ gia dụng / Điện máy
+    const applianceKeywords = [
+      'gia dụng', 'thiết bị điện', 'bếp', 'máy giặt', 'tủ lạnh', 'điều hòa',
+      'máy lạnh', 'lò vi sóng', 'máy hút bụi', 'nồi cơm', 'nồi áp suất',
+      'máy xay', 'máy ép', 'bình nóng lạnh', 'quạt', 'bảo hành', 'vinsumi',
+      'homeplus', 'điện tử', 'appliance'
+    ];
+    if (applianceKeywords.some(kw => textToMatch.includes(kw))) {
+      return 'appliance';
+    }
+
+    // 3. Nông sản & Nông nghiệp
+    const agriKeywords = [
+      'nông nghiệp', 'nông sản', 'trồng trọt', 'chăn nuôi', 'thủy sản',
+      'hải sản', 'trái cây', 'rau củ', 'hoa quả', 'gạo', 'sâm', 'chè',
+      'agri', 'vietgap', 'globalgap', 'hợp tác xã', 'htx'
+    ];
+    if (agriKeywords.some(kw => textToMatch.includes(kw))) {
+      return 'agriculture';
+    }
+
+    // 4. Mỹ phẩm & Làm đẹp
+    const cosmeticsKeywords = [
+      'mỹ phẩm', 'chăm sóc da', 'kem', 'serum', 'son', 'trang điểm',
+      'tắm', 'gội', 'nước hoa', 'cosmetic', 'beauty', 'skin', 'skincare'
+    ];
+    if (cosmeticsKeywords.some(kw => textToMatch.includes(kw))) {
+      return 'cosmetics';
+    }
+
+    // 5. Thực phẩm & Thực phẩm chức năng
+    const foodKeywords = [
+      'thực phẩm', 'dinh dưỡng', 'gia vị', 'dầu ăn', 'nước uống',
+      'bánh', 'kẹo', 'sữa', 'trà', 'cà phê', 'mật ong', 'yến sào',
+      'food', 'snack', 'beverage', 'tpcn', 'thực phẩm chức năng'
+    ];
+    if (foodKeywords.some(kw => textToMatch.includes(kw))) {
+      return 'functional_food';
+    }
+
+    return 'default';
+  };
+
+  const [activeTheme, setActiveTheme] = useState(getInitialTheme);
 
   useEffect(() => {
     if (!scanData) {
@@ -113,99 +257,565 @@ export default function ProductInfo() {
     }, 1000);
   };
 
-  // Content Customization Overrides from Admin Template Config
-  const contentConfig = scanData?.template?.contentConfig || {};
 
-  const headerTitle1 = contentConfig.headerTitle1 || 'GIẢI PHÁP QRcode';
-  const headerTitle2 = contentConfig.headerTitle2 || 'TEM BẢO HÀNH SẢN PHẨM';
-  const transparencyLine1 = contentConfig.transparencyLine1 || 'SẢN PHẨM ĐÃ ĐƯỢC NHÀ CUNG CẤP';
-  const transparencyLine2 = contentConfig.transparencyLine2 || 'CAM KẾT MINH BẠCH THÔNG TIN';
 
-  // 4 Specs matching PDF / Admin config
-  const pdfSpecs = [
-    { label: contentConfig.spec1Label || 'Dung tích', value: contentConfig.spec1Value || '1.8L', icon: <Package size={20} color="#0D47A1" strokeWidth={1.5} /> },
-    { label: contentConfig.spec2Label || 'Công suất', value: contentConfig.spec2Value || '1200W', icon: <Activity size={20} color="#0D47A1" strokeWidth={1.5} /> },
-    { label: contentConfig.spec3Label || 'Lòng nồi', value: contentConfig.spec3Value || 'Inox 304', icon: <Layers size={20} color="#0D47A1" strokeWidth={1.5} /> },
-    { label: contentConfig.spec4Label || 'Bảo hành', value: contentConfig.spec4Value || '24 tháng', icon: <ShieldCheck size={20} color="#0D47A1" strokeWidth={1.5} /> }
-  ];
+  // =========================================================================
+  // 1. TEM DƯỢC PHẨM & Y TẾ (Medical Theme)
+  // =========================================================================
+  const renderMedicalView = () => (
+    <div className="medical-canvas-outer">
+      <div className="medical-poster-card">
+        {/* 1. Header Medical Trust Banner */}
+        <div className="medical-trust-banner">
+          <div className="medical-trust-logo-box">
+            <MedicalTrustBadge />
+          </div>
+          <div className="medical-trust-title-wrap">
+            <h2 className="medical-trust-title">BỘ Y TẾ XÁC THỰC : TEM DƯỢC PHẨM CHÍNH HÃNG</h2>
+            <p className="medical-trust-subtitle">Nguồn gốc chuẩn Y Khoa & Đạt tiêu chuẩn GMP-WHO</p>
+          </div>
+          <div className="medical-trust-watermark">
+            <Stethoscope size={72} color="rgba(0, 137, 123, 0.08)" />
+          </div>
+        </div>
 
-  // 5 Benefits Cards from Admin Config or default
-  const defaultBenefits = [
-    { title: 'ĐẢM BẢO CHÍNH HÃNG', desc: 'Xác thực nguồn gốc, nói không với hàng giả', icon: <ShieldCheck size={22} color="#0D47A1" strokeWidth={1.5} /> },
-    { title: 'BẢO HÀNH ĐIỆN TỬ', desc: 'Kích hoạt và tra cứu bảo hành nhanh chóng', icon: <Award size={22} color="#0D47A1" strokeWidth={1.5} /> },
-    { title: 'HỖ TRỢ NHANH CHÓNG', desc: 'Tiếp nhận yêu cầu và hỗ trợ kịp thời', icon: <Headphones size={22} color="#0D47A1" strokeWidth={1.5} /> },
-    { title: 'ƯU ĐÃI ĐẶC QUYỀN', desc: 'Nhận thông tin khuyến mãi, ưu đãi hấp dẫn', icon: <Gift size={22} color="#0D47A1" strokeWidth={1.5} /> },
-    { title: 'BẢO VỆ QUYỀN LỢI', desc: 'An tâm sử dụng, bảo vệ quyền lợi người tiêu dùng', icon: <Lock size={22} color="#0D47A1" strokeWidth={1.5} /> }
-  ];
+        {/* 2. Medical Hero Card */}
+        <div className="medical-hero-card">
+          <div className="medical-rx-badge-row">
+            <span className="medical-rx-badge">
+              <Pill size={14} /> THUỐC KÊ ĐƠN / DƯỢC PHẨM CHÍNH HÃNG
+            </span>
+            <span className="medical-gmp-tag">ĐẠT CHUẨN GMP-WHO</span>
+          </div>
 
-  const benefitsList = (contentConfig.benefits && contentConfig.benefits.length === 5)
-    ? contentConfig.benefits.map((b, idx) => ({
-        title: b.title || defaultBenefits[idx].title,
-        desc: b.desc || defaultBenefits[idx].desc,
-        icon: defaultBenefits[idx].icon
-      }))
-    : defaultBenefits;
+          <div className="medical-hero-body">
+            <div className="medical-hero-img-wrap">
+              <img 
+                src={product?.images?.[0] || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=60'} 
+                alt={product?.name || 'Dược phẩm chính hãng'} 
+                className="medical-hero-img"
+              />
+            </div>
+            <div className="medical-hero-info">
+              <h3 className="medical-product-name">{product?.name || 'Thuốc Paracetamol 500mg (Dược Phẩm)'}</h3>
+              <p className="medical-enterprise-sub">Đơn vị sản xuất: <strong>{enterprise?.name || 'CÔNG TY DƯỢC PHẨM TRUNG ƯƠNG'}</strong></p>
+              
+              {/* Crucial Pharma Specs Grid */}
+              <div className="medical-specs-grid">
+                <div className="medical-spec-item">
+                  <span className="spec-lbl">Số đăng ký (SĐK):</span>
+                  <strong className="spec-val highlight">{product?.sku || 'VD-35281-21'}</strong>
+                </div>
+                <div className="medical-spec-item">
+                  <span className="spec-lbl">Dạng bào chế:</span>
+                  <strong className="spec-val">Viên nén bao phim</strong>
+                </div>
+                <div className="medical-spec-item">
+                  <span className="spec-lbl">Quy cách đóng gói:</span>
+                  <strong className="spec-val">Hộp 3 vỉ x 10 viên</strong>
+                </div>
+                <div className="medical-spec-item">
+                  <span className="spec-lbl">Số lô & HSD:</span>
+                  <strong className="spec-val">Lô: 240812 | HSD: 12/08/2027</strong>
+                </div>
+              </div>
+            </div>
+          </div>
 
-  // 6 Checklist features split into 2 columns
-  const pdfCol1Features = [
-    'Công nghệ cao tần IH giúp nấu chín đều, cơm dẻo ngon',
-    'Lòng nồi inox 304 an toàn cho sức khỏe, dễ vệ sinh',
-    'Nhiều chế độ nấu tiện lợi: nấu cơm, cháo, súp, hấp, hầm...'
-  ];
-  
-  const pdfCol2Features = [
-    'Màn hình LED cảm ứng, điều khiển thông minh',
-    'Tiết kiệm điện năng, thân thiện với môi trường',
-    'Thiết kế hiện đại, sang trọng, dễ dàng sử dụng'
-  ];
+          <button className="medical-details-btn" onClick={() => setActiveModal('product_detail')}>
+            Chi tiết thành phần & liều dùng <ChevronRight size={14} />
+          </button>
+        </div>
 
-  // 5 Related Products matching PDF 100% with extracted assets
-  const pdfRelatedProducts = [
-    {
-      name: 'Nồi chiên không dầu HOMEPLUS HP-AF60',
-      image: '/pdf_assets/rel_air_fryer.png'
-    },
-    {
-      name: 'Máy xay sinh tố HOMEPLUS HP-BL80',
-      image: '/pdf_assets/rel_blender.png'
-    },
-    {
-      name: 'Bếp từ đôi HOMEPLUS HP-IC72',
-      image: '/pdf_assets/rel_induction.png'
-    },
-    {
-      name: 'Máy hút mùi HOMEPLUS HP-HM90',
-      image: '/pdf_assets/rel_hood.png'
-    },
-    {
-      name: 'Bình nóng lạnh HOMEPLUS HP-WH30',
-      image: '/pdf_assets/rel_water_heater.png'
-    }
-  ];
+        {/* 3. Medical Safety & Prescription Warning Banner */}
+        <div className="medical-warning-banner">
+          <div className="medical-warning-icon">
+            <AlertTriangle size={24} color="#C2410C" />
+          </div>
+          <div className="medical-warning-text">
+            <h4>LƯU Ý QUAN TRỌNG KHI SỬ DỤNG THUỐC & DƯỢC PHẨM</h4>
+            <p>Đọc kỹ hướng dẫn sử dụng trước khi dùng. Thuốc dùng theo đơn hoặc chỉ định từ Bác sĩ/Dược sĩ chuyên khoa. Để xa tầm tay trẻ em.</p>
+          </div>
+        </div>
 
-  const relatedList = (scanData.relatedProducts && scanData.relatedProducts.length > 0)
-    ? scanData.relatedProducts.map(p => ({ name: p.name, image: p.images?.[0] }))
-    : pdfRelatedProducts;
+        {/* 4. 8 Interactive Quick Info Grid Cards (4 x 2 Layout) */}
+        <div className="medical-grid-actions">
+          <div className="medical-action-card" onClick={() => setActiveModal('tem')}>
+            <div className="medical-action-icon"><ShieldCheck size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Mã tem & QR</span>
+          </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('scan')}>
+            <div className="medical-action-icon"><Scan size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Lịch sử quét</span>
+          </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('mfg')}>
+            <div className="medical-action-icon"><Building2 size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Nhà sản xuất GMP</span>
+          </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('distributor')}>
+            <div className="medical-action-icon"><Handshake size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Hệ thống nhà thuốc</span>
+          </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('ingredients')}>
+            <div className="medical-action-icon"><FileCheck size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Thành phần dược chất</span>
+          </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('dosage')}>
+            <div className="medical-action-icon"><Pill size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Chỉ định & Liều dùng</span>
+          </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('cert')}>
+            <div className="medical-action-icon"><Award size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Chứng nhận GMP/Bộ Y Tế</span>
+          </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('caution')}>
+            <div className="medical-action-icon"><ShieldAlert size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Thận trọng & Bảo quản</span>
+          </div>
+        </div>
 
-  const scrollRef = useRef(null);
-  const handleScrollLeft = () => {
-    if (scrollRef.current) scrollRef.current.scrollBy({ left: -220, behavior: 'smooth' });
-  };
-  const handleScrollRight = () => {
-    if (scrollRef.current) scrollRef.current.scrollBy({ left: 220, behavior: 'smooth' });
-  };
+        {/* 5. Active Batch & Storage Details Card */}
+        <div className="medical-storage-box">
+          <div className="medical-storage-header">
+            <FileText size={18} color="#00695C" />
+            <span>THÔNG TIN SẢN XUẤT & BẢO QUẢN DƯỢC PHẨM</span>
+          </div>
+          <div className="medical-storage-grid">
+            <div className="medical-storage-col">
+              <span className="storage-lbl">Nhiệt độ bảo quản:</span>
+              <strong className="storage-val">Nơi khô ráo, dưới 30°C</strong>
+            </div>
+            <div className="medical-storage-col">
+              <span className="storage-lbl">Ánh sáng:</span>
+              <strong className="storage-val">Tránh ánh nắng trực tiếp</strong>
+            </div>
+            <div className="medical-storage-col">
+              <span className="storage-lbl">Hạn sử dụng tem:</span>
+              <strong className="storage-val">{formatDate(label?.expiryDate || scanData?.label?.batchId?.expiryDate)}</strong>
+            </div>
+            <div className="medical-storage-col">
+              <span className="storage-lbl">Tiêu chuẩn áp dụng:</span>
+              <strong className="storage-val">Dược điển Việt Nam V</strong>
+            </div>
+          </div>
+        </div>
 
-  const isWarrantyView = false;
-  const isApplianceView = true;
+        {/* 6. Medical Related Products */}
+        <div className="medical-related-section">
+          <div className="medical-related-header">
+            <h3 className="medical-related-title">
+              <ShoppingBag size={18} color="#00695C" style={{ marginRight: 8 }} />
+              DƯỢC PHẨM & CÙNG NHÀ SẢN XUẤT
+            </h3>
+          </div>
+          <div className="medical-related-grid">
+            <div className="medical-related-card">
+              <div className="medical-related-img">
+                <Pill size={32} color="#00897B" />
+              </div>
+              <div className="medical-related-name">Vitamin C 500mg</div>
+              <div className="medical-related-sub">Hộp 100 viên</div>
+            </div>
+            <div className="medical-related-card">
+              <div className="medical-related-img">
+                <Stethoscope size={32} color="#00897B" />
+              </div>
+              <div className="medical-related-name">Siro Ho Thảo Dược</div>
+              <div className="medical-related-sub">Chai 125ml</div>
+            </div>
+            <div className="medical-related-card">
+              <div className="medical-related-img">
+                <ShieldCheck size={32} color="#00897B" />
+              </div>
+              <div className="medical-related-name">Khẩu Trang Y Tế 4 Lớp</div>
+              <div className="medical-related-sub">Hộp 50 cái</div>
+            </div>
+            <div className="medical-related-card">
+              <div className="medical-related-img">
+                <Award size={32} color="#00897B" />
+              </div>
+              <div className="medical-related-name">Dung Dịch Sát Khuẩn</div>
+              <div className="medical-related-sub">Chai 500ml</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // 2. TEM BẢO HÀNH ĐỒ GIA DỤNG (Appliance Theme) - Giữ nguyên khớp chuẩn 100%
+  // =========================================================================
+  const renderApplianceView = () => (
+    <div className="appliance-canvas-outer">
+      <div className="appliance-poster-card">
+        {/* 1. Header Trust Banner */}
+        <div className="appliance-trust-banner">
+          <div className="appliance-trust-logo-box">
+            <TrustShieldBadge />
+          </div>
+          <div className="appliance-trust-title-wrap">
+            <h2 className="appliance-trust-title">TRUST : SẢN PHẨM CHÍNH HÃNG</h2>
+            <p className="appliance-trust-subtitle">Sản phẩm đã được minh bạch thông tin</p>
+          </div>
+          <div className="appliance-trust-watermark">
+            <ShieldCheck size={72} color="rgba(0, 51, 102, 0.07)" />
+          </div>
+        </div>
+
+        {/* 2. Hero Appliance Banner Showcase */}
+        <div className="appliance-hero-card">
+          <div className="appliance-hero-image-wrap">
+            <img 
+              src="/pdf_assets/hero_banner_appliance.png" 
+              alt="Dụng cụ & Thiết bị gia dụng VINSUMI" 
+              className="appliance-hero-img" 
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/pdf_assets/hero_banner.png';
+              }}
+            />
+          </div>
+          <div className="appliance-hero-body-row">
+            <div className="appliance-hero-info">
+              <h3 className="appliance-hero-brand">
+                Sản phẩm : <span className="appliance-hero-brand-name">{product?.name || 'VINSUMI'}</span>
+              </h3>
+              <p className="appliance-hero-desc">
+                {product?.description || 'VINSUMI cam kết mang đến những sản phẩm chất lượng cao, an toàn và bền bỉ – đồng hành cùng gia đình bạn trong cuộc sống hiện đại.'}
+              </p>
+            </div>
+            <button className="appliance-hero-more-btn" onClick={() => setActiveModal('product_detail')}>
+              Xem thêm <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* 3. 8 Interactive Quick Info Grid Cards (4 x 2 Layout) */}
+        <div className="appliance-grid-actions">
+          <div className="appliance-action-card" onClick={() => setActiveModal('tem')}>
+            <div className="appliance-action-icon"><ShieldCheck size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Thông tin tem</span>
+          </div>
+          <div className="appliance-action-card" onClick={() => setActiveModal('scan')}>
+            <div className="appliance-action-icon"><Scan size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Thông tin quét</span>
+          </div>
+          <div className="appliance-action-card" onClick={() => setActiveModal('mfg')}>
+            <div className="appliance-action-icon"><Building2 size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Nhà sản xuất</span>
+          </div>
+          <div className="appliance-action-card" onClick={() => setActiveModal('distributor')}>
+            <div className="appliance-action-icon"><Handshake size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Nhà phân phối</span>
+          </div>
+          <div className="appliance-action-card" onClick={() => setActiveModal('cert')}>
+            <div className="appliance-action-icon"><Award size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Chứng nhận</span>
+          </div>
+          <div className="appliance-action-card" onClick={() => setActiveModal('brand')}>
+            <div className="appliance-action-icon"><Sparkles size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Thương hiệu</span>
+          </div>
+          <div className="appliance-action-card" onClick={() => setActiveModal('export')}>
+            <div className="appliance-action-icon"><Globe size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Thông tin XK</span>
+          </div>
+          <div className="appliance-action-card" onClick={() => setActiveModal('reward')}>
+            <div className="appliance-action-icon"><Gift size={34} color="#003366" strokeWidth={1.75} /></div>
+            <span className="appliance-action-label">Tích điểm</span>
+          </div>
+        </div>
+
+        {/* 4. Related Products Section */}
+        <div className="appliance-related-section">
+          <div className="appliance-related-header">
+            <h3 className="appliance-related-title">
+              <ShoppingBag size={22} color="#003366" style={{ marginRight: 10 }} />
+              SẢN PHẨM LIÊN QUAN
+            </h3>
+            <button className="appliance-related-more-link" onClick={() => setActiveModal('all_products')}>
+              Xem thêm <ChevronRight size={16} />
+            </button>
+          </div>
+          <div className="appliance-related-grid">
+            <div className="appliance-related-card">
+              <div className="appliance-related-img-box">
+                <img src="/pdf_assets/rel_fridge_vinsumi.png" alt="Tủ lạnh VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?w=200&auto=format&fit=crop&q=60'; }} />
+              </div>
+              <div className="appliance-related-name">Tủ lạnh VINSUMI</div>
+              <div className="appliance-related-sub">Inverter 420L</div>
+            </div>
+            <div className="appliance-related-card">
+              <div className="appliance-related-img-box">
+                <img src="/pdf_assets/rel_washer_vinsumi.png" alt="Máy giặt VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?w=200&auto=format&fit=crop&q=60'; }} />
+              </div>
+              <div className="appliance-related-name">Máy giặt VINSUMI</div>
+              <div className="appliance-related-sub">10kg</div>
+            </div>
+            <div className="appliance-related-card">
+              <div className="appliance-related-img-box">
+                <img src="/pdf_assets/rel_induction_vinsumi.png" alt="Bếp từ VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1588854337236-6889d631faa8?w=200&auto=format&fit=crop&q=60'; }} />
+              </div>
+              <div className="appliance-related-name">Bếp từ VINSUMI</div>
+              <div className="appliance-related-sub">Đôi cảm ứng</div>
+            </div>
+            <div className="appliance-related-card">
+              <div className="appliance-related-img-box">
+                <img src="/pdf_assets/rel_blender_vinsumi.png" alt="Máy xay VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=200&auto=format&fit=crop&q=60'; }} />
+              </div>
+              <div className="appliance-related-name">Máy xay VINSUMI</div>
+              <div className="appliance-related-sub">Đa năng</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Appliance Warranty Information Card */}
+        <div className="appliance-warranty-box">
+          <div className="appliance-warranty-header-bar">
+            <ShieldCheck size={24} color="#003366" />
+            <span>THÔNG TIN BẢO HÀNH</span>
+          </div>
+          <div className="appliance-warranty-content">
+            <div className="appliance-warranty-grid4">
+              <div className="appliance-warranty-col">
+                <div className="appliance-warranty-icon-box"><ShieldCheck size={28} color="#003366" /></div>
+                <div className="appliance-warranty-label">Thời gian bảo hành</div>
+                <div className="appliance-warranty-val">24 tháng</div>
+              </div>
+              <div className="appliance-warranty-col">
+                <div className="appliance-warranty-icon-box"><Wrench size={28} color="#003366" /></div>
+                <div className="appliance-warranty-label">Hình thức bảo hành</div>
+                <div className="appliance-warranty-val">Toàn quốc</div>
+              </div>
+              <div className="appliance-warranty-col">
+                <div className="appliance-warranty-icon-box"><FileText size={28} color="#003366" /></div>
+                <div className="appliance-warranty-label">Điều kiện bảo hành</div>
+                <div className="appliance-warranty-val subtext">Sản phẩm còn nguyên tem, không rách, không tẩy xóa</div>
+              </div>
+              <div className="appliance-warranty-col">
+                <div className="appliance-warranty-icon-box"><Phone size={28} color="#003366" /></div>
+                <div className="appliance-warranty-label">Hotline hỗ trợ</div>
+                <div className="appliance-warranty-val hotline">1900 1234</div>
+              </div>
+            </div>
+            <p className="appliance-warranty-footer-note">
+              Vui lòng liên hệ trung tâm bảo hành của VINSUMI gần nhất để được hỗ trợ nhanh chóng.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // 3. TEM THỰC PHẨM & TPCN (Food & Supplement Theme)
+  // =========================================================================
+  const renderFoodView = () => (
+    <div className="food-canvas-outer">
+      <div className="food-poster-card">
+        <div className="food-trust-banner">
+          <FoodSafetyBadge />
+          <div className="food-trust-title-wrap">
+            <h2>THỰC PHẨM CHÍNH HÃNG - AN TOÀN VỆ SINH THỰC PHẨM</h2>
+            <p>Đạt chứng nhận ISO 22000 & HACCP Quốc tế</p>
+          </div>
+        </div>
+
+        <div className="food-hero-card">
+          <div className="food-hero-body">
+            <img src={product?.images?.[0] || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="food-hero-img" />
+            <div className="food-hero-info">
+              <h3>{product?.name || 'Thực phẩm dinh dưỡng chính hãng'}</h3>
+              <p className="food-sub">Nhà sản xuất: {enterprise?.name || 'Công ty Thực phẩm Sạch'}</p>
+              <div className="food-specs-row">
+                <div className="food-spec-tag">Số XNCB: <strong>ATTP-88421</strong></div>
+                <div className="food-spec-tag">HSD: <strong>18 Tháng</strong></div>
+                <div className="food-spec-tag">Tiêu chuẩn: <strong>HACCP/ISO</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="food-nutrition-card">
+          <h4><FileCheck size={18} color="#16A34A" /> BẢNG HÀM LƯỢNG DINH DƯỠNG (NUTRITION FACTS)</h4>
+          <div className="food-nutrition-table">
+            <div className="nutrition-row"><span>Năng lượng (Calories)</span><strong>240 kcal</strong></div>
+            <div className="nutrition-row"><span>Đạm (Protein)</span><strong>12g</strong></div>
+            <div className="nutrition-row"><span>Chất béo (Total Fat)</span><strong>3.5g</strong></div>
+            <div className="nutrition-row"><span>Carbohydrate</span><strong>38g</strong></div>
+            <div className="nutrition-row"><span>Vitamin & Khoáng chất</span><strong>B1, B6, C, Ca, Zn</strong></div>
+          </div>
+        </div>
+
+        <div className="food-grid-actions">
+          <div className="food-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#16A34A" /><span>Thông tin tem</span></div>
+          <div className="food-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#16A34A" /><span>Số lượt quét</span></div>
+          <div className="food-action-card" onClick={() => setActiveModal('mfg')}><Building2 size={26} color="#16A34A" /><span>Cơ sở sản xuất</span></div>
+          <div className="food-action-card" onClick={() => setActiveModal('distributor')}><Handshake size={26} color="#16A34A" /><span>Nhà phân phối</span></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // 4. TEM NÔNG SẢN & NÔNG NGHIỆP (Agriculture Theme)
+  // =========================================================================
+  const renderAgricultureView = () => (
+    <div className="agri-canvas-outer">
+      <div className="agri-poster-card">
+        <div className="agri-trust-banner">
+          <AgriTrustBadge />
+          <div className="agri-trust-title-wrap">
+            <h2>NÔNG SẢN VIỆT CHÍNH HÃNG - TRUY XUẤT NGUỒN GỐC</h2>
+            <p>Đạt chuẩn VietGAP / GlobalGAP - Nông nghiệp xanh</p>
+          </div>
+        </div>
+
+        <div className="agri-hero-card">
+          <img src={product?.images?.[0] || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="agri-hero-img" />
+          <div className="agri-hero-info">
+            <h3>{product?.name || 'Nông sản sạch VietGAP'}</h3>
+            <div className="agri-tags-grid">
+              <span className="agri-tag">Mã vùng trồng: <strong>PUC-VN-882</strong></span>
+              <span className="agri-tag">Ngày thu hoạch: <strong>Gần nhất</strong></span>
+              <span className="agri-tag">Hợp tác xã: <strong>{enterprise?.name || 'HTX Nông Nghiệp Xanh'}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div className="agri-grid-actions">
+          <div className="agri-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#15803D" /><span>Thông tin tem</span></div>
+          <div className="agri-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#15803D" /><span>Nhật ký quét</span></div>
+          <div className="agri-action-card" onClick={() => setActiveModal('mfg')}><Sprout size={26} color="#15803D" /><span>Vùng trồng/HTX</span></div>
+          <div className="agri-action-card" onClick={() => setActiveModal('cert')}><Award size={26} color="#15803D" /><span>Chứng nhận VietGAP</span></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // 5. TEM MỸ PHẨM & LÀM ĐẸP (Cosmetics Theme)
+  // =========================================================================
+  const renderCosmeticsView = () => (
+    <div className="cosmetics-canvas-outer">
+      <div className="cosmetics-poster-card">
+        <div className="cosmetics-trust-banner">
+          <CosmeticsTrustBadge />
+          <div className="cosmetics-trust-title-wrap">
+            <h2>MỸ PHẨM CHÍNH HÃNG - BẢO VỆ LÀN DA VIỆT</h2>
+            <p>Đã qua kiểm nghiệm da liễu & An toàn cho mọi loại da</p>
+          </div>
+        </div>
+
+        <div className="cosmetics-hero-card">
+          <img src={product?.images?.[0] || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="cosmetics-hero-img" />
+          <div className="cosmetics-hero-info">
+            <h3>{product?.name || 'Mỹ phẩm chăm sóc da cao cấp'}</h3>
+            <p className="cosmetics-brand">Thương hiệu: <strong>{product?.brand || enterprise?.name || 'Beauty Care'}</strong></p>
+            <div className="cosmetics-specs">
+              <span>Loại da: <strong>Mọi loại da</strong></span>
+              <span>PAO (Mở nắp): <strong>12 Tháng</strong></span>
+              <span>Số công bố: <strong>CB-8834/22</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div className="cosmetics-grid-actions">
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#BE185D" /><span>Thông tin tem</span></div>
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#BE185D" /><span>Lịch sử quét</span></div>
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('ingredients')}><Sparkles size={26} color="#BE185D" /><span>Thành phần</span></div>
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('mfg')}><Building2 size={26} color="#BE185D" /><span>Nhà sản xuất</span></div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // =========================================================================
+  // 6. TEM XÁC THỰC TIÊU CHUẨN (Default Layout)
+  // =========================================================================
+  const renderDefaultView = () => (
+    <div className="product-info-body">
+      <div className={`product-info-verify ${label?.scanCount > 5 ? 'product-info-verify--warning' : ''}`}>
+        <div className="product-info-verify-icon">
+          {label?.scanCount > 5 ? <AlertTriangle size={22} /> : <ShieldCheck size={22} />}
+        </div>
+        <div className="product-info-verify-text">
+          {label?.scanCount > 5 ? (
+            <>
+              <h3>Cảnh báo</h3>
+              <p>Sản phẩm đã được quét {label.scanCount} lần. Vui lòng kiểm tra kỹ nguồn gốc.</p>
+            </>
+          ) : (
+            <>
+              <h3>Sản phẩm chính hãng</h3>
+              <p>Thông tin truy xuất nguồn gốc đã được xác thực</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="product-info-card">
+        <div className="product-info-image-area">
+          {product?.images?.[0] ? (
+            <img src={product.images[0]} alt={product.name} />
+          ) : (
+            <div className="product-info-image-placeholder">
+              <Package size={48} />
+              <span>Chưa có hình ảnh</span>
+            </div>
+          )}
+        </div>
+        <div className="product-info-details">
+          <h2 className="product-info-name">{product?.name || 'Sản phẩm'}</h2>
+          {product?.description && <p className="product-info-desc">{product.description}</p>}
+          <div className="product-info-rows">
+            <div className="product-info-row">
+              <div className="product-info-row-icon"><QrCode size={16} /></div>
+              <span className="product-info-row-label">Mã serial</span>
+              <span className="product-info-row-value">{label?.serialNumber || serial}</span>
+            </div>
+            {product?.category && (
+              <div className="product-info-row">
+                <div className="product-info-row-icon"><Hash size={16} /></div>
+                <span className="product-info-row-label">Danh mục</span>
+                <span className="product-info-row-value">{product.category}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="product-info-stats">
+        <div className="product-info-stat">
+          <span className="product-info-stat-number">{label?.scanCount || 1}</span>
+          <span className="product-info-stat-label">Lần quét</span>
+        </div>
+        <div className="product-info-stat">
+          <span className="product-info-stat-number" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+            {formatDate(label?.firstScannedAt || scanData?.firstScanTime)}
+          </span>
+          <span className="product-info-stat-label">Quét lần đầu</span>
+        </div>
+      </div>
+
+      {enterprise && (
+        <div className="product-info-enterprise">
+          <div className="product-info-enterprise-title">Doanh nghiệp sản xuất</div>
+          <div className="product-info-enterprise-name">{enterprise.name}</div>
+          {enterprise.address && <div className="product-info-enterprise-row"><MapPin size={14} />{enterprise.address}</div>}
+          {enterprise.phone && <div className="product-info-enterprise-row"><Phone size={14} />{enterprise.phone}</div>}
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className={`product-info-page ${themeClass}`}>
-      {/* Custom Domain Enterprise Banner */}
+    <div className={`product-info-page theme-${activeTheme}`}>
+      {/* Enterprise Custom Domain Banner */}
       {isCustomDomain && customEnterprise && (
         <div className="product-info-domain-banner"
-          style={{
-            background: customEnterprise.brandConfig?.primaryColor || 'var(--brand-primary, #1565C0)',
-          }}
+          style={{ background: customEnterprise.brandConfig?.primaryColor || '#1565C0' }}
         >
           {customEnterprise.logo && (
             <img src={customEnterprise.logo} alt={customEnterprise.name} className="product-info-domain-logo" />
@@ -214,628 +824,98 @@ export default function ProductInfo() {
         </div>
       )}
 
-      {isApplianceView ? (
-        <div className="appliance-canvas-outer">
-          <div className="appliance-poster-card">
-            {/* 1. Header Trust Banner */}
-            <div className="appliance-trust-banner">
-              <div className="appliance-trust-logo-box">
-                <div className="appliance-shield-gold-icon">
-                  <ShieldCheck size={28} color="#003366" />
-                </div>
-                <div className="appliance-trust-badge-text">TRUST</div>
-              </div>
-              <div className="appliance-trust-title-wrap">
-                <h2 className="appliance-trust-title">TRUST : SẢN PHẨM CHÍNH HÃNG</h2>
-                <p className="appliance-trust-subtitle">Sản phẩm đã được minh bạch thông tin</p>
-              </div>
-              <div className="appliance-trust-watermark">
-                <ShieldCheck size={72} color="rgba(0, 51, 102, 0.07)" />
-              </div>
-            </div>
 
-            {/* 2. Hero Appliance Banner Showcase */}
-            <div className="appliance-hero-card">
-              <div className="appliance-hero-image-wrap">
-                <img 
-                  src={product?.images?.[0] || "/pdf_assets/hero_banner.png"} 
-                  alt={product?.name || "Gia dụng VINSUMI"} 
-                  className="appliance-hero-img" 
-                />
-              </div>
-              <div className="appliance-hero-body-row">
-                <div className="appliance-hero-info">
-                  <h3 className="appliance-hero-brand">
-                    Sản phẩm : <span className="appliance-hero-brand-name">{product?.brand || enterprise?.name || "VINSUMI"}</span>
-                  </h3>
-                  <p className="appliance-hero-desc">
-                    {product?.description || `${product?.brand || enterprise?.name || "VINSUMI"} cam kết mang đến những sản phẩm chất lượng cao, an toàn và bền bỉ - đồng hành cùng gia đình bạn trong cuộc sống hiện đại.`}
-                  </p>
-                </div>
-                <button className="appliance-hero-more-btn" onClick={() => setActiveModal('product_detail')}>
-                  Xem thêm <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
+      {/* Render Active View by Industry */}
+      {activeTheme === 'medical' && renderMedicalView()}
+      {activeTheme === 'appliance' && renderApplianceView()}
+      {(activeTheme === 'functional_food' || activeTheme === 'food') && renderFoodView()}
+      {activeTheme === 'agriculture' && renderAgricultureView()}
+      {activeTheme === 'cosmetics' && renderCosmeticsView()}
+      {activeTheme === 'default' && renderDefaultView()}
 
-            {/* 3. 8 Interactive Quick Info Grid Cards (4 x 2 Layout) */}
-            <div className="appliance-grid-actions">
-              <div className="appliance-action-card" onClick={() => setActiveModal('tem')}>
-                <div className="appliance-action-icon"><ShieldCheck size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Thông tin tem</span>
-              </div>
-              <div className="appliance-action-card" onClick={() => setActiveModal('scan')}>
-                <div className="appliance-action-icon"><Scan size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Thông tin quét</span>
-              </div>
-              <div className="appliance-action-card" onClick={() => setActiveModal('mfg')}>
-                <div className="appliance-action-icon"><Building2 size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Nhà sản xuất</span>
-              </div>
-              <div className="appliance-action-card" onClick={() => setActiveModal('distributor')}>
-                <div className="appliance-action-icon"><Handshake size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Nhà phân phối</span>
-              </div>
-              <div className="appliance-action-card" onClick={() => setActiveModal('cert')}>
-                <div className="appliance-action-icon"><Award size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Chứng nhận</span>
-              </div>
-              <div className="appliance-action-card" onClick={() => setActiveModal('brand')}>
-                <div className="appliance-action-icon"><Sparkles size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Thương hiệu</span>
-              </div>
-              <div className="appliance-action-card" onClick={() => setActiveModal('export')}>
-                <div className="appliance-action-icon"><Globe size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Thông tin XK</span>
-              </div>
-              <div className="appliance-action-card" onClick={() => setActiveModal('reward')}>
-                <div className="appliance-action-icon"><Gift size={28} color="#003366" strokeWidth={1.75} /></div>
-                <span className="appliance-action-label">Tích điểm</span>
-              </div>
-            </div>
-
-            {/* 4. Related Products Section */}
-            <div className="appliance-related-section">
-              <div className="appliance-related-header">
-                <h3 className="appliance-related-title">
-                  <ShoppingBag size={18} color="#003366" style={{ marginRight: 8 }} />
-                  SẢN PHẨM LIÊN QUAN
-                </h3>
-                <button className="appliance-related-more-link" onClick={() => setActiveModal('all_products')}>
-                  Xem thêm <ChevronRight size={14} />
-                </button>
-              </div>
-              <div className="appliance-related-grid">
-                <div className="appliance-related-card">
-                  <div className="appliance-related-img-box">
-                    <img src="/pdf_assets/rel_water_heater.png" alt="Tủ lạnh VINSUMI" />
-                  </div>
-                  <div className="appliance-related-name">Tủ lạnh VINSUMI</div>
-                  <div className="appliance-related-sub">Inverter 420L</div>
-                </div>
-                <div className="appliance-related-card">
-                  <div className="appliance-related-img-box">
-                    <img src="/pdf_assets/rel_air_fryer.png" alt="Máy giặt VINSUMI" />
-                  </div>
-                  <div className="appliance-related-name">Máy giặt VINSUMI</div>
-                  <div className="appliance-related-sub">10kg</div>
-                </div>
-                <div className="appliance-related-card">
-                  <div className="appliance-related-img-box">
-                    <img src="/pdf_assets/rel_induction.png" alt="Bếp từ VINSUMI" />
-                  </div>
-                  <div className="appliance-related-name">Bếp từ VINSUMI</div>
-                  <div className="appliance-related-sub">Đôi cảm ứng</div>
-                </div>
-                <div className="appliance-related-card">
-                  <div className="appliance-related-img-box">
-                    <img src="/pdf_assets/rel_blender.png" alt="Máy xay VINSUMI" />
-                  </div>
-                  <div className="appliance-related-name">Máy xay VINSUMI</div>
-                  <div className="appliance-related-sub">Đa năng</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 5. Appliance Warranty Information Card */}
-            <div className="appliance-warranty-box">
-              <div className="appliance-warranty-header-bar">
-                <ShieldCheck size={20} color="#003366" />
-                <span>THÔNG TIN BẢO HÀNH</span>
-              </div>
-              <div className="appliance-warranty-content">
-                <div className="appliance-warranty-grid4">
-                  <div className="appliance-warranty-col">
-                    <div className="appliance-warranty-icon-box">
-                      <ShieldCheck size={22} color="#003366" />
-                    </div>
-                    <div className="appliance-warranty-label">Thời gian bảo hành</div>
-                    <div className="appliance-warranty-val">24 tháng</div>
-                  </div>
-                  <div className="appliance-warranty-col">
-                    <div className="appliance-warranty-icon-box">
-                      <Wrench size={22} color="#003366" />
-                    </div>
-                    <div className="appliance-warranty-label">Hình thức bảo hành</div>
-                    <div className="appliance-warranty-val">Toàn quốc</div>
-                  </div>
-                  <div className="appliance-warranty-col">
-                    <div className="appliance-warranty-icon-box">
-                      <FileText size={22} color="#003366" />
-                    </div>
-                    <div className="appliance-warranty-label">Điều kiện bảo hành</div>
-                    <div className="appliance-warranty-val subtext">
-                      Sản phẩm còn nguyên tem, không rách, không tẩy xóa
-                    </div>
-                  </div>
-                  <div className="appliance-warranty-col">
-                    <div className="appliance-warranty-icon-box">
-                      <Phone size={22} color="#003366" />
-                    </div>
-                    <div className="appliance-warranty-label">Hotline hỗ trợ</div>
-                    <div className="appliance-warranty-val hotline">1900 1234</div>
-                  </div>
-                </div>
-                <p className="appliance-warranty-footer-note">
-                  Vui lòng liên hệ trung tâm bảo hành của VINSUMI gần nhất để được hỗ trợ nhanh chóng.
-                </p>
-              </div>
-            </div>
-
-            <div style={{ marginTop: '24px', textAlign: 'center' }}>
-              <button className="pdf-canvas-home-btn" onClick={() => navigate('/home')}>
-                <Home size={18} />
-                Quay lại trang chủ
+      {/* Modals Popup */}
+      {activeModal && (
+        <div className="appliance-modal-overlay" onClick={() => setActiveModal(null)}>
+          <div className="appliance-modal-body" onClick={e => e.stopPropagation()}>
+            <div className="appliance-modal-header" style={{
+              background: activeTheme === 'medical' ? '#00695C' : activeTheme === 'functional_food' ? '#15803D' : activeTheme === 'agriculture' ? '#166534' : activeTheme === 'cosmetics' ? '#BE185D' : '#003366'
+            }}>
+              <h4>
+                {activeModal === 'tem' && 'Chi tiết Thông tin Tem'}
+                {activeModal === 'scan' && 'Lịch sử & Thông tin Quét'}
+                {activeModal === 'mfg' && 'Thông tin Nhà sản xuất'}
+                {activeModal === 'distributor' && 'Thông tin Nhà phân phối'}
+                {activeModal === 'cert' && 'Chứng nhận & Tiêu chuẩn'}
+                {activeModal === 'brand' && 'Câu chuyện Thương hiệu'}
+                {activeModal === 'export' && 'Thông tin Xuất khẩu'}
+                {activeModal === 'reward' && 'Tích điểm Thành viên'}
+                {activeModal === 'product_detail' && 'Chi tiết Sản phẩm'}
+                {activeModal === 'all_products' && 'Sản phẩm cùng nhà sản xuất'}
+                {activeModal === 'ingredients' && 'Thành phần & Dược chất'}
+                {activeModal === 'dosage' && 'Chỉ định & Hướng dẫn sử dụng'}
+                {activeModal === 'caution' && 'Thận trọng & Bảo quản'}
+              </h4>
+              <button className="appliance-modal-close" onClick={() => setActiveModal(null)}>
+                <X size={18} />
               </button>
             </div>
-          </div>
-
-          {/* Modal Popups for 8 cards */}
-          {activeModal && (
-            <div className="appliance-modal-overlay" onClick={() => setActiveModal(null)}>
-              <div className="appliance-modal-body" onClick={e => e.stopPropagation()}>
-                <div className="appliance-modal-header">
-                  <h4>
-                    {activeModal === 'tem' && 'Chi tiết Thông tin Tem'}
-                    {activeModal === 'scan' && 'Lịch sử & Thông tin Quét'}
-                    {activeModal === 'mfg' && 'Thông tin Nhà sản xuất'}
-                    {activeModal === 'distributor' && 'Thông tin Nhà phân phối'}
-                    {activeModal === 'cert' && 'Chứng nhận & Tiêu chuẩn'}
-                    {activeModal === 'brand' && 'Câu chuyện Thương hiệu'}
-                    {activeModal === 'export' && 'Thông tin Xuất khẩu'}
-                    {activeModal === 'reward' && 'Tích điểm Thành viên'}
-                    {activeModal === 'product_detail' && 'Chi tiết Sản phẩm'}
-                    {activeModal === 'all_products' && 'Tất cả sản phẩm cùng nhà sản xuất'}
-                  </h4>
-                  <button className="appliance-modal-close" onClick={() => setActiveModal(null)}>
-                    <X size={18} />
-                  </button>
+            <div className="appliance-modal-content">
+              {activeModal === 'tem' && (
+                <div className="modal-info-list">
+                  <div className="modal-info-item"><span>Mã Serial:</span> <strong>{label?.serialNumber || serial}</strong></div>
+                  <div className="modal-info-item"><span>Mã QR mã hóa:</span> <strong>{label?.qrCode || 'Đã xác thực bí mật'}</strong></div>
+                  <div className="modal-info-item"><span>Trạng thái:</span> <strong style={{ color: '#059669' }}>{label?.status === 'ACTIVE' ? 'Đã kích hoạt' : 'Hoạt động'}</strong></div>
+                  <div className="modal-info-item"><span>Hạn tem:</span> <strong>{formatDate(label?.expiryDate || scanData?.label?.batchId?.expiryDate)}</strong></div>
                 </div>
-                <div className="appliance-modal-content">
-                  {activeModal === 'tem' && (
-                    <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Mã Serial:</span> <strong>{label?.serialNumber || serial}</strong></div>
-                      <div className="modal-info-item"><span>Mã QR mã hóa:</span> <strong>{label?.qrCode || 'Đã xác thực bí mật'}</strong></div>
-                      <div className="modal-info-item"><span>Trạng thái:</span> <strong style={{ color: '#059669' }}>{label?.status === 'ACTIVE' ? 'Đã kích hoạt' : 'Hoạt động'}</strong></div>
-                      <div className="modal-info-item"><span>Hạn bảo hành:</span> <strong>{formatDate(label?.expiryDate || scanData?.label?.batchId?.expiryDate)}</strong></div>
-                    </div>
-                  )}
-                  {activeModal === 'scan' && (
-                    <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Số lượt quét:</span> <strong>{label?.scanCount || 1} lần</strong></div>
-                      <div className="modal-info-item"><span>Quét lần đầu:</span> <strong>{formatDate(label?.firstScannedAt || scanData?.firstScanTime)}</strong></div>
-                      <div className="modal-info-item"><span>Quét gần nhất:</span> <strong>{formatDate(label?.lastScannedAt || new Date())}</strong></div>
-                      <div className="modal-info-item"><span>Xác minh địa điểm:</span> <strong>GPS Việt Nam (Hà Nội / TP.HCM)</strong></div>
-                    </div>
-                  )}
-                  {activeModal === 'mfg' && (
-                    <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Tên doanh nghiệp:</span> <strong>{enterprise?.name || 'CÔNG TY TNHH VINSUMI VIỆT NAM'}</strong></div>
-                      <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{enterprise?.address || 'Lô B2-3, KCN Thăng Long, Đông Anh, Hà Nội'}</strong></div>
-                      <div className="modal-info-item"><span>Hotline / Tel:</span> <strong>{enterprise?.phone || '024 6688 1234'}</strong></div>
-                      <div className="modal-info-item"><span>Email hỗ trợ:</span> <strong>{enterprise?.email || 'contact@vinsumi.vn'}</strong></div>
-                      <div className="modal-info-item"><span>Website:</span> <strong>{enterprise?.website || 'www.vinsumi.vn'}</strong></div>
-                    </div>
-                  )}
-                  {activeModal === 'distributor' && (
-                    <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Nhà phân phối:</span> <strong>{label?.distributorName || enterprise?.name || 'Hệ thống Đại lý VINSUMI toàn quốc'}</strong></div>
-                      <div className="modal-info-item"><span>Địa chỉ đại lý:</span> <strong>{label?.distributorAddress || 'Toàn bộ cửa hàng & Siêu thị điện máy chính hãng'}</strong></div>
-                    </div>
-                  )}
-                  {activeModal === 'cert' && (
-                    <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Quản lý chất lượng:</span> <strong>ISO 9001:2015</strong></div>
-                      <div className="modal-info-item"><span>An toàn điện gia dụng:</span> <strong>QCVN 4:2009/BKHCN</strong></div>
-                      <div className="modal-info-item"><span>Hiệu suất năng lượng:</span> <strong>Nhãn năng lượng 5 Sao (Tiết kiệm điện)</strong></div>
-                    </div>
-                  )}
-                  {activeModal === 'brand' && (
-                    <div>
-                      <p style={{ lineHeight: '1.6', color: '#334155' }}>
-                        {product?.brand || enterprise?.name || 'VINSUMI'} là thương hiệu gia dụng hàng đầu, cam kết tiên phong ứng dụng công nghệ hiện đại, chất lượng an toàn và mang lại trải nghiệm sống tiện nghi nhất cho mỗi gia đình Việt.
-                      </p>
-                    </div>
-                  )}
-                  {activeModal === 'export' && (
-                    <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Thị trường xuất khẩu:</span> <strong>Đông Nam Á, Nhật Bản, Hàn Quốc, EU</strong></div>
-                      <div className="modal-info-item"><span>Tiêu chuẩn quốc tế:</span> <strong>CE, RoHS, CB Certification</strong></div>
-                    </div>
-                  )}
-                  {activeModal === 'reward' && (
-                    <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Điểm thưởng tem:</span> <strong style={{ color: '#2563eb' }}>+50 Điểm Care</strong></div>
-                      <div className="modal-info-item"><span>Quyền lợi:</span> <strong>Giảm 10% khi thay thế linh kiện chính hãng & Đổi quà sinh nhật</strong></div>
-                    </div>
-                  )}
-                  {(activeModal === 'product_detail' || activeModal === 'all_products') && (
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: '1rem', color: '#1e3a8a', marginBottom: '8px' }}>
-                        {product?.name || 'Sản phẩm gia dụng VINSUMI'}
-                      </p>
-                      <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                        {product?.description || 'Dòng sản phẩm điện gia dụng cao cấp, áp dụng tiêu chuẩn quốc tế, bảo hành chính hãng 24 tháng.'}
-                      </p>
-                    </div>
-                  )}
+              )}
+              {activeModal === 'scan' && (
+                <div className="modal-info-list">
+                  <div className="modal-info-item"><span>Số lượt quét:</span> <strong>{label?.scanCount || 1} lần</strong></div>
+                  <div className="modal-info-item"><span>Quét lần đầu:</span> <strong>{formatDate(label?.firstScannedAt || scanData?.firstScanTime)}</strong></div>
+                  <div className="modal-info-item"><span>Quét gần nhất:</span> <strong>{formatDate(label?.lastScannedAt || new Date())}</strong></div>
+                  <div className="modal-info-item"><span>Địa điểm xác minh:</span> <strong>GPS Việt Nam</strong></div>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : isWarrantyView ? (
-        <div className="pdf-wrapper">
-          {/* Clean Top Bar - Only Back Button */}
-          <div className="pdf-clean-topbar">
-            <button className="pdf-clean-back" onClick={() => navigate(-1)}>
-              <ArrowLeft size={16} /> Quay lại
-            </button>
-          </div>
-
-          {/* Web HTML Responsive Layout */}
-          <div className="pdf-poster-canvas">
-            {/* Header Title Section */}
-            <div className="pdf-header-section">
-              <h1 className="pdf-title-line1">
-                {headerTitle1}
-              </h1>
-              <h2 className="pdf-title-line2">{headerTitle2}</h2>
-              
-              <div className="pdf-diamond-divider">
-                <span className="pdf-line-left"></span>
-                <span className="pdf-diamond-icon">❖</span>
-                <span className="pdf-line-right"></span>
-              </div>
-            </div>
-
-            {/* 1. Hero Image Banner */}
-            <div className="pdf-hero-box">
-              <img 
-                src="/pdf_assets/hero_banner.png" 
-                alt="GIẢI PHÁP QRcode TEM BẢO HÀNH SẢN PHẨM"
-                className="pdf-hero-image"
-              />
-            </div>
-
-            {/* 2. Transparency Commitment Shield Banner */}
-            <div className="pdf-transparency-card-img">
-              <img 
-                src="/pdf_assets/transparency_banner.png" 
-                alt="SẢN PHẨM ĐÃ ĐƯỢC NHÀ CUNG CẤP CAM KẾT MINH BẠCH THÔNG TIN"
-                className="pdf-transparency-img"
-              />
-            </div>
-
-            {/* 3. Main Product Details Box (Dynamic Per Product Scanned) */}
-            <div className="pdf-product-details-card">
-              <div className="pdf-product-layout">
-                {/* Product Photo on Left - Dynamic depending on scanned product */}
-                <div className="pdf-product-photo-wrap">
-                  <img 
-                    src={product?.images?.[0] || '/pdf_assets/rice_cooker.png'} 
-                    alt={product?.name || 'Nồi cơm điện cao tần HOMEPLUS HP-RC18'} 
-                    className="pdf-product-photo"
-                  />
+              )}
+              {activeModal === 'mfg' && (
+                <div className="modal-info-list">
+                  <div className="modal-info-item"><span>Tên doanh nghiệp:</span> <strong>{enterprise?.name || 'Doanh nghiệp sản xuất'}</strong></div>
+                  <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{enterprise?.address || 'Việt Nam'}</strong></div>
+                  <div className="modal-info-item"><span>Hotline:</span> <strong>{enterprise?.phone || '1900 1234'}</strong></div>
+                  <div className="modal-info-item"><span>Email:</span> <strong>{enterprise?.email || 'N/A'}</strong></div>
                 </div>
-
-                {/* Product Details on Right */}
-                <div className="pdf-product-info-wrap">
-                  <h2 className="pdf-product-heading">
-                    {product?.name || 'NỒI CƠM ĐIỆN CAO TẦN HOMEPLUS HP-RC18'}
-                  </h2>
-
-                  {/* 4 Key Specs Horizontal Row */}
-                  <div className="pdf-specs-horizontal">
-                    {pdfSpecs.map((spec, idx) => (
-                      <div key={idx} className="pdf-spec-unit">
-                        <div className="pdf-spec-icon-box">{spec.icon}</div>
-                        <div className="pdf-spec-name">{spec.label}</div>
-                        <div className="pdf-spec-value">{spec.value}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Feature Checklist (2 Columns with Blue Check Circles) */}
-                  <div className="pdf-checklist-two-cols">
-                    <div className="pdf-checklist-col">
-                      {pdfCol1Features.map((feat, idx) => (
-                        <div key={idx} className="pdf-checklist-row">
-                          <div className="pdf-blue-check-circle">✓</div>
-                          <span className="pdf-checklist-text">{feat}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="pdf-checklist-col">
-                      {pdfCol2Features.map((feat, idx) => (
-                        <div key={idx} className="pdf-checklist-row">
-                          <div className="pdf-blue-check-circle">✓</div>
-                          <span className="pdf-checklist-text">{feat}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              )}
+              {activeModal === 'ingredients' && (
+                <div className="modal-info-list">
+                  <div className="modal-info-item"><span>Thành phần chính:</span> <strong>Paracetamol (500mg), Phụ liệu vừa đủ 1 viên</strong></div>
+                  <div className="modal-info-item"><span>Tác dụng dược lý:</span> <strong>Giảm đau, hạ sốt nhanh chóng và an toàn</strong></div>
+                  <div className="modal-info-item"><span>Độ tinh khiết:</span> <strong>Đạt 99.8% chuẩn Dược điển VN V</strong></div>
                 </div>
-              </div>
-            </div>
-
-            {/* 4. Related Products Section */}
-            <div className="pdf-section-container">
-              <h3 className="pdf-section-heading">
-                THÔNG TIN SẢN PHẨM & SẢN PHẨM CÙNG NHÀ SẢN XUẤT
-              </h3>
-
-              <div className="pdf-carousel-box">
-                <button className="pdf-nav-arrow left" onClick={handleScrollLeft} aria-label="Previous">
-                  <ChevronLeft size={18} />
-                </button>
-
-                <div className="pdf-related-grid" ref={scrollRef}>
-                  {pdfRelatedProducts.map((item, idx) => (
-                    <div key={idx} className="pdf-related-item-card">
-                      <div className="pdf-related-photo-box">
-                        <img src={item.image} alt={item.name} />
-                      </div>
-                      <div className="pdf-related-item-title">{item.name}</div>
-                    </div>
-                  ))}
+              )}
+              {activeModal === 'dosage' && (
+                <div className="modal-info-list">
+                  <div className="modal-info-item"><span>Người lớn:</span> <strong>1-2 viên / lần, mỗi 4-6 giờ (Tối đa 8 viên/ngày)</strong></div>
+                  <div className="modal-info-item"><span>Trẻ em (7-12 tuổi):</span> <strong>1/2 - 1 viên / lần (Theo chỉ định bác sĩ)</strong></div>
+                  <div className="modal-info-item"><span>Cách dùng:</span> <strong>Uống sau khi ăn với 150ml nước lọc</strong></div>
                 </div>
-
-                <button className="pdf-nav-arrow right" onClick={handleScrollRight} aria-label="Next">
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-            </div>
-
-            {/* 5. Manufacturer Information Section */}
-            <div className="pdf-section-container">
-              <h3 className="pdf-section-heading">THÔNG TIN NHÀ SẢN XUẤT</h3>
-
-              <div className="pdf-manufacturer-layout">
-                {/* Building photo on left */}
-                <div className="pdf-mfg-building-photo">
-                  <img 
-                    src="/pdf_assets/factory_building.png" 
-                    alt="HOMEPLUS Building" 
-                  />
+              )}
+              {activeModal === 'caution' && (
+                <div className="modal-info-list">
+                  <div className="modal-info-item"><span>Chống chỉ định:</span> <strong>Mẫn cảm với paracetamol, suy gan nặng</strong></div>
+                  <div className="modal-info-item"><span>Bảo quản:</span> <strong>Khu vực khô ráo, dưới 30°C, tránh ánh sáng</strong></div>
                 </div>
-
-                {/* Company info on right */}
-                <div className="pdf-mfg-content">
-                  <div className="pdf-mfg-field">
-                    <Building2 size={16} className="pdf-mfg-field-icon" />
-                    <span className="pdf-mfg-field-lbl">Tên công ty:</span>
-                    <span className="pdf-mfg-field-val bold">
-                      {enterprise?.name || 'CÔNG TY TNHH HOMEPLUS VIỆT NAM'}
-                    </span>
-                  </div>
-
-                  <div className="pdf-mfg-field">
-                    <MapPin size={16} className="pdf-mfg-field-icon" />
-                    <span className="pdf-mfg-field-lbl">Địa chỉ:</span>
-                    <span className="pdf-mfg-field-val">
-                      {enterprise?.address || 'Lô B2-3, KCN Thăng Long, Đông Anh, Hà Nội, Việt Nam'}
-                    </span>
-                  </div>
-
-                  <div className="pdf-mfg-field">
-                    <Phone size={16} className="pdf-mfg-field-icon" />
-                    <span className="pdf-mfg-field-lbl">Điện thoại:</span>
-                    <span className="pdf-mfg-field-val">
-                      {enterprise?.phone || '024 6688 1234'}
-                    </span>
-                  </div>
-
-                  <div className="pdf-mfg-field">
-                    <Mail size={16} className="pdf-mfg-field-icon" />
-                    <span className="pdf-mfg-field-lbl">Email:</span>
-                    <span className="pdf-mfg-field-val">
-                      {enterprise?.email || 'contact@homeplus.vn'}
-                    </span>
-                  </div>
-
-                  <div className="pdf-mfg-field">
-                    <Globe size={16} className="pdf-mfg-field-icon" />
-                    <span className="pdf-mfg-field-lbl">Website:</span>
-                    <span className="pdf-mfg-field-val">
-                      {enterprise?.website || 'www.homeplus.vn'}
-                    </span>
-                  </div>
-
-                  <p className="pdf-mfg-paragraph">
-                    {contentConfig.manufacturerNote || 'HOMEPLUS là thương hiệu uy tín chuyên cung cấp các sản phẩm gia dụng, thiết bị nhà bếp và thiết bị vệ sinh chất lượng cao, đáp ứng tiêu chuẩn quốc tế, đem lại tiện nghi và an toàn cho mọi gia đình.'}
+              )}
+              {activeModal === 'product_detail' && (
+                <div>
+                  <p style={{ fontWeight: 600, fontSize: '1rem', color: '#00695C', marginBottom: '8px' }}>
+                    {product?.name || 'Sản phẩm chính hãng'}
+                  </p>
+                  <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                    {product?.description || 'Sản phẩm được xác thực nguồn gốc và kiểm định chất lượng chính hãng.'}
                   </p>
                 </div>
-              </div>
-            </div>
-
-            {/* 6. Benefits Footer Section (5 Items Horizontal) */}
-            <div className="pdf-section-container pdf-benefits-section-container">
-              <h3 className="pdf-section-heading">LỢI ÍCH KHI XÁC THỰC SẢN PHẨM</h3>
-
-              <div className="pdf-benefits-5cols">
-                {benefitsList.map((item, idx) => (
-                  <div key={idx} className="pdf-benefit-column">
-                    <div className="pdf-benefit-circle-icon">
-                      {item.icon}
-                    </div>
-                    <h4>{item.title}</h4>
-                    <p>{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Bottom Home Button matching canvas width */}
-            <button className="pdf-canvas-home-btn" onClick={() => navigate('/home')}>
-              <Home size={18} />
-              Quay lại trang chủ
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* Default Layout */
-        <div className="product-info-body">
-          {/* Verification badge */}
-          <div className={`product-info-verify ${label?.scanCount > 5 ? 'product-info-verify--warning' : ''}`}>
-            <div className="product-info-verify-icon">
-              {label?.scanCount > 5 ? (
-                <AlertTriangle size={22} />
-              ) : (
-                <ShieldCheck size={22} />
-              )}
-            </div>
-            <div className="product-info-verify-text">
-              {label?.scanCount > 5 ? (
-                <>
-                  <h3>Cảnh báo</h3>
-                  <p>Sản phẩm đã được quét {label.scanCount} lần. Vui lòng kiểm tra kỹ nguồn gốc.</p>
-                </>
-              ) : (
-                <>
-                  <h3>Sản phẩm chính hãng</h3>
-                  <p>Thông tin truy xuất nguồn gốc đã được xác thực</p>
-                </>
               )}
             </div>
           </div>
-
-          {/* Product card */}
-          <div className="product-info-card">
-            <div className="product-info-image-area">
-              {product?.images?.[0] ? (
-                <img src={product.images[0]} alt={product.name} />
-              ) : (
-                <div className="product-info-image-placeholder">
-                  <Package size={48} />
-                  <span>Chưa có hình ảnh</span>
-                </div>
-              )}
-            </div>
-            <div className="product-info-details">
-              <h2 className="product-info-name">{product?.name || 'Sản phẩm'}</h2>
-              {product?.description && (
-                <p className="product-info-desc">{product.description}</p>
-              )}
-              <div className="product-info-rows">
-                <div className="product-info-row">
-                  <div className="product-info-row-icon">
-                    <QrCode size={16} />
-                  </div>
-                  <span className="product-info-row-label">Mã serial</span>
-                  <span className="product-info-row-value">{label?.serialNumber || serial}</span>
-                </div>
-                {product?.category && (
-                  <div className="product-info-row">
-                    <div className="product-info-row-icon">
-                      <Hash size={16} />
-                    </div>
-                    <span className="product-info-row-label">Danh mục</span>
-                    <span className="product-info-row-value">{product.category}</span>
-                  </div>
-                )}
-                {product?.sku && (
-                  <div className="product-info-row">
-                    <div className="product-info-row-icon">
-                      <Package size={16} />
-                    </div>
-                    <span className="product-info-row-label">Mã SKU</span>
-                    <span className="product-info-row-value">{product.sku}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Scan stats */}
-          <div className="product-info-stats">
-            <div className="product-info-stat">
-              <span className="product-info-stat-number">{label?.scanCount || 1}</span>
-              <span className="product-info-stat-label">Lần quét</span>
-            </div>
-            <div className="product-info-stat">
-              <span className="product-info-stat-number" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                {formatDate(label?.firstScannedAt || scanData?.firstScanTime)}
-              </span>
-              <span className="product-info-stat-label">Quét lần đầu</span>
-            </div>
-          </div>
-
-          {/* Enterprise info */}
-          {enterprise && (
-            <div className="product-info-enterprise">
-              <div className="product-info-enterprise-title">Doanh nghiệp sản xuất</div>
-              <div className="product-info-enterprise-name">{enterprise.name}</div>
-              {enterprise.address && (
-                <div className="product-info-enterprise-row">
-                  <MapPin size={14} />
-                  {enterprise.address}
-                </div>
-              )}
-              {enterprise.phone && (
-                <div className="product-info-enterprise-row">
-                  <Phone size={14} />
-                  {enterprise.phone}
-                </div>
-              )}
-              {enterprise.email && (
-                <div className="product-info-enterprise-row">
-                  <Mail size={14} />
-                  {enterprise.email}
-                </div>
-              )}
-              {enterprise.website && (
-                <div className="product-info-enterprise-row">
-                  <Globe size={14} />
-                  {enterprise.website}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Distributor info */}
-          {label?.distributorName && (
-            <div className="product-info-distributor">
-              <div className="product-info-distributor-title">Nhà phân phối</div>
-              <div className="product-info-distributor-name">
-                <Truck size={14} style={{ display: 'inline', marginRight: 6 }} />
-                {label.distributorName}
-              </div>
-              {label.distributorAddress && (
-                <div className="product-info-distributor-addr">{label.distributorAddress}</div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Bottom button for default layout */}
-      {!isWarrantyView && (
-        <div className="product-info-bottom">
-          <button className="product-info-home-btn" onClick={() => navigate('/home')}>
-            <Home size={18} />
-            Quay lại trang chủ
-          </button>
         </div>
       )}
 
@@ -845,7 +925,7 @@ export default function ProductInfo() {
           {!chatOpen ? (
             <button className="chatbot-toggle-btn" onClick={() => setChatOpen(true)}>
               <MessageSquare size={20} />
-              <span>Trò chuyện</span>
+              <span>Trò chuyện AI</span>
             </button>
           ) : (
             <div className="chatbot-window">

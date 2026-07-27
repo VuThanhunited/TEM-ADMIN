@@ -1262,24 +1262,26 @@
    Matching Image 1 100%
    ========================================== */
 .appliance-canvas-outer {
-  background: #333333;
+  background: #FFFFFF;
   min-height: 100vh;
-  padding: 24px 12px 60px 12px;
+  padding: 16px 12px 60px 12px;
   display: flex;
   justify-content: center;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 100%;
 }
 
 .appliance-poster-card {
   width: 100%;
-  max-width: 720px;
+  max-width: 960px;
   background: #FFFFFF;
   border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 51, 102, 0.06);
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  border: 1px solid #E2E8F0;
 }
 
 /* 1. Header Trust Banner */
@@ -1322,7 +1324,7 @@
 }
 
 .appliance-trust-title {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 800;
   color: #003366;
   margin: 0 0 4px 0;
@@ -1330,7 +1332,7 @@
 }
 
 .appliance-trust-subtitle {
-  font-size: 0.88rem;
+  font-size: 1.05rem;
   color: #475569;
   margin: 0;
   font-weight: 500;
@@ -1357,25 +1359,29 @@
 
 .appliance-hero-image-wrap {
   width: 100%;
-  height: 220px;
-  background: #F8FAFC;
+  height: auto;
+  min-height: 280px;
+  max-height: 540px;
+  background: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border-bottom: 1px solid #F1F5F9;
+  padding: 16px;
 }
 
 .appliance-hero-img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 520px;
+  object-fit: contain;
 }
 
 .appliance-hero-body-row {
-  padding: 16px;
+  padding: 18px 20px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
@@ -1388,7 +1394,7 @@
 }
 
 .appliance-hero-brand {
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #0F172A;
   margin: 0;
@@ -1399,23 +1405,23 @@
 }
 
 .appliance-hero-desc {
-  font-size: 0.82rem;
+  font-size: 0.98rem;
   color: #475569;
-  line-height: 1.5;
+  line-height: 1.55;
   margin: 0;
 }
 
 .appliance-hero-more-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
+  gap: 6px;
+  padding: 8px 18px;
   border: 1px solid #003366;
   border-radius: 6px;
   background: #FFFFFF;
   color: #003366;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.92rem;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.2s ease;
@@ -1430,19 +1436,19 @@
 .appliance-grid-actions {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .appliance-action-card {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-radius: 10px;
-  padding: 16px 8px;
+  border-radius: 12px;
+  padding: 18px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
@@ -1455,8 +1461,8 @@
 }
 
 .appliance-action-icon {
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: #F0F5FF;
   display: flex;
@@ -1465,7 +1471,7 @@
 }
 
 .appliance-action-label {
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #0F172A;
   text-align: center;
@@ -1476,10 +1482,10 @@
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
   border-radius: 12px;
-  padding: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
@@ -1490,7 +1496,7 @@
 }
 
 .appliance-related-title {
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #003366;
   margin: 0;
@@ -1503,29 +1509,29 @@
   background: transparent;
   border: none;
   color: #1D4ED8;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.92rem;
+  font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .appliance-related-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .appliance-related-card {
   border: 1px solid #F1F5F9;
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 10px;
+  padding: 14px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 6px;
+  gap: 8px;
   background: #F8FAFC;
   transition: all 0.2s ease;
 }
@@ -1538,7 +1544,7 @@
 
 .appliance-related-img-box {
   width: 100%;
-  height: 85px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1546,19 +1552,19 @@
 
 .appliance-related-img-box img {
   max-width: 100%;
-  max-height: 85px;
+  max-height: 120px;
   object-fit: contain;
 }
 
 .appliance-related-name {
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #003366;
   line-height: 1.3;
 }
 
 .appliance-related-sub {
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   color: #64748B;
 }
 
@@ -1567,33 +1573,33 @@
   background: linear-gradient(180deg, #F0F5FF 0%, #E6F0FF 100%);
   border: 1px solid #D0E2FF;
   border-radius: 12px;
-  padding: 18px 20px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   box-shadow: 0 2px 10px rgba(0, 51, 102, 0.03);
 }
 
 .appliance-warranty-header-bar {
   color: #003366;
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 800;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   letter-spacing: 0.5px;
 }
 
 .appliance-warranty-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .appliance-warranty-grid4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .appliance-warranty-col {
@@ -1601,7 +1607,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .appliance-warranty-icon-box {
@@ -1609,30 +1615,31 @@
 }
 
 .appliance-warranty-label {
-  font-size: 0.76rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #003366;
 }
 
 .appliance-warranty-val {
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   color: #475569;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .appliance-warranty-val.hotline {
   color: #003366;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 .appliance-warranty-val.subtext {
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   color: #64748B;
-  line-height: 1.25;
+  line-height: 1.3;
 }
 
 .appliance-warranty-footer-note {
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   color: #64748B;
   text-align: center;
   margin: 0;
@@ -1769,5 +1776,871 @@
   }
   .appliance-trust-subtitle {
     font-size: 0.78rem;
+  }
+}
+
+/* ==========================================
+   Theme Switcher Bar
+   ========================================== */
+.theme-switcher-bar {
+  background: #0F172A;
+  color: white;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.theme-switcher-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94A3B8;
+  white-space: nowrap;
+}
+
+.theme-switcher-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.theme-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid #334155;
+  background: #1E293B;
+  color: #CBD5E1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.theme-pill:hover {
+  background: #334155;
+  color: white;
+}
+
+.theme-pill.active.medical {
+  background: #00897B;
+  border-color: #80CBC4;
+  color: white;
+  box-shadow: 0 0 10px rgba(0, 137, 123, 0.4);
+}
+
+.theme-pill.active.appliance {
+  background: #1565C0;
+  border-color: #90CAF9;
+  color: white;
+  box-shadow: 0 0 10px rgba(21, 101, 192, 0.4);
+}
+
+.theme-pill.active.food {
+  background: #16A34A;
+  border-color: #86EFAC;
+  color: white;
+  box-shadow: 0 0 10px rgba(22, 163, 74, 0.4);
+}
+
+.theme-pill.active.agriculture {
+  background: #15803D;
+  border-color: #A7F3D0;
+  color: white;
+  box-shadow: 0 0 10px rgba(21, 128, 61, 0.4);
+}
+
+.theme-pill.active.cosmetics {
+  background: #BE185D;
+  border-color: #FBCFE8;
+  color: white;
+  box-shadow: 0 0 10px rgba(190, 24, 93, 0.4);
+}
+
+.theme-pill.active.default {
+  background: #475569;
+  border-color: #94A3B8;
+  color: white;
+}
+
+/* ==========================================
+   Theme: Medical (Dược phẩm & Y tế)
+   Màu chủ đạo: Emerald/Teal #00897B, #00695C
+   ========================================== */
+.theme-medical {
+  background: #E0F2F1;
+}
+
+.medical-canvas-outer {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 12px 32px 12px;
+  width: 100%;
+}
+
+.medical-poster-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid #B2DFDB;
+  box-shadow: 0 10px 25px rgba(0, 105, 92, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.medical-trust-banner {
+  background: linear-gradient(135deg, #00695C 0%, #00897B 100%);
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 105, 92, 0.2);
+}
+
+.medical-trust-logo-box {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.medical-trust-title-wrap {
+  z-index: 2;
+}
+
+.medical-trust-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  margin: 0 0 2px 0;
+  color: #FFFFFF;
+}
+
+.medical-trust-subtitle {
+  font-size: 0.78rem;
+  color: #B2DFDB;
+  margin: 0;
+}
+
+.medical-trust-watermark {
+  position: absolute;
+  right: -10px;
+  bottom: -15px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.medical-hero-card {
+  background: #F0FDF4;
+  border: 1px solid #A7F3D0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.medical-rx-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.medical-rx-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #00695C;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.medical-gmp-tag {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.medical-hero-body {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.medical-hero-img-wrap {
+  width: 110px;
+  height: 110px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #CBD5E1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.medical-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.medical-hero-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.medical-product-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #004D40;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.medical-enterprise-sub {
+  font-size: 0.78rem;
+  color: #475569;
+  margin: 0;
+}
+
+.medical-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+  background: white;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+}
+
+.medical-spec-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.medical-spec-item .spec-lbl {
+  font-size: 0.68rem;
+  color: #64748B;
+}
+
+.medical-spec-item .spec-val {
+  font-size: 0.75rem;
+  color: #0F172A;
+  font-weight: 600;
+}
+
+.medical-spec-item .spec-val.highlight {
+  color: #00695C;
+  font-weight: 700;
+}
+
+.medical-details-btn {
+  background: white;
+  border: 1px solid #00897B;
+  color: #00695C;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.medical-details-btn:hover {
+  background: #00897B;
+  color: white;
+}
+
+.medical-warning-banner {
+  background: #FFF7ED;
+  border: 1px solid #FFEDD5;
+  border-left: 4px solid #EA580C;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.medical-warning-text h4 {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #C2410C;
+  margin: 0 0 2px 0;
+  letter-spacing: 0.3px;
+}
+
+.medical-warning-text p {
+  font-size: 0.74rem;
+  color: #9A3412;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.medical-grid-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.medical-action-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 14px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.medical-action-card:hover {
+  transform: translateY(-2px);
+  border-color: #00897B;
+  box-shadow: 0 6px 16px rgba(0, 137, 123, 0.15);
+}
+
+.medical-action-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #E0F2F1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.medical-action-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0F172A;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.medical-storage-box {
+  background: linear-gradient(180deg, #E0F2F1 0%, #B2DFDB 100%);
+  border: 1px solid #80CBC4;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.medical-storage-header {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #004D40;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.medical-storage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.medical-storage-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.storage-lbl {
+  font-size: 0.68rem;
+  color: #004D40;
+  font-weight: 600;
+}
+
+.storage-val {
+  font-size: 0.74rem;
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.medical-related-section {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.medical-related-header {
+  margin-bottom: 12px;
+}
+
+.medical-related-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #00695C;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.medical-related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.medical-related-card {
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  border-radius: 8px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.medical-related-img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #E0F2F1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.medical-related-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #004D40;
+}
+
+.medical-related-sub {
+  font-size: 0.68rem;
+  color: #64748B;
+}
+
+/* ==========================================
+   Theme: Food & Supplements
+   ========================================== */
+.theme-functional_food, .theme-food {
+  background: #F0FDF4;
+}
+
+.food-canvas-outer {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 12px 32px 12px;
+  width: 100%;
+}
+
+.food-poster-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid #BBF7D0;
+  box-shadow: 0 10px 25px rgba(22, 163, 74, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.food-trust-banner {
+  background: linear-gradient(135deg, #15803D 0%, #16A34A 100%);
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.food-trust-title-wrap h2 {
+  font-size: 0.92rem;
+  font-weight: 800;
+  margin: 0 0 2px 0;
+}
+
+.food-trust-title-wrap p {
+  font-size: 0.76rem;
+  color: #DCFCE7;
+  margin: 0;
+}
+
+.food-hero-card {
+  background: #FEFCE8;
+  border: 1px solid #FEF08A;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.food-hero-body {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.food-hero-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.food-hero-info h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #15803D;
+  margin: 0 0 4px 0;
+}
+
+.food-sub {
+  font-size: 0.78rem;
+  color: #475569;
+  margin: 0 0 8px 0;
+}
+
+.food-specs-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.food-spec-tag {
+  font-size: 0.7rem;
+  background: white;
+  border: 1px solid #E2E8F0;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: #334155;
+}
+
+.food-nutrition-card {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.food-nutrition-card h4 {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #15803D;
+  margin: 0 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.food-nutrition-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nutrition-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed #E2E8F0;
+}
+
+.nutrition-row span { color: #64748B; }
+.nutrition-row strong { color: #0F172A; }
+
+.food-grid-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.food-action-card {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.food-action-card span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #15803D;
+}
+
+/* ==========================================
+   Theme: Agriculture
+   ========================================== */
+.theme-agriculture {
+  background: #F0FDF4;
+}
+
+.agri-canvas-outer {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 12px 32px 12px;
+  width: 100%;
+}
+
+.agri-poster-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid #86EFAC;
+  box-shadow: 0 10px 25px rgba(21, 128, 61, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agri-trust-banner {
+  background: linear-gradient(135deg, #166534 0%, #15803D 100%);
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.agri-trust-title-wrap h2 {
+  font-size: 0.92rem;
+  font-weight: 800;
+  margin: 0 0 2px 0;
+}
+
+.agri-trust-title-wrap p {
+  font-size: 0.76rem;
+  color: #FEF08A;
+  margin: 0;
+}
+
+.agri-hero-card {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.agri-hero-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.agri-hero-info h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #166534;
+  margin: 0 0 8px 0;
+}
+
+.agri-tags-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agri-tag {
+  font-size: 0.74rem;
+  color: #334155;
+}
+
+.agri-grid-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.agri-action-card {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.agri-action-card span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #15803D;
+  text-align: center;
+}
+
+/* ==========================================
+   Theme: Cosmetics
+   ========================================== */
+.theme-cosmetics {
+  background: #FDF2F8;
+}
+
+.cosmetics-canvas-outer {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 12px 32px 12px;
+  width: 100%;
+}
+
+.cosmetics-poster-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid #FBCFE8;
+  box-shadow: 0 10px 25px rgba(190, 24, 93, 0.08);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cosmetics-trust-banner {
+  background: linear-gradient(135deg, #9D174D 0%, #BE185D 100%);
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cosmetics-trust-title-wrap h2 {
+  font-size: 0.92rem;
+  font-weight: 800;
+  margin: 0 0 2px 0;
+}
+
+.cosmetics-trust-title-wrap p {
+  font-size: 0.76rem;
+  color: #FCE7F3;
+  margin: 0;
+}
+
+.cosmetics-hero-card {
+  background: #FFF1F2;
+  border: 1px solid #FECDD3;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.cosmetics-hero-img {
+  width: 100px;
+  height: 100px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.cosmetics-hero-info h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #BE185D;
+  margin: 0 0 4px 0;
+}
+
+.cosmetics-brand {
+  font-size: 0.78rem;
+  color: #475569;
+  margin: 0 0 8px 0;
+}
+
+.cosmetics-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.74rem;
+  color: #334155;
+}
+
+.cosmetics-grid-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.cosmetics-action-card {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.cosmetics-action-card span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #BE185D;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .medical-grid-actions, .food-grid-actions, .agri-grid-actions, .cosmetics-grid-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .medical-specs-grid, .medical-storage-grid, .medical-related-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .medical-hero-body {
+    flex-direction: column;
+    text-align: center;
+  }
+  .medical-hero-img-wrap {
+    width: 90px;
+    height: 90px;
   }
 }

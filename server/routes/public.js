@@ -66,7 +66,7 @@ router.get('/scan/:serial', async (req, res) => {
           }
         }
 
-        const ADMIN_URL = process.env.ADMIN_URL || 'https://tem-admin-eight.vercel.app';
+        const ADMIN_URL = process.env.ADMIN_URL || 'https://giaiphapqrcode.vn';
         const domainUrl = matchingBatch.customDomain 
           ? (matchingBatch.customDomain.trim().startsWith('http') ? matchingBatch.customDomain.trim() : `http://${matchingBatch.customDomain.trim()}`)
           : ADMIN_URL;
