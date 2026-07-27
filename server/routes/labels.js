@@ -227,6 +227,78 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   }
 });
 
+// POST /api/labels/import-excel - Import/Restore label batch from Excel file data (ADMIN ONLY)
+router.post('/import-excel', auth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const { batchCode, enterpriseId, productId, labelsData, notes } = req.body;
+    if (!enterpriseId) {
+      return res.status(400).json({ error: 'Thiếu thông tin doanh nghiệp sở hữu' });
+    }
+    if (!batchCode || !String(batchCode).trim()) {
+      return res.status(400).json({ error: 'Vui lòng nhập Mã lô tem' });
+    }
+    if (!Array.isArray(labelsData) || labelsData.length === 0) {
+      return res.status(400).json({ error: 'Dữ liệu tem trong file Excel không hợp lệ hoặc rỗng' });
+    }
+
+    const cleanBatchCode = String(batchCode).trim();
+    const existingBatch = await LabelBatch.findOne({ batchCode: cleanBatchCode });
+    if (existingBatch) {
+      return res.status(400).json({ error: `Mã lô tem "${cleanBatchCode}" đã tồn tại trên hệ thống. Vui lòng chọn mã lô tem khác!` });
+    }
+
+    const serialStart = String(labelsData[0].serialNumber || labelsData[0]['Mã Serial'] || '').trim();
+    const serialEnd = String(labelsData[labelsData.length - 1].serialNumber || labelsData[labelsData.length - 1]['Mã Serial'] || '').trim();
+
+    const createdBatch = new LabelBatch({
+      enterpriseId,
+      productId: productId || null,
+      batchCode: cleanBatchCode,
+      totalLabels: labelsData.length,
+      serialStart,
+      serialEnd,
+      serialType: 'RANDOM_ALPHANUMERIC',
+      status: 'ACTIVE',
+      notes: notes || `Lô tem nhập từ file Excel (${labelsData.length} tem)`,
+      expiryDate: new Date(Date.now() + 3 * 365 * 24 * 60 * 60 * 1000),
+      createdDate: new Date()
+    });
+    await createdBatch.save();
+
+    const labels = labelsData.map(item => {
+      const serialNumber = String(item.serialNumber || item['Mã Serial'] || '').trim();
+      const qrUrl = String(item.qrUrl || item['Link quét'] || item['Link Quét'] || '').trim();
+      const match = qrUrl.match(/\/scan\/([a-zA-Z0-9]+)/);
+      const qrCode = match ? match[1] : (item.qrCode || generateRandomCode(8).toLowerCase());
+
+      return {
+        batchId: createdBatch._id,
+        enterpriseId,
+        productId: productId || null,
+        serialNumber,
+        qrCode,
+        qrUrl: qrUrl || `${ADMIN_URL}/scan/${qrCode}`,
+        status: 'ACTIVE',
+        isActive: true
+      };
+    });
+
+    const CHUNK_SIZE = 5000;
+    for (let i = 0; i < labels.length; i += CHUNK_SIZE) {
+      await Label.insertMany(labels.slice(i, i + CHUNK_SIZE), { ordered: false });
+    }
+
+    const populated = await LabelBatch.findById(createdBatch._id)
+      .populate('enterpriseId', 'name')
+      .populate('productId', 'name');
+
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error('Import excel labels error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi nhập file Excel: ' + error.message });
+  }
+});
+
 // PUT /api/labels/batches/:id/status - Toggle status
 router.put('/batches/:id/status', auth, async (req, res) => {
   try {
