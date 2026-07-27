@@ -42,6 +42,12 @@ class UserApiService {
     const result = await response.json();
 
     if (!response.ok) {
+      if (response.status === 401 && result.code === 'SESSION_SUPERSEDED') {
+        localStorage.removeItem('npp_scan_token');
+        localStorage.removeItem('npp_scan_user');
+        alert('⚠️ CẢNH BÁO BẢO MẬT:\nTài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác.\nPhiên làm việc trên thiết bị này đã bị chấm dứt.');
+        window.location.href = '/login?reason=session_superseded';
+      }
       throw new Error(result.error || 'Có lỗi xảy ra');
     }
 

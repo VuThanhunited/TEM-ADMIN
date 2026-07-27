@@ -35,6 +35,16 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     loadUser();
+
+    // Heartbeat check (mỗi 15 giây) để phát hiện ngay phiên đăng nhập trùng từ máy khác
+    const interval = setInterval(() => {
+      const token = localStorage.getItem('tem_token');
+      if (token) {
+        api.getMe().catch(() => {});
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [loadUser]);
 
   const login = async (username, password) => {

@@ -46,15 +46,16 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
-
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
+
+    // Update last login and lock session to current device
+    user.lastLogin = new Date();
+    user.currentToken = token;
+    await user.save();
 
     const userData = user.toObject();
     delete userData.password;

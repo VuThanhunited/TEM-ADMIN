@@ -19,6 +19,14 @@ const auth = async (req, res, next) => {
       return res.status(403).json({ error: 'Tài khoản đã bị vô hiệu hóa' });
     }
 
+    // Single Active Device Session Lock
+    if (user.currentToken && user.currentToken !== token && !decoded.isAdminImpersonating) {
+      return res.status(401).json({ 
+        error: 'Tài khoản của bạn đã được đăng nhập từ một thiết bị khác. Phiên đăng nhập trên thiết bị này đã bị hủy.',
+        code: 'SESSION_SUPERSEDED'
+      });
+    }
+
     // Check subscription expiry for non-admin users
     if (user.role !== 'ADMIN' && user.subscriptionExpiry) {
       if (new Date() > new Date(user.subscriptionExpiry)) {

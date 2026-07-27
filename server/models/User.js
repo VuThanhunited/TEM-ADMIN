@@ -52,6 +52,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  currentToken: {
+    type: String,
+    default: null
+  },
   address: {
     type: String,
     default: ''

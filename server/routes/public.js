@@ -390,7 +390,6 @@ router.post('/npp-login', async (req, res) => {
       return res.status(403).json({ error: 'Tài khoản đã hết hạn. Vui lòng liên hệ Admin để gia hạn.' });
     }
 
-    // Đăng nhập giữ nguyên role của tài khoản (ADMIN -> ADMIN, NSX -> NSX, NPP -> NPP)
     const tokenRole = user.role;
     const token = jwt.sign(
       { 
@@ -400,6 +399,11 @@ router.post('/npp-login', async (req, res) => {
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
       { expiresIn: '7d' }
     );
+
+    // Save currentToken to lock single device session
+    user.lastLogin = new Date();
+    user.currentToken = token;
+    await user.save();
 
     const userData = user.toObject();
     delete userData.password;
@@ -801,7 +805,6 @@ router.post('/guest-login', async (req, res) => {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
     }
 
-    // Tạo token với role thực tế của user (không hạ xuống GUEST đối với ADMIN)
     const tokenRole = user.role;
     const token = jwt.sign(
       { 
@@ -811,6 +814,11 @@ router.post('/guest-login', async (req, res) => {
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
       { expiresIn: '7d' }
     );
+
+    // Save currentToken to lock single device session
+    user.lastLogin = new Date();
+    user.currentToken = token;
+    await user.save();
 
     const userData = user.toObject();
     delete userData.password;
