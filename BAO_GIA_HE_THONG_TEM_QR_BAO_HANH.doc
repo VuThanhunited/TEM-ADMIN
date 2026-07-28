@@ -3,7 +3,7 @@
       xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
 <meta charset="utf-8">
-<title>Báo Giá Dự Án Hệ Thống Tem QR Code & Bảo Hành Sản Phẩm</title>
+<title>Báo Giá Dự Án Hệ Thống Tem QR Code & Bảo Hành (Gói Cá Nhân)</title>
 <style>
   @page {
     size: A4;
@@ -106,7 +106,7 @@
     background-color: #edf2f7;
   }
   .total-price {
-    font-size: 13pt;
+    font-size: 14pt;
     font-weight: bold;
     color: #c53030;
   }
@@ -150,132 +150,120 @@
 </table>
 
 <div class="doc-title">BẢNG BÁO GIÁ PHÁT TRIỂN PHẦN MỀM</div>
-<div class="doc-subtitle">Dự án: Hệ Thống Quản Lý Tem QR Code, Bảo Hành & Xuất Xứ Sản Phẩm (Multi-Tenant System)</div>
+<div class="doc-subtitle">(GÓI HỖ TRỢ KHÁCH HÀNG CÁ NHÂN KINH DOANH KHỞI NGHIỆP)</div>
 
 <div class="info-box">
   <table class="info-table">
     <tr>
       <td class="info-label">Kính gửi:</td>
-      <td><strong>Quý Khách Hàng / Quý Doanh Nghiệp</strong></td>
+      <td><strong>Anh / Chị (Khách hàng Cá nhân)</strong></td>
+    </tr>
+    <tr>
+      <td class="info-label">Dự án:</td>
+      <td>Hệ Thống Quản Lý Tem QR Code, Bảo Hành & Xuất Xứ Sản Phẩm</td>
     </tr>
     <tr>
       <td class="info-label">Đơn vị phát triển:</td>
-      <td>Đội ngũ Lập trình viên / Freelance Software Developer</td>
-    </tr>
-    <tr>
-      <td class="info-label">Giai đoạn thực hiện:</td>
-      <td>06/2026 – 07/2026 (Tổng thời gian: ~02 tháng làm việc)</td>
+      <td>Freelance Developer (Hỗ trợ chi phí tối đa cho cá nhân)</td>
     </tr>
     <tr>
       <td class="info-label">Phạm vi công việc:</td>
-      <td>Thiết kế, xây dựng và hoàn thiện trọn gói 03 phân hệ chính (Backend Server, Web Admin Quản trị & Web User Quét Tem Mobile)</td>
+      <td>Bàn giao trọn gói 03 phân hệ (Backend Server API, Web Admin Quản trị & Web User Quét Tem Mobile)</td>
     </tr>
   </table>
 </div>
 
-<div class="section-heading">I. TỔNG QUAN QUY MÔ & TÍNH NĂNG NỔI BẬT ĐÃ PHÁT TRIỂN</div>
-<p>Hệ thống được phát triển theo kiến trúc hiện đại, đáp ứng đầy đủ các tiêu chuẩn bảo mật và trải nghiệm người dùng tối ưu:</p>
+<div class="section-heading">I. ĐẶC ĐIỂM HỆ THỐNG PHẦN MỀM BÀN GIAO</div>
+<p>Dù áp dụng mức giá hỗ trợ khách hàng cá nhân, hệ thống vẫn đảm bảo đầy đủ các tính năng nâng cao:</p>
 <ul>
-  <li><strong>Bảo mật QR Token mã hóa:</strong> Chuỗi URL quét QR được mã hóa ngẫu nhiên chống dò quét theo chuỗi serial, bảo vệ chống làm giả tem.</li>
-  <li><strong>Khóa phiên đơn thiết bị (Single Session Lock):</strong> Tài khoản Nhà phân phối (NPP) và Admin chỉ được phép đăng nhập trên 1 thiết bị tại một thời điểm, ngăn chặn chia sẻ tài khoản trái phép.</li>
-  <li><strong>Xử lý dữ liệu quy mô lớn:</strong> Hỗ trợ quản lý và import lô tem từ Excel lên đến 500,000 tem/lô (Đã nạp thực tế 10,020 tem dữ liệu gốc).</li>
-  <li><strong>Công nghệ Quét Camera đa nền tảng:</strong> Trình quét mã QR tự động nhận diện camera mượt mà trên iOS, Android và Laptop.</li>
-  <li><strong>Đa giao diện ngành hàng (Multi-Theme):</strong> Tự động nhận diện theme hiển thị thông tin sản phẩm (Thiết bị gia dụng VINSUMI Pixel-Perfect, Nông sản Hub Theme, Y tế/Dược phẩm Medical Theme).</li>
-  <li><strong>Trợ lý AI Chatbot FAQ:</strong> Tích hợp khung chat hỏi đáp thông minh hỗ trợ khách mua hàng giải đáp thắc mắc bảo hành.</li>
+  <li><strong>Mã hóa URL QR Token:</strong> Bảo vệ tem chống bị dò quét giả mạo.</li>
+  <li><strong>Khóa đăng nhập 1 thiết bị (Single Session Lock):</strong> Bảo mật tài khoản không bị chia sẻ trái phép.</li>
+  <li><strong>Quản lý lô tem & Import Excel:</strong> Xử lý mượt mà lên tới hàng chục ngàn tem.</li>
+  <li><strong>Quét camera QR đa nền tảng:</strong> Nhận diện cực mượt trên điện thoại iOS/Android.</li>
+  <li><strong>Multi-Theme giao diện:</strong> Tự động đổi theme hiển thị theo loại sản phẩm (Gia dụng VINSUMI, Nông sản, Y tế).</li>
+  <li><strong>Trợ lý AI Chatbot FAQ:</strong> Tự động trả lời thắc mắc bảo hành của khách hàng.</li>
 </ul>
 
-<div class="section-heading">II. BẢNG CHI TIẾT HẠNG MỤC CHI PHÍ</div>
+<div class="section-heading">II. BẢNG CHI TIẾT CHI PHÍ (GÓI HỖ TRỢ CÁ NHÂN)</div>
 
 <table class="price-table">
   <thead>
     <tr>
       <th style="width: 6%;">STT</th>
-      <th style="width: 28%;">Phân hệ / Hạng mục</th>
-      <th style="width: 46%;">Nội dung công việc chi tiết</th>
+      <th style="width: 30%;">Hạng mục công việc</th>
+      <th style="width: 44%;">Nội dung công việc chi tiết</th>
       <th style="width: 20%;">Thành tiền (VNĐ)</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td class="text-center font-bold">1</td>
-      <td><strong>Hệ thống Server API & CSDL (Backend)</strong></td>
+      <td><strong>Backend Server API & CSDL</strong></td>
       <td>
-        • Xây dựng hệ thống Server RESTful API bằng Node.js & Express.<br>
-        • Cơ sở dữ liệu MongoDB Atlas & C2 Persistent Data.<br>
-        • Thuật toán sinh Serial tự động tăng và Mã hóa Token QR URL.<br>
-        • Module bảo mật Single Session Lock khóa đăng nhập 1 thiết bị.<br>
-        • Công cụ xử lý Import lô tem số lượng lớn từ file Excel.
+        • Hệ thống Server Node.js & CSDL MongoDB Atlas.<br>
+        • Mã hóa Token QR & Tự động tăng chuỗi Serial.<br>
+        • Khóa phím đăng nhập đơn thiết bị & Import tem từ Excel.
       </td>
-      <td class="text-right font-bold">12.000.000</td>
+      <td class="text-right font-bold">7.000.000</td>
     </tr>
     <tr>
       <td class="text-center font-bold">2</td>
-      <td><strong>Web Admin Quản trị (NSX & NPP)</strong></td>
+      <td><strong>Web Admin Quản trị</strong></td>
       <td>
-        • Giao diện Web Admin chuẩn Responsive (React JS & Vite).<br>
-        • Phân quyền tài khoản 3 cấp: Admin hệ thống, Nhà sản xuất (NSX), Nhà phân phối (NPP).<br>
-        • Quản lý Danh mục Sản phẩm, Lô tem, Gắn serial linh hoạt cho Điểm bán.<br>
-        • Quản lý Mẫu thiết kế Tem (Label Designs) & Tùy chỉnh Template giao diện.<br>
-        • Phân hệ Quản lý Kho và Báo cáo Thống kê Analytics.
+        • Giao diện Web Admin chuẩn Responsive (React JS).<br>
+        • Quản lý Sản phẩm, Lô tem, Mẫu thiết kế & Điểm bán.<br>
+        • Quản lý & Thêm mới Doanh nghiệp đối tác sở hữu tem.
       </td>
-      <td class="text-right font-bold">18.000.000</td>
+      <td class="text-right font-bold">10.000.000</td>
     </tr>
     <tr>
       <td class="text-center font-bold">3</td>
-      <td><strong>Web User Quét Tem & Bảo hành (Mobile)</strong></td>
+      <td><strong>Web User Quét Tem (Mobile)</strong></td>
       <td>
-        • Giao diện Mobile-first tối ưu trải nghiệm quét mã QR trên điện thoại.<br>
-        • Tích hợp Trình quét QR Camera mượt mà (HTML5-QRCode cross-device).<br>
-        • Tự động hiển thị 3 Theme ngành hàng (Gia dụng VINSUMI, Nông sản, Y tế).<br>
-        • Tích hợp Trợ lý AI Chatbot FAQ hỗ trợ tự động.<br>
-        • Giao diện tra cứu Bảo hành, Xuất/Xem PDF và Form đăng ký NPP.
+        • Giao diện Quét QR mượt trên điện thoại mobile.<br>
+        • Tự động hiển thị 3 Theme ngành hàng & Chatbot FAQ.<br>
+        • Trang xem Bảo hành, Xuất PDF & Form đăng ký NPP.
       </td>
-      <td class="text-right font-bold">15.000.000</td>
+      <td class="text-right font-bold">8.000.000</td>
     </tr>
     <tr>
       <td class="text-center font-bold">4</td>
-      <td><strong>Hạ tầng Hosting & Tên miền (Domain)</strong></td>
+      <td><strong>Hosting & Tên miền (Domain)</strong></td>
       <td>
-        • Cấu hình Custom Domain <code>giaiphapqrcode.vn</code> & Vercel Rewrites Routing.<br>
-        • <em>(Khách hàng đã tự chi trả trực tiếp với nhà cung cấp hạ tầng).</em>
+        • Tên miền & Hosting khách hàng tự chi trả trực tiếp.
       </td>
       <td class="text-center font-bold" style="color: #2b6cb0;">0<br><small style="font-weight: normal;">(Khách chi trả)</small></td>
     </tr>
     <tr class="bg-highlight">
-      <td colspan="3" class="text-right font-bold" style="font-size: 12pt;">TỔNG CHI PHÍ PHÁT TRIỂN PHẦN MỀM:</td>
-      <td class="text-right total-price">45.000.000 VNĐ</td>
+      <td colspan="3" class="text-right font-bold" style="font-size: 12pt;">TỔNG CHI PHÍ THỰC HIỆN TRỌN GÓI:</td>
+      <td class="text-right total-price">25.000.000 VNĐ</td>
     </tr>
   </tbody>
 </table>
 
-<p style="font-style: italic; font-size: 11pt; margin-top: 5px;">* (Bằng chữ: <strong>Bốn mươi lăm triệu đồng chẵn</strong>).</p>
+<p style="font-style: italic; font-size: 11pt; margin-top: 5px;">* (Bằng chữ: <strong>Hai mươi lăm triệu đồng chẵn</strong>).</p>
 
-<div class="section-heading">III. TIẾN ĐỘ THANH TOÁN & ĐIỀU KHOẢN BẢO HÀNH</div>
+<div class="section-heading">III. PHƯƠNG THỨC THANH TOÁN LINH HOẠT (HỖ TRỢ CÁ NHÂN)</div>
 
-<p><strong>1. Tiến độ thanh toán (Chia làm 03 đợt):</strong></p>
+<p>Để hỗ trợ anh/chị chủ động ngân sách, chi phí được chia làm <strong>03 đợt thanh toán linh hoạt</strong>:</p>
 <ul>
-  <li><strong>Đợt 1 (Tạm ứng):</strong> Thanh toán <strong>40%</strong> giá trị hợp đồng tương đương <strong>18.000.000 VNĐ</strong> sau khi ký kết báo giá.</li>
-  <li><strong>Đợt 2 (Bàn giao hệ thống):</strong> Thanh toán <strong>40%</strong> giá trị hợp đồng tương đương <strong>18.000.000 VNĐ</strong> sau khi hoàn tất bàn giao mã nguồn và hướng dẫn vận hành.</li>
-  <li><strong>Đợt 3 (Nghiệm thu chính thức):</strong> Thanh toán <strong>20%</strong> còn lại tương đương <strong>9.000.000 VNĐ</strong> sau 14 ngày vận hành thực tế không phát sinh lỗi.</li>
+  <li><strong>Đợt 1 (Khởi động):</strong> Thanh toán <strong>30%</strong> (tương đương <strong>7.500.000 VNĐ</strong>) sau khi chốt báo giá.</li>
+  <li><strong>Đợt 2 (Bàn giao hệ thống):</strong> Thanh toán <strong>40%</strong> (tương đương <strong>10.000.000 VNĐ</strong>) sau khi kiểm thử và hướng dẫn quản trị.</li>
+  <li><strong>Đợt 3 (Nghiệm thu & Bảo hành):</strong> Thanh toán <strong>30%</strong> còn lại (tương đương <strong>7.500.000 VNĐ</strong>) sau 14 ngày vận hành thực tế.</li>
 </ul>
 
-<p><strong>2. Điều khoản Bảo hành & Hỗ trợ kỹ thuật:</strong></p>
-<ul>
-  <li><strong>Thời gian bảo hành:</strong> **03 tháng** tính từ ngày bàn giao chính thức.</li>
-  <li><strong>Cam kết bảo hành:</strong> Sửa lỗi (bug) phần mềm hoàn toàn miễn phí nếu phát sinh trong quá trình vận hành đúng phạm vi chức năng đã thống nhất.</li>
-  <li><strong>Hỗ trợ kỹ thuật:</strong> Hỗ trợ giải đáp thắc mắc, hướng dẫn quản trị viên sử dụng hệ thống qua Zalo/UltraViewer/Google Meet.</li>
-</ul>
+<p><strong>Cam kết bảo hành:</strong> Hỗ trợ sửa lỗi phần mềm <strong>miễn phí 03 tháng</strong> và hướng dẫn vận hành chu đáo qua Zalo/UltraViewer.</p>
 
 <table class="signature-table">
   <tr>
     <td>
       <strong>ĐẠI DIỆN KHÁCH HÀNG</strong><br>
-      <span style="font-size: 10pt; font-style: italic;">(Ký, ghi rõ họ tên & đóng dấu)</span>
+      <span style="font-size: 10pt; font-style: italic;">(Ký & ghi rõ họ tên)</span>
       <div class="signature-space"></div>
     </td>
     <td>
-      <strong>ĐẠI DIỆN LẬP TRÌNH VIÊN</strong><br>
-      <span style="font-size: 10pt; font-style: italic;">(Ký, ghi rõ họ tên)</span>
+      <strong>LẬP TRÌNH VIÊN THỰC HIỆN</strong><br>
+      <span style="font-size: 10pt; font-style: italic;">(Ký & ghi rõ họ tên)</span>
       <div class="signature-space"></div>
     </td>
   </tr>
