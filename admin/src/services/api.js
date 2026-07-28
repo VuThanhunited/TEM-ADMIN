@@ -75,7 +75,9 @@ class ApiService {
   // Enterprises
   getEnterprises() { return this.request('GET', '/enterprises'); }
   getEnterprise(id) { return this.request('GET', `/enterprises/${id}`); }
+  createEnterprise(data) { return this.request('POST', '/enterprises', data); }
   updateEnterprise(id, data) { return this.request('PUT', `/enterprises/${id}`, data); }
+  deleteEnterprise(id) { return this.request('DELETE', `/enterprises/${id}`); }
   updateDomain(id, data) { return this.request('PUT', `/enterprises/${id}/domain`, data); }
   updateChatbot(id, data) { return this.request('PUT', `/enterprises/${id}/chatbot`, data); }
 

@@ -90,4 +90,52 @@ router.put('/:id/chatbot', auth, async (req, res) => {
   }
 });
 
+// POST /api/enterprises - Create new enterprise (Admin only)
+router.post('/', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Chỉ Admin mới có quyền tạo doanh nghiệp' });
+    }
+
+    const { name, type = 'NSX', address, phone, email, website, taxCode, logo } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Tên doanh nghiệp không được để trống' });
+    }
+
+    const enterprise = new Enterprise({
+      name: name.trim(),
+      type,
+      address: address || '',
+      phone: phone || '',
+      email: email || '',
+      website: website || '',
+      taxCode: taxCode || '',
+      logo: logo || null
+    });
+
+    await enterprise.save();
+    res.status(201).json(enterprise);
+  } catch (error) {
+    console.error('Create enterprise error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi tạo doanh nghiệp' });
+  }
+});
+
+// DELETE /api/enterprises/:id - Delete enterprise (Admin only)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Chỉ Admin mới có quyền xóa doanh nghiệp' });
+    }
+
+    const enterprise = await Enterprise.findByIdAndDelete(req.params.id);
+    if (!enterprise) return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
+
+    res.json({ message: 'Đã xóa doanh nghiệp thành công' });
+  } catch (error) {
+    console.error('Delete enterprise error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xóa doanh nghiệp' });
+  }
+});
+
 module.exports = router;
