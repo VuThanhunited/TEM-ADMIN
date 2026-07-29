@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Building2, Globe, MessageSquare, Save, ExternalLink, Plus, Trash2, X, ChevronDown, CheckCircle
+  Building2, Globe, MessageSquare, Save, ExternalLink, Plus, Trash2, X, ChevronDown, CheckCircle,
+  Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Heading2, Heading3, Code, Eye
 } from 'lucide-react';
 import './Enterprise.css';
 
@@ -31,6 +33,10 @@ export default function Enterprise() {
   const [domainForm, setDomainForm] = useState({ domain: '', subdomain: '' });
   const [chatbotForm, setChatbotForm] = useState({ enabled: false, script: '', welcomeMessage: '' });
 
+  // Rich Text Editor State for "CHI TIẾT ĐỐI TÁC"
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
+  const editorRef = useRef(null);
+
   // Modal Create Enterprise
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -41,7 +47,8 @@ export default function Enterprise() {
     phone: '',
     email: '',
     address: '',
-    website: ''
+    website: '',
+    partnerDetails: ''
   });
 
   useEffect(() => {
@@ -82,11 +89,22 @@ export default function Enterprise() {
       phone: data.phone || '',
       email: data.email || '',
       website: data.website || '',
-      taxCode: data.taxCode || ''
+      taxCode: data.taxCode || '',
+      partnerDetails: data.partnerDetails || ''
     });
     setDomainForm({ domain: data.domain || '', subdomain: data.subdomain || '' });
     setChatbotForm(data.chatbotConfig || { enabled: false, script: '', welcomeMessage: '', qaList: [] });
+
+    if (editorRef.current) {
+      editorRef.current.innerHTML = data.partnerDetails || '';
+    }
   };
+
+  useEffect(() => {
+    if (editorRef.current && activeTab === 'info' && editorMode === 'visual') {
+      editorRef.current.innerHTML = form.partnerDetails || '';
+    }
+  }, [editorMode, activeTab, selectedId]);
 
   const handleSelectEnterprise = (id) => {
     setSelectedId(id);
@@ -108,7 +126,7 @@ export default function Enterprise() {
       const created = await api.createEnterprise(newForm);
       alert('Tạo doanh nghiệp mới thành công!');
       setShowCreateModal(false);
-      setNewForm({ name: '', type: 'NSX', taxCode: '', phone: '', email: '', address: '', website: '' });
+      setNewForm({ name: '', type: 'NSX', taxCode: '', phone: '', email: '', address: '', website: '', partnerDetails: '' });
       
       // Reload list and select new enterprise
       const updatedList = await api.getEnterprises();
@@ -143,6 +161,34 @@ export default function Enterprise() {
     }
   };
 
+  // Rich Text Editor Commands
+  const formatText = (command, value = null) => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      setForm(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
+    }
+  };
+
+  const handleInsertImage = () => {
+    const url = prompt('Nhập đường dẫn URL hình ảnh (ví dụ: https://domain.com/image.jpg):');
+    if (url && url.trim()) {
+      formatText('insertHTML', `<img src="${url.trim()}" alt="Ảnh đối tác" style="max-width:100%; height:auto; border-radius:8px; margin:10px 0; display:block;" />`);
+    }
+  };
+
+  const handleInsertLink = () => {
+    const url = prompt('Nhập đường dẫn URL liên kết:');
+    if (url && url.trim()) {
+      formatText('createLink', url.trim());
+    }
+  };
+
+  const handleEditorInput = () => {
+    if (editorRef.current) {
+      setForm(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
+    }
+  };
+
   const addQA = () => {
     const list = chatbotForm.qaList || [];
     setChatbotForm({
@@ -172,12 +218,16 @@ export default function Enterprise() {
     if (!enterprise?._id) return;
     setSaving(true);
     try {
-      const updated = await api.updateEnterprise(enterprise._id, form);
+      const payload = {
+        ...form,
+        partnerDetails: editorMode === 'visual' && editorRef.current ? editorRef.current.innerHTML : form.partnerDetails
+      };
+      const updated = await api.updateEnterprise(enterprise._id, payload);
       setEnterprise(updated);
       if (isAdmin) {
         setEnterprises(prev => prev.map(item => item._id === updated._id ? updated : item));
       }
-      alert('Cập nhật thông tin doanh nghiệp thành công!');
+      alert('Cập nhật thông tin & Chi tiết đối tác thành công!');
     } catch (err) {
       alert(err.message);
     } finally {
@@ -238,14 +288,14 @@ export default function Enterprise() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1>Cấu hình Doanh nghiệp</h1>
-          <p>Quản lý thông tin công ty đối tác sở hữu tem, domain và chatbot</p>
+          <p>Quản lý thông tin công ty đối tác sở hữu tem, nội dung chi tiết đối tác, domain và chatbot</p>
         </div>
 
         {isAdmin && (
           <button 
             className="btn btn-primary"
             onClick={() => setShowCreateModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}
           >
             <Plus size={18} /> Thêm Doanh nghiệp Mới
           </button>
@@ -356,9 +406,103 @@ export default function Enterprise() {
                     <input className="input" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} placeholder="https://congty.com" />
                   </div>
                 </div>
-                <div className="form-actions">
-                  <button className="btn btn-primary" onClick={handleSaveInfo} disabled={saving}>
-                    <Save size={16} /> {saving ? 'Đang lưu...' : 'Lưu thông tin doanh nghiệp'}
+
+                {/* CHI TIẾT ĐỐI TÁC SECTION (RICH TEXT & IMAGE EDITOR) */}
+                <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '2px dashed var(--color-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: 10 }}>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', textDecoration: 'underline', color: 'var(--color-text-primary)' }}>
+                      CHI TIẾT ĐỐI TÁC:
+                    </h3>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button 
+                        type="button" 
+                        className={`btn btn-sm ${editorMode === 'visual' ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setEditorMode('visual')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Eye size={14} /> Soạn thảo trực quan
+                      </button>
+                      <button 
+                        type="button" 
+                        className={`btn btn-sm ${editorMode === 'code' ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setEditorMode('code')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Code size={14} /> Mã HTML
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Toolbar */}
+                  {editorMode === 'visual' && (
+                    <div className="editor-toolbar" style={{
+                      display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '8px 12px',
+                      background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)',
+                      borderBottom: 'none', borderRadius: '8px 8px 0 0', alignItems: 'center'
+                    }}>
+                      <button type="button" className="btn-icon btn-sm" title="Bôi đậm (Bold)" onClick={() => formatText('bold')}><Bold size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="In nghiêng (Italic)" onClick={() => formatText('italic')}><Italic size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="Gạch chân (Underline)" onClick={() => formatText('underline')}><Underline size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="Gạch ngang (Strikethrough)" onClick={() => formatText('strikethrough')}><Strikethrough size={15}/></button>
+                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
+
+                      <button type="button" className="btn-icon btn-sm" title="Căn trái" onClick={() => formatText('justifyLeft')}><AlignLeft size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="Căn giữa" onClick={() => formatText('justifyCenter')}><AlignCenter size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="Căn phải" onClick={() => formatText('justifyRight')}><AlignRight size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="Căn đều 2 bên" onClick={() => formatText('justifyFull')}><AlignJustify size={15}/></button>
+                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
+
+                      <button type="button" className="btn-icon btn-sm" title="Danh sách chấm (Bullets)" onClick={() => formatText('insertUnorderedList')}><List size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="Danh sách số (Numbered)" onClick={() => formatText('insertOrderedList')}><ListOrdered size={15}/></button>
+                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
+
+                      <button type="button" className="btn-icon btn-sm" title="Tiêu đề H2" onClick={() => formatText('formatBlock', '<h2>')}><Heading2 size={15}/></button>
+                      <button type="button" className="btn-icon btn-sm" title="Tiêu đề H3" onClick={() => formatText('formatBlock', '<h3>')}><Heading3 size={15}/></button>
+                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
+
+                      <button type="button" className="btn btn-sm btn-ghost" title="Chèn ảnh vào bài viết" onClick={handleInsertImage} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary-light)', fontWeight: 600 }}>
+                        <ImageIcon size={15}/> <span>Chèn ảnh</span>
+                      </button>
+                      <button type="button" className="btn btn-sm btn-ghost" title="Chèn đường dẫn URL" onClick={handleInsertLink} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <LinkIcon size={15}/> <span>Chèn Link</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Editor Input Area */}
+                  {editorMode === 'visual' ? (
+                    <div
+                      ref={editorRef}
+                      contentEditable
+                      className="rich-editor-box"
+                      onInput={handleEditorInput}
+                      style={{
+                        minHeight: '220px',
+                        padding: '16px',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '0 0 8px 8px',
+                        outline: 'none',
+                        lineHeight: '1.6',
+                        fontSize: '15px'
+                      }}
+                    />
+                  ) : (
+                    <textarea
+                      className="input textarea"
+                      rows={10}
+                      value={form.partnerDetails || ''}
+                      onChange={e => setForm({ ...form, partnerDetails: e.target.value })}
+                      placeholder="Nhập hoặc dán mã HTML chi tiết đối tác..."
+                      style={{ fontFamily: 'monospace', fontSize: '13px', borderRadius: '8px' }}
+                    />
+                  )}
+                </div>
+
+                <div className="form-actions" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-primary" onClick={handleSaveInfo} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', fontWeight: 700 }}>
+                    <Save size={18} /> {saving ? 'Đang lưu...' : 'SAVE (Lưu thông tin & Chi tiết đối tác)'}
                   </button>
                 </div>
               </>
@@ -506,7 +650,7 @@ export default function Enterprise() {
       {/* Modal Thêm Doanh Nghiệp Mới */}
       {showCreateModal && (
         <div className="modal-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content animate-scale-up" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
+          <div className="modal-content animate-scale-up" onClick={e => e.stopPropagation()} style={{ maxWidth: '580px' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Building2 size={20} /> Thêm Doanh Nghiệp Mới (Đối Tác)
@@ -521,7 +665,7 @@ export default function Enterprise() {
                   <input
                     className="input"
                     required
-                    placeholder="VD: Công ty TNHH Thiết Bị Bảo Hành Việt"
+                    placeholder="VD: Công ty Cổ phần VINSUMI (In Thương Gia)"
                     value={newForm.name}
                     onChange={e => setNewForm({ ...newForm, name: e.target.value })}
                   />
@@ -544,7 +688,7 @@ export default function Enterprise() {
                     <label>Mã số thuế</label>
                     <input
                       className="input"
-                      placeholder="VD: 0109876543"
+                      placeholder="VD: 0315599888"
                       value={newForm.taxCode}
                       onChange={e => setNewForm({ ...newForm, taxCode: e.target.value })}
                     />
@@ -553,7 +697,7 @@ export default function Enterprise() {
                     <label>Số điện thoại</label>
                     <input
                       className="input"
-                      placeholder="VD: 0988776655"
+                      placeholder="VD: 0901234567"
                       value={newForm.phone}
                       onChange={e => setNewForm({ ...newForm, phone: e.target.value })}
                     />
@@ -565,7 +709,7 @@ export default function Enterprise() {
                   <input
                     className="input"
                     type="email"
-                    placeholder="VD: contact@doitac.com"
+                    placeholder="VD: contact@vinsumi.vn"
                     value={newForm.email}
                     onChange={e => setNewForm({ ...newForm, email: e.target.value })}
                   />
@@ -575,7 +719,7 @@ export default function Enterprise() {
                   <label>Địa chỉ trụ sở</label>
                   <input
                     className="input"
-                    placeholder="VD: 123 Đường Nguyễn Trãi, Thanh Xuân, Hà Nội"
+                    placeholder="VD: TP. Hồ Chí Minh"
                     value={newForm.address}
                     onChange={e => setNewForm({ ...newForm, address: e.target.value })}
                   />
@@ -585,7 +729,7 @@ export default function Enterprise() {
                   <label>Website</label>
                   <input
                     className="input"
-                    placeholder="VD: https://doitac.com"
+                    placeholder="VD: https://icongty.com"
                     value={newForm.website}
                     onChange={e => setNewForm({ ...newForm, website: e.target.value })}
                   />
@@ -594,8 +738,8 @@ export default function Enterprise() {
 
               <div className="modal-footer" style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary" disabled={creating}>
-                  {creating ? 'Đang tạo...' : 'Tạo Doanh Nghiệp'}
+                <button type="submit" className="btn btn-primary" disabled={creating} style={{ fontWeight: 600 }}>
+                  {creating ? 'Đang tạo...' : 'Tạo Doanh Nghiệp Mới'}
                 </button>
               </div>
             </form>

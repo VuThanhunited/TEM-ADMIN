@@ -45,10 +45,10 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'Không có quyền chỉnh sửa' });
     }
 
-    const { name, address, phone, email, website, taxCode, logo } = req.body;
+    const { name, address, phone, email, website, taxCode, logo, partnerDetails } = req.body;
     const enterprise = await Enterprise.findByIdAndUpdate(
       req.params.id,
-      { name, address, phone, email, website, taxCode, logo },
+      { name, address, phone, email, website, taxCode, logo, partnerDetails },
       { new: true }
     );
     if (!enterprise) return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
@@ -97,7 +97,7 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ error: 'Chỉ Admin mới có quyền tạo doanh nghiệp' });
     }
 
-    const { name, type = 'NSX', address, phone, email, website, taxCode, logo } = req.body;
+    const { name, type = 'NSX', address, phone, email, website, taxCode, logo, partnerDetails } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Tên doanh nghiệp không được để trống' });
     }
@@ -110,6 +110,7 @@ router.post('/', auth, async (req, res) => {
       email: email || '',
       website: website || '',
       taxCode: taxCode || '',
+      partnerDetails: partnerDetails || '',
       logo: logo || null
     });
 

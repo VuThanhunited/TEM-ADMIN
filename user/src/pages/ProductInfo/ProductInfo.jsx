@@ -877,11 +877,25 @@ export default function ProductInfo() {
                 </div>
               )}
               {activeModal === 'mfg' && (
-                <div className="modal-info-list">
-                  <div className="modal-info-item"><span>Tên doanh nghiệp:</span> <strong>{enterprise?.name || 'Doanh nghiệp sản xuất'}</strong></div>
-                  <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{enterprise?.address || 'Việt Nam'}</strong></div>
-                  <div className="modal-info-item"><span>Hotline:</span> <strong>{enterprise?.phone || '1900 1234'}</strong></div>
-                  <div className="modal-info-item"><span>Email:</span> <strong>{enterprise?.email || 'N/A'}</strong></div>
+                <div>
+                  <div className="modal-info-list">
+                    <div className="modal-info-item"><span>Tên doanh nghiệp:</span> <strong>{enterprise?.name || 'Doanh nghiệp sản xuất'}</strong></div>
+                    <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{enterprise?.address || 'Việt Nam'}</strong></div>
+                    <div className="modal-info-item"><span>Hotline:</span> <strong>{enterprise?.phone || '1900 1234'}</strong></div>
+                    <div className="modal-info-item"><span>Email:</span> <strong>{enterprise?.email || 'N/A'}</strong></div>
+                  </div>
+                  {enterprise?.partnerDetails && (
+                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#003366', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Chi tiết đối tác:
+                      </div>
+                      <div 
+                        className="partner-details-html"
+                        dangerouslySetInnerHTML={{ __html: enterprise.partnerDetails }}
+                        style={{ fontSize: '0.9rem', lineHeight: '1.6', color: '#334155' }}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               {activeModal === 'ingredients' && (

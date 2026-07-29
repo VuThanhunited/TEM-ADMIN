@@ -35,6 +35,10 @@ const enterpriseSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  partnerDetails: {
+    type: String,
+    default: ''
+  },
   domain: {
     type: String,
     default: null
