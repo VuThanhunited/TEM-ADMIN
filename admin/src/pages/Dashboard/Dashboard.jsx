@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
   Tag, ScanLine, Package, Building2, Users, Activity,
-  TrendingUp, TrendingDown, BarChart3, MapPin, Clock
+  TrendingUp, TrendingDown, BarChart3, MapPin, Clock, Download
 } from 'lucide-react';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import {
@@ -39,6 +39,21 @@ export default function Dashboard() {
       console.error('Dashboard load error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    try {
+      const data = await api.backupDatabase();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `database_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Lỗi khi tải bản sao lưu dữ liệu');
     }
   };
 
@@ -203,9 +218,21 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      <div className="page-header">
-        <h1>Dashboard</h1>
-        <p>Tổng quan hệ thống tem nhãn thông minh</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1>Dashboard</h1>
+          <p>Tổng quan hệ thống tem nhãn thông minh</p>
+        </div>
+        {isAdmin && (
+          <button 
+            className="btn btn-outline" 
+            onClick={handleDownloadBackup} 
+            style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, fontWeight: 600, color: 'var(--color-primary-light)', borderColor: 'var(--color-border-light)' }}
+            title="Tải về bản sao lưu CSDL dạng JSON"
+          >
+            <Download size={16} /> Sao Lưu Dữ Liệu (Backup DB)
+          </button>
+        )}
       </div>
 
       {/* Stat Cards */}

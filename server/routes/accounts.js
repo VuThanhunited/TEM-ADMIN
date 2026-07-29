@@ -318,6 +318,67 @@ router.put('/:id/renew', auth, requireRole('ADMIN'), async (req, res) => {
   }
 });
 
+// GET /api/accounts/backup-database - Download full JSON backup of database (Admin only)
+router.get('/backup-database', auth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const Label = require('../models/Label');
+    const LabelBatch = require('../models/LabelBatch');
+    const LabelDesign = require('../models/LabelDesign');
+    const Product = require('../models/Product');
+    const ScanLog = require('../models/ScanLog');
+    const Template = require('../models/Template');
+    const Contact = require('../models/Contact');
+
+    const [users, enterprises, products, labelBatches, labels, labelDesigns, templates, scanLogs, contacts] = await Promise.all([
+      User.find().select('-password'),
+      Enterprise.find(),
+      Product.find(),
+      LabelBatch.find(),
+      Label.find(),
+      LabelDesign.find(),
+      Template.find(),
+      ScanLog.find(),
+      Contact.find()
+    ]);
+
+    const backupData = {
+      exportDate: new Date().toISOString(),
+      version: '1.0',
+      system: 'TEM QR CODE & BẢO HÀNH',
+      counts: {
+        users: users.length,
+        enterprises: enterprises.length,
+        products: products.length,
+        labelBatches: labelBatches.length,
+        labels: labels.length,
+        labelDesigns: labelDesigns.length,
+        templates: templates.length,
+        scanLogs: scanLogs.length,
+        contacts: contacts.length
+      },
+      data: {
+        users,
+        enterprises,
+        products,
+        labelBatches,
+        labels,
+        labelDesigns,
+        templates,
+        scanLogs,
+        contacts
+      }
+    };
+
+    const fileName = `database_backup_${new Date().toISOString().slice(0,10)}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(JSON.stringify(backupData, null, 2));
+  } catch (error) {
+    console.error('Backup error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi sao lưu dữ liệu' });
+  }
+});
+
 // DELETE /api/accounts/:id
 router.delete('/:id', auth, requireRole('ADMIN'), async (req, res) => {
   try {

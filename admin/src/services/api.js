@@ -65,6 +65,7 @@ class ApiService {
   updateAccount(id, data) { return this.request('PUT', `/accounts/${id}`, data); }
   renewAccount(id, data) { return this.request('PUT', `/accounts/${id}/renew`, data); }
   deleteAccount(id) { return this.request('DELETE', `/accounts/${id}`); }
+  backupDatabase() { return this.request('GET', '/accounts/backup-database'); }
 
   // Distributors
   getDistributors(params) { return this.request('GET', '/accounts/distributors', null, params); }
