@@ -74,7 +74,28 @@ export default function Labels() {
   }, [activeTab, batchPagination.page, labelPagination.page, search]);
 
   const loadProducts = async () => {
-    try { const r = await api.getProducts({ limit: 100 }); setProducts(r.data); } catch (e) {}
+    try { const r = await api.getProducts({ limit: 1000 }); setProducts(r.data || []); } catch (e) {}
+  };
+
+  const getEntIdStr = (obj) => {
+    if (!obj) return '';
+    if (typeof obj === 'string') return obj;
+    if (obj._id) return String(obj._id);
+    return String(obj);
+  };
+
+  const getFilteredProducts = (targetEntId) => {
+    if (!targetEntId) return products;
+    const entIdStr = getEntIdStr(targetEntId);
+    const filtered = products.filter(p => getEntIdStr(p.enterpriseId) === entIdStr);
+    return filtered.length > 0 ? filtered : products;
+  };
+
+  const getFilteredTemplates = (targetEntId) => {
+    if (!targetEntId) return templates;
+    const entIdStr = getEntIdStr(targetEntId);
+    const filtered = templates.filter(t => getEntIdStr(t.enterpriseId) === entIdStr);
+    return filtered.length > 0 ? filtered : templates;
   };
 
   const loadTemplates = async () => {
@@ -1015,7 +1036,7 @@ export default function Labels() {
                   </div>
                   
                   <div className="input-group">
-                    <label>Sản phẩm</label>
+                    <label>Sản phẩm (Đã tự động lọc theo Doanh nghiệp sở hữu lô tem)</label>
                     <select className="input select" value={mapForm.productId} onChange={e => {
                       setMapForm({
                         ...mapForm, 
@@ -1026,7 +1047,9 @@ export default function Labels() {
                       });
                     }}>
                       <option value="">-- Chọn sản phẩm --</option>
-                      {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                      {getFilteredProducts(selectedBatch?.enterpriseId?._id || selectedBatch?.enterpriseId).map(p => (
+                        <option key={p._id} value={p._id}>{p.name}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -1111,10 +1134,12 @@ export default function Labels() {
                     <input className="input" value={selectedLabel.serialNumber} disabled style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', color: 'var(--color-text-muted)', cursor: 'not-allowed' }} />
                   </div>
                   <div className="input-group">
-                    <label>Sản phẩm</label>
+                    <label>Sản phẩm (Đã lọc theo Doanh nghiệp)</label>
                     <select className="input select" value={mapForm.productId} onChange={e => setMapForm({...mapForm, productId: e.target.value})}>
                       <option value="">-- Chọn sản phẩm --</option>
-                      {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                      {getFilteredProducts(selectedLabel?.batchId?.enterpriseId?._id || selectedLabel?.batchId?.enterpriseId || selectedLabel?.enterpriseId).map(p => (
+                        <option key={p._id} value={p._id}>{p.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="input-group"><label>Tên điểm bán</label><input className="input" value={mapForm.distributorName} onChange={e => setMapForm({...mapForm, distributorName: e.target.value})} /></div>
@@ -1311,16 +1336,27 @@ export default function Labels() {
                 </div>
 
                 <div className="input-group">
-                  <label>Gắn với Sản phẩm</label>
+                  <label>Gắn với Sản phẩm (Đã tự động lọc theo Doanh nghiệp sở hữu lô tem)</label>
                   <select
                     className="input select"
                     value={bulkForm.productId}
                     onChange={e => setBulkForm({ ...bulkForm, productId: e.target.value, distributorIdx: '', distributorName: '', distributorAddress: '' })}
+                    disabled={!bulkForm.batchId}
                   >
-                    <option value="">-- Chọn sản phẩm --</option>
-                    {products.map(p => (
-                      <option key={p._id} value={p._id}>{p.name}</option>
-                    ))}
+                    {!bulkForm.batchId ? (
+                      <option value="">-- Vui lòng chọn lô tem trước --</option>
+                    ) : (
+                      <>
+                        <option value="">-- Chọn sản phẩm --</option>
+                        {(() => {
+                          const bulkBatch = batches.find(b => b._id === bulkForm.batchId);
+                          const targetEntId = bulkBatch?.enterpriseId?._id || bulkBatch?.enterpriseId;
+                          return getFilteredProducts(targetEntId).map(p => (
+                            <option key={p._id} value={p._id}>{p.name}</option>
+                          ));
+                        })()}
+                      </>
+                    )}
                   </select>
                 </div>
 
