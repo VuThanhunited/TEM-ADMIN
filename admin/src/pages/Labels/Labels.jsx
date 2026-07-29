@@ -619,6 +619,20 @@ export default function Labels() {
     }
   };
 
+
+  const getThemeLabel = (themeKey) => {
+    switch (themeKey) {
+      case 'ocop': return '🏆 OCOP';
+      case 'functional_food': return '🌿 TPCN';
+      case 'agriculture': return '🍃 Nông nghiệp';
+      case 'appliance': return '⚡ Gia dụng';
+      case 'food': return '🍲 Thực phẩm';
+      case 'medical': return '💊 Y tế/Dược';
+      case 'cosmetics': return '💄 Mỹ phẩm';
+      default: return '📋 Mặc định';
+    }
+  };
+
   const tabs = [
     { id: 'batches', label: 'Quản lý Lô tem', icon: Tag },
     { id: 'activate', label: 'Kích hoạt & Gắn Serial', icon: Link2 },
@@ -715,11 +729,11 @@ export default function Labels() {
               <tr>
                 <th>Mã lô</th>
                 <th>Sản phẩm</th>
+                <th>Giao diện (Theme)</th>
                 <th>Số lượng</th>
                 <th>Serial</th>
                 <th>Ngày tạo</th>
                 <th>Hết hạn</th>
-                <th>Di trú</th>
                 <th>Trạng thái</th>
                 <th>Hành động</th>
               </tr>
@@ -734,6 +748,11 @@ export default function Labels() {
                   <tr key={batch._id}>
                     <td><span className="batch-code">{batch.batchCode}</span></td>
                     <td>{batch.productId?.name || <span className="text-muted">Chưa gắn</span>}</td>
+                    <td>
+                      <span className="badge badge-info" style={{ fontWeight: 600, fontSize: '0.75rem', padding: '4px 8px' }}>
+                        {getThemeLabel(batch.theme)}
+                      </span>
+                    </td>
                     <td><strong>{batch.totalLabels}</strong></td>
                     <td><span className="serial-range">{batch.serialStart} → {batch.serialEnd}</span></td>
                     <td>{formatDate(batch.createdDate || batch.createdAt)}</td>
@@ -758,8 +777,8 @@ export default function Labels() {
                             serialEnd: batch.serialEnd || ''
                           }); 
                           setShowMapModal(true); 
-                        }} title="Gắn sản phẩm & Cấu hình">
-                          <Link2 size={14}/>
+                        }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
+                          <Edit size={14} className="text-primary"/>
                         </button>
                         <button className="btn btn-sm btn-ghost" onClick={() => {
                           setModalError(null);
@@ -1020,7 +1039,7 @@ export default function Labels() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowMapModal(false)}>
           <div className="modal" style={{maxWidth: 460}}>
             <div className="modal-header">
-              <h3 className="modal-title">{selectedLabel ? 'Gắn Serial với SP/Điểm bán' : 'Gắn / Thay đổi Sản phẩm cho Lô tem'}</h3>
+              <h3 className="modal-title">{selectedLabel ? 'Gắn Serial với SP/Điểm bán' : 'Sửa Cấu hình Giao diện (Theme) & Sản phẩm Lô tem'}</h3>
               <button className="btn-icon" onClick={() => setShowMapModal(false)}><X size={20}/></button>
             </div>
             <div className="modal-body">
