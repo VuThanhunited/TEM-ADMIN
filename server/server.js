@@ -88,6 +88,20 @@ const startServer = async () => {
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+    // Lịch tự động sao lưu CSDL lưu trên C2 Hosting mỗi 24h
+    try {
+      const runAutoBackup = require('./scripts/auto_backup');
+      setTimeout(() => {
+        runAutoBackup();
+      }, 60000); // 1 phút sau khi khởi chạy server
+
+      setInterval(() => {
+        runAutoBackup();
+      }, 24 * 60 * 60 * 1000); // Lặp lại mỗi 24 giờ
+    } catch (e) {
+      console.error('⚠️ Could not start auto backup schedule:', e.message);
+    }
   });
 };
 

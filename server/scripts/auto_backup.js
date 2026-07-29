@@ -18,7 +18,7 @@ const Template = require('../models/Template');
 const ScanLog = require('../models/ScanLog');
 const Contact = require('../models/Contact');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://vtu21:123456@cluster0.mongodb.net/tem_database?retryWrites=true&w=majority';
+const MONGODB_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/tem_admin';
 
 async function runAutoBackup() {
   console.log('[AUTO-BACKUP] Bắt đầu tiến trình sao lưu CSDL...');
@@ -97,7 +97,7 @@ async function runAutoBackup() {
   } catch (err) {
     console.error('[AUTO-BACKUP] ❌ Lỗi khi tự động sao lưu:', err);
   } finally {
-    if (mongoose.connection.readyState === 1) {
+    if (require.main === module && mongoose.connection.readyState === 1) {
       await mongoose.disconnect();
     }
   }
