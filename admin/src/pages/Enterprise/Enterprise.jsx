@@ -5,7 +5,7 @@ import {
   Building2, Globe, MessageSquare, Save, Plus, Trash2, Edit3, Search, Filter, X,
   Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Heading2, Heading3, Code, Eye, RefreshCw,
-  Phone, Mail, MapPin, FileText, CheckCircle, ExternalLink
+  Phone, Mail, MapPin, FileText, CheckCircle, ExternalLink, Upload
 } from 'lucide-react';
 import './Enterprise.css';
 
@@ -44,6 +44,15 @@ export default function Enterprise() {
   // Rich Text Editor State inside Modal
   const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
   const editorRef = useRef(null);
+
+  // Image & Link Dialog Sub-Modals
+  const [showImgModal, setShowImgModal] = useState(false);
+  const [imgUrlInput, setImgUrlInput] = useState('');
+
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUrlInput, setLinkUrlInput] = useState('');
+  const [linkTextInput, setLinkTextInput] = useState('');
+  const [linkNewTab, setLinkNewTab] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -150,18 +159,73 @@ export default function Enterprise() {
     }
   };
 
-  const handleInsertImage = () => {
-    const url = prompt('Nhập đường dẫn URL hình ảnh:');
-    if (url) {
-      execCmd('insertImage', url);
-    }
+  // Open Sub-Modals for Image & Link
+  const handleOpenImgModal = () => {
+    setImgUrlInput('');
+    setShowImgModal(true);
   };
 
-  const handleInsertLink = () => {
-    const url = prompt('Nhập đường dẫn liên kết URL:');
-    if (url) {
-      execCmd('createLink', url);
+  const handleOpenLinkModal = () => {
+    setLinkUrlInput('');
+    setLinkTextInput('');
+    setLinkNewTab(true);
+    setShowLinkModal(true);
+  };
+
+  // Apply Insert Image
+  const applyInsertImage = () => {
+    if (!imgUrlInput || !imgUrlInput.trim()) {
+      alert('Vui lòng chọn ảnh từ máy tính hoặc nhập đường dẫn URL ảnh!');
+      return;
     }
+    const imgHtml = `<p style="text-align: center; margin: 12px 0;"><img src="${imgUrlInput.trim()}" alt="Hình ảnh đối tác" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" /></p><p><br></p>`;
+    
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand('insertHTML', false, imgHtml);
+      setFormData(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
+    } else {
+      setFormData(prev => ({ ...prev, partnerDetails: (prev.partnerDetails || '') + imgHtml }));
+    }
+    setShowImgModal(false);
+    setImgUrlInput('');
+  };
+
+  // Handle local image file upload
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Dung lượng ảnh quá lớn! Vui lòng chọn file ảnh nhỏ hơn 5MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImgUrlInput(event.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Apply Insert Link
+  const applyInsertLink = () => {
+    if (!linkUrlInput || !linkUrlInput.trim()) {
+      alert('Vui lòng nhập đường dẫn URL liên kết!');
+      return;
+    }
+    const text = linkTextInput.trim() || linkUrlInput.trim();
+    const targetAttr = linkNewTab ? ' target="_blank" rel="noreferrer"' : '';
+    const linkHtml = `<a href="${linkUrlInput.trim()}"${targetAttr} style="color: #6366f1; text-decoration: underline; font-weight: 600;">${text}</a> `;
+
+    if (editorRef.current) {
+      editorRef.current.focus();
+      document.execCommand('insertHTML', false, linkHtml);
+      setFormData(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
+    } else {
+      setFormData(prev => ({ ...prev, partnerDetails: (prev.partnerDetails || '') + linkHtml }));
+    }
+    setShowLinkModal(false);
+    setLinkUrlInput('');
+    setLinkTextInput('');
   };
 
   const handleEditorInput = () => {
@@ -427,7 +491,7 @@ export default function Enterprise() {
         )}
       </div>
 
-      {/* POPUP MODAL (Thêm Mới & Chỉnh Sửa Doanh Nghiệp) */}
+      {/* MAIN POPUP MODAL (Thêm Mới & Chỉnh Sửa Doanh Nghiệp) */}
       {isModalOpen && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target.className === 'modal-backdrop') handleCloseModal(); }}>
           <div className="modal-container">
@@ -453,6 +517,7 @@ export default function Enterprise() {
             {/* Modal Navigation Tabs */}
             <div className="modal-tabs">
               <button 
+                type="button"
                 className={`modal-tab-btn ${activeModalTab === 'info' ? 'active' : ''}`}
                 onClick={() => setActiveModalTab('info')}
               >
@@ -460,6 +525,7 @@ export default function Enterprise() {
               </button>
 
               <button 
+                type="button"
                 className={`modal-tab-btn ${activeModalTab === 'partnerDetails' ? 'active' : ''}`}
                 onClick={() => setActiveModalTab('partnerDetails')}
               >
@@ -467,6 +533,7 @@ export default function Enterprise() {
               </button>
 
               <button 
+                type="button"
                 className={`modal-tab-btn ${activeModalTab === 'domainChatbot' ? 'active' : ''}`}
                 onClick={() => setActiveModalTab('domainChatbot')}
               >
@@ -612,10 +679,22 @@ export default function Enterprise() {
 
                         <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
 
-                        <button type="button" className="btn btn-outline btn-sm" onClick={handleInsertImage} style={{ fontSize: '0.8rem', gap: 4 }}>
+                        {/* Interactive Image & Link Buttons */}
+                        <button 
+                          type="button" 
+                          className="btn btn-primary btn-sm" 
+                          onClick={handleOpenImgModal} 
+                          style={{ fontSize: '0.8rem', gap: 4, fontWeight: 600 }}
+                        >
                           <ImageIcon size={14} /> Chèn ảnh
                         </button>
-                        <button type="button" className="btn btn-outline btn-sm" onClick={handleInsertLink} style={{ fontSize: '0.8rem', gap: 4 }}>
+
+                        <button 
+                          type="button" 
+                          className="btn btn-outline btn-sm" 
+                          onClick={handleOpenLinkModal} 
+                          style={{ fontSize: '0.8rem', gap: 4, fontWeight: 600 }}
+                        >
                           <LinkIcon size={14} /> Chèn Link
                         </button>
                       </div>
@@ -758,6 +837,128 @@ export default function Enterprise() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-MODAL CHÈN ẢNH (IMAGE INSERT DIALOG) */}
+      {showImgModal && (
+        <div className="modal-backdrop" style={{ zIndex: 10000 }}>
+          <div className="modal-container" style={{ maxWidth: 500 }}>
+            <div className="modal-header">
+              <div className="modal-title" style={{ fontSize: '1.05rem' }}>
+                <ImageIcon style={{ color: 'var(--color-primary-light)' }} /> Chèn Hình Ảnh Vào Bài Viết
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowImgModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Option 1: File Upload */}
+              <div style={{ background: 'var(--color-bg-primary)', padding: 14, borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                <label className="label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Upload size={16} /> Tải ảnh lên từ Máy tính / Thiết bị
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleFileSelect}
+                  style={{ fontSize: '0.85rem', width: '100%', cursor: 'pointer' }} 
+                />
+              </div>
+
+              <div style={{ textAlign: 'center', fontSize: '0.8rem', opacity: 0.6, fontWeight: 600 }}>--- HOẶC ---</div>
+
+              {/* Option 2: Image URL */}
+              <div>
+                <label className="label" style={{ fontWeight: 600 }}>Nhập đường dẫn URL Hình ảnh trực tiếp</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="https://domain.com/hinhanh.jpg"
+                  value={imgUrlInput}
+                  onChange={(e) => setImgUrlInput(e.target.value)}
+                />
+              </div>
+
+              {/* Image Preview if available */}
+              {imgUrlInput && (
+                <div style={{ textAlign: 'center', background: '#000', padding: 8, borderRadius: 8 }}>
+                  <span style={{ fontSize: '0.75rem', opacity: 0.7, display: 'block', marginBottom: 4, color: '#fff' }}>Xem trước ảnh:</span>
+                  <img src={imgUrlInput} alt="Preview" style={{ maxHeight: 150, maxWidth: '100%', borderRadius: 6 }} />
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setShowImgModal(false)}>
+                Hủy
+              </button>
+              <button type="button" className="btn btn-primary" onClick={applyInsertImage} style={{ fontWeight: 600 }}>
+                <ImageIcon size={16} style={{ marginRight: 6 }} /> Chèn Ảnh Vào Bài Viết
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-MODAL CHÈN LINK (LINK INSERT DIALOG) */}
+      {showLinkModal && (
+        <div className="modal-backdrop" style={{ zIndex: 10000 }}>
+          <div className="modal-container" style={{ maxWidth: 500 }}>
+            <div className="modal-header">
+              <div className="modal-title" style={{ fontSize: '1.05rem' }}>
+                <LinkIcon style={{ color: 'var(--color-primary-light)' }} /> Chèn Liên Kết (Link URL)
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowLinkModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label className="label" style={{ fontWeight: 600 }}>Đường dẫn URL liên kết <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="https://website.com/gioi-thieu"
+                  value={linkUrlInput}
+                  onChange={(e) => setLinkUrlInput(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label" style={{ fontWeight: 600 }}>Văn bản hiển thị (Tùy chọn)</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="VD: Bấm vào đây để xem chi tiết"
+                  value={linkTextInput}
+                  onChange={(e) => setLinkTextInput(e.target.value)}
+                />
+              </div>
+
+              <label className="toggle-label" style={{ marginTop: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={linkNewTab}
+                  onChange={(e) => setLinkNewTab(e.target.checked)}
+                />
+                <span className="toggle-switch"></span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Mở trang liên kết trong Tab mới</span>
+              </label>
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setShowLinkModal(false)}>
+                Hủy
+              </button>
+              <button type="button" className="btn btn-primary" onClick={applyInsertLink} style={{ fontWeight: 600 }}>
+                <LinkIcon size={16} style={{ marginRight: 6 }} /> Chèn Link
+              </button>
+            </div>
           </div>
         </div>
       )}
