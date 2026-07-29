@@ -7,7 +7,8 @@ import {
   Award, CheckCircle2, Layers, Cpu, Sparkles, ChevronLeft, ChevronRight,
   Headphones, Gift, Lock, LayoutGrid, Check, Activity, Shield, Flame, Eye,
   Wrench, FileText, Scan, Handshake, ShoppingBag, Ribbon,
-  Pill, Stethoscope, ShieldAlert, FileCheck, Sprout, Utensils, Heart, Sparkle
+  Pill, Stethoscope, ShieldAlert, FileCheck, Sprout, Utensils, Heart, Sparkle,
+  BookOpen, AlertCircle
 } from 'lucide-react';
 import { useDomain } from '../../contexts/DomainContext';
 import './ProductInfo.css';
@@ -100,6 +101,10 @@ export default function ProductInfo() {
 
   // Dynamic Automatic Theme Detection based on Batch Theme, Product, & Enterprise Info
   const getInitialTheme = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const paramTheme = searchParams.get('theme');
+    if (paramTheme) return paramTheme;
+
     let t = scanData?.theme || scanData?.label?.batchId?.theme || scanData?.template?.layout;
     if (t && t !== 'default' && t !== 'warranty') {
       return t;
@@ -162,6 +167,12 @@ export default function ProductInfo() {
     ];
     if (foodKeywords.some(kw => textToMatch.includes(kw))) {
       return 'functional_food';
+    }
+
+    // 0. OCOP - Ưu tiên nhận diện trước (trước khi khớp nông sản)
+    const ocopKeywords = ['ocop', 'đặc sản', 'long nhãn', 'lục sơn', 'nhãn lồng', 'bưởi da xanh', 'chứng nhận ocop'];
+    if (ocopKeywords.some(kw => textToMatch.includes(kw))) {
+      return 'ocop';
     }
 
     return 'default';
@@ -609,54 +620,306 @@ export default function ProductInfo() {
   );
 
   // =========================================================================
-  // 3. TEM THỰC PHẨM & TPCN (Food & Supplement Theme)
+  // 3. TEM THỰC PHẨM CHỨC NĂNG - TPCN (Exact Match with Reference Image)
   // =========================================================================
-  const renderFoodView = () => (
-    <div className="food-canvas-outer">
-      <div className="food-poster-card">
-        <div className="food-trust-banner">
-          <FoodSafetyBadge />
-          <div className="food-trust-title-wrap">
-            <h2>THỰC PHẨM CHÍNH HÃNG - AN TOÀN VỆ SINH THỰC PHẨM</h2>
-            <p>Đạt chứng nhận ISO 22000 & HACCP Quốc tế</p>
+  const renderFoodView = () => {
+    const isMock = !product?.name || product?.name === 'VINSUMI';
+    const productName = isMock ? 'NATURAL SPIRULINA 500MG' : product.name;
+    const makerName = isMock ? 'Công Ty Cổ Phần Tập Đoàn Nam Dược Tân Viên Sơn' : (enterprise?.name || 'Công Ty Cổ Phần Tập Đoàn Nam Dược Tân Viên Sơn');
+    const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
+      ? product.images[0]
+      : '/images/tpcn_spirulina_hero.png';
+
+    return (
+      <div className="exact-tpcn-container">
+        {/* 1. Header trên cùng: Logo khiên + Tiêu đề */}
+        <div className="exact-tpcn-header">
+          <div className="exact-tpcn-shield-icon">
+            <ShieldCheck size={28} color="#16a34a" />
+          </div>
+          <div className="exact-tpcn-header-text">
+            <h2>SẢN PHẨM CHÍNH HÃNG</h2>
+            <p>Nguồn gốc minh bạch – An tâm sử dụng</p>
           </div>
         </div>
 
-        <div className="food-hero-card">
-          <div className="food-hero-body">
-            <img src={product?.images?.[0] || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="food-hero-img" />
-            <div className="food-hero-info">
-              <h3>{product?.name || 'Thực phẩm dinh dưỡng chính hãng'}</h3>
-              <p className="food-sub">Nhà sản xuất: {enterprise?.name || 'Công ty Thực phẩm Sạch'}</p>
-              <div className="food-specs-row">
-                <div className="food-spec-tag">Số XNCB: <strong>ATTP-88421</strong></div>
-                <div className="food-spec-tag">HSD: <strong>18 Tháng</strong></div>
-                <div className="food-spec-tag">Tiêu chuẩn: <strong>HACCP/ISO</strong></div>
-              </div>
+        {/* 2. Banner Xác thực thành công */}
+        <div className="exact-tpcn-verify-banner">
+          <div className="exact-tpcn-banner-icon">
+            <CheckCircle2 size={24} color="#16a34a" />
+          </div>
+          <div className="exact-tpcn-banner-text">
+            <h3>Xác thực thành công</h3>
+            <p>Sản phẩm đã được nhà cung cấp cam kết minh bạch thông tin</p>
+          </div>
+          <div className="exact-tpcn-leaf-bg">🌿</div>
+        </div>
+
+        {/* 3. Card Sản phẩm chi tiết với ảnh thật Spirulina 500mg */}
+        <div className="exact-tpcn-product-card">
+          <div className="exact-tpcn-product-img-box">
+            <img
+              src={heroImage}
+              alt={productName}
+              onError={(e) => { e.target.src = '/images/tpcn_spirulina_hero.png'; }}
+            />
+          </div>
+          <div className="exact-tpcn-product-details">
+            <div className="exact-tpcn-category-tag">THỰC PHẨM CHỨC NĂNG</div>
+            <h1 className="exact-tpcn-title">{productName}</h1>
+            <div className="exact-tpcn-divider"></div>
+            <p className="exact-tpcn-desc">
+              {product?.description && !isMock ? product.description : 'Sản phẩm hỗ trợ tăng cường sức đề kháng, bổ sung dưỡng chất từ tảo xoắn thiên nhiên.'}
+            </p>
+            <div className="exact-tpcn-maker-row">
+              <Building2 size={16} color="#16a34a" />
+              <span>Nhà sản xuất: <strong>{makerName}</strong></span>
             </div>
           </div>
         </div>
 
-        <div className="food-nutrition-card">
-          <h4><FileCheck size={18} color="#16A34A" /> BẢNG HÀM LƯỢNG DINH DƯỠNG (NUTRITION FACTS)</h4>
-          <div className="food-nutrition-table">
-            <div className="nutrition-row"><span>Năng lượng (Calories)</span><strong>240 kcal</strong></div>
-            <div className="nutrition-row"><span>Đạm (Protein)</span><strong>12g</strong></div>
-            <div className="nutrition-row"><span>Chất béo (Total Fat)</span><strong>3.5g</strong></div>
-            <div className="nutrition-row"><span>Carbohydrate</span><strong>38g</strong></div>
-            <div className="nutrition-row"><span>Vitamin & Khoáng chất</span><strong>B1, B6, C, Ca, Zn</strong></div>
+        {/* 4. Grid 8 Icon Chức Năng */}
+        <div className="exact-tpcn-grid-card">
+          <div className="exact-tpcn-grid-8">
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('mfg')}>
+              <div className="exact-tpcn-icon-circle"><Building2 size={22} color="#16a34a" /></div>
+              <span>Nhà Sản Xuất</span>
+            </div>
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('distributor')}>
+              <div className="exact-tpcn-icon-circle"><Truck size={22} color="#16a34a" /></div>
+              <span>Nhà Phân Phối</span>
+            </div>
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('tem')}>
+              <div className="exact-tpcn-icon-circle"><ShieldCheck size={22} color="#16a34a" /></div>
+              <span>Thông tin tem</span>
+            </div>
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('product_detail')}>
+              <div className="exact-tpcn-icon-circle"><FileText size={22} color="#16a34a" /></div>
+              <span>Thông tin sản phẩm</span>
+            </div>
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('cert')}>
+              <div className="exact-tpcn-icon-circle"><FileCheck size={22} color="#16a34a" /></div>
+              <span>Công Bố</span>
+            </div>
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('all_products')}>
+              <div className="exact-tpcn-icon-circle"><BookOpen size={22} color="#16a34a" /></div>
+              <span>Thư Viện sản phẩm</span>
+            </div>
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('brand')}>
+              <div className="exact-tpcn-icon-circle"><Package size={22} color="#16a34a" /></div>
+              <span>Bao bì</span>
+            </div>
+            <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('reward')}>
+              <div className="exact-tpcn-icon-circle"><Gift size={22} color="#16a34a" /></div>
+              <span>Tích điểm</span>
+            </div>
           </div>
         </div>
 
-        <div className="food-grid-actions">
-          <div className="food-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#16A34A" /><span>Thông tin tem</span></div>
-          <div className="food-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#16A34A" /><span>Số lượt quét</span></div>
-          <div className="food-action-card" onClick={() => setActiveModal('mfg')}><Building2 size={26} color="#16A34A" /><span>Cơ sở sản xuất</span></div>
-          <div className="food-action-card" onClick={() => setActiveModal('distributor')}><Handshake size={26} color="#16A34A" /><span>Nhà phân phối</span></div>
+        {/* 5. Sản Phẩm Cùng Nhãn Hiệu (5 hũ sản phẩm thật) */}
+        <div className="exact-tpcn-related-card">
+          <div className="exact-tpcn-related-header">
+            <h3>SẢN PHẨM CÙNG NHÃN HIỆU</h3>
+            <button onClick={() => setActiveModal('all_products')}>Xem thêm &gt;</button>
+          </div>
+          <div className="exact-tpcn-related-grid">
+            {[
+              { name: 'Natural Spirulina 1000mg', img: '/images/tpcn_rel_spirulina1000.png' },
+              { name: 'Natural Omega 3 Fish Oil', img: '/images/tpcn_rel_omega3.png' },
+              { name: 'Natural Vitamin D3 2000IU', img: '/images/tpcn_rel_vitamind3.png' },
+              { name: 'Natural Collagen Beauty', img: '/images/tpcn_rel_collagen.png' },
+              { name: 'Natural C & Zinc 500mg', img: '/images/tpcn_rel_czinc.png' },
+            ].map((item, idx) => (
+              <div key={idx} className="exact-tpcn-related-item">
+                <img src={item.img} alt={item.name} />
+                <h4>{item.name}</h4>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 6. Banner Tư vấn & Hỗ trợ */}
+        <div className="exact-tpcn-support-banner">
+          <div className="exact-tpcn-support-left">
+            <Headphones size={26} color="#16a34a" />
+            <div>
+              <h4>TƯ VẤN &amp; HỖ TRỢ</h4>
+              <p>Nếu bạn cần hỗ trợ thêm thông tin về sản phẩm, vui lòng liên hệ</p>
+            </div>
+          </div>
+          <button className="exact-tpcn-support-btn" onClick={() => setChatOpen(true)}>
+            Liên hệ ngay
+          </button>
+        </div>
+
+        {/* 7. Footer xanh lá đậm */}
+        <div className="exact-tpcn-footer">
+          <div className="exact-tpcn-footer-content">
+            <ShieldCheck size={16} color="#4ade80" />
+            <span>Cảm ơn bạn đã tin tưởng sử dụng sản phẩm chính hãng!</span>
+          </div>
+          <div className="exact-tpcn-copyright">
+            © 2024 Nam Dược Tân Viên Sơn. All rights reserved
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // =========================================================================
+  // OCOP. TEM OCOP - LONG NHÃN LỤC SƠN (Exact Match with Reference Image)
+  // =========================================================================
+  const renderOcopView = () => {
+    const isMock = !product?.name || product?.name === 'VINSUMI';
+    const productName = isMock ? 'LONG NHÃN LỤC SƠN' : product.name;
+    const ownerName = isMock ? 'Hợp tác xã Nông nghiệp Lục Sơn' : (enterprise?.name || 'Hợp tác xã Nông nghiệp Lục Sơn');
+    const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
+      ? product.images[0]
+      : '/images/ocop_hero_product.png';
+
+    return (
+      <div className="exact-ocop-container">
+        {/* 1. Top Nature Landscape Banner từ mẫu gốc 100% */}
+        <div className="exact-ocop-top-landscape">
+          <img src="/images/ocop_top_landscape.png" alt="SẢN PHẨM OCOP - SẢN PHẨM ĐÃ ĐƯỢC CẤP CHỨNG NHẬN OCOP" className="exact-ocop-top-img" />
+        </div>
+
+        {/* 2. Hero Banner Hình ảnh Long Nhãn Lục Sơn hũ nhãn sấy khô thật */}
+        <div className="exact-ocop-hero-card">
+          <img
+            src={heroImage}
+            alt={productName}
+            className="exact-ocop-hero-img"
+            onError={(e) => { e.target.src = '/images/ocop_hero_product.png'; }}
+          />
+        </div>
+
+        {/* 3. Khối Thông Tin Sản Phẩm & Chứng Nhận OCOP 4 Sao */}
+        <div className="exact-ocop-cert-card">
+          <div className="exact-ocop-cert-left">
+            <h1 className="exact-ocop-title">{productName}</h1>
+            
+            <div className="exact-ocop-cert-row">
+              <div className="exact-ocop-check-icon">
+                <CheckCircle2 size={18} color="#15803d" />
+              </div>
+              <div>
+                <span className="exact-ocop-sublabel">Sản phẩm đã được cấp:</span>
+                <div className="exact-ocop-red-cert">CHỨNG NHẬN OCOP 4 SAO</div>
+              </div>
+            </div>
+
+            <div className="exact-ocop-cert-row" style={{ marginTop: 10 }}>
+              <div className="exact-ocop-owner-icon">
+                <Building2 size={18} color="#15803d" />
+              </div>
+              <div>
+                <span className="exact-ocop-sublabel">Đơn vị sở hữu:</span>
+                <div className="exact-ocop-owner-name">{ownerName}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="exact-ocop-cert-right">
+            {/* Official OCOP Badge Image from reference */}
+            <img src="/images/ocop_official_badge.png" alt="OCOP 4 SAO" style={{ width: 145, height: 'auto', objectFit: 'contain' }} />
+          </div>
+        </div>
+
+        {/* 4. Khối Thông Tin Chủ Thể với logo HTX Lục Sơn */}
+        <div className="exact-ocop-owner-box" onClick={() => setActiveModal('mfg')}>
+          <div className="exact-ocop-owner-left-icon">
+            <img src="/images/ocop_owner_logo.png" alt={ownerName} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+          </div>
+          <div className="exact-ocop-owner-details">
+            <h3>THÔNG TIN CHỦ THỂ</h3>
+            <p className="exact-ocop-owner-name-bold">{ownerName}</p>
+            <p className="exact-ocop-owner-addr">Địa chỉ: {enterprise?.address && !isMock ? enterprise.address : 'Thôn Lục Sơn, Xã Minh Hòa, Huyện Lục Ngạn, Tỉnh Bắc Giang'}</p>
+            <p className="exact-ocop-owner-phone">Điện thoại: {enterprise?.phone && !isMock ? enterprise.phone : '0987 854 321'}</p>
+          </div>
+          <div className="exact-ocop-owner-arrow">&gt;</div>
+        </div>
+
+        {/* 5. Lưới 8 Icon Chức Năng Vòng Tròn Xanh */}
+        <div className="exact-ocop-grid-card">
+          <div className="exact-ocop-grid-8">
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('product_detail')}>
+              <div className="exact-ocop-icon-circle"><FileText size={22} color="#15803d" /></div>
+              <span>Thông tin sản phẩm</span>
+            </div>
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('mfg')}>
+              <div className="exact-ocop-icon-circle"><Building2 size={22} color="#15803d" /></div>
+              <span>Thông tin chủ thể</span>
+            </div>
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('cert')}>
+              <div className="exact-ocop-icon-circle"><Award size={22} color="#15803d" /></div>
+              <span>Chứng nhận</span>
+            </div>
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('brand')}>
+              <div className="exact-ocop-icon-circle"><Ribbon size={22} color="#15803d" /></div>
+              <span>Nhận Diện Thương Hiệu</span>
+            </div>
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('distributor')}>
+              <div className="exact-ocop-icon-circle"><ShoppingBag size={22} color="#15803d" /></div>
+              <span>Hệ thống phân phối</span>
+            </div>
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('reward')}>
+              <div className="exact-ocop-icon-circle"><Gift size={22} color="#15803d" /></div>
+              <span>Tích điểm</span>
+            </div>
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('scan')}>
+              <div className="exact-ocop-icon-circle"><Cpu size={22} color="#15803d" /></div>
+              <span>Quy trình sản xuất</span>
+            </div>
+            <div className="exact-ocop-grid-item" onClick={() => setActiveModal('tem')}>
+              <div className="exact-ocop-icon-circle"><MapPin size={22} color="#15803d" /></div>
+              <span>Nguồn gốc xuất xứ</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Khối Sản Phẩm OCOP Khác (Mật ong, Mì Chũ, Bưởi, Măng) */}
+        <div className="exact-ocop-related-card">
+          <div className="exact-ocop-related-header">
+            <h3>SẢN PHẨM OCOP KHÁC</h3>
+            <button onClick={() => setActiveModal('all_products')}>Xem thêm &gt;</button>
+          </div>
+          <div className="exact-ocop-carousel-wrap">
+            <button className="exact-ocop-nav-btn prev">&lt;</button>
+            <div className="exact-ocop-related-grid">
+              {[
+                { name: 'Mật ong hoa nhãn', star: 'OCOP 4 sao', img: '/images/ocop_rel_honey.png' },
+                { name: 'Mì gạo Chũ', star: 'OCOP 3 sao', img: '/images/ocop_rel_rice.png' },
+                { name: 'Bưởi da xanh Lục Ngạn', star: 'OCOP 4 sao', img: '/images/ocop_rel_pomelo.png' },
+                { name: 'Măng khô Lục Sơn', star: 'OCOP 3 sao', img: '/images/ocop_rel_bamboo.png' },
+              ].map((item, idx) => (
+                <div key={idx} className="exact-ocop-related-item">
+                  <img src={item.img} alt={item.name} />
+                  <h4>{item.name}</h4>
+                  <div className="exact-ocop-star-tag">{item.star}</div>
+                </div>
+              ))}
+            </div>
+            <button className="exact-ocop-nav-btn next">&gt;</button>
+          </div>
+        </div>
+
+        {/* 7. Footer Cam Kết Từ Chủ Thể & Báo Cáo Vi Phạm */}
+        <div className="exact-ocop-footer-section">
+          <div className="exact-ocop-footer-left">
+            <ShieldCheck size={26} color="#15803d" />
+            <div>
+              <h4>CAM KẾT TỪ CHỦ THỂ</h4>
+              <p>Chúng tôi cam kết sản phẩm đạt chuẩn OCOP, đảm bảo chất lượng, nguồn gốc rõ ràng và an toàn cho người tiêu dùng.</p>
+            </div>
+          </div>
+          <button className="exact-ocop-report-btn">
+            <AlertCircle size={16} color="#fff" /> BÁO CÁO VI PHẠM
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   // =========================================================================
   // 4. TEM NÔNG SẢN & NÔNG NGHIỆP (Agriculture Theme)
@@ -831,6 +1094,7 @@ export default function ProductInfo() {
       {(activeTheme === 'functional_food' || activeTheme === 'food') && renderFoodView()}
       {activeTheme === 'agriculture' && renderAgricultureView()}
       {activeTheme === 'cosmetics' && renderCosmeticsView()}
+      {activeTheme === 'ocop' && renderOcopView()}
       {activeTheme === 'default' && renderDefaultView()}
 
       {/* Modals Popup */}

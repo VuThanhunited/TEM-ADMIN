@@ -159,17 +159,61 @@ export default function Enterprise() {
     }
   };
 
+  // Selection Range saving for Rich Text Editor
+  const savedRangeRef = useRef(null);
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    if (savedRangeRef.current && editorRef.current) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+    }
+  };
+
   // Open Sub-Modals for Image & Link
   const handleOpenImgModal = () => {
+    saveSelection();
     setImgUrlInput('');
     setShowImgModal(true);
   };
 
   const handleOpenLinkModal = () => {
+    saveSelection();
     setLinkUrlInput('');
     setLinkTextInput('');
     setLinkNewTab(true);
     setShowLinkModal(true);
+  };
+
+  // Helper for reliable HTML insertion into Editor
+  const insertHtmlAtCursorOrEnd = (html) => {
+    if (editorMode === 'visual' && editorRef.current) {
+      editorRef.current.focus();
+      restoreSelection();
+      let success = false;
+      try {
+        success = document.execCommand('insertHTML', false, html);
+      } catch (e) {}
+
+      if (!success) {
+        // Fallback: create temporary container and append nodes
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        while (tempDiv.firstChild) {
+          editorRef.current.appendChild(tempDiv.firstChild);
+        }
+      }
+      setFormData(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
+    } else {
+      setFormData(prev => ({ ...prev, partnerDetails: (prev.partnerDetails || '') + html }));
+    }
   };
 
   // Apply Insert Image
@@ -180,13 +224,7 @@ export default function Enterprise() {
     }
     const imgHtml = `<p style="text-align: center; margin: 12px 0;"><img src="${imgUrlInput.trim()}" alt="Hình ảnh đối tác" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" /></p><p><br></p>`;
     
-    if (editorRef.current) {
-      editorRef.current.focus();
-      document.execCommand('insertHTML', false, imgHtml);
-      setFormData(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
-    } else {
-      setFormData(prev => ({ ...prev, partnerDetails: (prev.partnerDetails || '') + imgHtml }));
-    }
+    insertHtmlAtCursorOrEnd(imgHtml);
     setShowImgModal(false);
     setImgUrlInput('');
   };
@@ -216,13 +254,7 @@ export default function Enterprise() {
     const targetAttr = linkNewTab ? ' target="_blank" rel="noreferrer"' : '';
     const linkHtml = `<a href="${linkUrlInput.trim()}"${targetAttr} style="color: #6366f1; text-decoration: underline; font-weight: 600;">${text}</a> `;
 
-    if (editorRef.current) {
-      editorRef.current.focus();
-      document.execCommand('insertHTML', false, linkHtml);
-      setFormData(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
-    } else {
-      setFormData(prev => ({ ...prev, partnerDetails: (prev.partnerDetails || '') + linkHtml }));
-    }
+    insertHtmlAtCursorOrEnd(linkHtml);
     setShowLinkModal(false);
     setLinkUrlInput('');
     setLinkTextInput('');

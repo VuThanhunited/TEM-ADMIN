@@ -435,26 +435,7 @@ export default function Products() {
                   ))}
                 </div>
 
-                <div className="form-row" style={{ marginBottom: 20 }}>
-                  <div className="input-group"><label>Giới thiệu Nhà sản xuất</label><textarea className="input textarea" value={form.producerInfo || ''} onChange={e => setForm({...form, producerInfo: e.target.value})} rows={2} placeholder="Nhập giới thiệu nhà sản xuất..." /></div>
-                  <div className="input-group"><label>Giới thiệu Nhà phân phối</label><textarea className="input textarea" value={form.distributorInfo || ''} onChange={e => setForm({...form, distributorInfo: e.target.value})} rows={2} placeholder="Nhập giới thiệu nhà phân phối..." /></div>
-                </div>
-
-                {/* Distributors */}
-                <div className="distributors-section">
-                  <div className="section-header">
-                    <label>Điểm bán / Nhà phân phối liên kết trực tiếp</label>
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={addDistributor}><Plus size={14}/> Thêm điểm bán</button>
-                  </div>
-                  {form.distributors.map((dist, idx) => (
-                    <div key={idx} className="distributor-row">
-                      <input className="input" placeholder="Tên điểm bán" value={dist.name || ''} onChange={e => updateDistributor(idx, 'name', e.target.value)} />
-                      <input className="input" placeholder="Địa chỉ" value={dist.address || ''} onChange={e => updateDistributor(idx, 'address', e.target.value)} />
-                      <input className="input" placeholder="SĐT" value={dist.phone || ''} onChange={e => updateDistributor(idx, 'phone', e.target.value)} />
-                      <button type="button" className="btn-icon" onClick={() => removeDistributor(idx)}><X size={16}/></button>
-                    </div>
-                  ))}
-                </div>
+                {/* Distributor info & điểm bán đã bị ẩn theo yêu cầu khách hàng - quản lý từ lô tem */}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Hủy</button>
