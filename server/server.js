@@ -16,7 +16,7 @@ const labelDesignRoutes = require('./routes/labelDesigns');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_admin';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_db';
 
 // Middleware
 app.use(cors());

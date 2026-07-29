@@ -12,7 +12,7 @@ const ScanLog = require('./models/ScanLog');
 const Template = require('./models/Template');
 
 async function importDatabaseToC2() {
-  const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_admin';
+  const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_db';
   console.log(`Connecting to C2 Database at: ${mongoUri}`);
 
   await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 30000 });
