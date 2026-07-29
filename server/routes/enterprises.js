@@ -90,13 +90,10 @@ router.put('/:id/chatbot', auth, async (req, res) => {
   }
 });
 
-// POST /api/enterprises - Create new enterprise (Admin only)
+// POST /api/enterprises - Create new enterprise (Admin, NSX, NPP)
 router.post('/', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Chỉ Admin mới có quyền tạo doanh nghiệp' });
-    }
-
+    const User = require('../models/User');
     const { name, type = 'NSX', address, phone, email, website, taxCode, logo, partnerDetails } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Tên doanh nghiệp không được để trống' });
@@ -115,10 +112,16 @@ router.post('/', auth, async (req, res) => {
     });
 
     await enterprise.save();
+
+    // Link newly created enterprise to current user if they don't have one
+    if (!req.user.enterpriseId) {
+      await User.findByIdAndUpdate(req.user._id, { enterpriseId: enterprise._id });
+    }
+
     res.status(201).json(enterprise);
   } catch (error) {
     console.error('Create enterprise error:', error);
-    res.status(500).json({ error: 'Lỗi máy chủ khi tạo doanh nghiệp' });
+    res.status(500).json({ error: 'Lỗi máy chủ khi tạo doanh nghiệp: ' + error.message });
   }
 });
 

@@ -291,19 +291,17 @@ export default function Enterprise() {
           <p>Quản lý thông tin công ty đối tác sở hữu tem, nội dung chi tiết đối tác, domain và chatbot</p>
         </div>
 
-        {isAdmin && (
-          <button 
-            className="btn btn-primary"
-            onClick={() => setShowCreateModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}
-          >
-            <Plus size={18} /> Thêm Doanh nghiệp Mới
-          </button>
-        )}
+        <button 
+          className="btn btn-primary"
+          onClick={() => setShowCreateModal(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}
+        >
+          <Plus size={18} /> Thêm Doanh nghiệp Mới
+        </button>
       </div>
 
-      {/* Admin Selector Bar */}
-      {isAdmin && enterprises.length > 0 && (
+      {/* Admin / Multi-Enterprise Selector Bar */}
+      {enterprises.length > 0 && (
         <div className="card" style={{ padding: '14px 20px', background: 'var(--color-bg-secondary)', borderRadius: '12px', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
@@ -323,7 +321,7 @@ export default function Enterprise() {
               </select>
             </div>
 
-            {enterprise && (
+            {enterprise && isAdmin && (
               <button
                 className="btn btn-outline"
                 style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)', height: '40px' }}
@@ -342,13 +340,11 @@ export default function Enterprise() {
           <Building2 size={60} style={{ opacity: 0.4, marginBottom: 16 }} />
           <h3>Chưa có thông tin doanh nghiệp</h3>
           <p style={{ opacity: 0.7, marginBottom: 20 }}>
-            {isAdmin ? 'Chưa có Doanh nghiệp đối tác nào trong hệ thống. Vui lòng bấm nút bên dưới để tạo.' : 'Vui lòng liên hệ Admin để được cấu hình doanh nghiệp.'}
+            Chưa có thông tin Doanh nghiệp nào được gán. Vui lòng bấm nút bên dưới để tạo doanh nghiệp mới.
           </p>
-          {isAdmin && (
-            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ margin: '0 auto' }}>
-              <Plus size={18} /> Tạo Doanh nghiệp Đầu Tiên
-            </button>
-          )}
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ margin: '0 auto' }}>
+            <Plus size={18} /> Tạo Doanh nghiệp Mới
+          </button>
         </div>
       ) : (
         <>
