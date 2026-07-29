@@ -1,46 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Building2, Globe, MessageSquare, Save, ExternalLink, Plus, Trash2, X, ChevronDown, CheckCircle,
+  Building2, Globe, MessageSquare, Save, Plus, Trash2, Edit3, Search, Filter, X,
   Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Heading2, Heading3, Code, Eye
+  List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Heading2, Heading3, Code, Eye, RefreshCw,
+  Phone, Mail, MapPin, FileText, CheckCircle, ExternalLink
 } from 'lucide-react';
 import './Enterprise.css';
 
 export default function Enterprise() {
   const { user, isAdmin, enterpriseId } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  // Determine active tab based on route path
-  let activeTab = 'info';
-  if (location.pathname.endsWith('/domain')) {
-    activeTab = 'domain';
-  } else if (location.pathname.endsWith('/chatbot')) {
-    activeTab = 'chatbot';
-  }
 
   const [enterprises, setEnterprises] = useState([]);
-  const [selectedId, setSelectedId] = useState('');
-  const [enterprise, setEnterprise] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Forms
-  const [form, setForm] = useState({});
-  const [domainForm, setDomainForm] = useState({ domain: '', subdomain: '' });
-  const [chatbotForm, setChatbotForm] = useState({ enabled: false, script: '', welcomeMessage: '' });
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('ALL');
 
-  // Rich Text Editor State for "CHI TIẾT ĐỐI TÁC"
-  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
-  const editorRef = useRef(null);
+  // Modal State for Create & Edit Enterprise
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('CREATE'); // 'CREATE' | 'EDIT'
+  const [editingId, setEditingId] = useState(null);
+  const [activeModalTab, setActiveModalTab] = useState('info'); // 'info' | 'partnerDetails' | 'domainChatbot'
 
-  // Modal Create Enterprise
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [newForm, setNewForm] = useState({
+  // Modal Form Data
+  const [formData, setFormData] = useState({
     name: '',
     type: 'NSX',
     taxCode: '',
@@ -48,224 +35,189 @@ export default function Enterprise() {
     email: '',
     address: '',
     website: '',
-    partnerDetails: ''
+    partnerDetails: '',
+    domain: '',
+    subdomain: '',
+    chatbotConfig: { enabled: false, script: '', welcomeMessage: '' }
   });
 
+  // Rich Text Editor State inside Modal
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
+  const editorRef = useRef(null);
+
   useEffect(() => {
-    initLoad();
+    loadData();
   }, [isAdmin, enterpriseId]);
 
-  const initLoad = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
       if (isAdmin) {
         const list = await api.getEnterprises();
         setEnterprises(list || []);
-        if (list && list.length > 0) {
-          const target = selectedId ? (list.find(e => e._id === selectedId) || list[0]) : list[0];
-          setSelectedId(target._id);
-          applyEnterprise(target);
-        } else {
-          setEnterprise(null);
-        }
       } else if (enterpriseId) {
-        const data = await api.getEnterprise(enterpriseId);
-        setEnterprise(data);
-        applyEnterprise(data);
+        const ent = await api.getEnterprise(enterpriseId);
+        setEnterprises(ent ? [ent] : []);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error loading enterprises:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const applyEnterprise = (data) => {
-    if (!data) return;
-    setEnterprise(data);
-    setForm({
-      name: data.name || '',
-      address: data.address || '',
-      phone: data.phone || '',
-      email: data.email || '',
-      website: data.website || '',
-      taxCode: data.taxCode || '',
-      partnerDetails: data.partnerDetails || ''
+  // Filtered enterprises list
+  const filteredEnterprises = enterprises.filter(item => {
+    const matchesType = filterType === 'ALL' || item.type === filterType;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || (
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.taxCode && item.taxCode.toLowerCase().includes(q)) ||
+      (item.phone && item.phone.includes(q)) ||
+      (item.email && item.email.toLowerCase().includes(q)) ||
+      (item.address && item.address.toLowerCase().includes(q))
+    );
+    return matchesType && matchesSearch;
+  });
+
+  // Open Create Modal
+  const handleOpenCreateModal = () => {
+    setModalMode('CREATE');
+    setEditingId(null);
+    setActiveModalTab('info');
+    setFormData({
+      name: '',
+      type: 'NSX',
+      taxCode: '',
+      phone: '',
+      email: '',
+      address: '',
+      website: '',
+      partnerDetails: '',
+      domain: '',
+      subdomain: '',
+      chatbotConfig: { enabled: false, script: '', welcomeMessage: '' }
     });
-    setDomainForm({ domain: data.domain || '', subdomain: data.subdomain || '' });
-    setChatbotForm(data.chatbotConfig || { enabled: false, script: '', welcomeMessage: '', qaList: [] });
+    setEditorMode('visual');
+    setIsModalOpen(true);
 
-    if (editorRef.current) {
-      editorRef.current.innerHTML = data.partnerDetails || '';
-    }
-  };
-
-  useEffect(() => {
-    if (editorRef.current && activeTab === 'info' && editorMode === 'visual') {
-      editorRef.current.innerHTML = form.partnerDetails || '';
-    }
-  }, [editorMode, activeTab, selectedId]);
-
-  const handleSelectEnterprise = (id) => {
-    setSelectedId(id);
-    const target = enterprises.find(e => e._id === id);
-    if (target) {
-      applyEnterprise(target);
-    }
-  };
-
-  const handleCreateEnterprise = async (e) => {
-    e.preventDefault();
-    if (!newForm.name.trim()) {
-      alert('Vui lòng nhập tên doanh nghiệp');
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const created = await api.createEnterprise(newForm);
-      alert('Tạo doanh nghiệp mới thành công!');
-      setShowCreateModal(false);
-      setNewForm({ name: '', type: 'NSX', taxCode: '', phone: '', email: '', address: '', website: '', partnerDetails: '' });
-      
-      // Reload list and select new enterprise
-      const updatedList = await api.getEnterprises();
-      setEnterprises(updatedList || []);
-      setSelectedId(created._id);
-      applyEnterprise(created);
-    } catch (err) {
-      alert(err.message || 'Không thể tạo doanh nghiệp');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleDeleteEnterprise = async () => {
-    if (!enterprise) return;
-    if (!confirm(`Bạn có chắc chắn muốn xóa Doanh nghiệp "${enterprise.name}"? Thao tác này không thể hoàn tác.`)) return;
-
-    try {
-      await api.deleteEnterprise(enterprise._id);
-      alert('Đã xóa doanh nghiệp!');
-      const updatedList = await api.getEnterprises();
-      setEnterprises(updatedList || []);
-      if (updatedList && updatedList.length > 0) {
-        setSelectedId(updatedList[0]._id);
-        applyEnterprise(updatedList[0]);
-      } else {
-        setEnterprise(null);
-        setSelectedId('');
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
       }
-    } catch (err) {
-      alert(err.message || 'Lỗi khi xóa doanh nghiệp');
-    }
+    }, 100);
+  };
+
+  // Open Edit Modal
+  const handleOpenEditModal = (ent) => {
+    setModalMode('EDIT');
+    setEditingId(ent._id);
+    setActiveModalTab('info');
+    setFormData({
+      name: ent.name || '',
+      type: ent.type || 'NSX',
+      taxCode: ent.taxCode || '',
+      phone: ent.phone || '',
+      email: ent.email || '',
+      address: ent.address || '',
+      website: ent.website || '',
+      partnerDetails: ent.partnerDetails || '',
+      domain: ent.domain || '',
+      subdomain: ent.subdomain || '',
+      chatbotConfig: ent.chatbotConfig || { enabled: false, script: '', welcomeMessage: '' }
+    });
+    setEditorMode('visual');
+    setIsModalOpen(true);
+
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = ent.partnerDetails || '';
+      }
+    }, 100);
+  };
+
+  // Close Modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
   };
 
   // Rich Text Editor Commands
-  const formatText = (command, value = null) => {
+  const execCmd = (command, value = null) => {
+    if (editorMode !== 'visual') return;
     document.execCommand(command, false, value);
     if (editorRef.current) {
-      setForm(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
+      setFormData(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
     }
   };
 
   const handleInsertImage = () => {
-    const url = prompt('Nhập đường dẫn URL hình ảnh (ví dụ: https://domain.com/image.jpg):');
-    if (url && url.trim()) {
-      formatText('insertHTML', `<img src="${url.trim()}" alt="Ảnh đối tác" style="max-width:100%; height:auto; border-radius:8px; margin:10px 0; display:block;" />`);
+    const url = prompt('Nhập đường dẫn URL hình ảnh:');
+    if (url) {
+      execCmd('insertImage', url);
     }
   };
 
   const handleInsertLink = () => {
-    const url = prompt('Nhập đường dẫn URL liên kết:');
-    if (url && url.trim()) {
-      formatText('createLink', url.trim());
+    const url = prompt('Nhập đường dẫn liên kết URL:');
+    if (url) {
+      execCmd('createLink', url);
     }
   };
 
   const handleEditorInput = () => {
     if (editorRef.current) {
-      setForm(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
+      setFormData(prev => ({ ...prev, partnerDetails: editorRef.current.innerHTML }));
     }
   };
 
-  const addQA = () => {
-    const list = chatbotForm.qaList || [];
-    setChatbotForm({
-      ...chatbotForm,
-      qaList: [...list, { question: '', answer: '' }]
-    });
+  const handleCodeChange = (e) => {
+    const val = e.target.value;
+    setFormData(prev => ({ ...prev, partnerDetails: val }));
+    if (editorRef.current) {
+      editorRef.current.innerHTML = val;
+    }
   };
 
-  const updateQA = (idx, field, val) => {
-    const list = [...(chatbotForm.qaList || [])];
-    list[idx] = { ...list[idx], [field]: val };
-    setChatbotForm({
-      ...chatbotForm,
-      qaList: list
-    });
-  };
+  // Save Enterprise (Submit Modal)
+  const handleSaveEnterprise = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.name.trim()) {
+      alert('Vui lòng nhập Tên doanh nghiệp / Công ty!');
+      return;
+    }
 
-  const removeQA = (idx) => {
-    const list = (chatbotForm.qaList || []).filter((_, i) => i !== idx);
-    setChatbotForm({
-      ...chatbotForm,
-      qaList: list
-    });
-  };
-
-  const handleSaveInfo = async () => {
-    if (!enterprise?._id) return;
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        partnerDetails: editorMode === 'visual' && editorRef.current ? editorRef.current.innerHTML : form.partnerDetails
-      };
-      const updated = await api.updateEnterprise(enterprise._id, payload);
-      setEnterprise(updated);
-      if (isAdmin) {
+      if (modalMode === 'CREATE') {
+        const created = await api.createEnterprise(formData);
+        alert('Tạo doanh nghiệp mới thành công!');
+        setIsModalOpen(false);
+        loadData();
+      } else {
+        const updated = await api.updateEnterprise(editingId, formData);
+        alert('Cập nhật thông tin doanh nghiệp thành công!');
+        setIsModalOpen(false);
         setEnterprises(prev => prev.map(item => item._id === updated._id ? updated : item));
       }
-      alert('Cập nhật thông tin & Chi tiết đối tác thành công!');
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Lỗi khi lưu doanh nghiệp');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleSaveDomain = async () => {
-    if (!enterprise?._id) return;
-    setSaving(true);
-    try {
-      const updated = await api.updateDomain(enterprise._id, domainForm);
-      setEnterprise(updated);
-      if (isAdmin) {
-        setEnterprises(prev => prev.map(item => item._id === updated._id ? updated : item));
-      }
-      alert('Cập nhật domain thành công!');
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSaving(false);
+  // Delete Enterprise
+  const handleDeleteEnterprise = async (ent) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa doanh nghiệp "${ent.name}" khỏi hệ thống không? Hành động này không thể hoàn tác!`)) {
+      return;
     }
-  };
 
-  const handleSaveChatbot = async () => {
-    if (!enterprise?._id) return;
-    setSaving(true);
     try {
-      const updated = await api.updateChatbot(enterprise._id, { chatbotConfig: chatbotForm });
-      setEnterprise(updated);
-      if (isAdmin) {
-        setEnterprises(prev => prev.map(item => item._id === updated._id ? updated : item));
-      }
-      alert('Cập nhật chatbot thành công!');
+      await api.deleteEnterprise(ent._id);
+      alert('Đã xóa doanh nghiệp thành công!');
+      setEnterprises(prev => prev.filter(item => item._id !== ent._id));
     } catch (err) {
-      alert(err.message);
-    } finally {
-      setSaving(false);
+      alert(err.message || 'Lỗi khi xóa doanh nghiệp');
     }
   };
 
@@ -277,465 +229,532 @@ export default function Enterprise() {
     );
   }
 
-  const tabs = [
-    { id: 'info', label: 'Thông tin công ty', icon: Building2 },
-    { id: 'domain', label: 'Cấu hình Domain', icon: Globe },
-    { id: 'chatbot', label: 'Cài đặt Chatbot', icon: MessageSquare },
-  ];
+  const nsxCount = enterprises.filter(e => e.type === 'NSX').length;
+  const nppCount = enterprises.filter(e => e.type === 'NPP').length;
 
   return (
-    <div className="enterprise-page">
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+    <div className="enterprise-page animate-fade-in">
+      {/* Top Header */}
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1>Cấu hình Doanh nghiệp</h1>
-          <p>Quản lý thông tin công ty đối tác sở hữu tem, nội dung chi tiết đối tác, domain và chatbot</p>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Building2 style={{ color: 'var(--color-primary-light)' }} /> Quản lý Doanh nghiệp
+          </h1>
+          <p>Quản lý danh sách đối tác sở hữu tem, chi tiết đối tác, domain tùy chỉnh và cấu hình Chatbot</p>
         </div>
 
         <button 
           className="btn btn-primary"
-          onClick={() => setShowCreateModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}
+          onClick={handleOpenCreateModal}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, padding: '10px 20px', borderRadius: '10px' }}
         >
           <Plus size={18} /> Thêm Doanh nghiệp Mới
         </button>
       </div>
 
-      {/* Admin / Multi-Enterprise Selector Bar */}
-      {enterprises.length > 0 && (
-        <div className="card" style={{ padding: '14px 20px', background: 'var(--color-bg-secondary)', borderRadius: '12px', marginBottom: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
-              <Building2 size={20} style={{ color: 'var(--color-primary-light)' }} />
-              <span style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap' }}>Doanh nghiệp sở hữu:</span>
-              <select
+      {/* Stats Summary Bar */}
+      <div className="enterprise-stats">
+        <div className="enterprise-stat-card">
+          <div className="enterprise-stat-icon"><Building2 size={22} /></div>
+          <div className="enterprise-stat-info">
+            <span className="enterprise-stat-val">{enterprises.length}</span>
+            <span className="enterprise-stat-lbl">Tổng doanh nghiệp</span>
+          </div>
+        </div>
+
+        <div className="enterprise-stat-card">
+          <div className="enterprise-stat-icon" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
+            <Building2 size={22} />
+          </div>
+          <div className="enterprise-stat-info">
+            <span className="enterprise-stat-val">{nsxCount}</span>
+            <span className="enterprise-stat-lbl">Nhà sản xuất (NSX)</span>
+          </div>
+        </div>
+
+        <div className="enterprise-stat-card">
+          <div className="enterprise-stat-icon" style={{ background: 'rgba(249, 115, 22, 0.1)', color: '#f97316' }}>
+            <Building2 size={22} />
+          </div>
+          <div className="enterprise-stat-info">
+            <span className="enterprise-stat-val">{nppCount}</span>
+            <span className="enterprise-stat-lbl">Nhà phân phối (NPP)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Filter Toolbar */}
+      <div className="card" style={{ padding: '16px 20px', background: 'var(--color-bg-secondary)', borderRadius: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 280 }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={18} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
+              <input
+                type="text"
                 className="input"
-                style={{ flex: 1, height: '40px', fontWeight: 600, cursor: 'pointer' }}
-                value={selectedId}
-                onChange={(e) => handleSelectEnterprise(e.target.value)}
-              >
-                {enterprises.map(ent => (
-                  <option key={ent._id} value={ent._id}>
-                    {ent.name} ({ent.type === 'NSX' ? 'Nhà sản xuất' : 'Nhà phân phối'}) {ent.taxCode ? `- MST: ${ent.taxCode}` : ''}
-                  </option>
-                ))}
-              </select>
+                placeholder="Tìm kiếm theo tên công ty, MST, SĐT, Email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ paddingLeft: 38, height: 42 }}
+              />
             </div>
-
-            {enterprise && isAdmin && (
-              <button
-                className="btn btn-outline"
-                style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)', height: '40px' }}
-                onClick={handleDeleteEnterprise}
-                title="Xóa Doanh nghiệp này"
-              >
-                <Trash2 size={16} /> Xóa Doanh nghiệp
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {!enterprise ? (
-        <div className="card empty-state" style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <Building2 size={60} style={{ opacity: 0.4, marginBottom: 16 }} />
-          <h3>Chưa có thông tin doanh nghiệp</h3>
-          <p style={{ opacity: 0.7, marginBottom: 20 }}>
-            Chưa có thông tin Doanh nghiệp nào được gán. Vui lòng bấm nút bên dưới để tạo doanh nghiệp mới.
-          </p>
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ margin: '0 auto' }}>
-            <Plus size={18} /> Tạo Doanh nghiệp Mới
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="tabs">
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button 
-                  key={tab.id} 
-                  className={`tab ${activeTab === tab.id ? 'active' : ''}`} 
-                  onClick={() => {
-                    if (tab.id === 'info') navigate('/enterprise');
-                    else if (tab.id === 'domain') navigate('/enterprise/domain');
-                    else if (tab.id === 'chatbot') navigate('/enterprise/chatbot');
-                  }}
-                >
-                  <Icon size={16} /> {tab.label}
-                </button>
-              );
-            })}
           </div>
 
-          <div className="card animate-fade-in-up">
-            {activeTab === 'info' && (
-              <>
-                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 className="card-title">Thông tin Doanh nghiệp</h3>
-                  <span className={`badge badge-dot ${enterprise.type === 'NSX' ? 'badge-success' : 'badge-warning'}`}>
-                    {enterprise.type === 'NSX' ? 'Nhà sản xuất' : 'Nhà phân phối'}
-                  </span>
-                </div>
-                <div className="form-grid">
-                  <div className="input-group">
-                    <label>Tên công ty / Doanh nghiệp <span style={{ color: '#ef4444' }}>*</span></label>
-                    <input className="input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} placeholder="Nhập tên doanh nghiệp..." />
-                  </div>
-                  <div className="input-group">
-                    <label>Mã số thuế</label>
-                    <input className="input" value={form.taxCode || ''} onChange={e => setForm({...form, taxCode: e.target.value})} placeholder="VD: 0101234567" />
-                  </div>
-                  <div className="input-group" style={{gridColumn:'span 2'}}>
-                    <label>Địa chỉ công ty</label>
-                    <input className="input" value={form.address || ''} onChange={e => setForm({...form, address: e.target.value})} placeholder="Nhập địa chỉ trụ sở/văn phòng..." />
-                  </div>
-                  <div className="input-group">
-                    <label>Số điện thoại liên hệ</label>
-                    <input className="input" value={form.phone || ''} onChange={e => setForm({...form, phone: e.target.value})} placeholder="VD: 0912345678" />
-                  </div>
-                  <div className="input-group">
-                    <label>Email liên hệ</label>
-                    <input className="input" type="email" value={form.email || ''} onChange={e => setForm({...form, email: e.target.value})} placeholder="contact@congty.com" />
-                  </div>
-                  <div className="input-group" style={{gridColumn:'span 2'}}>
-                    <label>Website công ty</label>
-                    <input className="input" value={form.website || ''} onChange={e => setForm({...form, website: e.target.value})} placeholder="https://congty.com" />
-                  </div>
-                </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Filter size={16} style={{ opacity: 0.6 }} />
+            <select
+              className="input"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              style={{ height: 42, width: 200, cursor: 'pointer', fontWeight: 500 }}
+            >
+              <option value="ALL">Tất cả loại (NSX & NPP)</option>
+              <option value="NSX">Nhà sản xuất (NSX)</option>
+              <option value="NPP">Nhà phân phối (NPP)</option>
+            </select>
 
-                {/* CHI TIẾT ĐỐI TÁC SECTION (RICH TEXT & IMAGE EDITOR) */}
-                <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '2px dashed var(--color-border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: 10 }}>
-                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', textDecoration: 'underline', color: 'var(--color-text-primary)' }}>
-                      CHI TIẾT ĐỐI TÁC:
-                    </h3>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button 
-                        type="button" 
-                        className={`btn btn-sm ${editorMode === 'visual' ? 'btn-primary' : 'btn-outline'}`}
-                        onClick={() => setEditorMode('visual')}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                      >
-                        <Eye size={14} /> Soạn thảo trực quan
-                      </button>
-                      <button 
-                        type="button" 
-                        className={`btn btn-sm ${editorMode === 'code' ? 'btn-primary' : 'btn-outline'}`}
-                        onClick={() => setEditorMode('code')}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                      >
-                        <Code size={14} /> Mã HTML
-                      </button>
+            <button 
+              className="btn btn-outline"
+              onClick={loadData}
+              title="Tải lại danh sách"
+              style={{ height: 42, padding: '0 14px' }}
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Enterprise Management Table */}
+      <div className="enterprise-table-container">
+        {filteredEnterprises.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '50px 20px', opacity: 0.7 }}>
+            <Building2 size={48} style={{ marginBottom: 12, opacity: 0.4 }} />
+            <p style={{ fontSize: '1rem', fontWeight: 500 }}>Không tìm thấy doanh nghiệp nào phù hợp</p>
+            <button className="btn btn-primary" onClick={handleOpenCreateModal} style={{ marginTop: 12 }}>
+              <Plus size={16} /> Thêm Doanh Nghiệp Mới
+            </button>
+          </div>
+        ) : (
+          <table className="enterprise-table">
+            <thead>
+              <tr>
+                <th style={{ width: 60, textAlign: 'center' }}>STT</th>
+                <th>Tên Doanh Nghiệp</th>
+                <th>Loại</th>
+                <th>Mã số thuế</th>
+                <th>Liên hệ (SĐT / Email)</th>
+                <th>Địa chỉ</th>
+                <th>Domain / Subdomain</th>
+                <th style={{ width: 140, textAlign: 'center' }}>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEnterprises.map((ent, idx) => (
+                <tr key={ent._id}>
+                  <td style={{ textAlign: 'center', fontWeight: 600, opacity: 0.6 }}>{idx + 1}</td>
+                  <td>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text-primary)' }}>
+                      {ent.name}
                     </div>
-                  </div>
-
-                  {/* Toolbar */}
-                  {editorMode === 'visual' && (
-                    <div className="editor-toolbar" style={{
-                      display: 'flex', flexWrap: 'wrap', gap: '4px', padding: '8px 12px',
-                      background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)',
-                      borderBottom: 'none', borderRadius: '8px 8px 0 0', alignItems: 'center'
-                    }}>
-                      <button type="button" className="btn-icon btn-sm" title="Bôi đậm (Bold)" onClick={() => formatText('bold')}><Bold size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="In nghiêng (Italic)" onClick={() => formatText('italic')}><Italic size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="Gạch chân (Underline)" onClick={() => formatText('underline')}><Underline size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="Gạch ngang (Strikethrough)" onClick={() => formatText('strikethrough')}><Strikethrough size={15}/></button>
-                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
-
-                      <button type="button" className="btn-icon btn-sm" title="Căn trái" onClick={() => formatText('justifyLeft')}><AlignLeft size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="Căn giữa" onClick={() => formatText('justifyCenter')}><AlignCenter size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="Căn phải" onClick={() => formatText('justifyRight')}><AlignRight size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="Căn đều 2 bên" onClick={() => formatText('justifyFull')}><AlignJustify size={15}/></button>
-                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
-
-                      <button type="button" className="btn-icon btn-sm" title="Danh sách chấm (Bullets)" onClick={() => formatText('insertUnorderedList')}><List size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="Danh sách số (Numbered)" onClick={() => formatText('insertOrderedList')}><ListOrdered size={15}/></button>
-                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
-
-                      <button type="button" className="btn-icon btn-sm" title="Tiêu đề H2" onClick={() => formatText('formatBlock', '<h2>')}><Heading2 size={15}/></button>
-                      <button type="button" className="btn-icon btn-sm" title="Tiêu đề H3" onClick={() => formatText('formatBlock', '<h3>')}><Heading3 size={15}/></button>
-                      <span style={{ height: '18px', borderLeft: '1px solid var(--color-border)', margin: '0 4px' }}></span>
-
-                      <button type="button" className="btn btn-sm btn-ghost" title="Chèn ảnh vào bài viết" onClick={handleInsertImage} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-primary-light)', fontWeight: 600 }}>
-                        <ImageIcon size={15}/> <span>Chèn ảnh</span>
-                      </button>
-                      <button type="button" className="btn btn-sm btn-ghost" title="Chèn đường dẫn URL" onClick={handleInsertLink} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <LinkIcon size={15}/> <span>Chèn Link</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Editor Input Area */}
-                  {editorMode === 'visual' ? (
-                    <div
-                      ref={editorRef}
-                      contentEditable
-                      className="rich-editor-box"
-                      onInput={handleEditorInput}
-                      style={{
-                        minHeight: '220px',
-                        padding: '16px',
-                        background: '#ffffff',
-                        color: '#0f172a',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: '0 0 8px 8px',
-                        outline: 'none',
-                        lineHeight: '1.6',
-                        fontSize: '15px'
-                      }}
-                    />
-                  ) : (
-                    <textarea
-                      className="input textarea"
-                      rows={10}
-                      value={form.partnerDetails || ''}
-                      onChange={e => setForm({ ...form, partnerDetails: e.target.value })}
-                      placeholder="Nhập hoặc dán mã HTML chi tiết đối tác..."
-                      style={{ fontFamily: 'monospace', fontSize: '13px', borderRadius: '8px' }}
-                    />
-                  )}
-                </div>
-
-                <div className="form-actions" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button className="btn btn-primary" onClick={handleSaveInfo} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px', fontWeight: 700 }}>
-                    <Save size={18} /> {saving ? 'Đang lưu...' : 'SAVE (Lưu thông tin & Chi tiết đối tác)'}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {activeTab === 'domain' && (
-              <>
-                <div className="card-header">
-                  <h3 className="card-title">Cấu hình Domain ({enterprise.name})</h3>
-                </div>
-                <div className="domain-info-box">
-                  <Globe size={20} />
-                  <p>Cấu hình domain/subdomain riêng cho trang hiển thị tem của doanh nghiệp <strong>{enterprise.name}</strong>.</p>
-                </div>
-
-                {/* Hướng dẫn DNS */}
-                <div className="domain-dns-guide" style={{
-                  margin: '0 0 20px 0',
-                  padding: '16px',
-                  background: 'rgba(99, 102, 241, 0.06)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(99, 102, 241, 0.2)',
-                  fontSize: '0.85rem',
-                  lineHeight: '1.7'
-                }}>
-                  <div style={{ fontWeight: 700, marginBottom: '10px', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Globe size={15} /> Hướng dẫn trỏ DNS (CNAME)
-                  </div>
-                  <p style={{ margin: '0 0 10px 0', opacity: 0.85 }}>
-                    Sau khi điền domain bên dưới, bạn cần vào trang quản lý DNS của nhà cung cấp tên miền và thêm bản ghi <strong>CNAME</strong>:
-                  </p>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ textAlign: 'left', padding: '6px 10px', background: 'rgba(99,102,241,0.1)', borderRadius: '6px 0 0 0' }}>Loại</th>
-                        <th style={{ textAlign: 'left', padding: '6px 10px', background: 'rgba(99,102,241,0.1)' }}>Tên (Name)</th>
-                        <th style={{ textAlign: 'left', padding: '6px 10px', background: 'rgba(99,102,241,0.1)', borderRadius: '0 6px 0 0' }}>Trỏ về (Value)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>CNAME</td>
-                        <td style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: '4px' }}>
-                            {domainForm.subdomain ? domainForm.subdomain : 'tem'}
-                          </code>
-                        </td>
-                        <td style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <code style={{ background: 'rgba(99,241,99,0.1)', color: '#4ade80', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
-                            tem-user-page.vercel.app
-                          </code>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <p style={{ margin: '10px 0 0 0', opacity: 0.7, fontSize: '0.78rem' }}>
-                    ⓘ Sau khi lưu DNS, có thể mất 5–30 phút để domain hoạt động. Không cần cấu hình thêm sau đó.
-                  </p>
-                </div>
-
-                <div className="form-grid">
-                  <div className="input-group">
-                    <label>Domain chính (VD: tem.congtya.com)</label>
-                    <input className="input" value={domainForm.domain} onChange={e => setDomainForm({...domainForm, domain: e.target.value})} placeholder="vd: tem.congty.vn" />
-                  </div>
-                  <div className="input-group">
-                    <label>Subdomain (phần trước dấu chấm)</label>
-                    <input className="input" value={domainForm.subdomain} onChange={e => setDomainForm({...domainForm, subdomain: e.target.value})} placeholder="vd: tem" />
-                  </div>
-                </div>
-                {domainForm.domain && (
-                  <div className="domain-preview">
-                    <ExternalLink size={14}/> <span>URL hiển thị: <strong>https://{domainForm.domain}</strong></span>
-                  </div>
-                )}
-                <div className="form-actions">
-                  <button className="btn btn-primary" onClick={handleSaveDomain} disabled={saving}>
-                    <Save size={16} /> Lưu cấu hình Domain
-                  </button>
-                </div>
-              </>
-            )}
-
-            {activeTab === 'chatbot' && (
-              <>
-                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 className="card-title">Cài đặt Chatbot ({enterprise.name})</h3>
-                </div>
-                <div className="form-grid">
-                  <div className="input-group" style={{gridColumn:'span 2'}}>
-                    <label className="toggle-label">
-                      <input type="checkbox" checked={chatbotForm.enabled} onChange={e => setChatbotForm({...chatbotForm, enabled: e.target.checked})} />
-                      <span className="toggle-switch"></span>
-                      <span>Bật Chatbot trên trang hiển thị tem</span>
-                    </label>
-                  </div>
-                  <div className="input-group" style={{gridColumn:'span 2'}}>
-                    <label>Lời chào mừng</label>
-                    <input className="input" value={chatbotForm.welcomeMessage || ''} onChange={e => setChatbotForm({...chatbotForm, welcomeMessage: e.target.value})} />
-                  </div>
-                  <div className="input-group" style={{gridColumn:'span 2'}}>
-                    <label>Script Chatbot (embed code - nếu có)</label>
-                    <textarea className="input textarea" value={chatbotForm.script || ''} onChange={e => setChatbotForm({...chatbotForm, script: e.target.value})} placeholder="Dán embed code chatbot tại đây..." rows={3} />
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h4 style={{ margin: 0, fontSize: '1rem', color: 'var(--primary-color)' }}>Bộ câu hỏi - trả lời (Q&A FAQ)</h4>
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={addQA} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Plus size={14} /> Thêm câu hỏi
-                    </button>
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {(!chatbotForm.qaList || chatbotForm.qaList.length === 0) ? (
-                      <p style={{ fontSize: '0.9rem', opacity: 0.5, fontStyle: 'italic', margin: '8px 0' }}>Chưa cấu hình bộ câu hỏi nào. Chatbot sẽ sử dụng các câu trả lời mặc định.</p>
-                    ) : (
-                      chatbotForm.qaList.map((qa, idx) => (
-                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '12px', alignItems: 'flex-start', padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                          <div className="input-group" style={{ margin: 0 }}>
-                            <input className="input" placeholder="Câu hỏi (Ví dụ: Hạn sử dụng bao lâu?)" value={qa.question || ''} onChange={e => updateQA(idx, 'question', e.target.value)} />
-                          </div>
-                          <div className="input-group" style={{ margin: 0 }}>
-                            <textarea className="input textarea" placeholder="Câu trả lời tương ứng..." value={qa.answer || ''} onChange={e => updateQA(idx, 'answer', e.target.value)} rows={1} style={{ minHeight: '38px', resize: 'vertical' }} />
-                          </div>
-                          <button type="button" className="btn-icon" onClick={() => removeQA(idx)} style={{ color: '#ef4444', height: '38px' }}><Trash2 size={16}/></button>
-                        </div>
-                      ))
+                    {ent.website && (
+                      <a 
+                        href={ent.website.startsWith('http') ? ent.website : `https://${ent.website}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        style={{ fontSize: '0.8rem', color: 'var(--color-primary-light)', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2 }}
+                      >
+                        {ent.website} <ExternalLink size={11} />
+                      </a>
                     )}
-                  </div>
-                </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${ent.type === 'NSX' ? 'badge-success' : 'badge-warning'}`}>
+                      {ent.type === 'NSX' ? 'Nhà sản xuất' : 'Nhà phân phối'}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{ent.taxCode || '---'}</span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: '0.85rem' }}>
+                      {ent.phone && <span><Phone size={12} style={{ display: 'inline', marginRight: 4, opacity: 0.6 }} />{ent.phone}</span>}
+                      {ent.email && <span><Mail size={12} style={{ display: 'inline', marginRight: 4, opacity: 0.6 }} />{ent.email}</span>}
+                      {!ent.phone && !ent.email && <span style={{ opacity: 0.4 }}>---</span>}
+                    </div>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                      {ent.address || '---'}
+                    </span>
+                  </td>
+                  <td>
+                    {ent.domain ? (
+                      <span className="badge badge-info" style={{ fontFamily: 'monospace' }}>
+                        <Globe size={12} style={{ marginRight: 4 }} /> {ent.domain}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.8rem', opacity: 0.4 }}>Chưa gán</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <button 
+                        className="btn btn-outline" 
+                        onClick={() => handleOpenEditModal(ent)}
+                        title="Chỉnh sửa thông tin doanh nghiệp"
+                        style={{ height: 34, padding: '0 10px', color: 'var(--color-primary-light)', borderColor: 'rgba(99, 102, 241, 0.4)' }}
+                      >
+                        <Edit3 size={15} /> Sửa
+                      </button>
+                      
+                      {isAdmin && (
+                        <button 
+                          className="btn btn-outline" 
+                          onClick={() => handleDeleteEnterprise(ent)}
+                          title="Xóa doanh nghiệp"
+                          style={{ height: 34, padding: '0 8px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-                <div className="form-actions" style={{ marginTop: '24px' }}>
-                  <button className="btn btn-primary" onClick={handleSaveChatbot} disabled={saving}>
-                    <Save size={16} /> {saving ? 'Đang lưu...' : 'Lưu cấu hình Chatbot'}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Modal Thêm Doanh Nghiệp Mới */}
-      {showCreateModal && (
-        <div className="modal-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content animate-scale-up" onClick={e => e.stopPropagation()} style={{ maxWidth: '580px' }}>
+      {/* POPUP MODAL (Thêm Mới & Chỉnh Sửa Doanh Nghiệp) */}
+      {isModalOpen && (
+        <div className="modal-backdrop" onClick={(e) => { if (e.target.className === 'modal-backdrop') handleCloseModal(); }}>
+          <div className="modal-container">
+            {/* Modal Header */}
             <div className="modal-header">
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Building2 size={20} /> Thêm Doanh Nghiệp Mới (Đối Tác)
-              </h3>
-              <button className="btn-icon" onClick={() => setShowCreateModal(false)}><X size={18} /></button>
-            </div>
-            
-            <form onSubmit={handleCreateEnterprise}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div className="input-group">
-                  <label>Tên Doanh Nghiệp / Công ty <span style={{ color: '#ef4444' }}>*</span></label>
-                  <input
-                    className="input"
-                    required
-                    placeholder="VD: Công ty Cổ phần VINSUMI (In Thương Gia)"
-                    value={newForm.name}
-                    onChange={e => setNewForm({ ...newForm, name: e.target.value })}
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>Loại Doanh Nghiệp</label>
-                  <select
-                    className="input"
-                    value={newForm.type}
-                    onChange={e => setNewForm({ ...newForm, type: e.target.value })}
-                  >
-                    <option value="NSX">Nhà sản xuất (NSX)</option>
-                    <option value="NPP">Nhà phân phối (NPP)</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="input-group">
-                    <label>Mã số thuế</label>
-                    <input
-                      className="input"
-                      placeholder="VD: 0315599888"
-                      value={newForm.taxCode}
-                      onChange={e => setNewForm({ ...newForm, taxCode: e.target.value })}
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label>Số điện thoại</label>
-                    <input
-                      className="input"
-                      placeholder="VD: 0901234567"
-                      value={newForm.phone}
-                      onChange={e => setNewForm({ ...newForm, phone: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label>Email liên hệ</label>
-                  <input
-                    className="input"
-                    type="email"
-                    placeholder="VD: contact@vinsumi.vn"
-                    value={newForm.email}
-                    onChange={e => setNewForm({ ...newForm, email: e.target.value })}
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>Địa chỉ trụ sở</label>
-                  <input
-                    className="input"
-                    placeholder="VD: TP. Hồ Chí Minh"
-                    value={newForm.address}
-                    onChange={e => setNewForm({ ...newForm, address: e.target.value })}
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>Website</label>
-                  <input
-                    className="input"
-                    placeholder="VD: https://icongty.com"
-                    value={newForm.website}
-                    onChange={e => setNewForm({ ...newForm, website: e.target.value })}
-                  />
-                </div>
+              <div className="modal-title">
+                {modalMode === 'CREATE' ? (
+                  <>
+                    <Plus style={{ color: 'var(--color-primary-light)' }} /> Thêm Doanh Nghiệp Mới
+                  </>
+                ) : (
+                  <>
+                    <Edit3 style={{ color: 'var(--color-primary-light)' }} /> Chỉnh Sửa Thông Tin Doanh Nghiệp
+                  </>
+                )}
               </div>
 
-              <div className="modal-footer" style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary" disabled={creating} style={{ fontWeight: 600 }}>
-                  {creating ? 'Đang tạo...' : 'Tạo Doanh Nghiệp Mới'}
+              <button className="modal-close-btn" onClick={handleCloseModal}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Navigation Tabs */}
+            <div className="modal-tabs">
+              <button 
+                className={`modal-tab-btn ${activeModalTab === 'info' ? 'active' : ''}`}
+                onClick={() => setActiveModalTab('info')}
+              >
+                <Building2 size={16} /> Thông tin Doanh nghiệp
+              </button>
+
+              <button 
+                className={`modal-tab-btn ${activeModalTab === 'partnerDetails' ? 'active' : ''}`}
+                onClick={() => setActiveModalTab('partnerDetails')}
+              >
+                <FileText size={16} /> Chi tiết đối tác (Soạn thảo & Ảnh)
+              </button>
+
+              <button 
+                className={`modal-tab-btn ${activeModalTab === 'domainChatbot' ? 'active' : ''}`}
+                onClick={() => setActiveModalTab('domainChatbot')}
+              >
+                <Globe size={16} /> Cấu hình Domain & Chatbot
+              </button>
+            </div>
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleSaveEnterprise} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div className="modal-body">
+                {/* TAB 1: THÔNG TIN DOANH NGHIỆP */}
+                {activeModalTab === 'info' && (
+                  <div className="form-grid-2">
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label className="label">Tên Doanh nghiệp / Công ty <span style={{ color: '#ef4444' }}>*</span></label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="VD: Công ty Cổ phần VINSUMI (In Thương Gia)"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">Loại Doanh nghiệp</label>
+                      <select
+                        className="input"
+                        value={formData.type}
+                        onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                      >
+                        <option value="NSX">Nhà sản xuất (NSX)</option>
+                        <option value="NPP">Nhà phân phối (NPP)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label">Mã số thuế (MST)</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="VD: 0315599888"
+                        value={formData.taxCode}
+                        onChange={(e) => setFormData(prev => ({ ...prev, taxCode: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">Số điện thoại liên hệ</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="VD: 0901234567"
+                        value={formData.phone}
+                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">Email liên hệ</label>
+                      <input
+                        type="email"
+                        className="input"
+                        placeholder="VD: contact@vinsumi.vn"
+                        value={formData.email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label className="label">Địa chỉ trụ sở / văn phòng</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="VD: 123 Đường Nguyễn Trãi, Thanh Xuân, Hà Nội"
+                        value={formData.address}
+                        onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label className="label">Website công ty</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="VD: https://vinsumi.vn"
+                        value={formData.website}
+                        onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: CHI TIẾT ĐỐI TÁC (RICH TEXT EDITOR & CHÈN ẢNH) */}
+                {activeModalTab === 'partnerDetails' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label className="label" style={{ marginBottom: 0 }}>CHI TIẾT ĐỐI TÁC (Soạn thảo văn bản & Chèn ảnh):</label>
+
+                      {/* Mode Toggle */}
+                      <div style={{ display: 'flex', gap: 4, background: 'var(--color-bg-primary)', padding: 3, borderRadius: 8, border: '1px solid var(--color-border)' }}>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${editorMode === 'visual' ? 'btn-primary' : 'btn-ghost'}`}
+                          onClick={() => setEditorMode('visual')}
+                          style={{ height: 28, fontSize: '0.8rem', padding: '0 10px' }}
+                        >
+                          <Eye size={13} /> Soạn thảo trực quan
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${editorMode === 'code' ? 'btn-primary' : 'btn-ghost'}`}
+                          onClick={() => setEditorMode('code')}
+                          style={{ height: 28, fontSize: '0.8rem', padding: '0 10px' }}
+                        >
+                          <Code size={13} /> Mã HTML
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Toolbar */}
+                    {editorMode === 'visual' && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 8, background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', borderRadius: '8px 8px 0 0' }}>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('bold')} title="Bôi đậm (Bold)"><Bold size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('italic')} title="In nghiêng (Italic)"><Italic size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('underline')} title="Gạch chân (Underline)"><Underline size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('strikeThrough')} title="Gạch ngang (Strikethrough)"><Strikethrough size={14} /></button>
+
+                        <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
+
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyLeft')} title="Căn trái"><AlignLeft size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyCenter')} title="Căn giữa"><AlignCenter size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyRight')} title="Căn phải"><AlignRight size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyFull')} title="Căn đều"><AlignJustify size={14} /></button>
+
+                        <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
+
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('insertUnorderedList')} title="Danh sách chấm"><List size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('insertOrderedList')} title="Danh sách số"><ListOrdered size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('formatBlock', '<h2>')} title="Tiêu đề 2"><Heading2 size={14} /></button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('formatBlock', '<h3>')} title="Tiêu đề 3"><Heading3 size={14} /></button>
+
+                        <div style={{ width: 1, height: 20, background: 'var(--color-border)', margin: '0 4px' }} />
+
+                        <button type="button" className="btn btn-outline btn-sm" onClick={handleInsertImage} style={{ fontSize: '0.8rem', gap: 4 }}>
+                          <ImageIcon size={14} /> Chèn ảnh
+                        </button>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={handleInsertLink} style={{ fontSize: '0.8rem', gap: 4 }}>
+                          <LinkIcon size={14} /> Chèn Link
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Editor Content Area */}
+                    {editorMode === 'visual' ? (
+                      <div
+                        ref={editorRef}
+                        contentEditable
+                        onInput={handleEditorInput}
+                        style={{
+                          minHeight: 220,
+                          maxHeight: 350,
+                          overflowY: 'auto',
+                          padding: 14,
+                          background: 'var(--color-bg-primary)',
+                          border: '1px solid var(--color-border)',
+                          borderRadius: editorMode === 'visual' ? '0 0 8px 8px' : '8px',
+                          color: 'var(--color-text-primary)',
+                          outline: 'none'
+                        }}
+                      />
+                    ) : (
+                      <textarea
+                        className="input"
+                        style={{ minHeight: 220, fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: 1.5 }}
+                        value={formData.partnerDetails}
+                        onChange={handleCodeChange}
+                        placeholder="<p>Nhập mã HTML chi tiết đối tác...</p>"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 3: CẤU HÌNH DOMAIN & CHATBOT */}
+                {activeModalTab === 'domainChatbot' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {/* Domain Box */}
+                    <div style={{ background: 'var(--color-bg-primary)', padding: 18, borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                      <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--color-primary-light)' }}>
+                        <Globe size={18} /> Cấu hình Tên miền tùy chỉnh (Custom Domain)
+                      </h4>
+
+                      <div className="form-grid-2">
+                        <div>
+                          <label className="label">Tên miền thương hiệu (Custom Domain)</label>
+                          <input
+                            type="text"
+                            className="input"
+                            placeholder="VD: tem.dongy.vn"
+                            value={formData.domain}
+                            onChange={(e) => setFormData(prev => ({ ...prev, domain: e.target.value }))}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="label">Subdomain hệ thống</label>
+                          <input
+                            type="text"
+                            className="input"
+                            placeholder="VD: vinsumi"
+                            value={formData.subdomain}
+                            onChange={(e) => setFormData(prev => ({ ...prev, subdomain: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Chatbot Box */}
+                    <div style={{ background: 'var(--color-bg-primary)', padding: 18, borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-primary-light)' }}>
+                          <MessageSquare size={18} /> Cài đặt Chatbot Tư vấn Trực tuyến
+                        </h4>
+
+                        <label className="toggle-label">
+                          <input
+                            type="checkbox"
+                            checked={formData.chatbotConfig?.enabled || false}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              chatbotConfig: { ...prev.chatbotConfig, enabled: e.target.checked }
+                            }))}
+                          />
+                          <span className="toggle-switch"></span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Kích hoạt Chatbot</span>
+                        </label>
+                      </div>
+
+                      {formData.chatbotConfig?.enabled && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+                          <div>
+                            <label className="label">Lời chào tự động của Chatbot</label>
+                            <input
+                              type="text"
+                              className="input"
+                              placeholder="VD: Xin chào! Tôi là trợ lý AI của VINSUMI. Bạn cần hỗ trợ gì?"
+                              value={formData.chatbotConfig?.welcomeMessage || ''}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                chatbotConfig: { ...prev.chatbotConfig, welcomeMessage: e.target.value }
+                              }))}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="label">Mã nhúng Script Chatbot (Tawkt.to / Tidio / Zalo / Fanpage)</label>
+                            <textarea
+                              className="input"
+                              rows={3}
+                              placeholder="<script src='https://embed.tawk.to/...'></script>"
+                              value={formData.chatbotConfig?.script || ''}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                chatbotConfig: { ...prev.chatbotConfig, script: e.target.value }
+                              }))}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer Buttons */}
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={handleCloseModal}>
+                  Hủy
+                </button>
+
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  disabled={saving}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, padding: '10px 24px' }}
+                >
+                  <Save size={16} /> {saving ? 'Đang lưu...' : (modalMode === 'CREATE' ? 'Tạo Doanh Nghiệp Mới' : 'Lưu Thay Đổi Doanh Nghiệp')}
                 </button>
               </div>
             </form>

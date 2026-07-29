@@ -38,23 +38,38 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// PUT /api/enterprises/:id
+// PUT /api/enterprises/:id - Update enterprise details
 router.put('/:id', auth, async (req, res) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.enterpriseId?.toString() !== req.params.id) {
       return res.status(403).json({ error: 'Không có quyền chỉnh sửa' });
     }
 
-    const { name, address, phone, email, website, taxCode, logo, partnerDetails } = req.body;
+    const { name, type, address, phone, email, website, taxCode, logo, partnerDetails, domain, subdomain, chatbotConfig } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (type !== undefined) updateData.type = type;
+    if (address !== undefined) updateData.address = address;
+    if (phone !== undefined) updateData.phone = phone;
+    if (email !== undefined) updateData.email = email;
+    if (website !== undefined) updateData.website = website;
+    if (taxCode !== undefined) updateData.taxCode = taxCode;
+    if (logo !== undefined) updateData.logo = logo;
+    if (partnerDetails !== undefined) updateData.partnerDetails = partnerDetails;
+    if (domain !== undefined) updateData.domain = domain;
+    if (subdomain !== undefined) updateData.subdomain = subdomain;
+    if (chatbotConfig !== undefined) updateData.chatbotConfig = chatbotConfig;
+
     const enterprise = await Enterprise.findByIdAndUpdate(
       req.params.id,
-      { name, address, phone, email, website, taxCode, logo, partnerDetails },
+      updateData,
       { new: true }
     );
     if (!enterprise) return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
     res.json(enterprise);
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi máy chủ' });
+    console.error('Update enterprise error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật doanh nghiệp: ' + error.message });
   }
 });
 
