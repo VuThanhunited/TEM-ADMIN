@@ -4,9 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload,
-  Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight,
-  Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck
+  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';

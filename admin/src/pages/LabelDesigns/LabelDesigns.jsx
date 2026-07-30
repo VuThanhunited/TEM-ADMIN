@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  FileText, Plus, Trash2, Edit, Download, Upload, X, Image, Info, ShieldAlert
+  FileText, Plus, Trash2, Edit, Download, Upload, X, Image, Info, ShieldAlert, AlertCircle
 } from 'lucide-react';
 import defaultLabelImage from '../../assets/anh-xac-thuc.jpg';
 import './LabelDesigns.css';

@@ -2,10 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Building2, Globe, MessageSquare, Save, Plus, Trash2, Edit3, Search, Filter, X,
-  Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Heading2, Heading3, Code, Eye, RefreshCw,
-  Phone, Mail, MapPin, FileText, CheckCircle, ExternalLink, Upload
+  Building2, Globe, MessageSquare, Save, Plus, Trash2, Edit3, Search, Filter, X, Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Image as ImageIcon, Link2 as LinkIcon, Heading2, Heading3, Code, Eye, RefreshCw, Phone, Mail, MapPin, FileText, CheckCircle, ExternalLink, Upload
 } from 'lucide-react';
 import './Enterprise.css';
 

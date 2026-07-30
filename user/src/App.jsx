@@ -150,7 +150,9 @@ function AppShell() {
 
   return (
     <div className={isFullWidth ? 'app-shell app-shell--fullwidth' : 'app-shell'}>
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
     </div>
   );
 }
