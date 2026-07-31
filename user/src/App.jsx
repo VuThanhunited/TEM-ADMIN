@@ -1,3 +1,4 @@
+import React, { Component } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DomainProvider } from './contexts/DomainContext';
@@ -11,6 +12,70 @@ import Success from './pages/Success/Success';
 import History from './pages/History/History';
 import ScanChoice from './pages/ScanChoice/ScanChoice';
 import ProductInfo from './pages/ProductInfo/ProductInfo';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('App Uncaught Error:', error, errorInfo);
+  }
+
+  handleReload = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#0f172a',
+          color: '#ffffff',
+          padding: '24px',
+          textAlign: 'center',
+          fontFamily: 'sans-serif'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '8px', color: '#ef4444' }}>
+            Đã xảy ra sự cố hiển thị trang
+          </h2>
+          <p style={{ fontSize: '0.9rem', color: '#94a3b8', maxWidth: '480px', marginBottom: '24px' }}>
+            Hệ thống vừa phát hiện sự cố gián đoạn nhỏ. Vui lòng nhấn nút bên dưới để tải lại trang.
+          </p>
+          <button
+            onClick={this.handleReload}
+            style={{
+              background: '#6366f1',
+              color: '#ffffff',
+              border: 'none',
+              padding: '10px 24px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              cursor: 'pointer'
+            }}
+          >
+            🔄 Tải lại trang ngay
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn, loading } = useAuth();
