@@ -75,6 +75,19 @@ export default function Labels() {
     try { const r = await api.getProducts({ limit: 1000 }); setProducts(r.data || []); } catch (e) {}
   };
 
+  const getThemeLabel = (themeKey) => {
+    switch (themeKey) {
+      case 'ocop': return '🏆 OCOP';
+      case 'functional_food': return '🌿 TPCN';
+      case 'agriculture': return '🍃 Nông nghiệp';
+      case 'appliance': return '⚡ Gia dụng';
+      case 'food': return '🍲 Thực phẩm';
+      case 'medical': return '💊 Y tế/Dược';
+      case 'cosmetics': return '💄 Mỹ phẩm';
+      default: return '📋 Mặc định';
+    }
+  };
+
   const getEntIdStr = (obj) => {
     if (!obj) return '';
     if (typeof obj === 'string') return obj;
@@ -614,20 +627,6 @@ export default function Labels() {
       case 'SCANNED': return 'Đã quét';
       case 'EXPIRED': return 'Hết hạn';
       default: return status;
-    }
-  };
-
-
-  const getThemeLabel = (themeKey) => {
-    switch (themeKey) {
-      case 'ocop': return '🏆 OCOP';
-      case 'functional_food': return '🌿 TPCN';
-      case 'agriculture': return '🍃 Nông nghiệp';
-      case 'appliance': return '⚡ Gia dụng';
-      case 'food': return '🍲 Thực phẩm';
-      case 'medical': return '💊 Y tế/Dược';
-      case 'cosmetics': return '💄 Mỹ phẩm';
-      default: return '📋 Mặc định';
     }
   };
 
