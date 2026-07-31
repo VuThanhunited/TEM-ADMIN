@@ -22,7 +22,7 @@ class UserApiService {
   }
 
   async request(method, endpoint, data = null, params = {}, useNppToken = true) {
-    const url = new URL(`${this.baseUrl}${endpoint}`);
+    const url = new URL(`${this.baseUrl}${endpoint}`, window.location.origin);
     Object.entries(params).forEach(([key, val]) => {
       if (val !== undefined && val !== null && val !== '') {
         url.searchParams.append(key, val);
