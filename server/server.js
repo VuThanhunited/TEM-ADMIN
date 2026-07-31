@@ -18,10 +18,37 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_db';
 
-// Middleware
-app.use(cors());
+// Middleware – CORS cho phép tất cả domain hệ thống
+const allowedOrigins = [
+  'https://www.giaiphapqrcode.vn',
+  'https://giaiphapqrcode.vn',
+  'https://tem-admin-eight.vercel.app',
+  'https://tem-user-page.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Cho phép requests không có origin (mobile apps, curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    // Cho phép tất cả subdomain của vercel.app và giaiphapqrcode.vn
+    if (/\.vercel\.app$/.test(origin) || /giaiphapqrcode\.vn$/.test(origin)) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, true); // Mở rộng cho mọi origin trong giai đoạn hiện tại
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
 
 // Routes
 app.use('/api/auth', authRoutes);
