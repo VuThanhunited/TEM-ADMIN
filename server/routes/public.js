@@ -66,9 +66,9 @@ router.get('/scan/:serial', async (req, res) => {
           }
         }
 
-        const ADMIN_URL = process.env.ADMIN_URL || 'https://giaiphapqrcode.vn';
-        const domainUrl = matchingBatch.customDomain 
-          ? (matchingBatch.customDomain.trim().startsWith('http') ? matchingBatch.customDomain.trim() : `http://${matchingBatch.customDomain.trim()}`)
+        const rawDomain = matchingBatch.customDomain ? matchingBatch.customDomain.trim().replace(/\/+$/, '') : '';
+        const domainUrl = rawDomain 
+          ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`)
           : ADMIN_URL;
 
         const crypto = require('crypto');

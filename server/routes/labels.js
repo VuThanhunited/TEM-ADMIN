@@ -170,8 +170,9 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
     await createdBatch.save();
 
     // Create individual labels
-    const domainUrl = customDomain 
-      ? (customDomain.trim().startsWith('http') ? customDomain.trim() : `http://${customDomain.trim()}`)
+    const cleanCustomDomain = customDomain ? customDomain.trim().replace(/\/+$/, '') : '';
+    const domainUrl = cleanCustomDomain 
+      ? (cleanCustomDomain.startsWith('http') ? cleanCustomDomain : `https://${cleanCustomDomain}`)
       : ADMIN_URL;
 
     const labels = generatedSerials.map(serial => {
@@ -362,8 +363,9 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
       
       // Update each label's qrUrl (preserving or generating secret qrCode)
       const bulkOps = labels.map(label => {
+        const cleanDomain = customDomain ? customDomain.trim().replace(/\/+$/, '') : '';
         const domainUrl = cleanDomain 
-          ? (cleanDomain.startsWith('http') ? cleanDomain : `http://${cleanDomain}`)
+          ? (cleanDomain.startsWith('http') ? cleanDomain : `https://${cleanDomain}`)
           : ADMIN_URL;
         let secretCode = label.qrCode;
         if (!secretCode) {
@@ -533,8 +535,9 @@ router.get('/', auth, requireOwnership, async (req, res) => {
         const batch = await LabelBatch.findById(batchId);
         if (batch && !batch.isMigrated && batch.totalLabels > 0) {
           const numPrefix = batch.prefix || '100';
-          const domainUrl = batch.customDomain 
-            ? (batch.customDomain.trim().startsWith('http') ? batch.customDomain.trim() : `http://${batch.customDomain.trim()}`)
+          const rawDomain = batch.customDomain ? batch.customDomain.trim().replace(/\/+$/, '') : '';
+          const domainUrl = rawDomain 
+            ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`)
             : ADMIN_URL;
 
           let serialsToRepair = [];
@@ -710,13 +713,14 @@ router.post('/fix-encryption', auth, requireRole('ADMIN'), async (req, res) => {
       }
 
       let currentUrl = label.qrUrl || '';
-      if (!currentUrl || currentUrl.includes(`/scan/${label.serialNumber}`)) {
+      if (!currentUrl || currentUrl.includes(`/scan/${label.serialNumber}`) || currentUrl.includes('tem-admin-eight.vercel.app') || currentUrl.startsWith('http://')) {
         if (!batchesCache[label.batchId]) {
           batchesCache[label.batchId] = await LabelBatch.findById(label.batchId);
         }
         const batch = batchesCache[label.batchId];
-        const domainUrl = (batch && batch.customDomain) 
-          ? (batch.customDomain.trim().startsWith('http') ? batch.customDomain.trim() : `http://${batch.customDomain.trim()}`)
+        const rawDomain = (batch && batch.customDomain) ? batch.customDomain.trim().replace(/\/+$/, '') : '';
+        const domainUrl = rawDomain 
+          ? (rawDomain.startsWith('http') ? rawDomain : `https://${rawDomain}`)
           : ADMIN_URL;
         currentUrl = `${domainUrl}/scan/${secretCode}`;
         needUpdate = true;

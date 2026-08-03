@@ -19,6 +19,20 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    cssCodeSplit: true,
+    reportCompressedSize: false,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react-router-dom')) return 'router';
+            if (id.includes('html5-qrcode')) return 'scanner';
+            if (id.includes('react-dom')) return 'react-dom';
+            return 'vendor';
+          }
+        }
+      }
+    }
   }
 });

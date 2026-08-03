@@ -1,17 +1,24 @@
-import React, { Component } from 'react';
+import React, { Component, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DomainProvider } from './contexts/DomainContext';
-import Home from './pages/Home/Home';
-import Login from './pages/Login/Login';
-import Register from './pages/Register/Register';
-// Unified Login and Register views replace separate NPP auth pages
-import ScanQR from './pages/Scan/ScanQR';
-import SelectStore from './pages/SelectStore/SelectStore';
-import Success from './pages/Success/Success';
-import History from './pages/History/History';
-import ScanChoice from './pages/ScanChoice/ScanChoice';
-import ProductInfo from './pages/ProductInfo/ProductInfo';
+
+const Home = lazy(() => import('./pages/Home/Home'));
+const Login = lazy(() => import('./pages/Login/Login'));
+const Register = lazy(() => import('./pages/Register/Register'));
+const ScanQR = lazy(() => import('./pages/Scan/ScanQR'));
+const SelectStore = lazy(() => import('./pages/SelectStore/SelectStore'));
+const Success = lazy(() => import('./pages/Success/Success'));
+const History = lazy(() => import('./pages/History/History'));
+const ScanChoice = lazy(() => import('./pages/ScanChoice/ScanChoice'));
+const ProductInfo = lazy(() => import('./pages/ProductInfo/ProductInfo'));
+
+const AppLoader = () => (
+  <div className="app-loading">
+    <div className="loading-ring" />
+    <p style={{ color: '#546E7A', fontSize: '0.9rem' }}>Đang tải...</p>
+  </div>
+);
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -140,67 +147,69 @@ function PublicRoute({ children }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/home" element={<Home />} />
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        }
-      />
-      <Route path="/npp/login" element={<Navigate to="/login?tab=npp" replace />} />
-      <Route path="/npp/register" element={<Navigate to="/register?tab=npp" replace />} />
-      <Route
-        path="/scan"
-        element={
-          <NppProtectedRoute>
-            <ScanQR />
-          </NppProtectedRoute>
-        }
-      />
-      <Route
-        path="/select-store"
-        element={
-          <NppProtectedRoute>
-            <SelectStore />
-          </NppProtectedRoute>
-        }
-      />
-      <Route
-        path="/success"
-        element={
-          <NppProtectedRoute>
-            <Success />
-          </NppProtectedRoute>
-        }
-      />
-      <Route
-        path="/history"
-        element={
-          <NppProtectedRoute>
-            <History />
-          </NppProtectedRoute>
-        }
-      />
-      <Route path="/trace/:code" element={<ScanChoice />} />
-      {/* Alias routes – tương thích URL format cũ và custom domain */}
-      <Route path="/scan/:code" element={<ScanChoice />} />
-      <Route path="/qrcode/:code" element={<ScanChoice />} />
-      <Route path="/temqr/:code" element={<ScanChoice />} />
-      <Route path="/product-info" element={<ProductInfo />} />
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route path="*" element={<Navigate to="/home" replace />} />
-    </Routes>
+    <Suspense fallback={<AppLoader />}>
+      <Routes>
+        <Route path="/home" element={<Home />} />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          }
+        />
+        <Route path="/npp/login" element={<Navigate to="/login?tab=npp" replace />} />
+        <Route path="/npp/register" element={<Navigate to="/register?tab=npp" replace />} />
+        <Route
+          path="/scan"
+          element={
+            <NppProtectedRoute>
+              <ScanQR />
+            </NppProtectedRoute>
+          }
+        />
+        <Route
+          path="/select-store"
+          element={
+            <NppProtectedRoute>
+              <SelectStore />
+            </NppProtectedRoute>
+          }
+        />
+        <Route
+          path="/success"
+          element={
+            <NppProtectedRoute>
+              <Success />
+            </NppProtectedRoute>
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <NppProtectedRoute>
+              <History />
+            </NppProtectedRoute>
+          }
+        />
+        <Route path="/trace/:code" element={<ScanChoice />} />
+        {/* Alias routes – tương thích URL format cũ và custom domain */}
+        <Route path="/scan/:code" element={<ScanChoice />} />
+        <Route path="/qrcode/:code" element={<ScanChoice />} />
+        <Route path="/temqr/:code" element={<ScanChoice />} />
+        <Route path="/product-info" element={<ProductInfo />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

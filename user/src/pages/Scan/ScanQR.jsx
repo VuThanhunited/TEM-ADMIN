@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Zap, ZapOff, Clock, CheckCircle, Camera } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { ArrowLeft, Zap, ZapOff, CheckCircle, Camera } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import userApi from '../../services/api';
 import './ScanQR.css';
+
+let Html5QrcodeCtor;
 
 export default function ScanQR() {
   const navigate = useNavigate();
@@ -22,13 +23,18 @@ export default function ScanQR() {
   const startCamera = useCallback(async () => {
     setCameraStatus('loading');
     try {
+      if (!Html5QrcodeCtor) {
+        const module = await import('html5-qrcode');
+        Html5QrcodeCtor = module.Html5Qrcode;
+      }
+
       if (!html5QrcodeRef.current) {
-        html5QrcodeRef.current = new Html5Qrcode("reader");
+        html5QrcodeRef.current = new Html5QrcodeCtor('reader');
       }
 
       let cameras = [];
       try {
-        cameras = await Html5Qrcode.getCameras();
+        cameras = await Html5QrcodeCtor.getCameras();
       } catch (e) {
         console.warn('Failed to get cameras list, using constraints fallback', e);
       }
