@@ -246,18 +246,37 @@ export default function Labels() {
     }
   };
 
+  const fetchAllLabels = async (params, pageSize = 10000) => {
+    let page = 1;
+    const allLabels = [];
+
+    while (true) {
+      const res = await api.getLabels({ ...params, page, limit: pageSize });
+      if (!res?.data || res.data.length === 0) {
+        break;
+      }
+
+      allLabels.push(...res.data);
+      if (!res.pagination || page >= res.pagination.totalPages) {
+        break;
+      }
+      page += 1;
+    }
+
+    return allLabels;
+  };
+
   const handleDownloadBatch = async (batch) => {
     try {
       setExportingBatchId(batch._id);
-      // Fetch all labels for the specific batch (high limit to fetch all)
-      const res = await api.getLabels({ batchId: batch._id, limit: 500000 });
-      if (!res.data || res.data.length === 0) {
+      const labels = await fetchAllLabels({ batchId: batch._id });
+
+      if (!labels || labels.length === 0) {
         alert('Lô tem này không có dữ liệu tem nhãn nào để tải về!');
         return;
       }
 
-      // Format data for Excel export
-      const exportData = res.data.map((label, index) => ({
+      const exportData = labels.map((label, index) => ({
         'STT': index + 1,
         'Mã lô': batch.batchCode,
         'Sản phẩm': batch.productId?.name || 'Chưa gắn',
@@ -271,12 +290,10 @@ export default function Labels() {
         'Số lượt quét': label.scanCount || 0
       }));
 
-      // Generate Workbook
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh sách tem');
 
-      // Autofit columns roughly
       worksheet['!cols'] = [
         { wch: 6 },
         { wch: 15 },
@@ -302,15 +319,13 @@ export default function Labels() {
   const handleDownloadFilteredLabels = async () => {
     try {
       setExportingLabels(true);
-      // Fetch all labels matching currently active search filter (high limit to fetch all matching)
-      const res = await api.getLabels({ search, limit: 100000 });
-      if (!res.data || res.data.length === 0) {
+      const labels = await fetchAllLabels({ search });
+      if (!labels || labels.length === 0) {
         alert('Không tìm thấy dữ liệu tem nhãn nào phù hợp với bộ lọc!');
         return;
       }
 
-      // Format data
-      const exportData = res.data.map((label, index) => ({
+      const exportData = labels.map((label, index) => ({
         'STT': index + 1,
         'Mã lô': label.batchId?.batchCode || '—',
         'Sản phẩm': label.productId?.name || 'Chưa gắn',
