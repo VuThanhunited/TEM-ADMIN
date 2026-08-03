@@ -116,6 +116,8 @@ class ApiService {
   updateLabelStatus(id, data) { return this.request('PUT', `/labels/${id}/status`, data); }
   bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data); }
   fixEncryption(data) { return this.request('POST', '/labels/fix-encryption', data); }
+  exportBatchLabels(batchId) { return this.request('GET', '/labels/export', null, { batchId }); }
+  exportFilteredLabels(params) { return this.request('GET', '/labels/export-all', null, params); }
 
   // Analytics
   getOverview() { return this.request('GET', '/analytics/overview'); }

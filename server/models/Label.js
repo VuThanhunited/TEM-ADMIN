@@ -79,7 +79,9 @@ const labelSchema = new mongoose.Schema({
 });
 
 labelSchema.index({ batchId: 1 });
+labelSchema.index({ batchId: 1, serialNumber: 1 }); // Compound index for batch export with sort
 labelSchema.index({ enterpriseId: 1 });
+labelSchema.index({ enterpriseId: 1, serialNumber: 1 }); // Compound index for filtered export
 labelSchema.index({ qrCode: 1 });
 labelSchema.index({ status: 1 });
 labelSchema.index({ legacyQrCode: 1 });

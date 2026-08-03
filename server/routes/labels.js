@@ -39,6 +39,116 @@ router.get('/next-serial', auth, async (req, res) => {
   }
 });
 
+// GET /api/labels/export - Stream export all labels for a batch (optimized for large datasets)
+router.get('/export', auth, requireOwnership, async (req, res) => {
+  try {
+    const { batchId } = req.query;
+    if (!batchId) {
+      return res.status(400).json({ error: 'Thiếu tham số batchId' });
+    }
+
+    // Extend timeout for large exports (5 minutes)
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
+    const query = { batchId, ...(req.enterpriseFilter || {}) };
+
+    // Use lean cursor for memory-efficient streaming
+    const cursor = Label.find(query)
+      .select('serialNumber qrUrl smsCode activeCode legacyQrCode legacyTemQr status scanCount')
+      .sort({ serialNumber: 1 })
+      .lean()
+      .cursor({ batchSize: 2000 });
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.write('[');
+
+    let first = true;
+    let count = 0;
+
+    cursor.on('data', (doc) => {
+      const chunk = (first ? '' : ',') + JSON.stringify(doc);
+      first = false;
+      count++;
+      res.write(chunk);
+    });
+
+    cursor.on('end', () => {
+      res.write(']');
+      res.end();
+    });
+
+    cursor.on('error', (err) => {
+      console.error('Export cursor error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Lỗi xuất dữ liệu: ' + err.message });
+      } else {
+        res.end();
+      }
+    });
+
+  } catch (error) {
+    console.error('Export labels error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
+  }
+});
+
+// GET /api/labels/export-all - Stream export labels with optional search filter (for "Kích hoạt" tab)
+router.get('/export-all', auth, requireOwnership, async (req, res) => {
+  try {
+    const { search = '' } = req.query;
+
+    // Extend timeout for large exports (5 minutes)
+    req.setTimeout(300000);
+    res.setTimeout(300000);
+
+    const query = req.enterpriseFilter || {};
+    if (search) {
+      query.serialNumber = { $regex: search, $options: 'i' };
+    }
+
+    // Use lean cursor for memory-efficient streaming
+    const cursor = Label.find(query)
+      .select('serialNumber qrUrl smsCode activeCode distributorName distributorAddress status scanCount batchId productId')
+      .populate('batchId', 'batchCode')
+      .populate('productId', 'name')
+      .sort({ serialNumber: 1 })
+      .lean()
+      .cursor({ batchSize: 2000 });
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.write('[');
+
+    let first = true;
+
+    cursor.on('data', (doc) => {
+      const chunk = (first ? '' : ',') + JSON.stringify(doc);
+      first = false;
+      res.write(chunk);
+    });
+
+    cursor.on('end', () => {
+      res.write(']');
+      res.end();
+    });
+
+    cursor.on('error', (err) => {
+      console.error('Export-all cursor error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Lỗi xuất dữ liệu: ' + err.message });
+      } else {
+        res.end();
+      }
+    });
+
+  } catch (error) {
+    console.error('Export-all labels error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
+  }
+});
+
 // DELETE /api/labels/clear-all - Clear all label batches, labels, and scan logs (ADMIN ONLY)
 router.delete('/clear-all', auth, requireRole('ADMIN'), async (req, res) => {
   try {

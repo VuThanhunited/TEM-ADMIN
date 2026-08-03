@@ -246,30 +246,11 @@ export default function Labels() {
     }
   };
 
-  const fetchAllLabels = async (params, pageSize = 10000) => {
-    let page = 1;
-    const allLabels = [];
-
-    while (true) {
-      const res = await api.getLabels({ ...params, page, limit: pageSize });
-      if (!res?.data || res.data.length === 0) {
-        break;
-      }
-
-      allLabels.push(...res.data);
-      if (!res.pagination || page >= res.pagination.totalPages) {
-        break;
-      }
-      page += 1;
-    }
-
-    return allLabels;
-  };
-
   const handleDownloadBatch = async (batch) => {
     try {
       setExportingBatchId(batch._id);
-      const labels = await fetchAllLabels({ batchId: batch._id });
+      // Use dedicated streaming export API (single request, no pagination overhead)
+      const labels = await api.exportBatchLabels(batch._id);
 
       if (!labels || labels.length === 0) {
         alert('Lô tem này không có dữ liệu tem nhãn nào để tải về!');
@@ -319,7 +300,8 @@ export default function Labels() {
   const handleDownloadFilteredLabels = async () => {
     try {
       setExportingLabels(true);
-      const labels = await fetchAllLabels({ search });
+      // Use dedicated streaming export API (single request, no pagination overhead)
+      const labels = await api.exportFilteredLabels({ search });
       if (!labels || labels.length === 0) {
         alert('Không tìm thấy dữ liệu tem nhãn nào phù hợp với bộ lọc!');
         return;
