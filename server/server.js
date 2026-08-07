@@ -49,6 +49,18 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Request timeout middleware (30s) - trả lời JSON lỗi nếu request bị treo quá lâu
+app.use((req, res, next) => {
+  const TIMEOUT_MS = 30000;
+  // Bỏ qua các route export vốn cần nhiều thời gian
+  if (req.path.includes('/export')) return next();
+  res.setTimeout(TIMEOUT_MS, () => {
+    if (!res.headersSent) {
+      res.status(503).json({ error: 'Request timeout - Vui lòng thử lại' });
+    }
+  });
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -63,7 +75,24 @@ app.use('/api/label-designs', labelDesignRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  res.json({ 
+    status: dbStatus === 'connected' ? 'OK' : 'DEGRADED', 
+    db: dbStatus,
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Global Express error handler - Bắt tất cả uncaught async errors trong routes
+// Ngăn trường hợp server crash không gửi response -> client nhận empty body
+app.use((err, req, res, next) => {
+  console.error('[Global Error Handler]', err.message, err.stack);
+  if (!res.headersSent) {
+    res.status(500).json({ 
+      error: err.message || 'Lỗi máy chủ nội bộ',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Connect to MongoDB and start server
@@ -150,10 +179,22 @@ const startServer = async () => {
   app.listen(PORT, () => {
     console.log(`🚀 C2 Server running on port ${PORT}`);
 
+    // Mongoose connection health monitoring & auto-reconnect
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ MongoDB disconnected. Server will attempt to reconnect automatically...');
+    });
+    mongoose.connection.on('reconnected', () => {
+      console.log('✅ MongoDB reconnected successfully.');
+    });
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ MongoDB connection error:', err.message);
+    });
+
     // Schedule 24-hour automatic JSON backup to C2 disk
+    // Delay 2 minutes là đủ để server khởi động hoàn toàn và DB ổn định
     try {
       const runAutoBackup = require('./scripts/auto_backup');
-      setTimeout(() => { runAutoBackup(); }, 60000);
+      setTimeout(() => { runAutoBackup(); }, 2 * 60 * 1000); // 2 min delay
       setInterval(() => { runAutoBackup(); }, 24 * 60 * 60 * 1000);
     } catch (e) {
       console.error('⚠️ Could not start auto backup schedule:', e.message);
@@ -162,6 +203,17 @@ const startServer = async () => {
 };
 
 startServer();
+
+// Process-level error handlers - ngăn server crash silent đắm nết connections dở dậng
+process.on('uncaughtException', (err) => {
+  console.error('❌ [UNCAUGHT EXCEPTION]', err.message, err.stack);
+  // Không exit - server tiếp tục chạy (critical for production)
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ [UNHANDLED REJECTION] at:', promise, 'reason:', reason);
+  // Không exit - server tiếp tục chạy
+});
 
 // Cleanup on exit
 process.on('SIGINT', async () => {

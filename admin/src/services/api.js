@@ -19,7 +19,10 @@ class ApiService {
     return headers;
   }
 
-  async request(method, endpoint, data = null, params = {}) {
+  async request(method, endpoint, data = null, params = {}, _retryCount = 0) {
+    const MAX_RETRIES = 2; // Tối đa 3 lần (lần 0 + 2 lần retry)
+    const RETRY_DELAY_MS = 800; // 800ms giữa mỗi lần thử lại
+
     const url = new URL(`${this.baseUrl}${endpoint}`, window.location.origin);
     Object.entries(params).forEach(([key, val]) => {
       if (val !== undefined && val !== null && val !== '') {
@@ -36,16 +39,39 @@ class ApiService {
       options.body = JSON.stringify(data);
     }
 
-    const response = await fetch(url.toString(), options);
-    const contentType = response.headers.get('content-type') || '';
-    const text = await response.text();
+    let response;
+    let text;
+
+    try {
+      response = await fetch(url.toString(), options);
+      text = await response.text();
+    } catch (networkError) {
+      // Lỗi mạng (ECONNREFUSED, CORS, timeout...) - thử lại
+      if (_retryCount < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (_retryCount + 1)));
+        return this.request(method, endpoint, data, params, _retryCount + 1);
+      }
+      throw new Error('Không kết nối được đến máy chủ. Vui lòng kiểm tra kết nối mạng.');
+    }
+
+    // Nếu response body rỗng -> server chưa sẵn sàng hoặc crash mid-request, thử lại
+    if (!text && _retryCount < MAX_RETRIES) {
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (_retryCount + 1)));
+      return this.request(method, endpoint, data, params, _retryCount + 1);
+    }
+
     let result = null;
 
     if (text) {
       try {
         result = JSON.parse(text);
       } catch (parseError) {
-        result = { error: text };
+        // Parse thất bại vì body không phải JSON hợp lệ - thử lại nếu còn lượt
+        if (_retryCount < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (_retryCount + 1)));
+          return this.request(method, endpoint, data, params, _retryCount + 1);
+        }
+        result = { error: text || 'Phản hồi máy chủ không hợp lệ' };
       }
     }
 
@@ -56,6 +82,12 @@ class ApiService {
         localStorage.removeItem('npp_scan_user');
         alert('⚠️ CẢNH BÁO BẢO MẬT:\nTài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác.\nPhiên làm việc trên thiết bị này đã bị chấm dứt.');
         window.location.href = '/login?reason=session_superseded';
+      }
+
+      // Với lỗi 503 (server bị quá tải/timeout) thử lại
+      if (response.status === 503 && _retryCount < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (_retryCount + 1)));
+        return this.request(method, endpoint, data, params, _retryCount + 1);
       }
 
       const message = (result && (result.error || result.message)) || response.statusText || 'Có lỗi xảy ra';

@@ -22,9 +22,20 @@ const MONGODB_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb
 
 async function runAutoBackup() {
   console.log('[AUTO-BACKUP] Bắt đầu tiến trình sao lưu CSDL...');
+  const isCLI = require.main === module;
+  let ownConnection = false;
+
   try {
+    // Chỉ tạo kết nối mới nếu chưa có (chạy CLI độc lập)
+    // KHÔNG bao giờ gọi connect() khi server đang dùng mongoose singleton
     if (mongoose.connection.readyState !== 1) {
-      await mongoose.connect(MONGODB_URI);
+      if (isCLI) {
+        await mongoose.connect(MONGODB_URI);
+        ownConnection = true;
+      } else {
+        console.warn('[AUTO-BACKUP] ⚠️ Mongoose chưa kết nối. Bỏ qua backup lần này.');
+        return;
+      }
     }
 
     const [users, enterprises, products, labelBatches, labels, labelDesigns, templates, scanLogs, contacts] = await Promise.all([
@@ -97,7 +108,9 @@ async function runAutoBackup() {
   } catch (err) {
     console.error('[AUTO-BACKUP] ❌ Lỗi khi tự động sao lưu:', err);
   } finally {
-    if (require.main === module && mongoose.connection.readyState === 1) {
+    // QUAN TRỌNG: Chỉ disconnect nếu chính script này tạo ra kết nối (CLI mode)
+    // Không bao giờ disconnect khi chạy như module được import bởi server
+    if (ownConnection && mongoose.connection.readyState === 1) {
       await mongoose.disconnect();
     }
   }
