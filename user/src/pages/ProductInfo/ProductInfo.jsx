@@ -179,6 +179,13 @@ export default function ProductInfo() {
   };
 
   const [activeTheme, setActiveTheme] = useState(getInitialTheme);
+  const [descExpanded, setDescExpanded] = useState(false);
+
+  // Lấy danh sách sản phẩm liên quan từ API (cùng NSX), fallback về mảng rỗng
+  const relatedProducts = scanData?.relatedProducts || scanData?.enterpriseProducts || [];
+  const currentProductId = product?._id || product?.id;
+  // Lọc bỏ sản phẩm hiện tại ra khỏi danh sách liên quan
+  const filteredRelated = relatedProducts.filter(p => (p._id || p.id) !== currentProductId);
 
   useEffect(() => {
     if (!scanData) {
@@ -411,45 +418,30 @@ export default function ProductInfo() {
           </div>
         </div>
 
-        {/* 6. Medical Related Products */}
-        <div className="medical-related-section">
-          <div className="medical-related-header">
-            <h3 className="medical-related-title">
-              <ShoppingBag size={18} color="#00695C" style={{ marginRight: 8 }} />
-              DƯỢC PHẨM & CÙNG NHÀ SẢN XUẤT
-            </h3>
-          </div>
-          <div className="medical-related-grid">
-            <div className="medical-related-card">
-              <div className="medical-related-img">
-                <Pill size={32} color="#00897B" />
-              </div>
-              <div className="medical-related-name">Vitamin C 500mg</div>
-              <div className="medical-related-sub">Hộp 100 viên</div>
+        {/* 6. Medical Related Products - dùng data thật từ API */}
+        {filteredRelated.length > 0 && (
+          <div className="medical-related-section">
+            <div className="medical-related-header">
+              <h3 className="medical-related-title">
+                <ShoppingBag size={18} color="#00695C" style={{ marginRight: 8 }} />
+                SẢN PHẨM LIÊN QUAN
+              </h3>
             </div>
-            <div className="medical-related-card">
-              <div className="medical-related-img">
-                <Stethoscope size={32} color="#00897B" />
-              </div>
-              <div className="medical-related-name">Siro Ho Thảo Dược</div>
-              <div className="medical-related-sub">Chai 125ml</div>
-            </div>
-            <div className="medical-related-card">
-              <div className="medical-related-img">
-                <ShieldCheck size={32} color="#00897B" />
-              </div>
-              <div className="medical-related-name">Khẩu Trang Y Tế 4 Lớp</div>
-              <div className="medical-related-sub">Hộp 50 cái</div>
-            </div>
-            <div className="medical-related-card">
-              <div className="medical-related-img">
-                <Award size={32} color="#00897B" />
-              </div>
-              <div className="medical-related-name">Dung Dịch Sát Khuẩn</div>
-              <div className="medical-related-sub">Chai 500ml</div>
+            <div className="medical-related-grid">
+              {filteredRelated.map((p, idx) => (
+                <div key={p._id || idx} className="medical-related-card">
+                  <div className="medical-related-img">
+                    {p.images?.[0]
+                      ? <img src={p.images[0]} alt={p.name} style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                      : <Pill size={32} color="#00897B" />}
+                  </div>
+                  <div className="medical-related-name">{p.name}</div>
+                  {p.category && <div className="medical-related-sub">{p.category}</div>}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -538,48 +530,30 @@ export default function ProductInfo() {
           </div>
         </div>
 
-        {/* 4. Related Products Section */}
-        <div className="appliance-related-section">
-          <div className="appliance-related-header">
-            <h3 className="appliance-related-title">
-              <ShoppingBag size={22} color="#003366" style={{ marginRight: 10 }} />
-              SẢN PHẨM LIÊN QUAN
-            </h3>
-            <button className="appliance-related-more-link" onClick={() => setActiveModal('all_products')}>
-              Xem thêm <ChevronRight size={16} />
-            </button>
-          </div>
-          <div className="appliance-related-grid">
-            <div className="appliance-related-card">
-              <div className="appliance-related-img-box">
-                <img src="/pdf_assets/rel_fridge_vinsumi.png" alt="Tủ lạnh VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?w=200&auto=format&fit=crop&q=60'; }} />
-              </div>
-              <div className="appliance-related-name">Tủ lạnh VINSUMI</div>
-              <div className="appliance-related-sub">Inverter 420L</div>
+        {/* 4. Related Products Section - dùng data thật từ API */}
+        {filteredRelated.length > 0 && (
+          <div className="appliance-related-section">
+            <div className="appliance-related-header">
+              <h3 className="appliance-related-title">
+                <ShoppingBag size={22} color="#003366" style={{ marginRight: 10 }} />
+                SẢN PHẨM LIÊN QUAN
+              </h3>
             </div>
-            <div className="appliance-related-card">
-              <div className="appliance-related-img-box">
-                <img src="/pdf_assets/rel_washer_vinsumi.png" alt="Máy giặt VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?w=200&auto=format&fit=crop&q=60'; }} />
-              </div>
-              <div className="appliance-related-name">Máy giặt VINSUMI</div>
-              <div className="appliance-related-sub">10kg</div>
-            </div>
-            <div className="appliance-related-card">
-              <div className="appliance-related-img-box">
-                <img src="/pdf_assets/rel_induction_vinsumi.png" alt="Bếp từ VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1588854337236-6889d631faa8?w=200&auto=format&fit=crop&q=60'; }} />
-              </div>
-              <div className="appliance-related-name">Bếp từ VINSUMI</div>
-              <div className="appliance-related-sub">Đôi cảm ứng</div>
-            </div>
-            <div className="appliance-related-card">
-              <div className="appliance-related-img-box">
-                <img src="/pdf_assets/rel_blender_vinsumi.png" alt="Máy xay VINSUMI" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=200&auto=format&fit=crop&q=60'; }} />
-              </div>
-              <div className="appliance-related-name">Máy xay VINSUMI</div>
-              <div className="appliance-related-sub">Đa năng</div>
+            <div className="appliance-related-grid">
+              {filteredRelated.map((p, idx) => (
+                <div key={p._id || idx} className="appliance-related-card">
+                  <div className="appliance-related-img-box">
+                    {p.images?.[0]
+                      ? <img src={p.images[0]} alt={p.name} />
+                      : <Package size={32} color="#003366" />}
+                  </div>
+                  <div className="appliance-related-name">{p.name}</div>
+                  {p.category && <div className="appliance-related-sub">{p.category}</div>}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
         {/* 5. Appliance Warranty Information Card */}
         <div className="appliance-warranty-box">
@@ -668,9 +642,27 @@ export default function ProductInfo() {
             <div className="exact-tpcn-category-tag">THỰC PHẨM CHỨC NĂNG</div>
             <h1 className="exact-tpcn-title">{productName}</h1>
             <div className="exact-tpcn-divider"></div>
-            <p className="exact-tpcn-desc">
-              {product?.description && !isMock ? product.description : 'Sản phẩm hỗ trợ tăng cường sức đề kháng, bổ sung dưỡng chất từ tảo xoắn thiên nhiên.'}
-            </p>
+            {/* Chỉ hiển thị 3 dòng đầu, bấm "Chi tiết" để xem thêm */}
+            <div className="exact-tpcn-desc-wrap">
+              <p
+                className="exact-tpcn-desc"
+                style={!descExpanded ? {
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                } : {}}
+              >
+                {product?.description && !isMock ? product.description : 'Sản phẩm hỗ trợ tăng cường sức đề kháng, bổ sung dưỡng chất từ tảo xoắn thiên nhiên.'}
+              </p>
+              <button
+                className="exact-tpcn-desc-toggle"
+                onClick={() => setActiveModal('product_detail')}
+                style={{ background: 'none', border: 'none', color: '#16a34a', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', padding: '2px 0', textDecoration: 'underline' }}
+              >
+                Xem chi tiết sản phẩm →
+              </button>
+            </div>
             <div className="exact-tpcn-maker-row">
               <Building2 size={16} color="#16a34a" />
               <span>Nhà sản xuất: <strong>{makerName}</strong></span>
@@ -716,27 +708,24 @@ export default function ProductInfo() {
           </div>
         </div>
 
-        {/* 5. Sản Phẩm Cùng Nhãn Hiệu (5 hũ sản phẩm thật) */}
-        <div className="exact-tpcn-related-card">
-          <div className="exact-tpcn-related-header">
-            <h3>SẢN PHẨM CÙNG NHÃN HIỆU</h3>
-            <button onClick={() => setActiveModal('all_products')}>Xem thêm &gt;</button>
+        {/* 5. Sản Phẩm Liên Quan - dùng data thật từ API */}
+        {filteredRelated.length > 0 && (
+          <div className="exact-tpcn-related-card">
+            <div className="exact-tpcn-related-header">
+              <h3>SẢN PHẨM LIÊN QUAN</h3>
+            </div>
+            <div className="exact-tpcn-related-grid">
+              {filteredRelated.map((p, idx) => (
+                <div key={p._id || idx} className="exact-tpcn-related-item">
+                  {p.images?.[0]
+                    ? <img src={p.images[0]} alt={p.name} />
+                    : <div style={{ width: 64, height: 64, background: '#f0fdf4', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={32} color="#16a34a" /></div>}
+                  <h4>{p.name}</h4>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="exact-tpcn-related-grid">
-            {[
-              { name: 'Natural Spirulina 1000mg', img: '/images/tpcn_rel_spirulina1000.png' },
-              { name: 'Natural Omega 3 Fish Oil', img: '/images/tpcn_rel_omega3.png' },
-              { name: 'Natural Vitamin D3 2000IU', img: '/images/tpcn_rel_vitamind3.png' },
-              { name: 'Natural Collagen Beauty', img: '/images/tpcn_rel_collagen.png' },
-              { name: 'Natural C & Zinc 500mg', img: '/images/tpcn_rel_czinc.png' },
-            ].map((item, idx) => (
-              <div key={idx} className="exact-tpcn-related-item">
-                <img src={item.img} alt={item.name} />
-                <h4>{item.name}</h4>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
         {/* 6. Banner Tư vấn & Hỗ trợ */}
         <div className="exact-tpcn-support-banner">
@@ -878,31 +867,25 @@ export default function ProductInfo() {
           </div>
         </div>
 
-        {/* 6. Khối Sản Phẩm OCOP Khác (Mật ong, Mì Chũ, Bưởi, Măng) */}
-        <div className="exact-ocop-related-card">
-          <div className="exact-ocop-related-header">
-            <h3>SẢN PHẨM OCOP KHÁC</h3>
-            <button onClick={() => setActiveModal('all_products')}>Xem thêm &gt;</button>
-          </div>
-          <div className="exact-ocop-carousel-wrap">
-            <button className="exact-ocop-nav-btn prev">&lt;</button>
+        {/* 6. Sản Phẩm Liên Quan OCOP - dùng data thật từ API */}
+        {filteredRelated.length > 0 && (
+          <div className="exact-ocop-related-card">
+            <div className="exact-ocop-related-header">
+              <h3>SẢN PHẨM LIÊN QUAN</h3>
+            </div>
             <div className="exact-ocop-related-grid">
-              {[
-                { name: 'Mật ong hoa nhãn', star: 'OCOP 4 sao', img: '/images/ocop_rel_honey.png' },
-                { name: 'Mì gạo Chũ', star: 'OCOP 3 sao', img: '/images/ocop_rel_rice.png' },
-                { name: 'Bưởi da xanh Lục Ngạn', star: 'OCOP 4 sao', img: '/images/ocop_rel_pomelo.png' },
-                { name: 'Măng khô Lục Sơn', star: 'OCOP 3 sao', img: '/images/ocop_rel_bamboo.png' },
-              ].map((item, idx) => (
-                <div key={idx} className="exact-ocop-related-item">
-                  <img src={item.img} alt={item.name} />
-                  <h4>{item.name}</h4>
-                  <div className="exact-ocop-star-tag">{item.star}</div>
+              {filteredRelated.map((p, idx) => (
+                <div key={p._id || idx} className="exact-ocop-related-item">
+                  {p.images?.[0]
+                    ? <img src={p.images[0]} alt={p.name} />
+                    : <div style={{ width: 64, height: 64, background: '#f0fdf4', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Sprout size={28} color="#15803d" /></div>}
+                  <h4>{p.name}</h4>
+                  {p.category && <div className="exact-ocop-star-tag">{p.category}</div>}
                 </div>
               ))}
             </div>
-            <button className="exact-ocop-nav-btn next">&gt;</button>
           </div>
-        </div>
+        )}
 
         {/* 7. Footer Cam Kết Từ Chủ Thể & Báo Cáo Vi Phạm */}
         <div className="exact-ocop-footer-section">

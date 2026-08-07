@@ -220,13 +220,13 @@ router.get('/scan/:serial', async (req, res) => {
       scannedAt: new Date()
     });
 
-    // Fetch related products from the same enterprise (up to 6 items)
+    // Lấy TẤT CẢ sản phẩm của cùng NSX (không giới hạn số lượng)
     let relatedProducts = [];
     if (enterprise && enterprise._id) {
       relatedProducts = await Product.find({
         enterpriseId: enterprise._id,
         _id: { $ne: label.productId?._id }
-      }).limit(6).lean();
+      }).select('name category images description').lean();
     }
 
     let responseTheme = batch.theme || (template && template.layout ? template.layout : 'default');
