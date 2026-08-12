@@ -49,12 +49,20 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Request timeout middleware (30s) - trả lời JSON lỗi nếu request bị treo quá lâu
+// Request timeout middleware (60s) - trả lời JSON lỗi nếu request bị treo quá lâu
 app.use((req, res, next) => {
-  const TIMEOUT_MS = 30000;
+  const TIMEOUT_MS = 60000;
   // Bỏ qua các route export vốn cần nhiều thời gian
   if (req.path.includes('/export')) return next();
+  // Thêm Connection: keep-alive để tránh Render idle disconnect
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=65, max=1000');
   res.setTimeout(TIMEOUT_MS, () => {
+    if (!res.headersSent) {
+      res.status(503).json({ error: 'Request timeout - Vui lòng thử lại' });
+    }
+  });
+  req.setTimeout(TIMEOUT_MS, () => {
     if (!res.headersSent) {
       res.status(503).json({ error: 'Request timeout - Vui lòng thử lại' });
     }
@@ -83,12 +91,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Ping endpoint – trả về 200 người lập tức, dùng để warmup Render cold-start
+app.get('/api/ping', (req, res) => {
+  res.json({ ok: true, ts: Date.now() });
+});
+
 // Global Express error handler - Bắt tất cả uncaught async errors trong routes
 // Ngăn trường hợp server crash không gửi response -> client nhận empty body
 app.use((err, req, res, next) => {
   console.error('[Global Error Handler]', err.message, err.stack);
   if (!res.headersSent) {
-    res.status(500).json({ 
+    res.status(500).json({
       error: err.message || 'Lỗi máy chủ nội bộ',
       timestamp: new Date().toISOString()
     });
@@ -96,132 +109,79 @@ app.use((err, req, res, next) => {
 });
 
 // Connect to MongoDB and start server
-let mongoServer = null;
-
 const startServer = async () => {
-  const path = require('path');
-  const fs = require('fs');
   const runAutoRestore = require('./scripts/restore_backup');
-  let connected = false;
+  const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_db';
 
-  // 1. Prioritize Primary Database on C2 Server Local (Direct MongoDB or Local Persistent Engine)
-  const isC2Server = process.env.C2_SERVER === 'true' || process.env.PASSENGER_APP_ENV || __dirname.includes('giaiphapqrcode');
-  const targetMongoUri = process.env.MONGO_URI;
-
-  if (targetMongoUri && !targetMongoUri.includes('mongodb.net')) {
-    try {
-      console.log(`📡 Connecting to Primary Local MongoDB on C2: ${targetMongoUri}...`);
-      await mongoose.connect(targetMongoUri, { serverSelectionTimeoutMS: 5000 });
-      console.log('✅ Connected to Primary Local MongoDB on C2 Server');
-      connected = true;
-    } catch (err) {
-      console.warn('⚠️ Direct local MongoDB connection failed:', err.message);
-    }
-  }
-
-  // 2. Persistent C2 Storage Fallback (MongoMemoryServer with dbPath on C2 Disk)
-  if (!connected) {
-    try {
-      console.log('🚀 Starting Primary Persistent Storage Engine on C2 Server disk...');
-      const { MongoMemoryServer } = require('mongodb-memory-server');
-      const c2DbPath = path.join(__dirname, 'mongodb_data');
-      if (!fs.existsSync(c2DbPath)) {
-        fs.mkdirSync(c2DbPath, { recursive: true });
-      }
-
-      mongoServer = await MongoMemoryServer.create({
-        instance: {
-          dbPath: c2DbPath,
-          storageEngine: 'wiredTiger'
-        }
-      });
-      const c2LocalUri = mongoServer.getUri();
-      console.log(`✅ Connected to Primary Persistent C2 Database at: ${c2DbPath}`);
-      await mongoose.connect(c2LocalUri);
-      connected = true;
-    } catch (memErr) {
-      console.warn('⚠️ Could not start local persistent C2 engine:', memErr.message);
-    }
-  }
-
-  // 3. Fallback to Atlas/External MONGO_URI if local C2 engine is unavailable
-  if (!connected && targetMongoUri) {
-    try {
-      console.log(`📡 Secondary Fallback: Connecting to MongoDB Cloud/Atlas...`);
-      await mongoose.connect(targetMongoUri, { serverSelectionTimeoutMS: 15000 });
-      console.log('✅ Connected to Secondary MongoDB Cloud/Atlas');
-      connected = true;
-    } catch (cloudErr) {
-      console.error('❌ Cloud Database connection failed:', cloudErr.message);
-    }
-  }
-
-  if (!connected) {
-    console.error('❌ CRITICAL: Unable to initialize any database engine on C2 Server.');
+  try {
+    console.log(`📡 Connecting to MongoDB: ${MONGO_URI.replace(/\/\/.*@/, '//<credentials>@')}...`);
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 20000,
+      connectTimeoutMS: 20000,
+      socketTimeoutMS: 60000,
+      maxPoolSize: 10,
+      minPoolSize: 1,
+    });
+    console.log('✅ MongoDB connected successfully');
+  } catch (err) {
+    console.error('❌ MongoDB connection failed:', err.message);
+    // Không exit ngay – Passenger có thể restart lại
     process.exit(1);
   }
 
-  // 4. Auto-Restore Database if empty (Restores all 10,070+ labels, users, products from C2 JSON backup)
-  try {
-    const User = require('./models/User');
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      console.log('⚠️ Database is empty. Restoring full database backup on C2 Server...');
-      const restored = await runAutoRestore();
-      if (!restored) {
-        await seed(false);
-      }
-    }
-  } catch (restoreErr) {
-    console.error('⚠️ Auto-restore error:', restoreErr.message);
-  }
-
   app.listen(PORT, () => {
-    console.log(`🚀 C2 Server running on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT} | ENV: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🟢 MongoDB: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
 
-    // Mongoose connection health monitoring & auto-reconnect
-    mongoose.connection.on('disconnected', () => {
-      console.warn('⚠️ MongoDB disconnected. Server will attempt to reconnect automatically...');
-    });
-    mongoose.connection.on('reconnected', () => {
-      console.log('✅ MongoDB reconnected successfully.');
-    });
-    mongoose.connection.on('error', (err) => {
-      console.error('❌ MongoDB connection error:', err.message);
-    });
+    // Auto-restore nếu DB trống – chạy background sau 3s không block request
+    setTimeout(async () => {
+      try {
+        const User = require('./models/User');
+        const count = await User.countDocuments();
+        if (count === 0) {
+          console.log('⚠️ DB empty – starting background restore...');
+          runAutoRestore().then(ok => {
+            if (!ok) seed(false);
+          }).catch(e => console.error('⚠️ Restore error:', e.message));
+        } else {
+          console.log(`✅ DB has ${count} users – no restore needed`);
+        }
+      } catch (e) {
+        console.error('⚠️ Restore check error:', e.message);
+      }
+    }, 3000);
 
-    // Schedule 24-hour automatic JSON backup to C2 disk
-    // Delay 2 minutes là đủ để server khởi động hoàn toàn và DB ổn định
+    // Mongoose connection health monitoring
+    mongoose.connection.on('disconnected', () =>
+      console.warn('⚠️ MongoDB disconnected – will attempt reconnect...')
+    );
+    mongoose.connection.on('reconnected', () =>
+      console.log('✅ MongoDB reconnected')
+    );
+    mongoose.connection.on('error', err =>
+      console.error('❌ MongoDB error:', err.message)
+    );
+
+    // Auto backup mỗi 24h
     try {
       const runAutoBackup = require('./scripts/auto_backup');
-      setTimeout(() => { runAutoBackup(); }, 2 * 60 * 1000); // 2 min delay
-      setInterval(() => { runAutoBackup(); }, 24 * 60 * 60 * 1000);
+      setTimeout(() => runAutoBackup(), 2 * 60 * 1000);      // 2 min sau khi start
+      setInterval(() => runAutoBackup(), 24 * 60 * 60 * 1000); // mỗi 24h
     } catch (e) {
-      console.error('⚠️ Could not start auto backup schedule:', e.message);
+      console.error('⚠️ Could not schedule auto backup:', e.message);
     }
   });
 };
 
 startServer();
 
-// Process-level error handlers - ngăn server crash silent đắm nết connections dở dậng
-process.on('uncaughtException', (err) => {
-  console.error('❌ [UNCAUGHT EXCEPTION]', err.message, err.stack);
-  // Không exit - server tiếp tục chạy (critical for production)
-});
+// Process-level error handlers - giữ server không crash silent
+process.on('uncaughtException', err =>
+  console.error('❌ [UNCAUGHT EXCEPTION]', err.message, err.stack)
+);
+process.on('unhandledRejection', (reason) =>
+  console.error('❌ [UNHANDLED REJECTION]', reason)
+);
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ [UNHANDLED REJECTION] at:', promise, 'reason:', reason);
-  // Không exit - server tiếp tục chạy
-});
-
-// Cleanup on exit
-process.on('SIGINT', async () => {
-  if (mongoServer) {
-    await mongoServer.stop();
-    console.log('🛑 Local C2 Database engine stopped');
-  }
-  process.exit(0);
-});
 
 module.exports = app;

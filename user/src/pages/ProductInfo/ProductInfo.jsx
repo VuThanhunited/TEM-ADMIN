@@ -181,23 +181,27 @@ export default function ProductInfo() {
   const [activeTheme, setActiveTheme] = useState(getInitialTheme);
   const [descExpanded, setDescExpanded] = useState(false);
 
+  // Khai báo product/enterprise/label dùng optional chaining an toàn
+  const product = scanData?.product;
+  const enterprise = scanData?.enterprise;
+  const label = scanData?.label;
+
   // Lấy danh sách sản phẩm liên quan từ API (cùng NSX), fallback về mảng rỗng
   const relatedProducts = scanData?.relatedProducts || scanData?.enterpriseProducts || [];
   const currentProductId = product?._id || product?.id;
   // Lọc bỏ sản phẩm hiện tại ra khỏi danh sách liên quan
   const filteredRelated = relatedProducts.filter(p => (p._id || p.id) !== currentProductId);
 
+  // useEffect luôn phải được gọi TRƯỚC return (Rules of Hooks)
   useEffect(() => {
     if (!scanData) {
       navigate('/home', { replace: true });
     }
   }, []);
 
+  // Guard null sau khi đã gọi hết hooks
   if (!scanData) return null;
 
-  const product = scanData.product;
-  const enterprise = scanData.enterprise;
-  const label = scanData.label;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
