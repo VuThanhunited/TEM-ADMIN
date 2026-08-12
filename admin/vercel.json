@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://www.giaiphapqrcode.vn/api/:path*"
+      "destination": "https://giaiphapqrcode.vn/api/:path*"
     },
     {
       "source": "/images/:path*",
