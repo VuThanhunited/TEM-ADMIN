@@ -21,13 +21,43 @@ class UserApiService {
     return headers;
   }
 
-  async request(method, endpoint, data = null, params = {}, useNppToken = true) {
-    const url = new URL(`${this.baseUrl}${endpoint}`, window.location.origin);
-    Object.entries(params).forEach(([key, val]) => {
-      if (val !== undefined && val !== null && val !== '') {
-        url.searchParams.append(key, val);
-      }
-    });
+  // Ping để warmup server (Render cold-start) – timeout ngắn 5s, không retry
+  async ping() {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 5000);
+      const baseUrl = this.baseUrl.startsWith('http')
+        ? this.baseUrl
+        : `${window.location.origin}${this.baseUrl}`;
+      await fetch(`${baseUrl}/ping`, { signal: controller.signal });
+      clearTimeout(id);
+    } catch {
+      // Ignore ping errors – đây chỉ là warmup
+    }
+  }
+
+  async request(method, endpoint, data = null, params = {}, useNppToken = true, retries = 2) {
+    // Xây dựng URL an toàn – tránh throw khi baseUrl là relative path
+    let urlString;
+    try {
+      const base = this.baseUrl.startsWith('http')
+        ? this.baseUrl
+        : `${window.location.origin}${this.baseUrl}`;
+      const url = new URL(`${base}${endpoint}`);
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') {
+          url.searchParams.append(key, val);
+        }
+      });
+      urlString = url.toString();
+    } catch {
+      // Fallback nếu URL construction lỗi
+      const qs = Object.entries(params)
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .join('&');
+      urlString = `${this.baseUrl}${endpoint}${qs ? '?' + qs : ''}`;
+    }
 
     const options = {
       method,
@@ -38,8 +68,38 @@ class UserApiService {
       options.body = JSON.stringify(data);
     }
 
-    const response = await fetch(url.toString(), options);
-    const result = await response.json();
+    // AbortController timeout 20 giây
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    options.signal = controller.signal;
+
+    let response;
+    try {
+      response = await fetch(urlString, options);
+      clearTimeout(timeoutId);
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      // Retry khi gặp lỗi network hoặc timeout
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 1500)); // chờ 1.5s trước khi retry
+        return this.request(method, endpoint, data, params, useNppToken, retries - 1);
+      }
+      throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.');
+    }
+
+    // Parse JSON an toàn – tránh crash khi body rỗng hoặc không phải JSON
+    let result;
+    try {
+      const text = await response.text();
+      result = text ? JSON.parse(text) : {};
+    } catch {
+      // Body rỗng hoặc không phải JSON – retry nếu còn lượt
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 1500));
+        return this.request(method, endpoint, data, params, useNppToken, retries - 1);
+      }
+      throw new Error('Máy chủ trả về dữ liệu không hợp lệ. Vui lòng thử lại.');
+    }
 
     if (!response.ok) {
       if (response.status === 401 && result.code === 'SESSION_SUPERSEDED') {

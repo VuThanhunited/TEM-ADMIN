@@ -13,8 +13,10 @@ export default function ScanChoice() {
   const { isLoggedIn, user } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [error, setError] = useState('');
   const [scanData, setScanData] = useState(null);
+
 
   useEffect(() => {
     if (!code) {
@@ -28,10 +30,21 @@ export default function ScanChoice() {
     setLoading(true);
     setError('');
     try {
+      // Warmup server trước (dành cho Render cold-start)
+      setIsWarmingUp(true);
+      await userApi.ping();
+      setIsWarmingUp(false);
+
       const result = await userApi.getPublicScan(code);
       setScanData(result);
     } catch (err) {
-      setError(err.message || 'Không tìm thấy thông tin sản phẩm cho mã này');
+      setIsWarmingUp(false);
+      const msg = err.message || '';
+      if (msg.includes('kết nối') || msg.includes('timeout') || msg.includes('network')) {
+        setError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.');
+      } else {
+        setError(msg || 'Không tìm thấy thông tin sản phẩm cho mã này');
+      }
     } finally {
       setLoading(false);
     }
@@ -75,11 +88,14 @@ export default function ScanChoice() {
       </div>
 
       <div className="scan-choice-body">
-        {/* Loading */}
+        {/* Loading / Warming up */}
         {loading && (
           <div className="scan-choice-loading">
             <div className="loading-ring" />
-            <p>Đang tra cứu mã <strong>{code}</strong>...</p>
+            {isWarmingUp
+              ? <p>Đang kết nối máy chủ<span className="dot-anim">...</span></p>
+              : <p>Đang tra cứu mã <strong>{code}</strong>...</p>
+            }
           </div>
         )}
 
@@ -91,7 +107,10 @@ export default function ScanChoice() {
             </div>
             <h3>Không tìm thấy</h3>
             <p>{error}</p>
-            <button className="scan-choice-retry-btn" onClick={() => navigate('/home')}>
+            <button className="scan-choice-retry-btn" onClick={fetchScanData} style={{ marginBottom: 10 }}>
+              🔄 Thử lại
+            </button>
+            <button className="scan-choice-retry-btn" style={{ background: 'transparent', border: '1px solid #ccc', color: '#666' }} onClick={() => navigate('/home')}>
               Quay lại trang chủ
             </button>
           </div>

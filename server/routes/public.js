@@ -10,6 +10,9 @@ const Template = require('../models/Template');
 const ScanLog = require('../models/ScanLog');
 const User = require('../models/User');
 
+// URL hệ thống chính – dùng làm fallback khi batch không có customDomain
+const ADMIN_URL = process.env.USER_PAGE_URL || 'https://www.giaiphapqrcode.vn';
+
 // GET /api/public/scan/:serial
 router.get('/scan/:serial', async (req, res) => {
   try {
@@ -55,13 +58,16 @@ router.get('/scan/:serial', async (req, res) => {
             const sN = parseInt(sMatch[2], 10);
             const eN = parseInt(eMatch[2], 10);
             const padL = sMatch[2].length;
-            for (let i = sN; i <= eN; i++) {
+            // Giới hạn tối đa 100 labels per auto-repair để tránh timeout
+            const repairLimit = Math.min(eN - sN + 1, 100);
+            for (let i = sN; i < sN + repairLimit; i++) {
               serialsToRepair.push(`${pStr}${String(i).padStart(padL, '0')}`);
             }
           }
         }
         if (serialsToRepair.length === 0) {
-          for (let i = 1; i <= matchingBatch.totalLabels; i++) {
+          const repairLimit = Math.min(matchingBatch.totalLabels || 100, 100);
+          for (let i = 1; i <= repairLimit; i++) {
             serialsToRepair.push(`${numPrefix}${String(i).padStart(6, '0')}`);
           }
         }
@@ -203,22 +209,27 @@ router.get('/scan/:serial', async (req, res) => {
     }
     await batch.save();
 
-    // Create ScanLog entry
-    await ScanLog.create({
-      labelId: label._id,
-      enterpriseId: enterprise._id,
-      productId: label.productId?._id,
-      serialNumber: label.serialNumber,
-      location: {
-        lat: cityCoord.lat + (Math.random() - 0.5) * 0.1,
-        lng: cityCoord.lng + (Math.random() - 0.5) * 0.1,
-        city: selectedCity,
-        country: 'Vietnam'
-      },
-      ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
-      deviceType,
-      scannedAt: new Date()
-    });
+    // Create ScanLog entry – bọc try/catch để không crash toàn bộ request nếu log lỗi
+    try {
+      await ScanLog.create({
+        labelId: label._id,
+        enterpriseId: enterprise._id,
+        productId: label.productId?._id,
+        serialNumber: label.serialNumber,
+        location: {
+          lat: cityCoord.lat + (Math.random() - 0.5) * 0.1,
+          lng: cityCoord.lng + (Math.random() - 0.5) * 0.1,
+          city: selectedCity,
+          country: 'Vietnam'
+        },
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+        deviceType,
+        scannedAt: new Date()
+      });
+    } catch (logErr) {
+      // Log lỗi nhưng KHÔNG abort response – scan data vẫn phải trả về
+      console.error('ScanLog create error (non-fatal):', logErr.message);
+    }
 
     // Lấy TẤT CẢ sản phẩm của cùng NSX (không giới hạn số lượng)
     let relatedProducts = [];
