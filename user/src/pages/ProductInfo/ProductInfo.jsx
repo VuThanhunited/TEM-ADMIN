@@ -181,27 +181,42 @@ export default function ProductInfo() {
   const [activeTheme, setActiveTheme] = useState(getInitialTheme);
   const [descExpanded, setDescExpanded] = useState(false);
 
-  // Khai báo product/enterprise/label dùng optional chaining an toàn
+  // === TẤT CẢ HOOKS phải khai báo TRƯỚC mọi early return (Rules of Hooks) ===
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState(null);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+  const chatEndRef = useRef(null);
+
+  // Computed values (không phải hooks, an toàn để đặt đây)
   const product = scanData?.product;
   const enterprise = scanData?.enterprise;
   const label = scanData?.label;
-
-  // Lấy danh sách sản phẩm liên quan từ API (cùng NSX), fallback về mảng rỗng
   const relatedProducts = scanData?.relatedProducts || scanData?.enterpriseProducts || [];
   const currentProductId = product?._id || product?.id;
-  // Lọc bỏ sản phẩm hiện tại ra khỏi danh sách liên quan
   const filteredRelated = relatedProducts.filter(p => (p._id || p.id) !== currentProductId);
 
-  // useEffect luôn phải được gọi TRƯỚC return (Rules of Hooks)
+  // useEffect cũng phải TRƯỚC early return
   useEffect(() => {
     if (!scanData) {
       navigate('/home', { replace: true });
     }
   }, []);
 
-  // Guard null sau khi đã gọi hết hooks
-  if (!scanData) return null;
+  useEffect(() => {
+    if (chatOpen && chatMessages.length === 0 && scanData) {
+      const welcome = enterprise?.chatbotConfig?.welcomeMessage ||
+        `Chào bạn! Cảm ơn bạn đã tin dùng sản phẩm của ${enterprise?.name || 'chúng tôi'}. Bạn có câu hỏi nào về sản phẩm "${product?.name || 'này'}" không?`;
+      setChatMessages([{ sender: 'bot', text: welcome, time: new Date() }]);
+    }
+  }, [chatOpen, scanData]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Early return sau tất cả hooks
+  if (!scanData) return null;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -211,24 +226,6 @@ export default function ProductInfo() {
     });
   };
 
-  // Chatbot & Modal State
-  const [chatOpen, setChatOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState(null);
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const chatEndRef = useRef(null);
-
-  useEffect(() => {
-    if (chatOpen && chatMessages.length === 0 && scanData) {
-      const welcome = enterprise?.chatbotConfig?.welcomeMessage || 
-        `Chào bạn! Cảm ơn bạn đã tin dùng sản phẩm của ${enterprise?.name || 'chúng tôi'}. Bạn có câu hỏi nào về sản phẩm "${product?.name || 'này'}" không?`;
-      setChatMessages([{ sender: 'bot', text: welcome, time: new Date() }]);
-    }
-  }, [chatOpen, scanData]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();

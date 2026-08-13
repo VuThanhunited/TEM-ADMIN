@@ -1,0 +1,9 @@
+Options -MultiViews
+RewriteEngine On
+
+# Bỏ qua nếu file/thư mục thực sự tồn tại
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Chuyển tất cả request về index.html (React SPA routing)
+RewriteRule ^ index.html [QSA,L]
