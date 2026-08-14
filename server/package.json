@@ -2,7 +2,7 @@
   "name": "tem-admin-server",
   "version": "1.0.0",
   "description": "TEM Smart Label Admin CMS - Backend API",
-  "main": "server.js",
+  "main": "app.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",

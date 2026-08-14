@@ -16,7 +16,6 @@ const labelDesignRoutes = require('./routes/labelDesigns');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_db';
 
 // Middleware – CORS cho phép tất cả domain hệ thống
 const allowedOrigins = [
@@ -31,6 +30,7 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
 ];
+
 app.use(cors({
   origin: (origin, callback) => {
     // Cho phép requests không có origin (mobile apps, curl, Postman, server-to-server)
@@ -46,6 +46,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -54,7 +55,7 @@ app.use((req, res, next) => {
   const TIMEOUT_MS = 60000;
   // Bỏ qua các route export vốn cần nhiều thời gian
   if (req.path.includes('/export')) return next();
-  // Thêm Connection: keep-alive để tránh Render idle disconnect
+  // Thêm Connection: keep-alive để tránh idle disconnect
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Keep-Alive', 'timeout=65, max=1000');
   res.setTimeout(TIMEOUT_MS, () => {
@@ -84,20 +85,19 @@ app.use('/api/label-designs', labelDesignRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-  res.json({ 
-    status: dbStatus === 'connected' ? 'OK' : 'DEGRADED', 
+  res.json({
+    status: dbStatus === 'connected' ? 'OK' : 'DEGRADED',
     db: dbStatus,
-    timestamp: new Date().toISOString() 
+    timestamp: new Date().toISOString()
   });
 });
 
-// Ping endpoint – trả về 200 người lập tức, dùng để warmup Render cold-start
+// Ping endpoint – trả về 200 lập tức, dùng để warmup cold-start
 app.get('/api/ping', (req, res) => {
   res.json({ ok: true, ts: Date.now() });
 });
 
 // Global Express error handler - Bắt tất cả uncaught async errors trong routes
-// Ngăn trường hợp server crash không gửi response -> client nhận empty body
 app.use((err, req, res, next) => {
   console.error('[Global Error Handler]', err.message, err.stack);
   if (!res.headersSent) {
@@ -108,72 +108,90 @@ app.use((err, req, res, next) => {
   }
 });
 
-// Connect to MongoDB and start server
-const startServer = async () => {
-  const runAutoRestore = require('./scripts/restore_backup');
-  const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_db';
+// ─── MongoDB Connection with Retry ───────────────────────────────────────────
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/tem_db';
 
-  try {
-    console.log(`📡 Connecting to MongoDB: ${MONGO_URI.replace(/\/\/.*@/, '//<credentials>@')}...`);
-    await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 20000,
-      connectTimeoutMS: 20000,
-      socketTimeoutMS: 60000,
-      maxPoolSize: 10,
-      minPoolSize: 1,
-    });
-    console.log('✅ MongoDB connected successfully');
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
-    // Không exit ngay – Passenger có thể restart lại
-    process.exit(1);
-  }
-
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT} | ENV: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🟢 MongoDB: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
-
-    // Auto-restore nếu DB trống – chạy background sau 3s không block request
-    setTimeout(async () => {
-      try {
-        const User = require('./models/User');
-        const count = await User.countDocuments();
-        if (count === 0) {
-          console.log('⚠️ DB empty – starting background restore...');
-          runAutoRestore().then(ok => {
-            if (!ok) seed(false);
-          }).catch(e => console.error('⚠️ Restore error:', e.message));
-        } else {
-          console.log(`✅ DB has ${count} users – no restore needed`);
-        }
-      } catch (e) {
-        console.error('⚠️ Restore check error:', e.message);
-      }
-    }, 3000);
-
-    // Mongoose connection health monitoring
-    mongoose.connection.on('disconnected', () =>
-      console.warn('⚠️ MongoDB disconnected – will attempt reconnect...')
-    );
-    mongoose.connection.on('reconnected', () =>
-      console.log('✅ MongoDB reconnected')
-    );
-    mongoose.connection.on('error', err =>
-      console.error('❌ MongoDB error:', err.message)
-    );
-
-    // Auto backup mỗi 24h
-    try {
-      const runAutoBackup = require('./scripts/auto_backup');
-      setTimeout(() => runAutoBackup(), 2 * 60 * 1000);      // 2 min sau khi start
-      setInterval(() => runAutoBackup(), 24 * 60 * 60 * 1000); // mỗi 24h
-    } catch (e) {
-      console.error('⚠️ Could not schedule auto backup:', e.message);
-    }
-  });
+const MONGOOSE_OPTIONS = {
+  serverSelectionTimeoutMS: 30000,  // 30s để chọn server (đủ cho Atlas cold-start)
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 75000,           // 75s socket idle – khớp với Keep-Alive=65s
+  heartbeatFrequencyMS: 10000,      // ping server mỗi 10s để phát hiện disconnect sớm
+  maxPoolSize: 10,
+  minPoolSize: 2,
+  retryWrites: true,
+  retryReads: true,
+  family: 4,                        // Bắt buộc dùng IPv4, tránh IPv6 lookup timeout
 };
 
-startServer();
+async function connectMongo(attempt = 1) {
+  const MAX_ATTEMPTS = 5;
+  const DELAY_MS = Math.min(3000 * attempt, 15000); // backoff: 3s, 6s, 9s, 12s, 15s
+
+  try {
+    console.log(`📡 [MongoDB] Kết nối lần ${attempt}... (${MONGO_URI.replace(/\/\/.*@/, '//<credentials>@')})`);
+    await mongoose.connect(MONGO_URI, MONGOOSE_OPTIONS);
+    console.log('✅ [MongoDB] Kết nối thành công!');
+
+    // Khởi động server sau khi DB sẵn sàng
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT} | ENV: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🟢 MongoDB: Connected`);
+
+      // Auto-restore nếu DB trống – chạy background sau 3s không block request
+      setTimeout(async () => {
+        try {
+          const runAutoRestore = require('./scripts/restore_backup');
+          const User = require('./models/User');
+          const count = await User.countDocuments();
+          if (count === 0) {
+            console.log('⚠️ DB trống – đang khôi phục dữ liệu từ backup...');
+            runAutoRestore().then(ok => {
+              if (!ok) seed(false);
+            }).catch(e => console.error('⚠️ Restore error:', e.message));
+          } else {
+            console.log(`✅ DB có ${count} users – không cần khôi phục.`);
+          }
+        } catch (e) {
+          console.error('⚠️ Restore check error:', e.message);
+        }
+      }, 3000);
+
+      // Mongoose connection health monitoring
+      mongoose.connection.on('disconnected', () =>
+        console.warn('⚠️ [MongoDB] Mất kết nối – Mongoose sẽ tự reconnect...')
+      );
+      mongoose.connection.on('reconnected', () =>
+        console.log('✅ [MongoDB] Đã kết nối lại thành công')
+      );
+      mongoose.connection.on('error', err =>
+        console.error('❌ [MongoDB] Lỗi:', err.message)
+      );
+
+      // Auto backup mỗi 24h
+      try {
+        const runAutoBackup = require('./scripts/auto_backup');
+        setTimeout(() => runAutoBackup(), 2 * 60 * 1000);        // 2 min sau khi start
+        setInterval(() => runAutoBackup(), 24 * 60 * 60 * 1000); // mỗi 24h
+      } catch (e) {
+        console.error('⚠️ Không thể lập lịch auto backup:', e.message);
+      }
+    });
+
+  } catch (err) {
+    console.error(`❌ [MongoDB] Kết nối thất bại lần ${attempt}: ${err.message}`);
+
+    if (attempt < MAX_ATTEMPTS) {
+      console.log(`🔄 Thử lại sau ${DELAY_MS / 1000}s...`);
+      setTimeout(() => connectMongo(attempt + 1), DELAY_MS);
+    } else {
+      // Sau MAX_ATTEMPTS lần thất bại → exit để PM2/Supervisor restart sạch
+      console.error('❌ [MongoDB] Không thể kết nối sau ' + MAX_ATTEMPTS + ' lần thử. Thoát process.');
+      process.exit(1);
+    }
+  }
+}
+
+connectMongo();
 
 // Process-level error handlers - giữ server không crash silent
 process.on('uncaughtException', err =>
@@ -182,6 +200,5 @@ process.on('uncaughtException', err =>
 process.on('unhandledRejection', (reason) =>
   console.error('❌ [UNHANDLED REJECTION]', reason)
 );
-
 
 module.exports = app;
