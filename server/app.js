@@ -147,13 +147,34 @@ function loadApp() {
           }
         }, 3000);
 
-        // Auto backup mỗi 24h
+        // Auto backup local mỗi 24h
         try {
           const runAutoBackup = require('./scripts/auto_backup');
           setTimeout(() => runAutoBackup(), 2 * 60 * 1000);
           setInterval(() => runAutoBackup(), 24 * 60 * 60 * 1000);
         } catch (e) {
           console.warn('⚠️ Auto backup unavailable:', e.message);
+        }
+
+        // Backup Atlas → C2 Hosting mỗi ngày lúc 2:00 AM
+        try {
+          const runBackupToC2 = require('./scripts/backup_to_c2');
+          const scheduleC2Backup = () => {
+            const now = new Date();
+            const next2AM = new Date();
+            next2AM.setHours(2, 0, 0, 0);
+            if (next2AM <= now) next2AM.setDate(next2AM.getDate() + 1);
+            const msUntil2AM = next2AM - now;
+            const hoursUntil = (msUntil2AM / 3600000).toFixed(1);
+            console.log(`⏰ [C2 Backup] Backup tiếp theo lúc 2:00 AM (sau ${hoursUntil}h)`);
+            setTimeout(async () => {
+              await runBackupToC2();
+              setInterval(() => runBackupToC2(), 24 * 60 * 60 * 1000);
+            }, msUntil2AM);
+          };
+          scheduleC2Backup();
+        } catch (e) {
+          console.warn('⚠️ C2 Backup scheduler unavailable:', e.message);
         }
 
       } catch (err) {
