@@ -17,6 +17,33 @@ export function AuthProvider({ children }) {
         localStorage.setItem('tem_token', urlToken);
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
+
+        // Decode JWT local để set user ngay – không chờ server (tránh cold-start timeout)
+        try {
+          const payload = JSON.parse(atob(urlToken.split('.')[1]));
+          if (payload && payload.userId) {
+            // Set user tạm từ JWT payload để UI hiện ngay
+            setUser({
+              _id: payload.userId,
+              role: payload.role || 'ADMIN',
+              fullName: payload.fullName || 'Quản Trị Viên',
+              username: payload.username || 'admin',
+            });
+            setLoading(false);
+
+            // Verify ngầm với server (không block UI)
+            api.getMe().then(userData => {
+              setUser(userData);
+            }).catch(() => {
+              // Nếu server trả lỗi (token hết hạn, bị thu hồi) thì logout
+              localStorage.removeItem('tem_token');
+              setUser(null);
+            });
+            return;
+          }
+        } catch {
+          // JWT decode thất bại → thử gọi API bình thường
+        }
       }
     } catch {}
 
