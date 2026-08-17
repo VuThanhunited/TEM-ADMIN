@@ -25,4 +25,13 @@
   .main-content {
     margin-left: 0;
   }
+  .content-wrapper {
+    padding: 12px 14px 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-wrapper {
+    padding: 10px 10px 24px;
+  }
 }

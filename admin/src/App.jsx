@@ -93,9 +93,9 @@ const AppLoader = () => (
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading, isAdmin, isNPP } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div><p>Đang tải...</p></div>;
-  // Chưa đăng nhập → chuyển hướng cứng về /home để Vercel proxy sang trang giới thiệu user
+  // Chưa đăng nhập → chuyển hướng sang trang đăng nhập duy nhất
   if (!user) {
-    window.location.href = '/home';
+    window.location.href = '/login';
     return null;
   }
   if (isNPP) return <Navigate to="/npp/scan" replace />;
@@ -127,7 +127,7 @@ function CatchAllRoute() {
   const { user, isNPP } = useAuth();
   if (user && isNPP) return <Navigate to="/npp/scan" replace />;
   if (user) return <Navigate to="/dashboard" replace />;
-  window.location.href = '/home';
+  window.location.href = '/login';
   return null;
 }
 
@@ -135,7 +135,7 @@ function AppRoutes() {
   return (
     <Suspense fallback={<AppLoader />}>
       <Routes>
-        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/login" element={<Login />} />
         <Route path="/scan/:serial" element={<Scan />} />
         <Route path="/qrcode/:serial" element={<Scan />} />
         <Route path="/temqr/:serial" element={<Scan />} />

@@ -20,4 +20,9 @@
 .section-header label { font-weight: 600; color: var(--color-text-primary); }
 .distributor-row { display: grid; grid-template-columns: 1fr 1fr 120px 32px; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); align-items: center; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
-@media (max-width: 768px) { .products-grid { grid-template-columns: 1fr; } .distributor-row { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
+@media (max-width: 768px) {
+  .products-grid { grid-template-columns: 1fr; }
+  .distributor-row { grid-template-columns: 1fr; gap: 8px; }
+  .form-row { grid-template-columns: 1fr; gap: 12px; }
+  .product-overlay { opacity: 1; }
+}

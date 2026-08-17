@@ -183,3 +183,42 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+@media (max-width: 768px) {
+  .npp-history-page {
+    padding: 0;
+  }
+  .npp-history-title {
+    font-size: 1.3rem;
+  }
+  .npp-history-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .npp-stat-card {
+    min-width: auto;
+    padding: 14px 16px;
+  }
+  .npp-stat-value {
+    font-size: 1.6rem;
+  }
+  .npp-history-item {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+  .npp-history-item-icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .npp-history-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .npp-history-item-time {
+    align-self: flex-end;
+  }
+}

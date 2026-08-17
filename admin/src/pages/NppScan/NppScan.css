@@ -262,3 +262,20 @@
   height: 100% !important;
   object-fit: cover !important;
 }
+
+@media (max-width: 768px) {
+  .npp-scan-page {
+    padding: 0;
+  }
+  .npp-scan-camera-area {
+    height: 380px;
+    border-radius: 10px;
+  }
+  .npp-scan-frame {
+    width: 200px;
+    height: 200px;
+  }
+  .npp-scan-title {
+    font-size: 1.25rem;
+  }
+}
