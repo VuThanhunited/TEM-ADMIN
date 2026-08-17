@@ -5,7 +5,7 @@
       "destination": "https://tem-admin.onrender.com/api/:path*"
     },
     {
-      "source": "/((?!assets/|.*\\.).*)",
+      "source": "/((?!user-assets/|.*\\.).*)",
       "destination": "/index.html"
     }
   ]
