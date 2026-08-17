@@ -1,4 +1,7 @@
 {
+  "redirects": [
+    { "source": "/", "destination": "/home", "permanent": false }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -15,10 +18,6 @@
     {
       "source": "/pdf_assets/:path*",
       "destination": "https://tem-user-page.vercel.app/pdf_assets/:path*"
-    },
-    {
-      "source": "/",
-      "destination": "https://tem-user-page.vercel.app/home"
     },
     {
       "source": "/home",
@@ -70,3 +69,4 @@
     }
   ]
 }
+
