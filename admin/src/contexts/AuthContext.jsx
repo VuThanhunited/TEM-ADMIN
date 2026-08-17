@@ -3,52 +3,12 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
-const USER_LOGIN_URL = 'https://tem-user-page.vercel.app/login';
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadUser = useCallback(async () => {
-    // Tự động nhận diện adminToken từ URL query parameters nếu có
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const urlToken = params.get('adminToken');
-      if (urlToken) {
-        localStorage.setItem('tem_token', urlToken);
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-
-        // Decode JWT local để set user ngay – không chờ server (tránh cold-start timeout)
-        try {
-          const payload = JSON.parse(atob(urlToken.split('.')[1]));
-          if (payload && payload.userId) {
-            // Set user tạm từ JWT payload để UI hiện ngay
-            setUser({
-              _id: payload.userId,
-              role: payload.role || 'ADMIN',
-              fullName: payload.fullName || 'Quản Trị Viên',
-              username: payload.username || 'admin',
-            });
-            setLoading(false);
-
-            // Verify ngầm với server (không block UI)
-            api.getMe().then(userData => {
-              setUser(userData);
-            }).catch(() => {
-              // Nếu server trả lỗi (token hết hạn, bị thu hồi) thì logout
-              localStorage.removeItem('tem_token');
-              setUser(null);
-            });
-            return;
-          }
-        } catch {
-          // JWT decode thất bại → thử gọi API bình thường
-        }
-      }
-    } catch {}
-
     const token = localStorage.getItem('tem_token');
     if (!token) {
       setLoading(false);
@@ -57,7 +17,7 @@ export function AuthProvider({ children }) {
     try {
       const userData = await api.getMe();
       setUser(userData);
-
+      
       // Sync scan session if NPP
       if (userData?.role === 'NPP') {
         localStorage.setItem('npp_scan_token', token);
@@ -93,7 +53,7 @@ export function AuthProvider({ children }) {
       const result = await api.login({ username, password });
       localStorage.setItem('tem_token', result.token);
       setUser(result.user);
-
+      
       // Sync scan session if NPP
       if (result.user?.role === 'NPP') {
         localStorage.setItem('npp_scan_token', result.token);
@@ -111,7 +71,6 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('npp_scan_token');
     localStorage.removeItem('npp_scan_user');
     setUser(null);
-    window.location.href = USER_LOGIN_URL;
   };
 
   const isAdmin = user?.role === 'ADMIN';

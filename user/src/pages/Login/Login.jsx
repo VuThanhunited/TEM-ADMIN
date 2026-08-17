@@ -21,7 +21,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Xử lý tự động đăng nhập khi truy cập với adminToken
+  // Xử lý tự động đăng nhập khi Admin truy cập trang user với adminToken
   useEffect(() => {
     const adminToken = searchParams.get('adminToken');
     if (!adminToken) return;
@@ -29,18 +29,9 @@ export default function Login() {
     // Decode token để lấy thông tin user tạm thời
     try {
       const payload = JSON.parse(atob(adminToken.split('.')[1]));
-      const adminAppUrl = import.meta.env.VITE_ADMIN_URL ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5173'
-          : 'https://www.giaiphapqrcode.vn');
-
-      if (payload.role === 'ADMIN' || payload.role === 'NSX') {
-        window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(adminToken)}`;
-        return;
-      }
       const userData = {
         _id: payload.userId,
-        role: payload.role || 'NPP',
+        role: 'NPP',
         fullName: 'Admin (Đang xem)',
         username: 'admin',
         isAdminImpersonating: true
@@ -48,7 +39,7 @@ export default function Login() {
       login(userData, adminToken);
       navigate('/scan', { replace: true });
     } catch {
-      setError('Token không hợp lệ');
+      setError('Token Admin không hợp lệ');
     }
   }, []);
 
@@ -93,25 +84,17 @@ export default function Login() {
         result = await userApi.guestLogin({ username: username.trim(), password });
       }
 
-      const role = result.user?.role;
-      const adminAppUrl = import.meta.env.VITE_ADMIN_URL ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5173'
-          : 'https://www.giaiphapqrcode.vn');
-
-      // Admin/NSX: redirect ngay TRƯỚC khi cập nhật context user app
-      // Tránh user app navigate sang trang user trước khi redirect admin
-      if (role === 'ADMIN' || role === 'NSX') {
-        localStorage.setItem('tem_token', result.token);
-        window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(result.token)}`;
-        return;
-      }
-
-      // NPP/GUEST: cập nhật context bình thường
+      // Sync local storage in user app
       localStorage.setItem('tem_token', result.token);
       localStorage.setItem('npp_scan_token', result.token);
       localStorage.setItem('npp_scan_user', JSON.stringify(result.user));
       login(result.user, result.token);
+
+      const role = result.user?.role;
+      const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5173'
+          : window.location.origin);
 
       // Check if user came from a specific scan/store redirect
       const redirectAfter = sessionStorage.getItem('npp_redirect_after_login');
@@ -124,8 +107,11 @@ export default function Login() {
         } catch {}
       }
 
-      if (role === 'NPP') {
-        window.location.href = `${adminAppUrl}/npp/scan?adminToken=${encodeURIComponent(result.token)}`;
+      if (role === 'ADMIN' || role === 'NSX') {
+        window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
+        return;
+      } else if (role === 'NPP') {
+        window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
         return;
       } else {
         navigate('/scan', { replace: true });
