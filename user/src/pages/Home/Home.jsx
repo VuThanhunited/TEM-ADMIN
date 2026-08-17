@@ -142,7 +142,7 @@ export default function Home() {
     setMobileMenuOpen(false);
     const el = document.getElementById(id);
     if (el) {
-      const navHeight = 68;
+      const navHeight = window.innerWidth <= 768 ? 60 : 68;
       const top = el.getBoundingClientRect().top + window.scrollY - navHeight;
       window.scrollTo({ top, behavior: 'smooth' });
     }
@@ -199,12 +199,11 @@ export default function Home() {
               <button className="home-navbar-logout-btn" onClick={logout}>Đăng xuất</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
+            <div className="home-navbar-auth">
               <a
                 href="#"
                 className="home-navbar-login-btn"
                 onClick={(e) => { e.preventDefault(); navigate('/login'); }}
-                style={{ marginRight: 0 }}
               >
                 Đăng nhập
               </a>
@@ -239,49 +238,55 @@ export default function Home() {
 
       {/* Mobile menu */}
       <div className={`home-mobile-menu ${mobileMenuOpen ? 'open' : ''}`}>
-        {navLinks.map((link) => (
-          <a
-            key={link.label}
-            href={`#${link.id}`}
-            onClick={(e) => { e.preventDefault(); scrollToSection(link.id); }}
-          >
-            {link.label}
-          </a>
-        ))}
-        {isLoggedIn ? (
-          <div className="home-mobile-user-info">
-            <span className="home-mobile-user-welcome">Xin chào, {user?.fullName || user?.username}</span>
-            <button className="home-mobile-logout-btn" onClick={() => { logout(); setMobileMenuOpen(false); }}>
-              Đăng xuất
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+        <div className="home-mobile-menu-links">
+          {navLinks.map((link) => (
             <a
-              href="#"
-              className="home-mobile-login-btn"
-              onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/login'); }}
+              key={link.label}
+              href={`#${link.id}`}
+              onClick={(e) => { e.preventDefault(); scrollToSection(link.id); }}
             >
-              Đăng nhập
+              <span>{link.label}</span>
+              <ChevronRight size={16} style={{ opacity: 0.5 }} />
             </a>
-            <a
-              href="#"
-              className="home-mobile-register-btn"
-              onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/register'); }}
-            >
-              Đăng ký
-            </a>
-          </div>
-        )}
+          ))}
+        </div>
 
-        <a
-          href="#"
-          className="home-navbar-cta"
-          onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); scrollToSection('cta'); }}
-        >
-          <QrCode size={16} />
-          Quét mã ngay
-        </a>
+        <div className="home-mobile-menu-footer">
+          {isLoggedIn ? (
+            <div className="home-mobile-user-info">
+              <span className="home-mobile-user-welcome">Xin chào, <strong>{user?.fullName || user?.username}</strong></span>
+              <button className="home-mobile-logout-btn" onClick={() => { logout(); setMobileMenuOpen(false); }}>
+                Đăng xuất
+              </button>
+            </div>
+          ) : (
+            <div className="home-mobile-auth-buttons">
+              <a
+                href="#"
+                className="home-mobile-login-btn"
+                onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/login'); }}
+              >
+                Đăng nhập
+              </a>
+              <a
+                href="#"
+                className="home-mobile-register-btn"
+                onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); navigate('/register'); }}
+              >
+                Đăng ký
+              </a>
+            </div>
+          )}
+
+          <a
+            href="#"
+            className="home-mobile-scan-cta"
+            onClick={(e) => { e.preventDefault(); setMobileMenuOpen(false); scrollToSection('cta'); }}
+          >
+            <QrCode size={18} />
+            Quét mã ngay
+          </a>
+        </div>
       </div>
 
       {/* ══ HERO SECTION ══ */}
@@ -447,10 +452,12 @@ export default function Home() {
                 <div className="home-process-step-icon home-process-step-icon--green">
                   <Sprout size={30} />
                 </div>
-                <h4 className="home-process-step-title">Vùng nguyên liệu</h4>
-                <p className="home-process-step-desc">
-                  Thông tin về vùng trồng, người sản xuất, giống, nhật ký canh tác.
-                </p>
+                <div className="home-process-step-info">
+                  <h4 className="home-process-step-title">Vùng nguyên liệu</h4>
+                  <p className="home-process-step-desc">
+                    Thông tin về vùng trồng, người sản xuất, giống, nhật ký canh tác.
+                  </p>
+                </div>
               </div>
 
               <div className="home-process-arrow">
@@ -461,10 +468,12 @@ export default function Home() {
                 <div className="home-process-step-icon home-process-step-icon--blue">
                   <PackageCheck size={30} />
                 </div>
-                <h4 className="home-process-step-title">Thu hoạch – Sơ chế</h4>
-                <p className="home-process-step-desc">
-                  Thời gian thu hoạch, quy trình sơ chế, kiểm tra chất lượng.
-                </p>
+                <div className="home-process-step-info">
+                  <h4 className="home-process-step-title">Thu hoạch – Sơ chế</h4>
+                  <p className="home-process-step-desc">
+                    Thời gian thu hoạch, quy trình sơ chế, kiểm tra chất lượng.
+                  </p>
+                </div>
               </div>
 
               <div className="home-process-arrow">
@@ -475,10 +484,12 @@ export default function Home() {
                 <div className="home-process-step-icon home-process-step-icon--orange">
                   <Lock size={30} />
                 </div>
-                <h4 className="home-process-step-title">Chế biến – Đóng gói</h4>
-                <p className="home-process-step-desc">
-                  Quy trình chế biến, đóng gói, tiêu chuẩn an toàn thực phẩm.
-                </p>
+                <div className="home-process-step-info">
+                  <h4 className="home-process-step-title">Chế biến – Đóng gói</h4>
+                  <p className="home-process-step-desc">
+                    Quy trình chế biến, đóng gói, tiêu chuẩn an toàn thực phẩm.
+                  </p>
+                </div>
               </div>
 
               <div className="home-process-arrow">
@@ -489,10 +500,12 @@ export default function Home() {
                 <div className="home-process-step-icon home-process-step-icon--teal">
                   <Truck size={30} />
                 </div>
-                <h4 className="home-process-step-title">Phân phối</h4>
-                <p className="home-process-step-desc">
-                  Thông tin vận chuyển, đơn vị phân phối, điểm bán.
-                </p>
+                <div className="home-process-step-info">
+                  <h4 className="home-process-step-title">Phân phối</h4>
+                  <p className="home-process-step-desc">
+                    Thông tin vận chuyển, đơn vị phân phối, điểm bán.
+                  </p>
+                </div>
               </div>
 
               <div className="home-process-arrow">
@@ -503,10 +516,12 @@ export default function Home() {
                 <div className="home-process-step-icon home-process-step-icon--emerald">
                   <Users size={30} />
                 </div>
-                <h4 className="home-process-step-title">Người tiêu dùng</h4>
-                <p className="home-process-step-desc">
-                  Quét mã QR để xem toàn bộ hành trình của sản phẩm.
-                </p>
+                <div className="home-process-step-info">
+                  <h4 className="home-process-step-title">Người tiêu dùng</h4>
+                  <p className="home-process-step-desc">
+                    Quét mã QR để xem toàn bộ hành trình của sản phẩm.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
