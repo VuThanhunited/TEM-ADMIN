@@ -29,10 +29,10 @@ export default function Login() {
     // Decode token để lấy thông tin user tạm thời
     try {
       const payload = JSON.parse(atob(adminToken.split('.')[1]));
-      const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
+      const adminAppUrl = import.meta.env.VITE_ADMIN_URL ||
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
           ? 'http://localhost:5173'
-          : window.location.origin);
+          : 'https://www.giaiphapqrcode.vn');
 
       if (payload.role === 'ADMIN' || payload.role === 'NSX') {
         window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(adminToken)}`;
@@ -100,10 +100,10 @@ export default function Login() {
       login(result.user, result.token);
 
       const role = result.user?.role;
-      const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
+      const adminAppUrl = import.meta.env.VITE_ADMIN_URL ||
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
           ? 'http://localhost:5173'
-          : window.location.origin);
+          : 'https://www.giaiphapqrcode.vn');
 
       // Check if user came from a specific scan/store redirect
       const redirectAfter = sessionStorage.getItem('npp_redirect_after_login');
