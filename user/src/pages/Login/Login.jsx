@@ -80,41 +80,24 @@ export default function Login() {
       let result;
       if (activeTab === 'npp') {
         result = await userApi.nppLogin({ username: username.trim(), password });
+        // Chuyển hướng sang trang Admin app kèm token
+        const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5173'
+            : window.location.origin);
+        
+        window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
+        return;
       } else {
         result = await userApi.guestLogin({ username: username.trim(), password });
-      }
-
-      // Sync local storage in user app
-      localStorage.setItem('tem_token', result.token);
-      localStorage.setItem('npp_scan_token', result.token);
-      localStorage.setItem('npp_scan_user', JSON.stringify(result.user));
-      login(result.user, result.token);
-
-      const role = result.user?.role;
-      const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          ? 'http://localhost:5173'
-          : window.location.origin);
-
-      // Check if user came from a specific scan/store redirect
-      const redirectAfter = sessionStorage.getItem('npp_redirect_after_login');
-      if (redirectAfter && role === 'NPP') {
-        try {
-          const parsed = JSON.parse(redirectAfter);
-          sessionStorage.removeItem('npp_redirect_after_login');
-          navigate(parsed.path, { state: parsed.state, replace: true });
-          return;
-        } catch {}
-      }
-
-      if (role === 'ADMIN' || role === 'NSX') {
+        // Chuyển hướng sang trang Admin app kèm token
+        const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5173'
+            : window.location.origin);
+        
         window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
         return;
-      } else if (role === 'NPP') {
-        window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
-        return;
-      } else {
-        navigate('/scan', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Tên đăng nhập hoặc mật khẩu không đúng');
