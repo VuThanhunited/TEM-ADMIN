@@ -5,6 +5,10 @@
       "destination": "https://tem-admin.onrender.com/api/:path*"
     },
     {
+      "source": "/user-assets/:path*",
+      "destination": "https://tem-user-page.vercel.app/user-assets/:path*"
+    },
+    {
       "source": "/images/:path*",
       "destination": "https://tem-user-page.vercel.app/images/:path*"
     },
@@ -19,6 +23,10 @@
     {
       "source": "/home",
       "destination": "https://tem-user-page.vercel.app/home"
+    },
+    {
+      "source": "/login",
+      "destination": "https://tem-user-page.vercel.app/login"
     },
     {
       "source": "/register",
@@ -57,7 +65,7 @@
       "destination": "https://tem-user-page.vercel.app/product-info"
     },
     {
-      "source": "/((?!assets/|.*\\.).*)",
+      "source": "/((?!assets/|user-assets/|.*\\.).*)",
       "destination": "/index.html"
     }
   ]

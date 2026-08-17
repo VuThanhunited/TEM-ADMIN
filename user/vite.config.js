@@ -1,14 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Khi deploy lên Vercel qua proxy từ giaiphapqrcode.vn,
-// assets phải dùng absolute URL để browser tải đúng từ tem-user-page.vercel.app
-const isProd = process.env.NODE_ENV === 'production';
-
 export default defineConfig({
   plugins: [react()],
-  // Base URL tuyệt đối trong production để assets không bị nhầm domain khi proxy
-  base: isProd ? 'https://tem-user-page.vercel.app/' : '/',
+  // Base '/' để assets dùng đường dẫn tuyệt đối từ root (không bị CORS khi proxy qua giaiphapqrcode.vn)
+  base: '/',
   server: {
     port: 5174,
     proxy: {
@@ -20,6 +16,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    // Tên thư mục assets khác với admin (/assets/) để tránh xung đột khi proxy
+    assetsDir: 'user-assets',
     cssCodeSplit: true,
     reportCompressedSize: false,
     rollupOptions: {
