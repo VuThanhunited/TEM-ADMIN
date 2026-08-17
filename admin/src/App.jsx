@@ -90,7 +90,7 @@ const AppLoader = () => (
   </div>
 );
 
-const USER_LOGIN_URL = 'https://tem-user-page.vercel.app/login';
+const USER_LOGIN_URL = '/login';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading, isAdmin, isNPP } = useAuth();
