@@ -9,6 +9,17 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
 
   const loadUser = useCallback(async () => {
+    // Tự động nhận diện adminToken từ URL query parameters nếu có
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('adminToken');
+      if (urlToken) {
+        localStorage.setItem('tem_token', urlToken);
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } catch {}
+
     const token = localStorage.getItem('tem_token');
     if (!token) {
       setLoading(false);
