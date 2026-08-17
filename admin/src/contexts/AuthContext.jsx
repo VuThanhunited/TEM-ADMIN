@@ -3,6 +3,8 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+const USER_LOGIN_URL = 'https://tem-user-page.vercel.app/login';
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +57,7 @@ export function AuthProvider({ children }) {
     try {
       const userData = await api.getMe();
       setUser(userData);
-      
+
       // Sync scan session if NPP
       if (userData?.role === 'NPP') {
         localStorage.setItem('npp_scan_token', token);
@@ -91,7 +93,7 @@ export function AuthProvider({ children }) {
       const result = await api.login({ username, password });
       localStorage.setItem('tem_token', result.token);
       setUser(result.user);
-      
+
       // Sync scan session if NPP
       if (result.user?.role === 'NPP') {
         localStorage.setItem('npp_scan_token', result.token);
@@ -109,6 +111,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('npp_scan_token');
     localStorage.removeItem('npp_scan_user');
     setUser(null);
+    window.location.href = USER_LOGIN_URL;
   };
 
   const isAdmin = user?.role === 'ADMIN';

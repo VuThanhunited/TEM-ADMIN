@@ -90,12 +90,14 @@ const AppLoader = () => (
   </div>
 );
 
+const USER_LOGIN_URL = 'https://tem-user-page.vercel.app/login';
+
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading, isAdmin, isNPP } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div><p>Đang tải...</p></div>;
   // Chưa đăng nhập → chuyển hướng sang trang đăng nhập duy nhất
   if (!user) {
-    window.location.href = '/login';
+    window.location.href = USER_LOGIN_URL;
     return null;
   }
   if (isNPP) return <Navigate to="/npp/scan" replace />;
@@ -107,7 +109,7 @@ function NppRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
   if (!user) {
-    window.location.href = '/login?tab=npp';
+    window.location.href = USER_LOGIN_URL + '?tab=npp';
     return null;
   }
   return children;
@@ -127,7 +129,7 @@ function CatchAllRoute() {
   const { user, isNPP } = useAuth();
   if (user && isNPP) return <Navigate to="/npp/scan" replace />;
   if (user) return <Navigate to="/dashboard" replace />;
-  window.location.href = '/login';
+  window.location.href = USER_LOGIN_URL;
   return null;
 }
 
