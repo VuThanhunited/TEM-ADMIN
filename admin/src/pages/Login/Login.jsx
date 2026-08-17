@@ -4,34 +4,39 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Shield } from 'lucide-react';
 import './Login.css';
 
+// Trang này chỉ nhận adminToken từ URL (SSO callback).
+// Form đăng nhập thực sự ở: https://tem-user-page.vercel.app/login
 export default function Login() {
   const { user, loadUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [statusText, setStatusText] = useState('Đang kết nối hệ thống...');
+  const [statusText, setStatusText] = useState('Đang xác thực...');
 
   useEffect(() => {
     const adminToken = searchParams.get('adminToken');
+
     if (adminToken) {
       setStatusText('Đang xác thực tài khoản...');
-      localStorage.setItem('tem_token', adminToken);
-      loadUser()
-        .then((userData) => {
-          setStatusText('Đăng nhập thành công! Đang chuyển hướng...');
-          if (userData?.role === 'NPP') {
-            navigate('/npp/scan', { replace: true });
-          } else {
-            navigate('/dashboard', { replace: true });
-          }
-        })
-        .catch(() => {
-          // Token không hợp lệ -> Chuyển về trang đăng nhập user
-          window.location.href = '/login';
-        });
-      return;
+      // AuthContext.loadUser() đã xử lý adminToken từ URL trong AuthContext
+      // Chỉ cần navigate sau khi user được set
+      const checkUser = setInterval(() => {
+        const token = localStorage.getItem('tem_token');
+        if (token) {
+          clearInterval(checkUser);
+          navigate('/dashboard', { replace: true });
+        }
+      }, 100);
+
+      // Timeout 5 giây
+      setTimeout(() => {
+        clearInterval(checkUser);
+        navigate('/dashboard', { replace: true });
+      }, 5000);
+
+      return () => clearInterval(checkUser);
     }
 
-    // Nếu đã đăng nhập sẵn
+    // Đã đăng nhập sẵn → vào dashboard
     if (user) {
       if (user.role === 'NPP') {
         navigate('/npp/scan', { replace: true });
@@ -41,9 +46,9 @@ export default function Login() {
       return;
     }
 
-    // Không có token và chưa đăng nhập -> Chuyển ngay sang trang Đăng nhập duy nhất ở user app
-    window.location.href = '/login';
-  }, [searchParams, user, loadUser, navigate]);
+    // Không có token → redirect sang trang đăng nhập user
+    window.location.href = 'https://tem-user-page.vercel.app/login';
+  }, [searchParams, user]);
 
   return (
     <div className="login-page">

@@ -93,17 +93,25 @@ export default function Login() {
         result = await userApi.guestLogin({ username: username.trim(), password });
       }
 
-      // Sync local storage in user app
-      localStorage.setItem('tem_token', result.token);
-      localStorage.setItem('npp_scan_token', result.token);
-      localStorage.setItem('npp_scan_user', JSON.stringify(result.user));
-      login(result.user, result.token);
-
       const role = result.user?.role;
       const adminAppUrl = import.meta.env.VITE_ADMIN_URL ||
         (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
           ? 'http://localhost:5173'
           : 'https://www.giaiphapqrcode.vn');
+
+      // Admin/NSX: redirect ngay TRƯỚC khi cập nhật context user app
+      // Tránh user app navigate sang trang user trước khi redirect admin
+      if (role === 'ADMIN' || role === 'NSX') {
+        localStorage.setItem('tem_token', result.token);
+        window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(result.token)}`;
+        return;
+      }
+
+      // NPP/GUEST: cập nhật context bình thường
+      localStorage.setItem('tem_token', result.token);
+      localStorage.setItem('npp_scan_token', result.token);
+      localStorage.setItem('npp_scan_user', JSON.stringify(result.user));
+      login(result.user, result.token);
 
       // Check if user came from a specific scan/store redirect
       const redirectAfter = sessionStorage.getItem('npp_redirect_after_login');
@@ -116,10 +124,7 @@ export default function Login() {
         } catch {}
       }
 
-      if (role === 'ADMIN' || role === 'NSX') {
-        window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(result.token)}`;
-        return;
-      } else if (role === 'NPP') {
+      if (role === 'NPP') {
         window.location.href = `${adminAppUrl}/npp/scan?adminToken=${encodeURIComponent(result.token)}`;
         return;
       } else {
