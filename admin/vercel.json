@@ -1,4 +1,18 @@
 {
+  "redirects": [
+    { "source": "/", "destination": "https://tem-user-page.vercel.app/home", "permanent": false },
+    { "source": "/home", "destination": "https://tem-user-page.vercel.app/home", "permanent": false },
+    { "source": "/login", "destination": "https://tem-user-page.vercel.app/login", "permanent": false },
+    { "source": "/register", "destination": "https://tem-user-page.vercel.app/register", "permanent": false },
+    { "source": "/select-store", "destination": "https://tem-user-page.vercel.app/select-store", "permanent": false },
+    { "source": "/success", "destination": "https://tem-user-page.vercel.app/success", "permanent": false },
+    { "source": "/history", "destination": "https://tem-user-page.vercel.app/history", "permanent": false },
+    { "source": "/trace/:code", "destination": "https://tem-user-page.vercel.app/trace/:code", "permanent": false },
+    { "source": "/scan/:code", "destination": "https://tem-user-page.vercel.app/scan/:code", "permanent": false },
+    { "source": "/qrcode/:code", "destination": "https://tem-user-page.vercel.app/qrcode/:code", "permanent": false },
+    { "source": "/temqr/:code", "destination": "https://tem-user-page.vercel.app/temqr/:code", "permanent": false },
+    { "source": "/product-info", "destination": "https://tem-user-page.vercel.app/product-info", "permanent": false }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -13,56 +27,9 @@
       "destination": "https://tem-user-page.vercel.app/pdf_assets/:path*"
     },
     {
-      "source": "/",
-      "destination": "https://tem-user-page.vercel.app/home"
-    },
-    {
-      "source": "/home",
-      "destination": "https://tem-user-page.vercel.app/home"
-    },
-    {
-      "source": "/login",
-      "destination": "https://tem-user-page.vercel.app/login"
-    },
-    {
-      "source": "/register",
-      "destination": "https://tem-user-page.vercel.app/register"
-    },
-    {
-      "source": "/select-store",
-      "destination": "https://tem-user-page.vercel.app/select-store"
-    },
-    {
-      "source": "/success",
-      "destination": "https://tem-user-page.vercel.app/success"
-    },
-    {
-      "source": "/history",
-      "destination": "https://tem-user-page.vercel.app/history"
-    },
-    {
-      "source": "/trace/:code",
-      "destination": "https://tem-user-page.vercel.app/trace/:code"
-    },
-    {
-      "source": "/scan/:code",
-      "destination": "https://tem-user-page.vercel.app/scan/:code"
-    },
-    {
-      "source": "/qrcode/:code",
-      "destination": "https://tem-user-page.vercel.app/qrcode/:code"
-    },
-    {
-      "source": "/temqr/:code",
-      "destination": "https://tem-user-page.vercel.app/temqr/:code"
-    },
-    {
-      "source": "/product-info",
-      "destination": "https://tem-user-page.vercel.app/product-info"
-    },
-    {
       "source": "/((?!assets/|.*\\.).*)",
       "destination": "/index.html"
     }
   ]
 }
+
