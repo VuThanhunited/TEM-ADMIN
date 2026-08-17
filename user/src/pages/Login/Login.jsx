@@ -21,25 +21,34 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Xử lý tự động đăng nhập khi Admin truy cập trang user với adminToken
+  // Xử lý tự động đăng nhập khi nhận adminToken từ URL
   useEffect(() => {
     const adminToken = searchParams.get('adminToken');
     if (!adminToken) return;
 
-    // Decode token để lấy thông tin user tạm thời
+    // Decode token để lấy role thực sự
     try {
       const payload = JSON.parse(atob(adminToken.split('.')[1]));
+      const role = payload.role;
+
+      // ADMIN/NSX → redirect thẳng đến trang admin, không qua user app
+      if (role === 'ADMIN' || role === 'NSX') {
+        localStorage.setItem('tem_token', adminToken);
+        window.location.href = `https://www.giaiphapqrcode.vn/dashboard?adminToken=${encodeURIComponent(adminToken)}`;
+        return;
+      }
+
+      // NPP → đăng nhập vào user app scan page
       const userData = {
         _id: payload.userId,
-        role: 'NPP',
-        fullName: 'Admin (Đang xem)',
-        username: 'admin',
-        isAdminImpersonating: true
+        role: role || 'NPP',
+        fullName: payload.fullName || 'NPP User',
+        username: payload.username || '',
       };
       login(userData, adminToken);
       navigate('/scan', { replace: true });
     } catch {
-      setError('Token Admin không hợp lệ');
+      setError('Token không hợp lệ hoặc đã hết hạn');
     }
   }, []);
 
@@ -80,24 +89,31 @@ export default function Login() {
       let result;
       if (activeTab === 'npp') {
         result = await userApi.nppLogin({ username: username.trim(), password });
-        // Chuyển hướng sang trang Admin app kèm token
-        const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
-          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:5173'
-            : window.location.origin);
-        
-        window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
-        return;
       } else {
         result = await userApi.guestLogin({ username: username.trim(), password });
-        // Chuyển hướng sang trang Admin app kèm token
-        const adminAppUrl = import.meta.env.VITE_ADMIN_URL || 
-          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:5173'
-            : window.location.origin);
-        
-        window.location.href = `${adminAppUrl}/login?adminToken=${encodeURIComponent(result.token)}`;
+      }
+
+      const role = result.user?.role;
+      const ADMIN_DOMAIN = 'https://www.giaiphapqrcode.vn';
+      const adminAppUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:5173'
+        : ADMIN_DOMAIN;
+
+      if (role === 'ADMIN' || role === 'NSX') {
+        // Redirect thẳng đến admin dashboard (không qua /login nữa)
+        localStorage.setItem('tem_token', result.token);
+        window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(result.token)}`;
         return;
+      } else if (role === 'NPP') {
+        // NPP → trang quét của admin app
+        localStorage.setItem('tem_token', result.token);
+        window.location.href = `${adminAppUrl}/npp/scan?adminToken=${encodeURIComponent(result.token)}`;
+        return;
+      } else {
+        // Khách / user thường → ở lại user app
+        localStorage.setItem('tem_token', result.token);
+        login(result.user, result.token);
+        navigate('/scan', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Tên đăng nhập hoặc mật khẩu không đúng');
@@ -105,6 +121,7 @@ export default function Login() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className={`login-page ${activeTab === 'npp' ? 'npp-mode' : ''}`}>
