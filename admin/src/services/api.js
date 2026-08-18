@@ -33,11 +33,13 @@ class ApiService {
    * @param {object} params      - Query string params
    * @param {number} _retryCount - Số lần đã retry (nội bộ)
    */
-  async request(method, endpoint, data = null, params = {}, _retryCount = 0) {
+  async request(method, endpoint, data = null, params = {}, _retryCount = 0, timeoutMs = DEFAULT_TIMEOUT_MS) {
     const MAX_RETRIES = 2; // Tối đa 3 lần (lần 0 + 2 lần retry)
 
     // Exponential backoff: 800ms, 1600ms
     const RETRY_DELAY_MS = 800 * Math.pow(2, _retryCount);
+
+    const TIMEOUT = timeoutMs;
 
     const url = new URL(`${this.baseUrl}${endpoint}`, window.location.origin);
     Object.entries(params).forEach(([key, val]) => {
@@ -49,7 +51,7 @@ class ApiService {
     const options = {
       method,
       headers: this.getHeaders(),
-      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS), // Tự cancel sau 30s
+      signal: AbortSignal.timeout(TIMEOUT), // Tự cancel sau timeout
     };
 
     if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
@@ -80,7 +82,7 @@ class ApiService {
     // Nếu response body rỗng → server chưa sẵn sàng hoặc crash mid-request, thử lại
     if (!text && _retryCount < MAX_RETRIES) {
       await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-      return this.request(method, endpoint, data, params, _retryCount + 1);
+      return this.request(method, endpoint, data, params, _retryCount + 1, timeoutMs);
     }
 
     let result = null;
@@ -92,7 +94,7 @@ class ApiService {
         // Parse thất bại (HTML error page từ cPanel) – thử lại nếu còn lượt
         if (_retryCount < MAX_RETRIES) {
           await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-          return this.request(method, endpoint, data, params, _retryCount + 1);
+          return this.request(method, endpoint, data, params, _retryCount + 1, timeoutMs);
         }
         // Log để debug sau
         console.warn('[API] Phản hồi không phải JSON:', text.substring(0, 200));
@@ -113,7 +115,7 @@ class ApiService {
       // Với lỗi 503 (server bị quá tải/timeout) thử lại
       if (response.status === 503 && _retryCount < MAX_RETRIES) {
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-        return this.request(method, endpoint, data, params, _retryCount + 1);
+        return this.request(method, endpoint, data, params, _retryCount + 1, timeoutMs);
       }
 
       const message = (result && (result.error || result.message)) || response.statusText || 'Có lỗi xảy ra';
@@ -163,7 +165,7 @@ class ApiService {
   getBatches(params) { return this.request('GET', '/labels/batches', null, params); }
   getNextSerial() { return this.request('GET', '/labels/next-serial'); }
   clearAllLabels() { return this.request('DELETE', '/labels/clear-all'); }
-  createBatch(data) { return this.request('POST', '/labels/batches', data); }
+  createBatch(data) { return this.request('POST', '/labels/batches', data, {}, 0, 300000); } // 5 min timeout for large batches
   updateBatchStatus(id, data) { return this.request('PUT', `/labels/batches/${id}/status`, data); }
   mapBatchProduct(id, data) { return this.request('POST', `/labels/batches/${id}/map-product`, data); }
   renewBatch(id, data) { return this.request('PUT', `/labels/batches/${id}/renew`, data); }

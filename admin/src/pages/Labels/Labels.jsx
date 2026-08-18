@@ -751,8 +751,10 @@ export default function Labels() {
                     <td><span className="serial-range">{batch.serialStart} → {batch.serialEnd}</span></td>
                     <td>{formatDate(batch.createdDate || batch.createdAt)}</td>
                     <td className={new Date(batch.expiryDate) < new Date() ? 'text-danger' : ''}>{formatDate(batch.expiryDate)}</td>
-                    <td>{batch.isMigrated ? <span className="badge badge-info">Di trú</span> : '—'}</td>
-                    <td><span className={`badge badge-dot ${getStatusBadge(batch.status)}`}>{getStatusLabel(batch.status)}</span></td>
+                    <td>
+                      <span className={`badge badge-dot ${getStatusBadge(batch.status)}`}>{getStatusLabel(batch.status)}</span>
+                      {batch.isMigrated && <span className="badge badge-info" style={{ marginLeft: 4 }}>Di trú</span>}
+                    </td>
                     <td>
                       <div className="action-buttons">
                         <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
@@ -976,7 +978,7 @@ export default function Labels() {
                   </div>
                   {batchForm.serialType === 'GLOBAL_SEQUENTIAL' && (
                     <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed rgba(99, 102, 241, 0.2)', fontSize: '0.85rem', color: '#6366f1' }}>
-                      ✨ Dải Serial nối tiếp dự kiến: <strong>{batchForm.prefix}{nextSerialInfo?.nextSerial || '00000001'}</strong> ➔ <strong>{batchForm.prefix}{String((nextSerialInfo?.nextNum || 1) + (batchForm.totalLabels || 0) - 1).padStart(8, '0')}</strong>
+                      ✨ Dải Serial nối tiếp dự kiến: <strong>{batchForm.prefix}{nextSerialInfo?.nextSerial || '00000001'}</strong> ➔ <strong>{batchForm.prefix}{String((nextSerialInfo?.nextStartNum || 1) + (batchForm.totalLabels || 0) - 1).padStart(8, '0')}</strong>
                     </div>
                   )}
                 </div>
