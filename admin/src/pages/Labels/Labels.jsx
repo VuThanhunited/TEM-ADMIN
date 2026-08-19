@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
@@ -66,9 +66,22 @@ export default function Labels() {
       loadEnterprises();
     }
   }, [isAdmin]);
+  // Khi search thay đổi: reset về trang 1 và load lại
+  // Khi page/tab thay đổi: load theo page hiện tại
+  const prevSearchRef = useRef(search);
   useEffect(() => {
-    if (activeTab === 'batches') loadBatches();
-    else if (activeTab === 'activate') loadLabels();
+    const searchChanged = prevSearchRef.current !== search;
+    prevSearchRef.current = search;
+    if (searchChanged) {
+      // Search mới: luôn load trang 1, reset pagination
+      setBatchPagination(p => ({ ...p, page: 1 }));
+      setLabelPagination(p => ({ ...p, page: 1 }));
+      if (activeTab === 'batches') loadBatches(1);
+      else if (activeTab === 'activate') loadLabels(1);
+    } else {
+      if (activeTab === 'batches') loadBatches();
+      else if (activeTab === 'activate') loadLabels();
+    }
   }, [activeTab, batchPagination.page, labelPagination.page, search]);
 
   const loadProducts = async () => {
@@ -123,19 +136,21 @@ export default function Labels() {
     } catch (e) {}
   };
 
-  const loadBatches = async () => {
+  const loadBatches = async (pageOverride) => {
     try {
       setLoading(true);
-      const r = await api.getBatches({ page: batchPagination.page, search });
+      const page = pageOverride ?? batchPagination.page;
+      const r = await api.getBatches({ page, search });
       setBatches(r.data);
       setBatchPagination(p => ({ ...p, ...r.pagination }));
     } catch (e) {} finally { setLoading(false); }
   };
 
-  const loadLabels = async () => {
+  const loadLabels = async (pageOverride) => {
     try {
       setLoading(true);
-      const r = await api.getLabels({ page: labelPagination.page, search, limit: 30 });
+      const page = pageOverride ?? labelPagination.page;
+      const r = await api.getLabels({ page, search, limit: 30 });
       setLabels(r.data);
       setLabelPagination(p => ({ ...p, ...r.pagination }));
     } catch (e) {} finally { setLoading(false); }
@@ -152,7 +167,9 @@ export default function Labels() {
       await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
       setShowCreateBatch(false);
       setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
-      loadBatches();
+      // Reset về trang 1 để hiện batch mới tạo (sort mới nhất đầu tiên)
+      setBatchPagination(p => ({ ...p, page: 1 }));
+      loadBatches(1);
     } catch (err) { setModalError(err.message || 'Lỗi tạo lô tem'); }
   };
 
@@ -187,7 +204,8 @@ export default function Labels() {
     }
     try {
       await api.deleteBatch(batch._id);
-      loadBatches();
+      setBatchPagination(p => ({ ...p, page: 1 }));
+      loadBatches(1);
       alert(`Đã xóa thành công lô tem "${batch.batchCode}"!`);
     } catch (err) {
       alert(err.message || 'Lỗi xóa lô tem');
