@@ -285,8 +285,13 @@ export default function Labels() {
     }
     try {
       await api.deleteBatch(batch._id);
-      setBatchPagination(p => ({ ...p, page: 1 }));
-      loadBatches(1);
+      // Nếu đang ở trang cuối và xóa hết → load lại page 1
+      const newTotal = batchPagination.total - 1;
+      const newTotalPages = Math.ceil(newTotal / 20);
+      const targetPage = curBatchPage.current > newTotalPages ? Math.max(1, newTotalPages) : curBatchPage.current;
+      curBatchPage.current = targetPage;
+      setBatchPagination(p => ({ ...p, page: targetPage }));
+      loadBatches(targetPage, curSearch.current);
       alert(`Đã xóa thành công lô tem "${batch.batchCode}"!`);
     } catch (err) {
       alert(err.message || 'Lỗi xóa lô tem');
@@ -295,7 +300,10 @@ export default function Labels() {
 
   const handleToggleStatus = async (batch) => {
     const newStatus = batch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    try { await api.updateBatchStatus(batch._id, { status: newStatus }); loadBatches(); }
+    try {
+      await api.updateBatchStatus(batch._id, { status: newStatus });
+      loadBatches(curBatchPage.current, curSearch.current);
+    }
     catch (err) { alert(err.message); }
   };
 
@@ -321,7 +329,7 @@ export default function Labels() {
       }
 
       setShowMapModal(false);
-      loadBatches();
+      loadBatches(curBatchPage.current, curSearch.current);
       alert('Cấu hình lô tem và phân phối điểm bán thành công!');
     } catch (err) { alert(err.message || 'Lỗi cấu hình lô tem'); }
   };
@@ -330,7 +338,7 @@ export default function Labels() {
     try {
       await api.renewBatch(selectedBatch._id, { months: renewMonths });
       setShowRenewModal(false);
-      loadBatches();
+      loadBatches(curBatchPage.current, curSearch.current);
     } catch (err) { alert(err.message); }
   };
 
@@ -759,7 +767,7 @@ export default function Labels() {
               Mã lô: <strong>{createSuccessToast.batchCode}</strong> — {createSuccessToast.totalLabels} tem
             </div>
             <div style={{ fontSize: '0.78rem', opacity: 0.75, marginTop: '2px' }}>
-              Đang mở form tạo lô tem mới...
+              Lô tem đã xuất hiện đầu danh sách bên dưới ✓
             </div>
           </div>
         </div>
