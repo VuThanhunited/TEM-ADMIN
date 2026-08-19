@@ -227,18 +227,17 @@ export default function Labels() {
       // 2. Hiện toast NGAY LẬP TỨC
       setCreateSuccessToast({ batchCode: createdCode, totalLabels: createdCount });
 
-      // 3. Xóa search, reset về trang 1, load lại (fire-and-forget)
+      // 3. Xóa search, reset về trang 1, load lại (await để list hiện ngay)
       curSearch.current = '';
       curBatchPage.current = 1;
       setSearch('');
       setBatchPagination(p => ({ ...p, page: 1 }));
-      loadBatches(1, '');  // Không await → toast hiện ngay không bị block
+      await loadBatches(1, '');  // Await → list cập nhật ngay, lô mới xuất hiện đầu tiên
 
-      // 4. Sau 1.5s: ẩn toast + mở modal tạo mới
+      // 4. Sau 3s: chỉ ẩn toast — KHÔNG tự mở modal (tránh khách nhầm và F5 mất data)
       setTimeout(() => {
         setCreateSuccessToast(null);
-        openCreateBatchModal();
-      }, 1500);
+      }, 3000);
 
     } catch (err) { setModalError(err.message || 'Lỗi tạo lô tem'); }
   };
