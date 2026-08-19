@@ -60,6 +60,13 @@ export default function Labels() {
     serialEnd: ''
   });
 
+  // Ref luôn trỏ tới giá trị search mới nhất – tránh stale closure
+  const searchRef = useRef(search);
+  useEffect(() => { searchRef.current = search; }, [search]);
+
+  // Ref theo dõi lần render đầu tiên
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
     loadProducts();
     loadTemplates();
@@ -67,23 +74,41 @@ export default function Labels() {
       loadEnterprises();
     }
   }, [isAdmin]);
-  // Khi search thay đổi: reset về trang 1 và load lại
-  // Khi page/tab thay đổi: load theo page hiện tại
-  const prevSearchRef = useRef(search);
+
+  // Load khi tab thay đổi
   useEffect(() => {
-    const searchChanged = prevSearchRef.current !== search;
-    prevSearchRef.current = search;
-    if (searchChanged) {
-      // Search mới: luôn load trang 1, reset pagination
-      setBatchPagination(p => ({ ...p, page: 1 }));
-      setLabelPagination(p => ({ ...p, page: 1 }));
-      if (activeTab === 'batches') loadBatches(1);
-      else if (activeTab === 'activate') loadLabels(1);
-    } else {
-      if (activeTab === 'batches') loadBatches();
-      else if (activeTab === 'activate') loadLabels();
+    if (activeTab === 'batches') loadBatches(1, searchRef.current);
+    else if (activeTab === 'activate') loadLabels(1, searchRef.current);
+  }, [activeTab]);
+
+  // Load khi page thay đổi (không chạy lần đầu vì activeTab effect đã chạy rồi)
+  const batchPage = batchPagination.page;
+  const labelPage = labelPagination.page;
+  const prevBatchPage = useRef(batchPage);
+  const prevLabelPage = useRef(labelPage);
+  useEffect(() => {
+    if (prevBatchPage.current !== batchPage) {
+      prevBatchPage.current = batchPage;
+      if (activeTab === 'batches') loadBatches(batchPage, searchRef.current);
     }
-  }, [activeTab, batchPagination.page, labelPagination.page, search]);
+  }, [batchPage]);
+  useEffect(() => {
+    if (prevLabelPage.current !== labelPage) {
+      prevLabelPage.current = labelPage;
+      if (activeTab === 'activate') loadLabels(labelPage, searchRef.current);
+    }
+  }, [labelPage]);
+
+  // Load khi search thay đổi – luôn reset về trang 1
+  const prevSearch = useRef(search);
+  useEffect(() => {
+    if (prevSearch.current === search) return; // Bỏ qua lần mount
+    prevSearch.current = search;
+    setBatchPagination(p => ({ ...p, page: 1 }));
+    setLabelPagination(p => ({ ...p, page: 1 }));
+    if (activeTab === 'batches') loadBatches(1, search);
+    else if (activeTab === 'activate') loadLabels(1, search);
+  }, [search]);
 
   const loadProducts = async () => {
     try { const r = await api.getProducts({ limit: 1000 }); setProducts(r.data || []); } catch (e) {}
@@ -137,24 +162,23 @@ export default function Labels() {
     } catch (e) {}
   };
 
-  const loadBatches = async (pageOverride) => {
+  // loadBatches và loadLabels nhận tường minh (page, searchTerm) – không phụ thuộc closure
+  const loadBatches = async (page = 1, searchTerm = searchRef.current) => {
     try {
       setLoading(true);
-      const page = pageOverride ?? batchPagination.page;
-      const r = await api.getBatches({ page, search });
+      const r = await api.getBatches({ page, search: searchTerm });
       setBatches(r.data);
-      setBatchPagination(p => ({ ...p, ...r.pagination }));
-    } catch (e) {} finally { setLoading(false); }
+      setBatchPagination(p => ({ ...p, ...r.pagination, page: r.pagination?.page ?? page }));
+    } catch (e) { console.error('[loadBatches]', e); } finally { setLoading(false); }
   };
 
-  const loadLabels = async (pageOverride) => {
+  const loadLabels = async (page = 1, searchTerm = searchRef.current) => {
     try {
       setLoading(true);
-      const page = pageOverride ?? labelPagination.page;
-      const r = await api.getLabels({ page, search, limit: 30 });
+      const r = await api.getLabels({ page, search: searchTerm, limit: 30 });
       setLabels(r.data);
-      setLabelPagination(p => ({ ...p, ...r.pagination }));
-    } catch (e) {} finally { setLoading(false); }
+      setLabelPagination(p => ({ ...p, ...r.pagination, page: r.pagination?.page ?? page }));
+    } catch (e) { console.error('[loadLabels]', e); } finally { setLoading(false); }
   };
 
   const handleCreateBatch = async (e) => {
@@ -169,13 +193,19 @@ export default function Labels() {
       const createdCount = batchForm.totalLabels;
       await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
 
-      // Đóng modal và reset form
+      // Đóng modal, reset form
       setShowCreateBatch(false);
       setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
 
-      // Reset về trang 1 để hiện batch mới tạo (sort mới nhất đầu tiên)
+      // Xóa search và reset về trang 1 – đảm bảo lô mới luôn hiện
+      prevSearch.current = ''; // Ngăn useEffect [search] chạy lại
+      searchRef.current = '';
+      setSearch('');
       setBatchPagination(p => ({ ...p, page: 1 }));
-      loadBatches(1);
+      prevBatchPage.current = 1;
+
+      // Gọi tường minh với page=1 và search=''
+      await loadBatches(1, '');
 
       // Hiện toast thành công
       setCreateSuccessToast({ batchCode: createdCode, totalLabels: createdCount });
