@@ -43,6 +43,7 @@ export default function Labels() {
   const [exportingLabels, setExportingLabels] = useState(false);
   const [showBulkMapModal, setShowBulkMapModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' });
+  const [createSuccessToast, setCreateSuccessToast] = useState(null); // { batchCode, totalLabels }
 
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [nextSerialInfo, setNextSerialInfo] = useState(null);
@@ -164,12 +165,27 @@ export default function Labels() {
       return;
     }
     try {
+      const createdCode = batchForm.batchCode;
+      const createdCount = batchForm.totalLabels;
       await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
+
+      // Đóng modal và reset form
       setShowCreateBatch(false);
       setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+
       // Reset về trang 1 để hiện batch mới tạo (sort mới nhất đầu tiên)
       setBatchPagination(p => ({ ...p, page: 1 }));
       loadBatches(1);
+
+      // Hiện toast thành công
+      setCreateSuccessToast({ batchCode: createdCode, totalLabels: createdCount });
+
+      // Tự động mở lại modal tạo tem mới sau 1.5 giây
+      setTimeout(() => {
+        setCreateSuccessToast(null);
+        openCreateBatchModal();
+      }, 1500);
+
     } catch (err) { setModalError(err.message || 'Lỗi tạo lô tem'); }
   };
 
@@ -657,6 +673,33 @@ export default function Labels() {
 
   return (
     <div className="labels-page">
+
+      {/* ── Toast thành công sau khi tạo lô tem ── */}
+      {createSuccessToast && (
+        <div style={{
+          position: 'fixed', top: '24px', right: '24px', zIndex: 9999,
+          background: 'linear-gradient(135deg, #10b981, #059669)',
+          color: '#fff', borderRadius: '12px', padding: '16px 22px',
+          boxShadow: '0 8px 32px rgba(16,185,129,0.4)',
+          display: 'flex', alignItems: 'center', gap: '12px',
+          animation: 'slideInRight 0.3s ease',
+          minWidth: '300px', maxWidth: '400px'
+        }}>
+          <CheckCircle size={22} style={{ flexShrink: 0 }} />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+              ✅ Tạo lô tem thành công!
+            </div>
+            <div style={{ fontSize: '0.82rem', opacity: 0.9, marginTop: '3px' }}>
+              Mã lô: <strong>{createSuccessToast.batchCode}</strong> — {createSuccessToast.totalLabels} tem
+            </div>
+            <div style={{ fontSize: '0.78rem', opacity: 0.75, marginTop: '2px' }}>
+              Đang mở form tạo lô tem mới...
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="page-header">
         <div>
           <h1>Quản lý Tem nhãn</h1>

@@ -18,3 +18,8 @@
 .tabs { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; }
 .tab { display: flex; align-items: center; gap: 6px; }
 @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
