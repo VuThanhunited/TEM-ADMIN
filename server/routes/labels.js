@@ -537,9 +537,7 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
     if (productId !== undefined) {
       const targetProductId = productId || null;
       updateData.productId = targetProductId;
-      if (targetProductId) {
-        updateData.status = 'ACTIVE';
-      }
+      if (targetProductId) updateData.status = 'ACTIVE';
     }
     if (theme !== undefined) updateData.theme = theme;
     if (customDomain !== undefined) updateData.customDomain = customDomain ? customDomain.trim() : null;
@@ -552,55 +550,61 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
 
     if (!batch) return res.status(404).json({ error: 'Không tìm thấy lô tem' });
 
-    // Update all labels in batch if productId changed
-    if (productId !== undefined) {
-      const targetProductId = productId || null;
-      const labelUpdate = { productId: targetProductId };
-      if (targetProductId) {
-        labelUpdate.status = 'ACTIVE';
-        labelUpdate.isActive = true;
-      }
-      await Label.updateMany({ batchId: batch._id }, labelUpdate);
-    }
-
-    // Update all labels qrUrl in batch if customDomain is updated/changed
-    if (customDomain !== undefined) {
-      const cleanDomain = customDomain ? customDomain.trim() : '';
-      const labels = await Label.find({ batchId: batch._id }).lean(); // lean() → nhanh hơn, ít RAM hơn
-      
-      // Update each label's qrUrl (preserving or generating secret qrCode)
-      const bulkOps = labels.map(label => {
-        const cleanDomain = customDomain ? customDomain.trim().replace(/\/+$/, '') : '';
-        const domainUrl = cleanDomain 
-          ? (cleanDomain.startsWith('http') ? cleanDomain : `https://${cleanDomain}`)
-          : ADMIN_URL;
-        let secretCode = label.qrCode;
-        if (!secretCode) {
-          secretCode = generateRandomCode(8).toLowerCase();
-        }
-        const newQrUrl = `${domainUrl}/scan/${secretCode}`;
-        return {
-          updateOne: {
-            filter: { _id: label._id },
-            update: { qrCode: secretCode, qrUrl: newQrUrl }
-          }
-        };
-      });
-
-      if (bulkOps.length > 0) {
-        const CHUNK = 5000;
-        for (let i = 0; i < bulkOps.length; i += CHUNK) {
-          await Label.bulkWrite(bulkOps.slice(i, i + CHUNK));
-        }
-      }
-    }
-
+    // ── Respond ngay để tránh gateway/proxy timeout (30s limit trên Render/Vercel) ──
     res.json(batch);
+
+    // ── Background job: Cập nhật labels (fire-and-forget sau khi đã respond) ──────
+    setImmediate(async () => {
+      try {
+        // 1. Update productId trên toàn bộ label trong lô nếu có thay đổi
+        if (productId !== undefined) {
+          const targetProductId = productId || null;
+          const labelUpdate = { productId: targetProductId };
+          if (targetProductId) {
+            labelUpdate.status = 'ACTIVE';
+            labelUpdate.isActive = true;
+          }
+          await Label.updateMany({ batchId: batch._id }, labelUpdate);
+        }
+
+        // 2. Update qrUrl của toàn bộ label nếu customDomain thay đổi
+        if (customDomain !== undefined) {
+          const labels = await Label.find({ batchId: batch._id }).lean();
+          const cleanDomainBase = customDomain ? customDomain.trim().replace(/\/+$/, '') : '';
+          const domainUrl = cleanDomainBase
+            ? (cleanDomainBase.startsWith('http') ? cleanDomainBase : `https://${cleanDomainBase}`)
+            : ADMIN_URL;
+
+          const bulkOps = labels.map(label => {
+            let secretCode = label.qrCode;
+            if (!secretCode) secretCode = generateRandomCode(8).toLowerCase();
+            const newQrUrl = `${domainUrl}/scan/${secretCode}`;
+            return {
+              updateOne: {
+                filter: { _id: label._id },
+                update: { qrCode: secretCode, qrUrl: newQrUrl }
+              }
+            };
+          });
+
+          if (bulkOps.length > 0) {
+            const CHUNK = 5000;
+            for (let i = 0; i < bulkOps.length; i += CHUNK) {
+              await Label.bulkWrite(bulkOps.slice(i, i + CHUNK));
+            }
+          }
+        }
+      } catch (bgErr) {
+        console.error('[map-product background job]', bgErr.message);
+      }
+    });
+
   } catch (error) {
     console.error('Map product/domain error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
   }
 });
+
 
 // PUT /api/labels/batches/:id/renew - Renew batch
 router.put('/batches/:id/renew', auth, async (req, res) => {
