@@ -36,7 +36,7 @@ class UserApiService {
     }
   }
 
-  async request(method, endpoint, data = null, params = {}, useNppToken = true, retries = 2) {
+  async request(method, endpoint, data = null, params = {}, useNppToken = true, retries = 2, timeoutMs = 45000) {
     // Xây dựng URL an toàn – tránh throw khi baseUrl là relative path
     let urlString;
     try {
@@ -68,9 +68,9 @@ class UserApiService {
       options.body = JSON.stringify(data);
     }
 
-    // AbortController timeout 20 giây
+    // AbortController timeout – tăng lên 45s để chịu được Render cold-start
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     options.signal = controller.signal;
 
     let response;
@@ -81,8 +81,8 @@ class UserApiService {
       clearTimeout(timeoutId);
       // Retry khi gặp lỗi network hoặc timeout
       if (retries > 0) {
-        await new Promise(r => setTimeout(r, 1500)); // chờ 1.5s trước khi retry
-        return this.request(method, endpoint, data, params, useNppToken, retries - 1);
+        await new Promise(r => setTimeout(r, 3000)); // chờ 3s trước khi retry
+        return this.request(method, endpoint, data, params, useNppToken, retries - 1, timeoutMs);
       }
       throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.');
     }
@@ -114,9 +114,13 @@ class UserApiService {
     return result;
   }
 
-  // Auth
+  // Auth – login dùng timeout 50s để chịu Render cold-start
   nppLogin(credentials) {
-    return this.request('POST', '/public/npp-login', credentials, {}, false);
+    return this.request('POST', '/public/npp-login', credentials, {}, false, 2, 50000);
+  }
+
+  guestLogin(credentials) {
+    return this.request('POST', '/public/guest-login', credentials, {}, false, 2, 50000);
   }
 
   // Public scan data
@@ -172,10 +176,7 @@ class UserApiService {
     return this.request('POST', '/public/guest-register', data, {}, false);
   }
 
-  // Guest (Consumer) login
-  guestLogin(credentials) {
-    return this.request('POST', '/public/guest-login', credentials, {}, false);
-  }
+
 
   // Submit Contact Form
   submitContact(data) {

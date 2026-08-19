@@ -21,6 +21,12 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Warmup ping – đánh thức Render server ngay khi trang login load
+  // để tránh cold-start timeout khi user nhấn đăng nhập
+  useEffect(() => {
+    userApi.ping();
+  }, []);
+
   // Xử lý tự động đăng nhập khi nhận adminToken từ URL
   useEffect(() => {
     const adminToken = searchParams.get('adminToken');

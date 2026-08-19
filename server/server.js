@@ -175,6 +175,28 @@ async function connectMongo(attempt = 1) {
       } catch (e) {
         console.error('⚠️ Không thể lập lịch auto backup:', e.message);
       }
+
+      // ─── Keep-Alive self-ping (tránh Render free tier sleep) ───────────────
+      // Render free tier ngủ sau 15 phút không có request → self-ping mỗi 14 phút
+      if (process.env.NODE_ENV === 'production') {
+        const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+        const KEEP_ALIVE_INTERVAL = 14 * 60 * 1000; // 14 phút
+        setInterval(async () => {
+          try {
+            const http = require('http');
+            const https = require('https');
+            const lib = SELF_URL.startsWith('https') ? https : http;
+            lib.get(`${SELF_URL}/api/ping`, (res) => {
+              console.log(`🏓 [Keep-Alive] Ping OK – status ${res.statusCode}`);
+            }).on('error', (e) => {
+              console.warn(`⚠️ [Keep-Alive] Ping failed: ${e.message}`);
+            });
+          } catch (e) {
+            console.warn('⚠️ [Keep-Alive] Error:', e.message);
+          }
+        }, KEEP_ALIVE_INTERVAL);
+        console.log(`🏓 [Keep-Alive] Self-ping mỗi 14 phút để tránh Render sleep`);
+      }
     });
 
   } catch (err) {
