@@ -566,7 +566,7 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
     // Update all labels qrUrl in batch if customDomain is updated/changed
     if (customDomain !== undefined) {
       const cleanDomain = customDomain ? customDomain.trim() : '';
-      const labels = await Label.find({ batchId: batch._id });
+      const labels = await Label.find({ batchId: batch._id }).lean(); // lean() → nhanh hơn, ít RAM hơn
       
       // Update each label's qrUrl (preserving or generating secret qrCode)
       const bulkOps = labels.map(label => {
@@ -588,7 +588,10 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
       });
 
       if (bulkOps.length > 0) {
-        await Label.bulkWrite(bulkOps);
+        const CHUNK = 5000;
+        for (let i = 0; i < bulkOps.length; i += CHUNK) {
+          await Label.bulkWrite(bulkOps.slice(i, i + CHUNK));
+        }
       }
     }
 

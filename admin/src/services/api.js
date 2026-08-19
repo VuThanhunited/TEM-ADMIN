@@ -168,14 +168,14 @@ class ApiService {
   cleanupOrphanLabels() { return this.request('DELETE', '/labels/cleanup-orphans'); }
   createBatch(data) { return this.request('POST', '/labels/batches', data, {}, 0, 300000); } // 5 min timeout for large batches
   updateBatchStatus(id, data) { return this.request('PUT', `/labels/batches/${id}/status`, data); }
-  mapBatchProduct(id, data) { return this.request('POST', `/labels/batches/${id}/map-product`, data); }
+  mapBatchProduct(id, data) { return this.request('POST', `/labels/batches/${id}/map-product`, data, {}, 0, 300000); } // 5 min timeout
   renewBatch(id, data) { return this.request('PUT', `/labels/batches/${id}/renew`, data); }
   deleteBatch(id) { return this.request('DELETE', `/labels/batches/${id}`); }
   migrateLabels(data) { return this.request('POST', '/labels/migrate', data); }
   getLabels(params) { return this.request('GET', '/labels', null, params); }
   mapLabel(id, data) { return this.request('PUT', `/labels/${id}/map`, data); }
   updateLabelStatus(id, data) { return this.request('PUT', `/labels/${id}/status`, data); }
-  bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data); }
+  bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data, {}, 0, 300000); } // 5 min timeout for large serial ranges
   fixEncryption(data) { return this.request('POST', '/labels/fix-encryption', data); }
   exportBatchLabels(batchId) { return this.request('GET', '/labels/export', null, { batchId }); }
   exportFilteredLabels(params) { return this.request('GET', '/labels/export-all', null, params); }
