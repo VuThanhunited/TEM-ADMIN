@@ -1,0 +1,57 @@
+name: 🚀 Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ── Job 1: Deploy Server lên cPanel qua SSH ─────────────────────────────────
+  deploy-server:
+    name: 📦 Deploy Server → cPanel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to cPanel via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.CPANEL_SSH_HOST }}
+          username: ${{ secrets.CPANEL_SSH_USER }}
+          password: ${{ secrets.CPANEL_SSH_PASSWORD }}
+          port: ${{ secrets.CPANEL_SSH_PORT || 22 }}
+          script: |
+            set -e
+            echo "📁 Moving to app directory..."
+            cd /home/giaiphapqrcode/nodeapp
+
+            echo "📥 Pulling latest code from GitHub..."
+            git pull origin main
+
+            echo "📦 Installing dependencies..."
+            /home/giaiphapqrcode/nodevenv/nodeapp/18/bin/npm install --production
+
+            echo "🔄 Restarting Passenger app..."
+            mkdir -p tmp
+            touch tmp/restart.txt
+
+            echo "✅ Server deploy done!"
+
+  # ── Job 2: Thông báo deploy thành công ──────────────────────────────────────
+  notify:
+    name: 🔔 Notify Deploy Status
+    runs-on: ubuntu-latest
+    needs: [deploy-server]
+    if: always()
+
+    steps:
+      - name: Report status
+        run: |
+          if [ "${{ needs.deploy-server.result }}" == "success" ]; then
+            echo "✅ Server deployed successfully to cPanel!"
+          else
+            echo "❌ Server deploy FAILED. Check logs above."
+            exit 1
+          fi
