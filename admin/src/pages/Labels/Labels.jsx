@@ -60,58 +60,75 @@ export default function Labels() {
     serialEnd: ''
   });
 
-  // Ref luôn trỏ tới giá trị search mới nhất – tránh stale closure
-  const searchRef = useRef(search);
-  useEffect(() => { searchRef.current = search; }, [search]);
-
-  // Ref theo dõi lần render đầu tiên
-  const isFirstRender = useRef(true);
-
+  // ── Khi mount + khi tab thay đổi: load dữ liệu ──────────────────────────
   useEffect(() => {
     loadProducts();
     loadTemplates();
-    if (isAdmin) {
-      loadEnterprises();
-    }
+    if (isAdmin) loadEnterprises();
   }, [isAdmin]);
 
-  // Load khi tab thay đổi
+  // Dùng ref để track search và page hiện tại (tránh stale closure)
+  const curSearch = useRef(search);
+  const curBatchPage = useRef(batchPagination.page);
+  const curLabelPage = useRef(labelPagination.page);
+  const tabMounted = useRef(false);
+
+  // Load khi tab thay đổi (và lần đầu mount)
   useEffect(() => {
-    if (activeTab === 'batches') loadBatches(1, searchRef.current);
-    else if (activeTab === 'activate') loadLabels(1, searchRef.current);
+    tabMounted.current = true;
+    if (activeTab === 'batches') loadBatches(1, curSearch.current);
+    else if (activeTab === 'activate') loadLabels(1, curSearch.current);
   }, [activeTab]);
 
-  // Load khi page thay đổi (không chạy lần đầu vì activeTab effect đã chạy rồi)
-  const batchPage = batchPagination.page;
-  const labelPage = labelPagination.page;
-  const prevBatchPage = useRef(batchPage);
-  const prevLabelPage = useRef(labelPage);
+  // Khi search thay đổi: reset về page 1 và load
   useEffect(() => {
-    if (prevBatchPage.current !== batchPage) {
-      prevBatchPage.current = batchPage;
-      if (activeTab === 'batches') loadBatches(batchPage, searchRef.current);
-    }
-  }, [batchPage]);
-  useEffect(() => {
-    if (prevLabelPage.current !== labelPage) {
-      prevLabelPage.current = labelPage;
-      if (activeTab === 'activate') loadLabels(labelPage, searchRef.current);
-    }
-  }, [labelPage]);
-
-  // Load khi search thay đổi – luôn reset về trang 1
-  const prevSearch = useRef(search);
-  useEffect(() => {
-    if (prevSearch.current === search) return; // Bỏ qua lần mount
-    prevSearch.current = search;
+    if (!tabMounted.current) return;
+    curSearch.current = search;
     setBatchPagination(p => ({ ...p, page: 1 }));
     setLabelPagination(p => ({ ...p, page: 1 }));
+    curBatchPage.current = 1;
+    curLabelPage.current = 1;
     if (activeTab === 'batches') loadBatches(1, search);
     else if (activeTab === 'activate') loadLabels(1, search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  // Khi page thay đổi: load trang mới (bỏ qua nếu page không thực sự đổi)
+  useEffect(() => {
+    if (!tabMounted.current) return;
+    const p = batchPagination.page;
+    if (curBatchPage.current === p) return;
+    curBatchPage.current = p;
+    if (activeTab === 'batches') loadBatches(p, curSearch.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchPagination.page]);
+
+  useEffect(() => {
+    if (!tabMounted.current) return;
+    const p = labelPagination.page;
+    if (curLabelPage.current === p) return;
+    curLabelPage.current = p;
+    if (activeTab === 'activate') loadLabels(p, curSearch.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labelPagination.page]);
+
+  // ── Helper / utility functions ─────────────────────────────────────────
   const loadProducts = async () => {
     try { const r = await api.getProducts({ limit: 1000 }); setProducts(r.data || []); } catch (e) {}
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const r = await api.getTemplates();
+      setTemplates(Array.isArray(r) ? r : r.data || []);
+    } catch (e) {}
+  };
+
+  const loadEnterprises = async () => {
+    try {
+      const r = await api.getEnterprises();
+      setEnterprises(r);
+    } catch (e) {}
   };
 
   const getThemeLabel = (themeKey) => {
@@ -148,37 +165,29 @@ export default function Labels() {
     return filtered.length > 0 ? filtered : templates;
   };
 
-  const loadTemplates = async () => {
-    try {
-      const r = await api.getTemplates();
-      setTemplates(Array.isArray(r) ? r : r.data || []);
-    } catch (e) {}
-  };
-
-  const loadEnterprises = async () => {
-    try {
-      const r = await api.getEnterprises();
-      setEnterprises(r);
-    } catch (e) {}
-  };
-
-  // loadBatches và loadLabels nhận tường minh (page, searchTerm) – không phụ thuộc closure
-  const loadBatches = async (page = 1, searchTerm = searchRef.current) => {
+  // ── Load functions: nhận tường minh page + searchTerm ─────────────────
+  const loadBatches = async (page = 1, searchTerm = '') => {
     try {
       setLoading(true);
       const r = await api.getBatches({ page, search: searchTerm });
-      setBatches(r.data);
-      setBatchPagination(p => ({ ...p, ...r.pagination, page: r.pagination?.page ?? page }));
-    } catch (e) { console.error('[loadBatches]', e); } finally { setLoading(false); }
+      if (r && r.data) {
+        setBatches(r.data);
+        setBatchPagination(prev => ({ ...prev, ...r.pagination, page: r.pagination?.page ?? page }));
+        curBatchPage.current = r.pagination?.page ?? page;
+      }
+    } catch (e) { console.error('[loadBatches]', e.message); } finally { setLoading(false); }
   };
 
-  const loadLabels = async (page = 1, searchTerm = searchRef.current) => {
+  const loadLabels = async (page = 1, searchTerm = '') => {
     try {
       setLoading(true);
       const r = await api.getLabels({ page, search: searchTerm, limit: 30 });
-      setLabels(r.data);
-      setLabelPagination(p => ({ ...p, ...r.pagination, page: r.pagination?.page ?? page }));
-    } catch (e) { console.error('[loadLabels]', e); } finally { setLoading(false); }
+      if (r && r.data) {
+        setLabels(r.data);
+        setLabelPagination(prev => ({ ...prev, ...r.pagination, page: r.pagination?.page ?? page }));
+        curLabelPage.current = r.pagination?.page ?? page;
+      }
+    } catch (e) { console.error('[loadLabels]', e.message); } finally { setLoading(false); }
   };
 
   const handleCreateBatch = async (e) => {
@@ -193,24 +202,21 @@ export default function Labels() {
       const createdCount = batchForm.totalLabels;
       await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
 
-      // Đóng modal, reset form
+      // 1. Đóng modal, reset form
       setShowCreateBatch(false);
       setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
 
-      // Xóa search và reset về trang 1 – đảm bảo lô mới luôn hiện
-      prevSearch.current = ''; // Ngăn useEffect [search] chạy lại
-      searchRef.current = '';
-      setSearch('');
-      setBatchPagination(p => ({ ...p, page: 1 }));
-      prevBatchPage.current = 1;
-
-      // Gọi tường minh với page=1 và search=''
-      await loadBatches(1, '');
-
-      // Hiện toast thành công
+      // 2. Hiện toast NGAY LẬP TỨC
       setCreateSuccessToast({ batchCode: createdCode, totalLabels: createdCount });
 
-      // Tự động mở lại modal tạo tem mới sau 1.5 giây
+      // 3. Xóa search, reset về trang 1, load lại (fire-and-forget)
+      curSearch.current = '';
+      curBatchPage.current = 1;
+      setSearch('');
+      setBatchPagination(p => ({ ...p, page: 1 }));
+      loadBatches(1, '');  // Không await → toast hiện ngay không bị block
+
+      // 4. Sau 1.5s: ẩn toast + mở modal tạo mới
       setTimeout(() => {
         setCreateSuccessToast(null);
         openCreateBatchModal();
