@@ -22,16 +22,25 @@ function generateRandomCode(length = 8) {
 // ======= BATCH ROUTES =======
 
 // GET /api/labels/next-serial - Get next starting serial number for global continuous sequence
+// Tính từ cả LabelBatch.serialEnd và Label collection để tránh orphan conflict
 router.get('/next-serial', auth, async (req, res) => {
   try {
-    const lastBatch = await LabelBatch.findOne({}).sort({ createdAt: -1 });
     let nextStartNum = 1;
+
+    // Lấy số lớn nhất từ LabelBatch
+    const lastBatch = await LabelBatch.findOne({}).sort({ createdAt: -1 });
     if (lastBatch && lastBatch.serialEnd) {
       const match = lastBatch.serialEnd.match(/(\d+)$/);
-      if (match) {
-        nextStartNum = parseInt(match[1], 10) + 1;
-      }
+      if (match) nextStartNum = Math.max(nextStartNum, parseInt(match[1], 10) + 1);
     }
+
+    // Lấy số lớn nhất từ Label (phòng trường hợp có orphan labels)
+    const lastLabel = await Label.findOne({}).sort({ serialNumber: -1 }).lean();
+    if (lastLabel && lastLabel.serialNumber) {
+      const match = lastLabel.serialNumber.match(/(\d+)$/);
+      if (match) nextStartNum = Math.max(nextStartNum, parseInt(match[1], 10) + 1);
+    }
+
     const formattedNext = String(nextStartNum).padStart(8, '0');
     res.json({ nextStartNum, nextSerial: formattedNext });
   } catch (error) {
@@ -163,12 +172,39 @@ router.delete('/clear-all', auth, requireRole('ADMIN'), async (req, res) => {
   }
 });
 
+// DELETE /api/labels/cleanup-orphans - Dọn sạch labels bị orphan (không còn batchId hợp lệ) (ADMIN ONLY)
+// Dùng khi có sự cố orphan labels tích lũy do rollback thất bại
+router.delete('/cleanup-orphans', auth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    // Lấy tất cả batchId hợp lệ
+    const validBatches = await LabelBatch.find({}, { _id: 1 }).lean();
+    const validBatchIds = validBatches.map(b => b._id);
+
+    // Xóa mọi label có batchId không nằm trong danh sách hợp lệ
+    const result = await Label.deleteMany({
+      batchId: { $nin: validBatchIds }
+    });
+
+    console.info(`[cleanup-orphans] Deleted ${result.deletedCount} orphan labels`);
+    res.json({
+      message: `Đã dọn sạch ${result.deletedCount} tem nhãn orphan (không thuộc lô tem nào).`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Cleanup orphans error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
+  }
+});
+
+
 // GET /api/labels/batches
 // Allow reading batches, but only ADMIN creates them
 router.get('/batches', auth, requireOwnership, async (req, res) => {
   try {
     const { page = 1, limit = 20, status = '', search = '' } = req.query;
-    const query = req.enterpriseFilter || {};
+
+    // Bắt đầu từ một object mới để tránh mutate req.enterpriseFilter
+    const query = Object.assign({}, req.enterpriseFilter || {});
     if (status) query.status = status;
     if (search) {
       query.$or = [
@@ -185,44 +221,93 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
+    // Cảnh báo nếu search không tìm thấy trong enterprise nhưng tồn tại globally
+    // Giúp phát hiện lô tem bị gán sai enterpriseId
+    if (search && total === 0) {
+      const globalCount = await LabelBatch.countDocuments({
+        $or: [
+          { batchCode: { $regex: search, $options: 'i' } },
+          { notes: { $regex: search, $options: 'i' } }
+        ]
+      });
+      if (globalCount > 0) {
+        console.warn(`[getBatches] Lô "${search}" tồn tại globally (${globalCount}) nhưng không thuộc enterpriseFilter:`, req.enterpriseFilter);
+      }
+    }
+
     res.json({
       data: batches,
       pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / limit) }
     });
   } catch (error) {
+    console.error('[getBatches] error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 });
 
 // POST /api/labels/batches - Create batch and individual labels (ADMIN ONLY)
+// ── Helper: tìm startNum an toàn từ cả LabelBatch lẫn Label (tránh orphan serial conflict) ──
+async function getNextStartNum(cleanPrefix) {
+  let startNum = 1;
+
+  // 1. Lấy số lớn nhất từ serialEnd của batch gần nhất
+  const lastBatch = await LabelBatch.findOne({}).sort({ createdAt: -1 }).lean();
+  if (lastBatch && lastBatch.serialEnd) {
+    const m = lastBatch.serialEnd.match(/(\d+)$/);
+    if (m) startNum = Math.max(startNum, parseInt(m[1], 10) + 1);
+  }
+
+  // 2. Lấy số lớn nhất từ Label (bắt được orphan labels còn sót sau rollback)
+  const labelQuery = cleanPrefix
+    ? { serialNumber: { $regex: `^${cleanPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` } }
+    : {};
+  const lastLabel = await Label.findOne(labelQuery).sort({ serialNumber: -1 }).lean();
+  if (lastLabel && lastLabel.serialNumber) {
+    const m = lastLabel.serialNumber.match(/(\d+)$/);
+    if (m) startNum = Math.max(startNum, parseInt(m[1], 10) + 1);
+  }
+
+  return startNum;
+}
+
 router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   let createdBatch = null;
   try {
-    const { batchCode, totalLabels, prefix = '', serialType = 'GLOBAL_SEQUENTIAL', productId, templateId, theme, expiryDate, notes, customDomain } = req.body;
-    const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
+    const {
+      batchCode, totalLabels, prefix = '', serialType = 'GLOBAL_SEQUENTIAL',
+      productId, templateId, theme, expiryDate, notes, customDomain
+    } = req.body;
 
+    const enterpriseId = req.user.role === 'ADMIN'
+      ? (req.body.enterpriseId || req.user.enterpriseId)
+      : req.user.enterpriseId;
+
+    // ── Validate đầu vào ──────────────────────────────────────────────────────
     if (!enterpriseId) {
       return res.status(400).json({ error: 'Thiếu thông tin doanh nghiệp sở hữu' });
     }
-
     if (!batchCode || !String(batchCode).trim()) {
       return res.status(400).json({ error: 'Vui lòng nhập Mã lô tem' });
     }
 
     const cleanBatchCode = String(batchCode).trim();
-
-    // Check if batchCode already exists
-    const existingBatch = await LabelBatch.findOne({ batchCode: cleanBatchCode });
-    if (existingBatch) {
-      return res.status(400).json({ error: `Mã lô tem "${cleanBatchCode}" đã tồn tại trên hệ thống. Vui lòng chọn mã lô tem khác!` });
-    }
-
-    const cleanPrefix = String(prefix || '').trim();
+    const cleanPrefix    = String(prefix || '').trim();
     const count = Math.min(Math.max(parseInt(totalLabels) || 100, 1), 500000);
 
+    // ── Kiểm tra trùng mã lô tem ──────────────────────────────────────────────
+    const existingBatch = await LabelBatch.findOne({ batchCode: cleanBatchCode }).lean();
+    if (existingBatch) {
+      console.warn(`[createBatch] Duplicate batchCode "${cleanBatchCode}" (enterprise: ${existingBatch.enterpriseId}, status: ${existingBatch.status})`);
+      return res.status(400).json({
+        error: `Mã lô tem "${cleanBatchCode}" đã tồn tại trên hệ thống. Vui lòng chọn mã lô tem khác!`
+      });
+    }
+
+    // ── Sinh dãy serial ──────────────────────────────────────────────────────
     const generatedSerials = [];
 
     if (serialType === 'RANDOM_ALPHANUMERIC') {
+      // Mã ngẫu nhiên chữ + số — kiểm tra trùng realtime với DB
       const generatedSet = new Set();
       while (generatedSerials.length < count) {
         const rCode = generateRandomCode(8);
@@ -233,76 +318,77 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
         }
       }
     } else {
-      // GLOBAL_SEQUENTIAL (default) - Auto continuous serial number across all batches
-      let startNum = 1;
-      const lastBatch = await LabelBatch.findOne({}).sort({ createdAt: -1 });
-      if (lastBatch && lastBatch.serialEnd) {
-        const match = lastBatch.serialEnd.match(/(\d+)$/);
-        if (match) {
-          startNum = parseInt(match[1], 10) + 1;
-        }
-      }
-      const endNumCalculated = startNum + count - 1;
-      const padLength = Math.max(8, String(endNumCalculated).length);
+      // GLOBAL_SEQUENTIAL — nối tiếp toàn hệ thống
+      // Lấy startNum an toàn (tính cả orphan labels còn sót sau rollback)
+      const startNum = await getNextStartNum(cleanPrefix);
+      const endNum   = startNum + count - 1;
+      const padLen   = Math.max(8, String(endNum).length);
 
-      for (let i = startNum; i <= endNumCalculated; i++) {
-        const candidate = cleanPrefix ? `${cleanPrefix}${String(i).padStart(padLength, '0')}` : String(i).padStart(padLength, '0');
-        generatedSerials.push(candidate);
+      for (let i = startNum; i <= endNum; i++) {
+        const num = String(i).padStart(padLen, '0');
+        generatedSerials.push(cleanPrefix ? `${cleanPrefix}${num}` : num);
       }
     }
 
     const serialStart = generatedSerials[0];
-    const serialEnd = generatedSerials[generatedSerials.length - 1];
+    const serialEnd   = generatedSerials[generatedSerials.length - 1];
 
-    // Check if first serial already exists
-    const existingLabel = await Label.findOne({ serialNumber: serialStart });
-    if (existingLabel) {
-      return res.status(400).json({ error: `Mã Serial "${serialStart}" đã tồn tại trên hệ thống. Vui lòng kiểm tra lại!` });
+    // ── Kiểm tra xung đột serial trước khi insert ─────────────────────────────
+    // Kiểm tra serialStart và serialEnd; nếu có orphan ở giữa sẽ bị ordered:true bắt
+    const conflictLabel = await Label.findOne({
+      serialNumber: { $in: [serialStart, serialEnd] }
+    }).lean();
+    if (conflictLabel) {
+      console.warn(`[createBatch] Serial conflict detected: "${conflictLabel.serialNumber}" already exists`);
+      return res.status(409).json({
+        error: `Dải serial bắt đầu từ "${serialStart}" bị xung đột. Hệ thống tự điều chỉnh lần sau — vui lòng thử lại ngay!`
+      });
     }
 
+    // ── Tạo LabelBatch ────────────────────────────────────────────────────────
     createdBatch = new LabelBatch({
       enterpriseId,
-      productId: productId || null,
-      templateId: templateId || null,
-      theme: theme || 'default',
+      productId:   productId   || null,
+      templateId:  templateId  || null,
+      theme:       theme       || 'default',
       customDomain: customDomain || null,
-      batchCode: cleanBatchCode,
+      batchCode:   cleanBatchCode,
       totalLabels: count,
       serialStart,
       serialEnd,
-      prefix: cleanPrefix,
-      serialType: serialType || 'GLOBAL_SEQUENTIAL',
-      expiryDate: expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      prefix:     cleanPrefix,
+      serialType: serialType   || 'GLOBAL_SEQUENTIAL',
+      expiryDate: expiryDate   || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       notes,
       createdDate: new Date(),
       status: productId ? 'ACTIVE' : 'INACTIVE'
     });
     await createdBatch.save();
 
-    // Create individual labels
+    // ── Sinh và insert Labels ─────────────────────────────────────────────────
     const cleanCustomDomain = customDomain ? customDomain.trim().replace(/\/+$/, '') : '';
-    const domainUrl = cleanCustomDomain 
+    const domainUrl = cleanCustomDomain
       ? (cleanCustomDomain.startsWith('http') ? cleanCustomDomain : `https://${cleanCustomDomain}`)
       : ADMIN_URL;
 
     const labels = generatedSerials.map(serial => {
       const secretCode = generateRandomCode(8).toLowerCase();
       return {
-        batchId: createdBatch._id,
+        batchId:      createdBatch._id,
         enterpriseId,
-        productId: productId || null,
+        productId:    productId || null,
         serialNumber: serial,
-        qrCode: secretCode,
-        qrUrl: `${domainUrl}/scan/${secretCode}`,
-        status: productId ? 'ACTIVE' : 'INACTIVE',
-        isActive: !!productId
+        qrCode:       secretCode,
+        qrUrl:        `${domainUrl}/scan/${secretCode}`,
+        status:       productId ? 'ACTIVE' : 'INACTIVE',
+        isActive:     !!productId
       };
     });
-    
-    // Batch insert in chunks of 5,000 for high performance
+
+    // ordered:true → dừng ngay khi gặp lỗi, không tạo orphan labels
     const CHUNK_SIZE = 5000;
     for (let i = 0; i < labels.length; i += CHUNK_SIZE) {
-      await Label.insertMany(labels.slice(i, i + CHUNK_SIZE), { ordered: false });
+      await Label.insertMany(labels.slice(i, i + CHUNK_SIZE), { ordered: true });
     }
 
     const populated = await LabelBatch.findById(createdBatch._id)
@@ -310,28 +396,39 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       .populate('productId', 'name');
 
     res.status(201).json(populated);
-  } catch (error) {
-    console.error('Create batch error:', error);
 
-    // Rollback batch if labels creation failed
+  } catch (error) {
+    console.error('[createBatch] error:', error.code, error.message);
+
+    // ── Rollback: xóa batch và mọi label đã insert ──────────────────────────
     if (createdBatch && createdBatch._id) {
       try {
         await LabelBatch.findByIdAndDelete(createdBatch._id);
         await Label.deleteMany({ batchId: createdBatch._id });
+        console.info(`[createBatch] Rolled back batch ${createdBatch._id}`);
       } catch (cleanupErr) {
-        console.error('Rollback batch error:', cleanupErr);
+        console.error('[createBatch] Rollback error:', cleanupErr.message);
       }
     }
 
+    // ── Phân biệt loại lỗi MongoDB duplicate key ───────────────────────────
     if (error.code === 11000 || error.name === 'MongoServerError') {
       const keyPattern = error.keyPattern || {};
       if (keyPattern.batchCode) {
-        return res.status(400).json({ error: `Mã lô tem "${req.body.batchCode}" đã tồn tại. Vui lòng nhập mã lô tem khác!` });
+        // Race condition giữa nhiều worker: batch đã được tạo bởi request song song
+        // Batch đã được rollback → user CÓ THỂ thử lại với cùng mã
+        return res.status(409).json({
+          error: `Mã lô tem "${req.body.batchCode}" bị xung đột do yêu cầu đồng thời. Vui lòng nhấn tạo lại!`
+        });
       }
       if (keyPattern.serialNumber) {
-        return res.status(400).json({ error: `Mã Serial bị trùng lặp với dữ liệu tem nhãn đã có. Vui lòng đổi mã Prefix khác!` });
+        return res.status(409).json({
+          error: `Dải serial bị trùng lặp. Hệ thống tự điều chỉnh lần sau — vui lòng thử lại ngay!`
+        });
       }
-      return res.status(400).json({ error: `Dữ liệu bị trùng lặp trên hệ thống (mã lô hoặc serial). Vui lòng thử lại với thông tin khác!` });
+      return res.status(409).json({
+        error: `Dữ liệu bị trùng lặp. Vui lòng thử lại!`
+      });
     }
 
     res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });

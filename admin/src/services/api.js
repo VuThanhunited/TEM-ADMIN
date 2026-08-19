@@ -165,6 +165,7 @@ class ApiService {
   getBatches(params) { return this.request('GET', '/labels/batches', null, params); }
   getNextSerial() { return this.request('GET', '/labels/next-serial'); }
   clearAllLabels() { return this.request('DELETE', '/labels/clear-all'); }
+  cleanupOrphanLabels() { return this.request('DELETE', '/labels/cleanup-orphans'); }
   createBatch(data) { return this.request('POST', '/labels/batches', data, {}, 0, 300000); } // 5 min timeout for large batches
   updateBatchStatus(id, data) { return this.request('PUT', `/labels/batches/${id}/status`, data); }
   mapBatchProduct(id, data) { return this.request('POST', `/labels/batches/${id}/map-product`, data); }

@@ -200,7 +200,25 @@ export default function Labels() {
     try {
       const createdCode = batchForm.batchCode;
       const createdCount = batchForm.totalLabels;
-      await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
+
+      let result;
+      let retried = false;
+      try {
+        result = await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
+      } catch (firstErr) {
+        // Nếu lỗi 409 (race condition serial/batchCode) → tự động thử lại 1 lần sau 800ms
+        // 409 = server đã rollback, an toàn để retry
+        if (firstErr.message && (
+          firstErr.message.includes('xung đột') ||
+          firstErr.message.includes('thử lại')
+        )) {
+          retried = true;
+          await new Promise(r => setTimeout(r, 800));
+          result = await api.createBatch({ ...batchForm, enterpriseId: isAdmin ? batchForm.enterpriseId : enterpriseId });
+        } else {
+          throw firstErr;
+        }
+      }
 
       // 1. Đóng modal, reset form
       setShowCreateBatch(false);
@@ -247,6 +265,18 @@ export default function Labels() {
       loadBatches();
     } catch (err) {
       alert(err.message || 'Lỗi khi xóa dữ liệu');
+    }
+  };
+
+  // Dọn sạch orphan labels (labels không thuộc lô tem nào) — sửa lỗi "tạo báo trùng nhưng không tìm thấy"
+  const handleCleanupOrphans = async () => {
+    if (!window.confirm('Dọn sạch tem nhãn orphan (không thuộc lô tem nào)?\n\nHành động này an toàn và giúp khắc phục lỗi serial bị trùng khi tạo lô tem mới.')) return;
+    try {
+      const res = await api.cleanupOrphanLabels();
+      alert(res.message || 'Đã dọn sạch tem nhãn orphan!');
+      loadBatches();
+    } catch (err) {
+      alert(err.message || 'Lỗi khi dọn orphan labels');
     }
   };
 
@@ -750,6 +780,9 @@ export default function Labels() {
               <>
                 <button className="btn btn-ghost" onClick={handleFixEncryption} style={{ border: '1px solid rgba(99, 102, 241, 0.3)', color: '#818cf8', display: 'flex', alignItems: 'center', gap: '6px' }} title="Khắc phục mã hóa đuôi scan cho toàn bộ tem">
                   <ShieldCheck size={16}/> Khắc phục mã hóa QR
+                </button>
+                <button className="btn btn-ghost" onClick={handleCleanupOrphans} style={{ border: '1px solid rgba(234, 179, 8, 0.3)', color: '#eab308', display: 'flex', alignItems: 'center', gap: '6px' }} title="Dọn sạch tem nhãn orphan không thuộc lô nào — khắc phục lỗi serial trùng">
+                  <RefreshCw size={16}/> Dọn orphan serial
                 </button>
                 <button className="btn btn-ghost" onClick={handleClearAllLabels} style={{ border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }} title="Reset dữ liệu tem về 0">
                   <Trash2 size={16}/> Reset/Clear toàn bộ tem
