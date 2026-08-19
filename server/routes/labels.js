@@ -365,13 +365,21 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
     });
     await createdBatch.save();
 
-    // ── Sinh và insert Labels ─────────────────────────────────────────────────
+    // ── Respond ngay sau khi batch được lưu — tránh gateway timeout ──────────
+    // Labels sẽ được insert ở background (setImmediate) sau khi respond
+    const populated = await LabelBatch.findById(createdBatch._id)
+      .populate('enterpriseId', 'name')
+      .populate('productId', 'name');
+
+    res.status(201).json(populated);
+
+    // ── Background: Insert Labels (fire-and-forget) ────────────────────────────
     const cleanCustomDomain = customDomain ? customDomain.trim().replace(/\/+$/, '') : '';
     const domainUrl = cleanCustomDomain
       ? (cleanCustomDomain.startsWith('http') ? cleanCustomDomain : `https://${cleanCustomDomain}`)
       : ADMIN_URL;
 
-    const labels = generatedSerials.map(serial => {
+    const labelsToInsert = generatedSerials.map(serial => {
       const secretCode = generateRandomCode(8).toLowerCase();
       return {
         batchId:      createdBatch._id,
@@ -385,17 +393,25 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
       };
     });
 
-    // ordered:true → dừng ngay khi gặp lỗi, không tạo orphan labels
-    const CHUNK_SIZE = 5000;
-    for (let i = 0; i < labels.length; i += CHUNK_SIZE) {
-      await Label.insertMany(labels.slice(i, i + CHUNK_SIZE), { ordered: true });
-    }
-
-    const populated = await LabelBatch.findById(createdBatch._id)
-      .populate('enterpriseId', 'name')
-      .populate('productId', 'name');
-
-    res.status(201).json(populated);
+    setImmediate(async () => {
+      try {
+        const CHUNK_SIZE = 5000;
+        for (let i = 0; i < labelsToInsert.length; i += CHUNK_SIZE) {
+          await Label.insertMany(labelsToInsert.slice(i, i + CHUNK_SIZE), { ordered: true });
+        }
+        console.info(`[createBatch] Background insert done: ${labelsToInsert.length} labels for batch ${createdBatch.batchCode}`);
+      } catch (bgErr) {
+        console.error(`[createBatch background] Insert failed for batch ${createdBatch?._id}:`, bgErr.message);
+        // Rollback: xóa batch nếu insert labels thất bại hoàn toàn
+        try {
+          await LabelBatch.findByIdAndDelete(createdBatch._id);
+          await Label.deleteMany({ batchId: createdBatch._id });
+          console.info(`[createBatch background] Rolled back batch ${createdBatch._id}`);
+        } catch (rbErr) {
+          console.error('[createBatch background] Rollback error:', rbErr.message);
+        }
+      }
+    });
 
   } catch (error) {
     console.error('[createBatch] error:', error.code, error.message);
