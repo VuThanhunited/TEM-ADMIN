@@ -13,6 +13,7 @@ const analyticsRoutes = require('./routes/analytics');
 const templateRoutes = require('./routes/templates');
 const publicRoutes = require('./routes/public');
 const labelDesignRoutes = require('./routes/labelDesigns');
+const mergeRoutes = require('./routes/merge'); // TẠM THỜI — xóa sau khi merge
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -81,6 +82,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/label-designs', labelDesignRoutes);
+app.use('/api/merge', mergeRoutes); // TẠM THỜI — xóa sau khi merge
 
 // Health check
 app.get('/api/health', (req, res) => {
