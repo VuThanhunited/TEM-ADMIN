@@ -9,10 +9,17 @@ import Pagination from '../../components/Pagination';
 
 // ── ImageInput: slot ảnh hỗ trợ cả URL lẫn upload từ thiết bị ──────────────
 function ImageInput({ value, onChange, placeholder, index }) {
-  const [mode, setMode] = useState(value?.startsWith('data:') ? 'upload' : 'url');
+  // mode = 'upload' chỉ khi value là base64 data URL thực sự
+  // Nếu value là URL thông thường hoặc rỗng → luôn dùng mode 'url'
+  const isBase64 = value?.startsWith('data:');
+  const [mode, setMode] = useState(isBase64 ? 'upload' : 'url');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileRef = useRef();
+
+  // Sync mode nếu value thay đổi từ bên ngoài (VD: clear ảnh)
+  // Đảm bảo không hiển thị slot trống khi value là URL bình thường
+  const effectiveMode = value?.startsWith('data:') ? 'upload' : (value ? 'url' : mode);
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -34,6 +41,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
   const handleClear = () => {
     onChange('');
     setUploadError('');
+    setMode('url');
   };
 
   return (
@@ -76,7 +84,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
         />
       </div>
 
-      {mode === 'url' ? (
+      {effectiveMode === 'url' ? (
         <input
           className="input"
           placeholder={placeholder}
@@ -85,7 +93,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
         />
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {value ? (
+          {value?.startsWith('data:') ? (
             <>
               <img
                 src={value}

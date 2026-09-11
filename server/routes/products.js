@@ -101,22 +101,34 @@ router.put('/:id', auth, async (req, res) => {
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
       chatbotQA, manufacturerId, manufacturerInfo
     } = req.body;
+
+    // Xây dựng updateData — chỉ set images nếu client gửi mảng không rỗng
+    // Tránh bug xóa ảnh cũ khi admin submit form mà không chủ ý thay ảnh
+    const updateData = {
+      name, description, category, sku, barcode, distributors, specifications, isActive,
+      verificationText, productionProcess, certifications, producerInfo, distributorInfo,
+      chatbotQA, manufacturerId, manufacturerInfo
+    };
+
+    // Chỉ cập nhật images nếu client gửi mảng có nội dung (> 0 URL hợp lệ)
+    if (Array.isArray(images) && images.length > 0) {
+      updateData.images = images;
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      {
-        name, images, description, category, sku, barcode, distributors, specifications, isActive,
-        verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-        chatbotQA, manufacturerId, manufacturerInfo
-      },
+      updateData,
       { new: true }
     ).populate('enterpriseId', 'name').populate('manufacturerId', 'name address phone email');
 
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     res.json(product);
   } catch (error) {
+    console.error('Update product error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 });
+
 
 // DELETE /api/products/:id
 router.delete('/:id', auth, async (req, res) => {
