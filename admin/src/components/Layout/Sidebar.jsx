@@ -41,7 +41,7 @@ const adminMenuItems = [
     roles: ['ADMIN', 'NSX'],
   },
   {
-    label: 'Quản lý NPP / Cửa hàng',
+    label: 'Quản lý NSX / NPP / Cửa hàng',
     icon: Store,
     path: '/distributors',
     roles: ['ADMIN', 'NSX'],

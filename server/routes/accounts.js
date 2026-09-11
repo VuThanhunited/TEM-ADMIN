@@ -7,10 +7,10 @@ const { requireRole } = require('../middleware/rbac');
 
 const router = express.Router();
 
-// GET /api/accounts/distributors - List all NPP accounts for the logged-in NSX
+// GET /api/accounts/distributors - List all NPP / NSX accounts for the logged-in NSX
 router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '' } = req.query;
+    const { page = 1, limit = 20, search = '', role } = req.query;
     
     // Non-admin can only see their own enterprise distributors
     const enterpriseId = req.user.role === 'ADMIN' ? req.query.enterpriseId : req.user.enterpriseId;
@@ -18,7 +18,12 @@ router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) 
       return res.status(400).json({ error: 'Thiếu mã doanh nghiệp' });
     }
 
-    const query = { role: 'NPP', enterpriseId };
+    const query = { enterpriseId };
+    if (role) {
+      query.role = role;
+    } else {
+      query.role = { $in: ['NPP', 'NSX'] };
+    }
     
     if (search) {
       query.$or = [
@@ -50,10 +55,11 @@ router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) 
   }
 });
 
-// POST /api/accounts/distributors - Create a new NPP account (distributor)
+// POST /api/accounts/distributors - Create a new NPP / NSX account (distributor/manufacturer)
 router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
   try {
-    const { username, email, password, fullName, address } = req.body;
+    const { username, email, password, fullName, address, role = 'NPP' } = req.body;
+    const allowedRole = ['NPP', 'NSX'].includes(role) ? role : 'NPP';
     
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
     if (!enterpriseId) {
@@ -85,7 +91,7 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
       password: hashedPassword,
       fullName,
       address: address || '',
-      role: 'NPP',
+      role: allowedRole,
       enterpriseId,
       subscriptionExpiry: enterprise.subscriptionExpiry
     });
@@ -101,10 +107,10 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
   }
 });
 
-// PUT /api/accounts/distributors/:id - Update NPP account
+// PUT /api/accounts/distributors/:id - Update NPP / NSX account
 router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
   try {
-    const { fullName, email, address, isActive, password } = req.body;
+    const { fullName, email, address, isActive, password, role } = req.body;
 
     const distributor = await User.findById(req.params.id);
     if (!distributor) {
@@ -120,6 +126,9 @@ router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, r
     distributor.email = email !== undefined ? email : distributor.email;
     distributor.address = address !== undefined ? address : distributor.address;
     distributor.isActive = isActive !== undefined ? isActive : distributor.isActive;
+    if (role !== undefined && ['NPP', 'NSX'].includes(role)) {
+      distributor.role = role;
+    }
 
     if (password) {
       distributor.password = await bcrypt.hash(password, 10);

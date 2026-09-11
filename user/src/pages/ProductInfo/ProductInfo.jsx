@@ -1046,14 +1046,24 @@ export default function ProductInfo() {
         </div>
       </div>
 
-      {enterprise && (
-        <div className="product-info-enterprise">
-          <div className="product-info-enterprise-title">Doanh nghiệp sản xuất</div>
-          <div className="product-info-enterprise-name">{enterprise.name}</div>
-          {enterprise.address && <div className="product-info-enterprise-row"><MapPin size={14} />{enterprise.address}</div>}
-          {enterprise.phone && <div className="product-info-enterprise-row"><Phone size={14} />{enterprise.phone}</div>}
-        </div>
-      )}
+      {(product?.manufacturerId || product?.manufacturerInfo || enterprise) && (() => {
+        const mfg = product?.manufacturerId || enterprise;
+        return (
+          <div className="product-info-enterprise">
+            <div className="product-info-enterprise-title">
+              {product?.manufacturerId ? 'Nhà sản xuất' : 'Doanh nghiệp sản xuất'}
+            </div>
+            <div className="product-info-enterprise-name">{mfg?.name || enterprise?.name}</div>
+            {product?.manufacturerInfo && (
+              <div style={{ whiteSpace: 'pre-line', fontSize: '0.85rem', color: '#475569', margin: '6px 0 10px', padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                {product.manufacturerInfo}
+              </div>
+            )}
+            {mfg?.address && <div className="product-info-enterprise-row"><MapPin size={14} />{mfg.address}</div>}
+            {mfg?.phone && <div className="product-info-enterprise-row"><Phone size={14} />{mfg.phone}</div>}
+          </div>
+        );
+      })()}
     </div>
   );
 
@@ -1124,28 +1134,41 @@ export default function ProductInfo() {
                   <div className="modal-info-item"><span>Địa điểm xác minh:</span> <strong>GPS Việt Nam</strong></div>
                 </div>
               )}
-              {activeModal === 'mfg' && (
-                <div>
-                  <div className="modal-info-list">
-                    <div className="modal-info-item"><span>Tên doanh nghiệp:</span> <strong>{enterprise?.name || 'Doanh nghiệp sản xuất'}</strong></div>
-                    <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{enterprise?.address || 'Việt Nam'}</strong></div>
-                    <div className="modal-info-item"><span>Hotline:</span> <strong>{enterprise?.phone || '1900 1234'}</strong></div>
-                    <div className="modal-info-item"><span>Email:</span> <strong>{enterprise?.email || 'N/A'}</strong></div>
-                  </div>
-                  {enterprise?.partnerDetails && (
-                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#003366', marginBottom: '8px', textTransform: 'uppercase' }}>
-                        Chi tiết đối tác:
+              {activeModal === 'mfg' && (() => {
+                const mfg = product?.manufacturerId || enterprise;
+                return (
+                  <div>
+                    {product?.manufacturerInfo && (
+                      <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#003366', marginBottom: 6 }}>
+                          THÔNG TIN NHÀ SẢN XUẤT:
+                        </div>
+                        <div style={{ whiteSpace: 'pre-line', fontSize: '0.9rem', lineHeight: '1.6', color: '#334155' }}>
+                          {product.manufacturerInfo}
+                        </div>
                       </div>
-                      <div 
-                        className="partner-details-html"
-                        dangerouslySetInnerHTML={{ __html: enterprise.partnerDetails }}
-                        style={{ fontSize: '0.9rem', lineHeight: '1.6', color: '#334155' }}
-                      />
+                    )}
+                    <div className="modal-info-list">
+                      <div className="modal-info-item"><span>Tên đơn vị:</span> <strong>{mfg?.name || 'Doanh nghiệp sản xuất'}</strong></div>
+                      <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{mfg?.address || enterprise?.address || 'Việt Nam'}</strong></div>
+                      <div className="modal-info-item"><span>Hotline:</span> <strong>{mfg?.phone || enterprise?.phone || '1900 1234'}</strong></div>
+                      <div className="modal-info-item"><span>Email:</span> <strong>{mfg?.email || enterprise?.email || 'N/A'}</strong></div>
                     </div>
-                  )}
-                </div>
-              )}
+                    {(mfg?.partnerDetails || enterprise?.partnerDetails) && (
+                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#003366', marginBottom: '8px', textTransform: 'uppercase' }}>
+                          Chi tiết đối tác:
+                        </div>
+                        <div 
+                          className="partner-details-html"
+                          dangerouslySetInnerHTML={{ __html: mfg?.partnerDetails || enterprise?.partnerDetails }}
+                          style={{ fontSize: '0.9rem', lineHeight: '1.6', color: '#334155' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               {activeModal === 'ingredients' && (
                 <div className="modal-info-list">
                   <div className="modal-info-item"><span>Thành phần chính:</span> <strong>Paracetamol (500mg), Phụ liệu vừa đủ 1 viên</strong></div>

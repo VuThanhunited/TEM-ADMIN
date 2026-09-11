@@ -6,6 +6,15 @@ const productSchema = new mongoose.Schema({
     ref: 'Enterprise',
     required: true
   },
+  manufacturerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Enterprise',
+    default: null
+  },
+  manufacturerInfo: {
+    type: String,
+    default: ''
+  },
   name: {
     type: String,
     required: true,

@@ -80,6 +80,7 @@ function loadApp() {
     app.use('/api/templates',    require('./routes/templates'));
     app.use('/api/public',       require('./routes/public'));
     app.use('/api/label-designs',require('./routes/labelDesigns'));
+    app.use('/api/upload',       require('./routes/upload'));
 
     // Health check
     app.get('/api/health', (req, res) => {

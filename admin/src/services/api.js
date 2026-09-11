@@ -147,6 +147,7 @@ class ApiService {
 
   // ── Enterprises ───────────────────────────────────────────────────────────
   getEnterprises() { return this.request('GET', '/enterprises'); }
+  getManufacturers() { return this.request('GET', '/enterprises/manufacturers'); }
   getEnterprise(id) { return this.request('GET', `/enterprises/${id}`); }
   createEnterprise(data) { return this.request('POST', '/enterprises', data); }
   updateEnterprise(id, data) { return this.request('PUT', `/enterprises/${id}`, data); }
@@ -160,6 +161,22 @@ class ApiService {
   createProduct(data) { return this.request('POST', '/products', data); }
   updateProduct(id, data) { return this.request('PUT', `/products/${id}`, data); }
   deleteProduct(id) { return this.request('DELETE', `/products/${id}`); }
+
+  // ── Upload ────────────────────────────────────────────────────────────────
+  async uploadImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    const token = this.getToken();
+    const url = `${this.baseUrl}/upload/image`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Lỗi tải ảnh');
+    return result;
+  }
 
   // ── Labels ────────────────────────────────────────────────────────────────
   getBatches(params) { return this.request('GET', '/labels/batches', null, params); }

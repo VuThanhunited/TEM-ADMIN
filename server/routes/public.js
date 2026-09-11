@@ -31,7 +31,10 @@ router.get('/scan/:serial', async (req, res) => {
         { smsCode: cleanSerial }
       ]
     })
-      .populate('productId')
+      .populate({
+        path: 'productId',
+        populate: { path: 'manufacturerId', select: 'name address phone email logo partnerDetails' }
+      })
       .populate('enterpriseId');
 
     // Auto-repair on the fly if label doesn't exist yet but matching batch exists
@@ -109,7 +112,10 @@ router.get('/scan/:serial', async (req, res) => {
             { serialNumber: cleanSerial },
             { serialNumber: { $regex: new RegExp(cleanSerial + '$', 'i') } }
           ]
-        }).populate('productId').populate('enterpriseId');
+        }).populate({
+          path: 'productId',
+          populate: { path: 'manufacturerId', select: 'name address phone email logo partnerDetails' }
+        }).populate('enterpriseId');
       }
     }
 
