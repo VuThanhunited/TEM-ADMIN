@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Users, Plus, Search, RefreshCw, Edit, Trash2,
   X, MapPin, Building2, Store, Filter,
@@ -12,7 +13,9 @@ import './Distributors.css';
 import Pagination from '../../components/Pagination';
 
 export default function Distributors() {
+  const { isAdmin } = useAuth();
   const [distributors, setDistributors] = useState([]);
+  const [enterprises, setEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all'); // 'all', 'NSX', 'NPP'
@@ -20,9 +23,9 @@ export default function Distributors() {
   const [editingDistributor, setEditingDistributor] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
 
-  // Form state: only name, address, details, role
+  // Form state: name, address, details, role + enterpriseId (for ADMIN)
   const [form, setForm] = useState({
-    fullName: '', address: '', details: '', role: 'NPP'
+    fullName: '', address: '', details: '', role: 'NPP', enterpriseId: ''
   });
 
   // Rich Text Editor
@@ -39,6 +42,16 @@ export default function Distributors() {
   const [linkNewTab, setLinkNewTab] = useState(true);
 
   useEffect(() => { loadDistributors(); }, [pagination.page, search, roleFilter]);
+  useEffect(() => { if (isAdmin) loadEnterprises(); }, [isAdmin]);
+
+  const loadEnterprises = async () => {
+    try {
+      const data = await api.getEnterprises();
+      setEnterprises(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Lỗi tải doanh nghiệp:', err);
+    }
+  };
 
   const loadDistributors = async () => {
     try {
@@ -60,7 +73,7 @@ export default function Distributors() {
 
   const handleOpenCreate = () => {
     setEditingDistributor(null);
-    setForm({ fullName: '', address: '', details: '', role: 'NPP' });
+    setForm({ fullName: '', address: '', details: '', role: 'NPP', enterpriseId: '' });
     setEditorMode('visual');
     setShowModal(true);
     setTimeout(() => {
@@ -91,7 +104,8 @@ export default function Distributors() {
         address: form.address,
         details: form.details,
         role: form.role,
-        isActive: editingDistributor ? editingDistributor.isActive : true
+        isActive: editingDistributor ? editingDistributor.isActive : true,
+        ...(isAdmin && form.enterpriseId ? { enterpriseId: form.enterpriseId } : {})
       };
       if (editingDistributor) {
         await api.updateDistributor(editingDistributor._id, payload);
@@ -351,6 +365,24 @@ export default function Distributors() {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                {/* Doanh nghiệp sở hữu — chỉ ADMIN mới thấy */}
+                {isAdmin && (
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label>Doanh nghiệp sở hữu *</label>
+                    <select
+                      className="input select"
+                      value={form.enterpriseId}
+                      onChange={e => setForm({ ...form, enterpriseId: e.target.value })}
+                      required={!editingDistributor}
+                    >
+                      <option value="">-- Chọn doanh nghiệp --</option>
+                      {enterprises.map(ent => (
+                        <option key={ent._id} value={ent._id}>{ent.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Loại đơn vị */}
                 <div className="input-group" style={{ marginBottom: 0 }}>
