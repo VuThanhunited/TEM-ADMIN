@@ -1,0 +1,49 @@
+﻿name: Deploy to C2 Hosting
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'user/src/**'
+      - 'user/public/**'
+      - 'user/index.html'
+      - 'user/vite.config.js'
+      - 'user/package.json'
+
+jobs:
+  build-and-deploy:
+    name: Build User App & Deploy to C2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: user/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: user
+
+      - name: Build production
+        run: npm run build
+        working-directory: user
+
+      - name: Deploy to C2 via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.C2_FTP_HOST }}
+          username: ${{ secrets.C2_FTP_USER }}
+          password: ${{ secrets.C2_FTP_PASS }}
+          port: 21
+          local-dir: ./user/dist/
+          server-dir: /public_html/
+          exclude: |
+            **/.git*
+            **/.git*/**
+          log-level: minimal
