@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 import {
   Users, Plus, Search, RefreshCw, Edit, Trash2,
-  X, CheckCircle, XCircle, MapPin, Mail, Key, Building2, Store, Filter
+  X, MapPin, Building2, Store, Filter,
+  Bold, Italic, Underline, Strikethrough,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  List, ListOrdered, Heading2, Heading3, Code, Eye,
+  Image as ImageIcon, Link2 as LinkIcon, FileText, Upload
 } from 'lucide-react';
 import './Distributors.css';
 import Pagination from '../../components/Pagination';
@@ -13,14 +17,26 @@ export default function Distributors() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all'); // 'all', 'NSX', 'NPP'
   const [showModal, setShowModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState(null);
-  const [passwordDistributor, setPasswordDistributor] = useState(null);
-  const [newPassword, setNewPassword] = useState('');
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
+
+  // Form state: only name, address, details, role
   const [form, setForm] = useState({
-    username: '', email: '', password: '', fullName: '', address: '', role: 'NPP'
+    fullName: '', address: '', details: '', role: 'NPP'
   });
+
+  // Rich Text Editor
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
+  const editorRef = useRef(null);
+  const savedRangeRef = useRef(null);
+
+  // Image & Link sub-modals
+  const [showImgModal, setShowImgModal] = useState(false);
+  const [imgUrlInput, setImgUrlInput] = useState('');
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUrlInput, setLinkUrlInput] = useState('');
+  const [linkTextInput, setLinkTextInput] = useState('');
+  const [linkNewTab, setLinkNewTab] = useState(true);
 
   useEffect(() => { loadDistributors(); }, [pagination.page, search, roleFilter]);
 
@@ -44,36 +60,43 @@ export default function Distributors() {
 
   const handleOpenCreate = () => {
     setEditingDistributor(null);
-    setForm({ username: '', email: '', password: '', fullName: '', address: '', role: 'NPP' });
+    setForm({ fullName: '', address: '', details: '', role: 'NPP' });
+    setEditorMode('visual');
     setShowModal(true);
+    setTimeout(() => {
+      if (editorRef.current) editorRef.current.innerHTML = '';
+    }, 100);
   };
 
   const handleOpenEdit = (dist) => {
     setEditingDistributor(dist);
     setForm({
-      username: dist.username,
-      email: dist.email,
-      password: '',
-      fullName: dist.fullName,
+      fullName: dist.fullName || '',
       address: dist.address || '',
+      details: dist.details || '',
       role: dist.role || 'NPP'
     });
+    setEditorMode('visual');
     setShowModal(true);
+    setTimeout(() => {
+      if (editorRef.current) editorRef.current.innerHTML = dist.details || '';
+    }, 100);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        fullName: form.fullName,
+        address: form.address,
+        details: form.details,
+        role: form.role,
+        isActive: editingDistributor ? editingDistributor.isActive : true
+      };
       if (editingDistributor) {
-        await api.updateDistributor(editingDistributor._id, {
-          fullName: form.fullName,
-          email: form.email,
-          address: form.address,
-          role: form.role,
-          isActive: editingDistributor.isActive
-        });
+        await api.updateDistributor(editingDistributor._id, payload);
       } else {
-        await api.createDistributor(form);
+        await api.createDistributor(payload);
       }
       setShowModal(false);
       loadDistributors();
@@ -101,32 +124,98 @@ export default function Distributors() {
     }
   };
 
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      alert('Mật khẩu phải chứa ít nhất 6 ký tự');
-      return;
-    }
-    try {
-      await api.updateDistributor(passwordDistributor._id, { password: newPassword });
-      setShowPasswordModal(false);
-      setPasswordDistributor(null);
-      setNewPassword('');
-      alert('Đã đổi mật khẩu thành công');
-    } catch (err) {
-      alert(err.message);
+  // ─── Rich Text Editor Helpers ───────────────────────────────────────────────
+  const execCmd = (command, value = null) => {
+    if (editorMode !== 'visual') return;
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      setForm(prev => ({ ...prev, details: editorRef.current.innerHTML }));
     }
   };
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    if (savedRangeRef.current && editorRef.current) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+    }
+  };
+
+  const insertHtmlAtCursorOrEnd = (html) => {
+    if (editorMode === 'visual' && editorRef.current) {
+      editorRef.current.focus();
+      restoreSelection();
+      let success = false;
+      try { success = document.execCommand('insertHTML', false, html); } catch (e) {}
+      if (!success) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        while (tempDiv.firstChild) editorRef.current.appendChild(tempDiv.firstChild);
+      }
+      setForm(prev => ({ ...prev, details: editorRef.current.innerHTML }));
+    } else {
+      setForm(prev => ({ ...prev, details: (prev.details || '') + html }));
+    }
+  };
+
+  const handleOpenImgModal = () => { saveSelection(); setImgUrlInput(''); setShowImgModal(true); };
+  const handleOpenLinkModal = () => { saveSelection(); setLinkUrlInput(''); setLinkTextInput(''); setLinkNewTab(true); setShowLinkModal(true); };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Dung lượng ảnh quá lớn! Vui lòng chọn file nhỏ hơn 5MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = (event) => setImgUrlInput(event.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const applyInsertImage = () => {
+    if (!imgUrlInput || !imgUrlInput.trim()) { alert('Vui lòng chọn ảnh hoặc nhập URL ảnh!'); return; }
+    const imgHtml = `<p style="text-align:center;margin:12px 0;"><img src="${imgUrlInput.trim()}" alt="Hình ảnh" style="max-width:100%;height:auto;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);" /></p><p><br></p>`;
+    insertHtmlAtCursorOrEnd(imgHtml);
+    setShowImgModal(false);
+    setImgUrlInput('');
+  };
+
+  const applyInsertLink = () => {
+    if (!linkUrlInput || !linkUrlInput.trim()) { alert('Vui lòng nhập đường dẫn URL!'); return; }
+    const text = linkTextInput.trim() || linkUrlInput.trim();
+    const targetAttr = linkNewTab ? ' target="_blank" rel="noreferrer"' : '';
+    const linkHtml = `<a href="${linkUrlInput.trim()}"${targetAttr} style="color:#6366f1;text-decoration:underline;font-weight:600;">${text}</a> `;
+    insertHtmlAtCursorOrEnd(linkHtml);
+    setShowLinkModal(false);
+    setLinkUrlInput('');
+    setLinkTextInput('');
+  };
+
+  const handleEditorInput = () => {
+    if (editorRef.current) setForm(prev => ({ ...prev, details: editorRef.current.innerHTML }));
+  };
+
+  const handleCodeChange = (e) => {
+    const val = e.target.value;
+    setForm(prev => ({ ...prev, details: val }));
+    if (editorRef.current) editorRef.current.innerHTML = val;
+  };
+  // ────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="distributors-page">
       <div className="page-header">
         <div>
           <h1>Quản lý NSX / Nhà phân phối / Điểm bán</h1>
-          <p>Tạo và quản lý tài khoản NSX, nhà phân phối, đại lý và các điểm bán sản phẩm</p>
+          <p>Tạo và quản lý NSX, nhà phân phối, đại lý và các điểm bán sản phẩm</p>
         </div>
         <button className="btn btn-primary" onClick={handleOpenCreate}>
-          <Plus size={18} /> Thêm đơn vị (NSX / NPP)
+          <Plus size={18} /> Thêm đơn vị mới
         </button>
       </div>
 
@@ -137,7 +226,7 @@ export default function Distributors() {
             <Search size={18} className="search-icon" />
             <input
               className="input"
-              placeholder="Tìm theo tên đơn vị, tài khoản, địa chỉ..."
+              placeholder="Tìm theo tên đơn vị, địa chỉ..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -145,39 +234,11 @@ export default function Distributors() {
 
           {/* Role Filter Tabs */}
           <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', padding: 3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
-            <button
-              type="button"
-              onClick={() => setRoleFilter('all')}
-              style={{
-                padding: '5px 12px', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: 'none',
-                background: roleFilter === 'all' ? 'var(--primary-color)' : 'transparent',
-                color: roleFilter === 'all' ? '#fff' : 'var(--text-muted)'
-              }}
-            >
-              Tất cả
-            </button>
-            <button
-              type="button"
-              onClick={() => setRoleFilter('NSX')}
-              style={{
-                padding: '5px 12px', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: 'none',
-                background: roleFilter === 'NSX' ? 'var(--primary-color)' : 'transparent',
-                color: roleFilter === 'NSX' ? '#fff' : 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', gap: 4
-              }}
-            >
+            <button type="button" onClick={() => setRoleFilter('all')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: 'none', background: roleFilter === 'all' ? 'var(--primary-color)' : 'transparent', color: roleFilter === 'all' ? '#fff' : 'var(--text-muted)' }}>Tất cả</button>
+            <button type="button" onClick={() => setRoleFilter('NSX')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: 'none', background: roleFilter === 'NSX' ? 'var(--primary-color)' : 'transparent', color: roleFilter === 'NSX' ? '#fff' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
               <Building2 size={13} /> NSX
             </button>
-            <button
-              type="button"
-              onClick={() => setRoleFilter('NPP')}
-              style={{
-                padding: '5px 12px', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: 'none',
-                background: roleFilter === 'NPP' ? 'var(--primary-color)' : 'transparent',
-                color: roleFilter === 'NPP' ? '#fff' : 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', gap: 4
-              }}
-            >
+            <button type="button" onClick={() => setRoleFilter('NPP')} style={{ padding: '5px 12px', borderRadius: 6, fontSize: '0.8rem', cursor: 'pointer', border: 'none', background: roleFilter === 'NPP' ? 'var(--primary-color)' : 'transparent', color: roleFilter === 'NPP' ? '#fff' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
               <Store size={13} /> NPP / Điểm bán
             </button>
           </div>
@@ -195,18 +256,16 @@ export default function Distributors() {
             <tr>
               <th>Đơn vị / Cửa hàng</th>
               <th>Loại đối tác</th>
-              <th>Tài khoản</th>
               <th>Địa chỉ</th>
-              <th>Liên hệ</th>
               <th>Trạng thái</th>
               <th>Hành động</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="loading-overlay"><div className="loading-spinner"></div></td></tr>
+              <tr><td colSpan={5} className="loading-overlay"><div className="loading-spinner"></div></td></tr>
             ) : distributors.length === 0 ? (
-              <tr><td colSpan={7} className="empty-state"><Users size={40}/><h3>Chưa có đơn vị nào</h3></td></tr>
+              <tr><td colSpan={5} className="empty-state"><Users size={40}/><h3>Chưa có đơn vị nào</h3></td></tr>
             ) : (
               distributors.map(dist => (
                 <tr key={dist._id}>
@@ -220,6 +279,12 @@ export default function Distributors() {
                       </div>
                       <div>
                         <div className="dist-name">{dist.fullName}</div>
+                        {dist.details && (
+                          <div style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: 2 }}>
+                            <FileText size={11} style={{ display: 'inline', marginRight: 3 }} />
+                            Có thông tin chi tiết
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -234,17 +299,10 @@ export default function Distributors() {
                       </span>
                     )}
                   </td>
-                  <td><code>{dist.username}</code></td>
                   <td>
                     <div className="dist-address-cell" title={dist.address}>
                       <MapPin size={14} className="dist-icon" />
                       <span>{dist.address || 'Chưa cập nhật'}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="dist-email-cell">
-                      <Mail size={14} className="dist-icon" />
-                      <span>{dist.email}</span>
                     </div>
                   </td>
                   <td>
@@ -259,25 +317,10 @@ export default function Distributors() {
                   </td>
                   <td>
                     <div className="action-buttons">
-                      <button
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => handleOpenEdit(dist)}
-                        title="Chỉnh sửa"
-                      >
+                      <button className="btn btn-sm btn-ghost" onClick={() => handleOpenEdit(dist)} title="Chỉnh sửa">
                         <Edit size={14} />
                       </button>
-                      <button
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => { setPasswordDistributor(dist); setShowPasswordModal(true); }}
-                        title="Đổi mật khẩu"
-                      >
-                        <Key size={14} />
-                      </button>
-                      <button
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => handleDelete(dist._id)}
-                        title="Xóa"
-                      >
+                      <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(dist._id)} title="Xóa">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -301,87 +344,29 @@ export default function Distributors() {
       {/* Create / Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="modal">
+          <div className="modal" style={{ maxWidth: 760 }}>
             <div className="modal-header">
               <h3 className="modal-title">{editingDistributor ? 'Chỉnh sửa đơn vị' : 'Thêm đơn vị mới'}</h3>
               <button className="btn-icon" onClick={() => setShowModal(false)}><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="modal-body">
-                {/* Loại đơn vị: NSX hoặc NPP */}
-                <div className="input-group" style={{ marginBottom: 16 }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                {/* Loại đơn vị */}
+                <div className="input-group" style={{ marginBottom: 0 }}>
                   <label>Loại đối tác *</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, role: 'NPP' })}
-                      style={{
-                        padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
-                        border: '1px solid',
-                        borderColor: form.role === 'NPP' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-                        background: form.role === 'NPP' ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.02)',
-                        color: form.role === 'NPP' ? 'var(--primary-color)' : 'var(--text-muted)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        fontWeight: form.role === 'NPP' ? 600 : 400
-                      }}
-                    >
+                    <button type="button" onClick={() => setForm({ ...form, role: 'NPP' })} style={{ padding: '10px 14px', borderRadius: 8, cursor: 'pointer', border: '1px solid', borderColor: form.role === 'NPP' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)', background: form.role === 'NPP' ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.02)', color: form.role === 'NPP' ? 'var(--primary-color)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: form.role === 'NPP' ? 600 : 400 }}>
                       <Store size={16} /> Nhà phân phối / Điểm bán
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, role: 'NSX' })}
-                      style={{
-                        padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
-                        border: '1px solid',
-                        borderColor: form.role === 'NSX' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-                        background: form.role === 'NSX' ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.02)',
-                        color: form.role === 'NSX' ? 'var(--primary-color)' : 'var(--text-muted)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        fontWeight: form.role === 'NSX' ? 600 : 400
-                      }}
-                    >
+                    <button type="button" onClick={() => setForm({ ...form, role: 'NSX' })} style={{ padding: '10px 14px', borderRadius: 8, cursor: 'pointer', border: '1px solid', borderColor: form.role === 'NSX' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)', background: form.role === 'NSX' ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.02)', color: form.role === 'NSX' ? 'var(--primary-color)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: form.role === 'NSX' ? 600 : 400 }}>
                       <Building2 size={16} /> Nhà sản xuất (NSX)
                     </button>
                   </div>
                 </div>
 
-                <div className="form-row">
-                  <div className="input-group">
-                    <label>Tên đăng nhập *</label>
-                    <input
-                      className="input"
-                      value={form.username}
-                      onChange={e => setForm({ ...form, username: e.target.value })}
-                      disabled={!!editingDistributor}
-                      required
-                    />
-                  </div>
-                  <div className="input-group">
-                    <label>Email liên hệ *</label>
-                    <input
-                      className="input"
-                      type="email"
-                      value={form.email}
-                      onChange={e => setForm({ ...form, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {!editingDistributor && (
-                  <div className="input-group">
-                    <label>Mật khẩu khởi tạo *</label>
-                    <input
-                      className="input"
-                      type="password"
-                      value={form.password}
-                      onChange={e => setForm({ ...form, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                )}
-
-                <div className="input-group">
+                {/* Tên */}
+                <div className="input-group" style={{ marginBottom: 0 }}>
                   <label>{form.role === 'NSX' ? 'Tên Nhà sản xuất / Doanh nghiệp *' : 'Tên Điểm bán / Nhà phân phối *'}</label>
                   <input
                     className="input"
@@ -392,7 +377,8 @@ export default function Distributors() {
                   />
                 </div>
 
-                <div className="input-group">
+                {/* Địa chỉ */}
+                <div className="input-group" style={{ marginBottom: 0 }}>
                   <label>Địa chỉ</label>
                   <input
                     className="input"
@@ -401,46 +387,150 @@ export default function Distributors() {
                     placeholder={form.role === 'NSX' ? 'Ví dụ: KCN Thăng Long, Đông Anh, Hà Nội' : 'Ví dụ: 12 Đường số 5, P. Hiệp Bình, TP. Thủ Đức'}
                   />
                 </div>
+
+                {/* Thông tin chi tiết — Rich Text Editor */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label className="label" style={{ marginBottom: 0 }}>Thông tin chi tiết (Soạn thảo văn bản & Chèn ảnh):</label>
+                    {/* Mode Toggle */}
+                    <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', padding: 3, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <button type="button" onClick={() => setEditorMode('visual')} style={{ height: 28, fontSize: '0.8rem', padding: '0 10px', borderRadius: 6, cursor: 'pointer', border: 'none', background: editorMode === 'visual' ? 'var(--primary-color)' : 'transparent', color: editorMode === 'visual' ? '#fff' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Eye size={13} /> Soạn thảo
+                      </button>
+                      <button type="button" onClick={() => setEditorMode('code')} style={{ height: 28, fontSize: '0.8rem', padding: '0 10px', borderRadius: 6, cursor: 'pointer', border: 'none', background: editorMode === 'code' ? 'var(--primary-color)' : 'transparent', color: editorMode === 'code' ? '#fff' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Code size={13} /> HTML
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Toolbar */}
+                  {editorMode === 'visual' && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px 8px 0 0' }}>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('bold')} title="Bôi đậm"><Bold size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('italic')} title="In nghiêng"><Italic size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('underline')} title="Gạch chân"><Underline size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('strikeThrough')} title="Gạch ngang"><Strikethrough size={14} /></button>
+                      <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyLeft')} title="Căn trái"><AlignLeft size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyCenter')} title="Căn giữa"><AlignCenter size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyRight')} title="Căn phải"><AlignRight size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('justifyFull')} title="Căn đều"><AlignJustify size={14} /></button>
+                      <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('insertUnorderedList')} title="Danh sách chấm"><List size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('insertOrderedList')} title="Danh sách số"><ListOrdered size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('formatBlock', '<h2>')} title="Tiêu đề 2"><Heading2 size={14} /></button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => execCmd('formatBlock', '<h3>')} title="Tiêu đề 3"><Heading3 size={14} /></button>
+                      <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+                      <button type="button" className="btn btn-primary btn-sm" onClick={handleOpenImgModal} style={{ fontSize: '0.8rem', gap: 4, fontWeight: 600 }}>
+                        <ImageIcon size={14} /> Chèn ảnh
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={handleOpenLinkModal} style={{ fontSize: '0.8rem', gap: 4 }}>
+                        <LinkIcon size={14} /> Chèn Link
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Editor content area */}
+                  {editorMode === 'visual' ? (
+                    <div
+                      ref={editorRef}
+                      contentEditable
+                      onInput={handleEditorInput}
+                      style={{
+                        minHeight: 200,
+                        maxHeight: 320,
+                        overflowY: 'auto',
+                        padding: 14,
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '0 0 8px 8px',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        lineHeight: 1.6
+                      }}
+                    />
+                  ) : (
+                    <textarea
+                      className="input"
+                      style={{ minHeight: 200, fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: 1.5, borderRadius: 8 }}
+                      value={form.details}
+                      onChange={handleCodeChange}
+                      placeholder="<p>Nhập mã HTML thông tin chi tiết...</p>"
+                    />
+                  )}
+                </div>
+
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary">{editingDistributor ? 'Lưu thay đổi' : 'Tạo tài khoản'}</button>
+                <button type="submit" className="btn btn-primary">{editingDistributor ? 'Lưu thay đổi' : 'Tạo đơn vị'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Change Password Modal */}
-      {showPasswordModal && passwordDistributor && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowPasswordModal(false)}>
-          <div className="modal" style={{ maxWidth: 420 }}>
+      {/* Sub-modal: Chèn ảnh */}
+      {showImgModal && (
+        <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={(e) => e.target === e.currentTarget && setShowImgModal(false)}>
+          <div className="modal" style={{ maxWidth: 480 }}>
             <div className="modal-header">
-              <h3 className="modal-title">Đổi mật khẩu tài khoản</h3>
-              <button className="btn-icon" onClick={() => setShowPasswordModal(false)}><X size={20} /></button>
+              <h3 className="modal-title"><ImageIcon size={18} /> Chèn ảnh</h3>
+              <button className="btn-icon" onClick={() => setShowImgModal(false)}><X size={20} /></button>
             </div>
-            <form onSubmit={handleChangePassword}>
-              <div className="modal-body">
-                <div style={{ marginBottom: 16, fontSize: '0.88rem' }}>
-                  <p>Đang đổi mật khẩu cho: <strong>{passwordDistributor.fullName}</strong> ({passwordDistributor.role === 'NSX' ? 'Nhà sản xuất' : 'Nhà phân phối'})</p>
-                </div>
-                <div className="input-group">
-                  <label>Mật khẩu mới *</label>
-                  <input
-                    className="input"
-                    type="password"
-                    placeholder="Nhập ít nhất 6 ký tự"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    required
-                  />
-                </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label className="label" style={{ marginBottom: 8, display: 'block' }}>Tải ảnh từ máy tính:</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.2)', cursor: 'pointer', background: 'rgba(255,255,255,0.03)', fontSize: '0.88rem' }}>
+                  <Upload size={16} /> Chọn file ảnh (tối đa 5MB)
+                  <input type="file" accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+                </label>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowPasswordModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-success">Đổi mật khẩu</button>
+              {imgUrlInput && imgUrlInput.length < 300 && (
+                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>URL: {imgUrlInput}</div>
+              )}
+              {imgUrlInput && (
+                <img src={imgUrlInput} alt="Preview" style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }} />
+              )}
+              <div>
+                <label className="label" style={{ marginBottom: 8, display: 'block' }}>Hoặc nhập URL ảnh:</label>
+                <input className="input" type="text" placeholder="https://..." value={imgUrlInput} onChange={(e) => setImgUrlInput(e.target.value)} />
               </div>
-            </form>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowImgModal(false)}>Hủy</button>
+              <button type="button" className="btn btn-primary" onClick={applyInsertImage}><ImageIcon size={15} /> Chèn ảnh</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-modal: Chèn Link */}
+      {showLinkModal && (
+        <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={(e) => e.target === e.currentTarget && setShowLinkModal(false)}>
+          <div className="modal" style={{ maxWidth: 440 }}>
+            <div className="modal-header">
+              <h3 className="modal-title"><LinkIcon size={18} /> Chèn liên kết</h3>
+              <button className="btn-icon" onClick={() => setShowLinkModal(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>URL liên kết *</label>
+                <input className="input" type="text" placeholder="https://..." value={linkUrlInput} onChange={(e) => setLinkUrlInput(e.target.value)} />
+              </div>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Văn bản hiển thị (để trống = dùng URL)</label>
+                <input className="input" type="text" placeholder="Ví dụ: Xem thêm thông tin..." value={linkTextInput} onChange={(e) => setLinkTextInput(e.target.value)} />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.88rem' }}>
+                <input type="checkbox" checked={linkNewTab} onChange={(e) => setLinkNewTab(e.target.checked)} />
+                Mở liên kết trong tab mới
+              </label>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowLinkModal(false)}>Hủy</button>
+              <button type="button" className="btn btn-primary" onClick={applyInsertLink}><LinkIcon size={15} /> Chèn Link</button>
+            </div>
           </div>
         </div>
       )}

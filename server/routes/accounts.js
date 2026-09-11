@@ -56,25 +56,19 @@ router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) 
 });
 
 // POST /api/accounts/distributors - Create a new NPP / NSX account (distributor/manufacturer)
+// username, email, password are auto-generated — frontend only needs: fullName, address, details, role
 router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
   try {
-    const { username, email, password, fullName, address, role = 'NPP' } = req.body;
+    const { fullName, address, details, role = 'NPP' } = req.body;
     const allowedRole = ['NPP', 'NSX'].includes(role) ? role : 'NPP';
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ error: 'Vui lòng nhập tên đơn vị' });
+    }
     
     const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
     if (!enterpriseId) {
       return res.status(400).json({ error: 'Thiếu mã doanh nghiệp' });
-    }
-
-    // Check existing
-    const existing = await User.findOne({
-      $or: [
-        { username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } },
-        { email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } }
-      ]
-    });
-    if (existing) {
-      return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
     }
 
     // Get enterprise to copy subscriptionExpiry
@@ -83,14 +77,21 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
       return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Auto-generate unique username & email
+    const timestamp = Date.now();
+    const slug = fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16) || 'user';
+    const autoUsername = `${slug}_${timestamp}`;
+    const autoEmail = `${autoUsername}@internal.local`;
+    const autoPassword = Math.random().toString(36).slice(2, 10); // random, not used for login
+    const hashedPassword = await bcrypt.hash(autoPassword, 10);
 
     const user = new User({
-      username,
-      email,
+      username: autoUsername,
+      email: autoEmail,
       password: hashedPassword,
       fullName,
       address: address || '',
+      details: details || '',
       role: allowedRole,
       enterpriseId,
       subscriptionExpiry: enterprise.subscriptionExpiry
@@ -110,7 +111,7 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
 // PUT /api/accounts/distributors/:id - Update NPP / NSX account
 router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
   try {
-    const { fullName, email, address, isActive, password, role } = req.body;
+    const { fullName, address, details, isActive, role } = req.body;
 
     const distributor = await User.findById(req.params.id);
     if (!distributor) {
@@ -123,15 +124,11 @@ router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, r
     }
 
     distributor.fullName = fullName !== undefined ? fullName : distributor.fullName;
-    distributor.email = email !== undefined ? email : distributor.email;
     distributor.address = address !== undefined ? address : distributor.address;
+    distributor.details = details !== undefined ? details : distributor.details;
     distributor.isActive = isActive !== undefined ? isActive : distributor.isActive;
     if (role !== undefined && ['NPP', 'NSX'].includes(role)) {
       distributor.role = role;
-    }
-
-    if (password) {
-      distributor.password = await bcrypt.hash(password, 10);
     }
 
     await distributor.save();
