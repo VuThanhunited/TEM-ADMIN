@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, Package, QrCode,
@@ -195,6 +195,8 @@ export default function ProductInfo() {
   const relatedProducts = scanData?.relatedProducts || scanData?.enterpriseProducts || [];
   const currentProductId = product?._id || product?.id;
   const filteredRelated = relatedProducts.filter(p => (p._id || p.id) !== currentProductId);
+  const showRelated = enterprise?.displayConfig?.showRelatedProducts !== false;
+
 
   // useEffect cũng phải TRƯỚC early return
   useEffect(() => {
@@ -420,7 +422,7 @@ export default function ProductInfo() {
         </div>
 
         {/* 6. Medical Related Products - dùng data thật từ API */}
-        {filteredRelated.length > 0 && (
+        {showRelated && filteredRelated.length > 0 && (
           <div className="medical-related-section">
             <div className="medical-related-header">
               <h3 className="medical-related-title">
@@ -532,7 +534,7 @@ export default function ProductInfo() {
         </div>
 
         {/* 4. Related Products Section - dùng data thật từ API */}
-        {filteredRelated.length > 0 && (
+        {showRelated && filteredRelated.length > 0 && (
           <div className="appliance-related-section">
             <div className="appliance-related-header">
               <h3 className="appliance-related-title">
@@ -694,10 +696,12 @@ export default function ProductInfo() {
               <div className="exact-tpcn-icon-circle"><FileCheck size={22} color="#16a34a" /></div>
               <span>Công Bố</span>
             </div>
+            {showRelated && (
             <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('all_products')}>
               <div className="exact-tpcn-icon-circle"><BookOpen size={22} color="#16a34a" /></div>
               <span>Thư Viện sản phẩm</span>
             </div>
+            )}
             <div className="exact-tpcn-grid-item" onClick={() => setActiveModal('brand')}>
               <div className="exact-tpcn-icon-circle"><Package size={22} color="#16a34a" /></div>
               <span>Bao bì</span>
@@ -710,7 +714,7 @@ export default function ProductInfo() {
         </div>
 
         {/* 5. Sản Phẩm Liên Quan - dùng data thật từ API */}
-        {filteredRelated.length > 0 && (
+        {showRelated && filteredRelated.length > 0 && (
           <div className="exact-tpcn-related-card">
             <div className="exact-tpcn-related-header">
               <h3>SẢN PHẨM LIÊN QUAN</h3>
@@ -869,7 +873,7 @@ export default function ProductInfo() {
         </div>
 
         {/* 6. Sản Phẩm Liên Quan OCOP - dùng data thật từ API */}
-        {filteredRelated.length > 0 && (
+        {showRelated && filteredRelated.length > 0 && (
           <div className="exact-ocop-related-card">
             <div className="exact-ocop-related-header">
               <h3>SẢN PHẨM LIÊN QUAN</h3>
@@ -937,6 +941,26 @@ export default function ProductInfo() {
           <div className="agri-action-card" onClick={() => setActiveModal('mfg')}><Sprout size={26} color="#15803D" /><span>Vùng trồng/HTX</span></div>
           <div className="agri-action-card" onClick={() => setActiveModal('cert')}><Award size={26} color="#15803D" /><span>Chứng nhận VietGAP</span></div>
         </div>
+
+        {/* Related Products - Agriculture */}
+        {showRelated && filteredRelated.length > 0 && (
+          <div className="agri-related-section">
+            <div className="agri-related-header">
+              <h3><ShoppingBag size={20} color="#15803D" style={{ marginRight: 8 }} />SẢN PHẨM LIÊN QUAN</h3>
+            </div>
+            <div className="agri-related-grid">
+              {filteredRelated.map((p, idx) => (
+                <div key={p._id || idx} className="agri-related-card">
+                  <div className="agri-related-img">
+                    {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain" }} /> : <Sprout size={32} color="#15803D" />}
+                  </div>
+                  <div className="agri-related-name">{p.name}</div>
+                  {p.category && <div className="agri-related-sub">{p.category}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -974,7 +998,46 @@ export default function ProductInfo() {
           <div className="cosmetics-action-card" onClick={() => setActiveModal('ingredients')}><Sparkles size={26} color="#BE185D" /><span>Thành phần</span></div>
           <div className="cosmetics-action-card" onClick={() => setActiveModal('mfg')}><Building2 size={26} color="#BE185D" /><span>Nhà sản xuất</span></div>
         </div>
+
+        {/* Related Products - Cosmetics */}
+        {showRelated && filteredRelated.length > 0 && (
+          <div className="cosmetics-related-section">
+            <div className="cosmetics-related-header">
+              <h3><ShoppingBag size={20} color="#BE185D" style={{ marginRight: 8 }} />SẢN PHẨM LIÊN QUAN</h3>
+            </div>
+            <div className="cosmetics-related-grid">
+              {filteredRelated.map((p, idx) => (
+                <div key={p._id || idx} className="cosmetics-related-card">
+                  <div className="cosmetics-related-img">
+                    {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain" }} /> : <Sparkles size={32} color="#BE185D" />}
+                  </div>
+                  <div className="cosmetics-related-name">{p.name}</div>
+                  {p.category && <div className="cosmetics-related-sub">{p.category}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Related Products - Default */}
+      {showRelated && filteredRelated.length > 0 && (
+        <div style={{ padding: "16px", marginTop: "16px" }}>
+          <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "12px", display: "flex", alignItems: "center", gap: 8 }}>
+            <ShoppingBag size={18} /><span>SẢN PHẨM LIÊN QUAN</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "12px" }}>
+            {filteredRelated.map((p, idx) => (
+              <div key={p._id || idx} style={{ textAlign: "center", padding: "10px", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.1)", background: "#fff" }}>
+                <div style={{ width: 48, height: 48, margin: "0 auto 6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 48, height: 48, objectFit: "contain" }} /> : <Package size={32} color="#6366f1" />}
+                </div>
+                <div style={{ fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.3 }}>{p.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -1187,6 +1250,25 @@ export default function ProductInfo() {
                 <div className="modal-info-list">
                   <div className="modal-info-item"><span>Chống chỉ định:</span> <strong>Mẫn cảm với paracetamol, suy gan nặng</strong></div>
                   <div className="modal-info-item"><span>Bảo quản:</span> <strong>Khu vực khô ráo, dưới 30°C, tránh ánh sáng</strong></div>
+                </div>
+              )}
+              {activeModal === 'all_products' && (
+                <div>
+                  {showRelated && filteredRelated.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "12px", padding: "4px 0" }}>
+                      {filteredRelated.map((p, idx) => (
+                        <div key={p._id || idx} style={{ textAlign: "center", padding: "10px", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.1)", background: "#f0fdf4" }}>
+                          <div style={{ width: 56, height: 56, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 6 }} /> : <Package size={32} color="#16a34a" />}
+                          </div>
+                          <div style={{ fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.3, color: "#166534" }}>{p.name}</div>
+                          {p.category && <div style={{ fontSize: "0.72rem", color: "#4ade80", marginTop: 3 }}>{p.category}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ textAlign: "center", opacity: 0.6, padding: "20px 0" }}>Không có sản phẩm liên quan.</p>
+                  )}
                 </div>
               )}
               {activeModal === 'product_detail' && (

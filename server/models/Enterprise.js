@@ -61,6 +61,9 @@ const enterpriseSchema = new mongoose.Schema({
     secondaryColor: { type: String, default: '#8b5cf6' },
     fontFamily: { type: String, default: 'Inter' }
   },
+  displayConfig: {
+    showRelatedProducts: { type: Boolean, default: true }
+  },
   subscriptionPlan: {
     type: String,
     enum: ['BASIC', 'PRO', 'ENTERPRISE'],

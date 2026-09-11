@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
@@ -35,7 +35,8 @@ export default function Enterprise() {
     partnerDetails: '',
     domain: '',
     subdomain: '',
-    chatbotConfig: { enabled: false, script: '', welcomeMessage: '' }
+    chatbotConfig: { enabled: false, script: '', welcomeMessage: '' },
+    displayConfig: { showRelatedProducts: true }
   });
 
   // Rich Text Editor State inside Modal
@@ -102,7 +103,8 @@ export default function Enterprise() {
       partnerDetails: '',
       domain: '',
       subdomain: '',
-      chatbotConfig: { enabled: false, script: '', welcomeMessage: '' }
+      chatbotConfig: { enabled: false, script: '', welcomeMessage: '' },
+      displayConfig: { showRelatedProducts: true }
     });
     setEditorMode('visual');
     setIsModalOpen(true);
@@ -130,7 +132,8 @@ export default function Enterprise() {
       partnerDetails: ent.partnerDetails || '',
       domain: ent.domain || '',
       subdomain: ent.subdomain || '',
-      chatbotConfig: ent.chatbotConfig || { enabled: false, script: '', welcomeMessage: '' }
+      chatbotConfig: ent.chatbotConfig || { enabled: false, script: '', welcomeMessage: '' },
+      displayConfig: ent.displayConfig || { showRelatedProducts: true }
     });
     setEditorMode('visual');
     setIsModalOpen(true);
@@ -845,6 +848,31 @@ export default function Enterprise() {
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* Display Config Box */}
+                    <div style={{ background: 'var(--color-bg-primary)', padding: 18, borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-primary-light)' }}>
+                          <Eye size={18} /> Cài đặt Hiển thị Giao diện Tem
+                        </h4>
+                      </div>
+
+                      <label className="toggle-label">
+                        <input
+                          type="checkbox"
+                          checked={formData.displayConfig?.showRelatedProducts ?? true}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            displayConfig: { ...prev.displayConfig, showRelatedProducts: e.target.checked }
+                          }))}
+                        />
+                        <span className="toggle-switch"></span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Hiển thị phần "Sản phẩm Liên Quan" trên trang tem</span>
+                      </label>
+                      <p style={{ marginTop: 8, fontSize: '0.8rem', opacity: 0.6, lineHeight: 1.5 }}>
+                        Khi tắt, mục sản phẩm liên quan sẽ bị ẩn hoàn toàn trên trang xem thông tin tem của doanh nghiệp này.
+                      </p>
                     </div>
                   </div>
                 )}
