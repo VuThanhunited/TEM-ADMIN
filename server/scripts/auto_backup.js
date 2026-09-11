@@ -27,7 +27,6 @@ async function runAutoBackup() {
 
   try {
     // Chỉ tạo kết nối mới nếu chưa có (chạy CLI độc lập)
-    // KHÔNG bao giờ gọi connect() khi server đang dùng mongoose singleton
     if (mongoose.connection.readyState !== 1) {
       if (isCLI) {
         await mongoose.connect(MONGODB_URI);
@@ -38,16 +37,18 @@ async function runAutoBackup() {
       }
     }
 
+    // Dùng .lean() để giảm bộ nhớ Mongoose overhead (~3-5x nhẹ hơn)
+    // ScanLog giới hạn 5000 bản gần nhất để tránh OOM trên Render free tier (512MB RAM)
     const [users, enterprises, products, labelBatches, labels, labelDesigns, templates, scanLogs, contacts] = await Promise.all([
-      User.find().select('-password'),
-      Enterprise.find(),
-      Product.find(),
-      LabelBatch.find(),
-      Label.find(),
-      LabelDesign.find(),
-      Template.find(),
-      ScanLog.find(),
-      Contact.find()
+      User.find().select('-password').lean(),
+      Enterprise.find().lean(),
+      Product.find().lean(),
+      LabelBatch.find().lean(),
+      Label.find().lean(),
+      LabelDesign.find().lean(),
+      Template.find().lean(),
+      ScanLog.find().sort({ scannedAt: -1 }).limit(5000).lean(), // chỉ 5000 bản gần nhất
+      Contact.find().lean()
     ]);
 
     const backupData = {
@@ -86,8 +87,9 @@ async function runAutoBackup() {
     const todayStr = new Date().toISOString().slice(0, 10);
     const backupFilePath = path.join(backupDir, `database_backup_${todayStr}.json`);
 
+    // Ghi file — với .lean() object đã nhỏ hơn đáng kể
     fs.writeFileSync(backupFilePath, JSON.stringify(backupData, null, 2), 'utf-8');
-    console.log(`[AUTO-BACKUP] ✅ Đã lưu bản sao lưu thành công tại: ${backupFilePath}`);
+    console.log(`[AUTO-BACKUP] ✅ Đã lưu bản sao lưu thành công tại: ${backupFilePath} (ScanLogs: ${scanLogs.length} bản gần nhất)`);
 
     // Clean up backups older than 30 days
     const files = fs.readdirSync(backupDir);
@@ -108,8 +110,6 @@ async function runAutoBackup() {
   } catch (err) {
     console.error('[AUTO-BACKUP] ❌ Lỗi khi tự động sao lưu:', err);
   } finally {
-    // QUAN TRỌNG: Chỉ disconnect nếu chính script này tạo ra kết nối (CLI mode)
-    // Không bao giờ disconnect khi chạy như module được import bởi server
     if (ownConnection && mongoose.connection.readyState === 1) {
       await mongoose.disconnect();
     }
