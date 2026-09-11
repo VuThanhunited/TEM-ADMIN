@@ -1,0 +1,10 @@
+PassengerNodejs /home/giaiphapqrcode/nodevenv/nodeapp/18/bin/node
+PassengerStartupFile app.js
+PassengerAppRoot /home/giaiphapqrcode/nodeapp
+PassengerAppType node
+PassengerFriendlyErrorPages on
+PassengerMaxRequests 1000
+PassengerMaxPoolSize 3
+PassengerMinInstances 1
+PassengerIdleTimeout 600
+PassengerStartTimeout 120

@@ -158,9 +158,11 @@ export default function Products() {
   const [modalError, setModalError] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
 
+  const MAX_IMAGES = 6;
+
   const initialForm = {
     name: '', description: '', category: '', sku: '', barcode: '',
-    images: ['', '', ''], distributors: [], specifications: [], enterpriseId: '',
+    images: ['', '', '', '', '', ''], distributors: [], specifications: [], enterpriseId: '',
     verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
     productionProcess: [],
     certifications: {
@@ -210,14 +212,54 @@ export default function Products() {
 
   const loadManufacturers = async () => {
     try {
-      // Ưu tiên endpoint getManufacturers() lấy tất cả NSX
+      // Ưu tiên endpoint getManufacturers() lấy tất cả Enterprise có type NSX
       const data = await api.getManufacturers();
-      setManufacturers(Array.isArray(data) ? data : []);
+      const entList = Array.isArray(data) ? data : [];
+
+      // Fallback: nếu Enterprise NSX rỗng, lấy thêm từ Distributor accounts (User role=NSX)
+      // vì user thường tạo NSX từ trang Quản lý NSX/NPP (lưu vào User table, không phải Enterprise)
+      if (entList.length === 0) {
+        try {
+          const distResult = await api.getDistributors({ role: 'NSX', limit: 200 });
+          const distList = Array.isArray(distResult?.data) ? distResult.data : [];
+          // Chuẩn hóa field để tương thích với dropdown (dùng _id và name)
+          const normalized = distList.map(d => ({
+            _id: d._id,
+            name: d.fullName || d.name || '',
+            address: d.address || '',
+            phone: d.phone || '',
+            email: d.email || '',
+            isEnterprise: false // Đây là User record, không phải Enterprise
+          }));
+          setManufacturers(normalized);
+          return;
+        } catch (distErr) {
+          console.warn('Fallback getDistributors NSX lỗi:', distErr);
+        }
+      }
+
+      // Tag là Enterprise để phân biệt với User NSX
+      setManufacturers(entList.map(e => ({ ...e, isEnterprise: true })));
     } catch (err) {
       // Fallback sang getEnterprises filter
       try {
         const data = await api.getEnterprises();
-        setManufacturers(Array.isArray(data) ? data.filter(e => e.type === 'NSX') : []);
+        const filtered = Array.isArray(data) ? data.filter(e => e.type === 'NSX') : [];
+        if (filtered.length > 0) {
+          setManufacturers(filtered.map(e => ({ ...e, isEnterprise: true })));
+          return;
+        }
+        // Cuối cùng thử lấy từ distributors
+        const distResult = await api.getDistributors({ role: 'NSX', limit: 200 });
+        const distList = Array.isArray(distResult?.data) ? distResult.data : [];
+        setManufacturers(distList.map(d => ({
+          _id: d._id,
+          name: d.fullName || d.name || '',
+          address: d.address || '',
+          phone: d.phone || '',
+          email: d.email || '',
+          isEnterprise: false // Đây là User record, không phải Enterprise
+        })));
       } catch (fallbackErr) {
         console.error('Lỗi tải NSX:', fallbackErr);
       }
@@ -239,7 +281,7 @@ export default function Products() {
       : [];
 
     let imgList = [...(product.images || [])];
-    while (imgList.length < 3) imgList.push('');
+    while (imgList.length < MAX_IMAGES) imgList.push('');
 
     const certs = {
       iso: { checked: false, certNo: '', image: '', ...(product.certifications?.iso || {}) },
@@ -285,7 +327,26 @@ export default function Products() {
         return acc;
       }, {});
 
-      const cleanedImages = form.images.filter(img => img.trim() !== '');
+      // Chỉ lấy ảnh hợp lệ: URL thực (http/https) hoặc data URL
+      // Cảnh báo và từ chối ảnh base64 quá lớn (>500KB) để tránh MongoDB document overflow
+      const MAX_BASE64_SIZE = 500 * 1024; // 500KB encoded ~375KB file
+      const cleanedImages = form.images.filter(img => {
+        if (!img || !img.trim()) return false;
+        if (img.startsWith('data:')) {
+          // Kiểm tra kích thước base64
+          if (img.length > MAX_BASE64_SIZE) {
+            return false; // Bỏ qua ảnh base64 quá lớn
+          }
+        }
+        return true;
+      });
+
+      // Kiểm tra xem có ảnh base64 quá lớn bị loại bỏ không
+      const oversizedImages = form.images.filter(img => img?.startsWith('data:') && img.length > MAX_BASE64_SIZE);
+      if (oversizedImages.length > 0) {
+        setModalError(`⚠️ ${oversizedImages.length} ảnh bị loại do kích thước vượt quá 500KB. Vui lòng chọn ảnh nhỏ hơn hoặc dùng URL ảnh.`);
+        return;
+      }
 
       const data = {
         ...form,
@@ -356,7 +417,9 @@ export default function Products() {
     }
     setForm({
       ...form,
-      manufacturerId: id,
+      // Chỉ set manufacturerId khi NSX là Enterprise record (mới có thể populate).
+      // Nếu là User record (isEnterprise=false), chỉ tự điền text, không set ID để tránh populate fail.
+      manufacturerId: (nsx?.isEnterprise !== false) ? id : '',
       manufacturerInfo: form.manufacturerInfo.trim() ? form.manufacturerInfo : autoInfo
     });
   };
@@ -497,17 +560,17 @@ export default function Products() {
 
                 {/* Phần upload ảnh: Hỗ trợ URL và upload từ thiết bị */}
                 <div className="input-group">
-                  <label>Hình ảnh sản phẩm (Tối đa 3 ảnh — nhập URL hoặc tải từ thiết bị)</label>
+                  <label>Hình ảnh sản phẩm (Tối đa {MAX_IMAGES} ảnh — nhập URL hoặc tải từ thiết bị)</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {[0, 1, 2].map(i => (
+                    {Array.from({ length: MAX_IMAGES }, (_, i) => i).map(i => (
                       <div key={i}>
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                          Ảnh banner {i + 1}{i === 0 ? ' (Chính)' : ' (Tùy chọn)'}
+                          Ảnh {i + 1}{i === 0 ? ' (Chính — bắt buộc)' : ' (Tùy chọn)'}
                         </div>
                         <ImageInput
                           index={i}
                           value={form.images[i] || ''}
-                          placeholder={'Ảnh banner ' + (i + 1) + ' URL...'}
+                          placeholder={'Ảnh ' + (i + 1) + ' URL...'}
                           onChange={url => {
                             const imgs = [...form.images];
                             imgs[i] = url;

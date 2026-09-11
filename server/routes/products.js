@@ -65,7 +65,12 @@ router.post('/', auth, requireOwnership, async (req, res) => {
     const product = new Product({
       enterpriseId,
       name,
-      images: images || [],
+      // Lọc bỏ base64 quá lớn (>500KB) để tránh MongoDB 16MB document limit
+      images: (images || []).filter(img => {
+        if (!img || !img.trim()) return false;
+        if (img.startsWith('data:') && img.length > 500 * 1024) return false;
+        return true;
+      }),
       description,
       category,
       sku,
@@ -110,9 +115,18 @@ router.put('/:id', auth, async (req, res) => {
       chatbotQA, manufacturerId, manufacturerInfo
     };
 
-    // Chỉ cập nhật images nếu client gửi mảng có nội dung (> 0 URL hợp lệ)
-    if (Array.isArray(images) && images.length > 0) {
-      updateData.images = images;
+    // Chỉ cập nhật images nếu client gửi mảng có nội dung (>0 URL hợp lệ)
+    // Đồng thời lọc bỏ base64 quá lớn để tránh MongoDB overflow
+    const filteredImages = Array.isArray(images)
+      ? images.filter(img => {
+          if (!img || !img.trim()) return false;
+          if (img.startsWith('data:') && img.length > 500 * 1024) return false;
+          return true;
+        })
+      : [];
+
+    if (filteredImages.length > 0) {
+      updateData.images = filteredImages;
     }
 
     const product = await Product.findByIdAndUpdate(

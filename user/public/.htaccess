@@ -1,0 +1,13 @@
+Options -MultiViews
+RewriteEngine On
+
+# ── Bỏ qua file & thư mục thực sự tồn tại ────────────────────────────────────
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# ── Bypass /api/* → Phusion Passenger (Node.js) xử lý ───────────────────────
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/api$
+
+# ── React SPA: Tất cả routes còn lại → index.html ────────────────────────────
+RewriteRule ^ /index.html [L]

@@ -6,3 +6,10 @@ backups/database_backup_full.json
 dist.zip
 server-c2-deploy.zip
 *.zip
+
+# Large data files - không commit lên GitHub
+database_backup_full.json
+server/backups/*.json
+*.xls
+*.xlsx
+*.mdq*
