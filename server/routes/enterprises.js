@@ -5,14 +5,22 @@ const { requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
 
-// GET /api/enterprises/manufacturers - Lấy danh sách tất cả Nhà Sản Xuất (cho việc chọn NSX trong sản phẩm)
+// GET /api/enterprises/manufacturers - Lấy danh sách Nhà Sản Xuất (ưu tiên type NSX, fallback tất cả)
 router.get('/manufacturers', auth, async (req, res) => {
   try {
-    const query = { type: 'NSX', isActive: true };
-    // Nếu là NSX bình thường và muốn có thể chọn các NSX khác hoặc chính mình
-    const list = await Enterprise.find(query)
+    // Ưu tiên lấy Enterprise có type NSX
+    let list = await Enterprise.find({ type: 'NSX', isActive: true })
       .select('name address phone email logo partnerDetails')
       .sort({ name: 1 });
+
+    // Nếu không có NSX nào, fallback lấy tất cả Enterprise đang active
+    // (Trường hợp khách nhập NSX nhưng không gán type = 'NSX')
+    if (list.length === 0) {
+      list = await Enterprise.find({ isActive: true })
+        .select('name address phone email logo partnerDetails')
+        .sort({ name: 1 });
+    }
+
     res.json(list);
   } catch (error) {
     console.error('Get manufacturers error:', error);

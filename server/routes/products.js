@@ -55,7 +55,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
     const {
       name, images, description, category, sku, barcode, distributors, specifications,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages
     } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
     if (!enterpriseId) {
@@ -84,7 +84,8 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       distributorInfo,
       chatbotQA: chatbotQA || [],
       manufacturerId: manufacturerId || null,
-      manufacturerInfo: manufacturerInfo || ''
+      manufacturerInfo: manufacturerInfo || '',
+      congBoImages: (congBoImages || []).filter(img => img && img.trim())
     });
     await product.save();
     
@@ -104,7 +105,7 @@ router.put('/:id', auth, async (req, res) => {
     const {
       name, images, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages
     } = req.body;
 
     // Xây dựng updateData — chỉ set images nếu client gửi mảng không rỗng
@@ -112,7 +113,8 @@ router.put('/:id', auth, async (req, res) => {
     const updateData = {
       name, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo
+      chatbotQA, manufacturerId, manufacturerInfo,
+      congBoImages: Array.isArray(congBoImages) ? congBoImages.filter(img => img && img.trim()) : undefined
     };
 
     // Chỉ cập nhật images nếu client gửi mảng có nội dung (>0 URL hợp lệ)

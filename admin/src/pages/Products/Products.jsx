@@ -165,14 +165,7 @@ export default function Products() {
     images: ['', '', '', '', '', ''], distributors: [], specifications: [], enterpriseId: '',
     verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
     productionProcess: [],
-    certifications: {
-      iso: { checked: false, certNo: '', image: '' },
-      vetinhATTP: { checked: false, certNo: '', image: '' },
-      gmp: { checked: false, certNo: '', image: '' },
-      cgmp: { checked: false, certNo: '', image: '' },
-      vietgap: { checked: false, certNo: '', image: '' },
-      organic: { checked: false, certNo: '', image: '' }
-    },
+    congBoImages: ['', '', ''],
     producerInfo: '',
     distributorInfo: '',
     chatbotQA: [],
@@ -283,14 +276,6 @@ export default function Products() {
     let imgList = [...(product.images || [])];
     while (imgList.length < MAX_IMAGES) imgList.push('');
 
-    const certs = {
-      iso: { checked: false, certNo: '', image: '', ...(product.certifications?.iso || {}) },
-      vetinhATTP: { checked: false, certNo: '', image: '', ...(product.certifications?.vetinhATTP || {}) },
-      gmp: { checked: false, certNo: '', image: '', ...(product.certifications?.gmp || {}) },
-      cgmp: { checked: false, certNo: '', image: '', ...(product.certifications?.cgmp || {}) },
-      vietgap: { checked: false, certNo: '', image: '', ...(product.certifications?.vietgap || {}) },
-      organic: { checked: false, certNo: '', image: '', ...(product.certifications?.organic || {}) }
-    };
 
     setForm({
       name: product.name || '',
@@ -304,7 +289,11 @@ export default function Products() {
       enterpriseId: product.enterpriseId?._id || product.enterpriseId || '',
       verificationText: product.verificationText || 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
       productionProcess: product.productionProcess || [],
-      certifications: certs,
+      congBoImages: (() => {
+        const imgs = [...(product.congBoImages || [])];
+        while (imgs.length < 3) imgs.push('');
+        return imgs;
+      })(),
       producerInfo: product.producerInfo || '',
       distributorInfo: product.distributorInfo || '',
       chatbotQA: product.chatbotQA || [],
@@ -354,7 +343,8 @@ export default function Products() {
         images: cleanedImages,
         specifications: specObj,
         manufacturerId: form.manufacturerId || null,
-        manufacturerInfo: form.manufacturerInfo || ''
+        manufacturerInfo: form.manufacturerInfo || '',
+        congBoImages: (form.congBoImages || []).filter(img => img && img.trim())
       };
       if (editing) {
         await api.updateProduct(editing._id, data);
@@ -424,14 +414,6 @@ export default function Products() {
     });
   };
 
-  const certLabels = {
-    iso: 'Chứng nhận ISO',
-    vetinhATTP: 'Vệ sinh An toàn Thực phẩm',
-    gmp: 'Tiêu chuẩn GMP',
-    cgmp: 'Tiêu chuẩn CGMP',
-    vietgap: 'Tiêu chuẩn VietGAP',
-    organic: 'Chứng nhận Hữu cơ (Organic)'
-  };
 
   return (
     <div className="products-page">
@@ -626,41 +608,32 @@ export default function Products() {
                   </div>
                 </div>
 
-                {/* Chứng nhận đạt được */}
+                {/* Giấy công bố sản phẩm */}
                 <div className="distributors-section" style={{ marginBottom: 20 }}>
                   <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '8px', color: 'var(--primary-color)' }}>
-                    Chứng nhận đạt được
+                    📄 Giấy tiếp nhận đăng ký bản công bố sản phẩm
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    {Object.keys(form.certifications || {}).map((key) => {
-                      const cert = form.certifications[key] || { checked: false, certNo: '', image: '' };
-                      return (
-                        <div key={key} style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
-                            <input type="checkbox" checked={cert.checked} onChange={e => {
-                              const certs = { ...form.certifications };
-                              certs[key] = { ...certs[key], checked: e.target.checked };
-                              setForm({ ...form, certifications: certs });
-                            }} />
-                            <span style={{ fontSize: '0.85rem' }}>{certLabels[key]}</span>
-                          </label>
-                          {cert.checked && (
-                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <input className="input" style={{ fontSize: '0.8rem', padding: '4px 8px' }} placeholder="Số chứng nhận..." value={cert.certNo || ''} onChange={e => {
-                                const certs = { ...form.certifications };
-                                certs[key] = { ...certs[key], certNo: e.target.value };
-                                setForm({ ...form, certifications: certs });
-                              }} />
-                              <input className="input" style={{ fontSize: '0.8rem', padding: '4px 8px' }} placeholder="URL ảnh giấy chứng nhận..." value={cert.image || ''} onChange={e => {
-                                const certs = { ...form.certifications };
-                                certs[key] = { ...certs[key], image: e.target.value };
-                                setForm({ ...form, certifications: certs });
-                              }} />
-                            </div>
-                          )}
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                    Tải lên ảnh chụp / scan giấy công bố sản phẩm (tối đa 3 ảnh)
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i}>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                          Ảnh giấy công bố {i + 1}{i === 0 ? ' (Trang chính)' : ' (Tùy chọn)'}
                         </div>
-                      );
-                    })}
+                        <ImageInput
+                          index={i}
+                          value={form.congBoImages?.[i] || ''}
+                          placeholder={'URL ảnh giấy công bố ' + (i + 1) + '...'}
+                          onChange={url => {
+                            const imgs = [...(form.congBoImages || ['', '', ''])];
+                            imgs[i] = url;
+                            setForm({ ...form, congBoImages: imgs });
+                          }}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
 

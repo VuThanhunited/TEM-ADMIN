@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, Package, QrCode,
@@ -753,7 +753,7 @@ export default function ProductInfo() {
             <span>Cảm ơn bạn đã tin tưởng sử dụng sản phẩm chính hãng!</span>
           </div>
           <div className="exact-tpcn-copyright">
-            © 2024 Nam Dược Tân Viên Sơn. All rights reserved
+            &copy; {new Date().getFullYear()} {enterprise?.name || 'Nhà sản xuất'}. All rights reserved
           </div>
         </div>
       </div>
@@ -1166,7 +1166,7 @@ export default function ProductInfo() {
                 {activeModal === 'scan' && 'Lịch sử & Thông tin Quét'}
                 {activeModal === 'mfg' && 'Thông tin Nhà sản xuất'}
                 {activeModal === 'distributor' && 'Thông tin Nhà phân phối'}
-                {activeModal === 'cert' && 'Chứng nhận & Tiêu chuẩn'}
+                {activeModal === 'cert' && 'Giấy công bố sản phẩm'}
                 {activeModal === 'brand' && 'Câu chuyện Thương hiệu'}
                 {activeModal === 'export' && 'Thông tin Xuất khẩu'}
                 {activeModal === 'reward' && 'Tích điểm Thành viên'}
@@ -1252,6 +1252,37 @@ export default function ProductInfo() {
                   <div className="modal-info-item"><span>Bảo quản:</span> <strong>Khu vực khô ráo, dưới 30°C, tránh ánh sáng</strong></div>
                 </div>
               )}
+              {activeModal === 'cert' && (
+                <div>
+                  {product?.congBoImages?.filter(img => img && img.trim()).length > 0 ? (
+                    <div>
+                      <p style={{ fontSize: '0.88rem', color: '#4b5563', marginBottom: 14, lineHeight: 1.5 }}>
+                        Giấy tiếp nhận đăng ký bản công bố sản phẩm đã được xác nhận bởi cơ quan có thẩm quyền.
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
+                          <a key={idx} href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                            <img
+                              src={img}
+                              alt={'Giấy công bố ' + (idx + 1)}
+                              style={{ width: '100%', borderRadius: 10, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 340, background: '#f9fafb' }}
+                            />
+                            <p style={{ textAlign: 'center', fontSize: '0.78rem', color: '#6b7280', marginTop: 4 }}>
+                              Nhấn để xem đầy đủ ↗
+                            </p>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '30px 0', color: '#9ca3af' }}>
+                      <FileText size={40} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+                      <p style={{ fontSize: '0.9rem' }}>Chưa có giấy công bố sản phẩm.</p>
+                      <p style={{ fontSize: '0.82rem', marginTop: 4 }}>Vui lòng liên hệ nhà sản xuất để biết thêm thông tin.</p>
+                    </div>
+                  )}
+                </div>
+              )}
               {activeModal === 'all_products' && (
                 <div>
                   {showRelated && filteredRelated.length > 0 ? (
@@ -1273,12 +1304,58 @@ export default function ProductInfo() {
               )}
               {activeModal === 'product_detail' && (
                 <div>
-                  <p style={{ fontWeight: 600, fontSize: '1rem', color: '#00695C', marginBottom: '8px' }}>
+                  {/* Tên & mô tả */}
+                  <p style={{ fontWeight: 700, fontSize: '1rem', color: '#00695C', marginBottom: '8px' }}>
                     {product?.name || 'Sản phẩm chính hãng'}
                   </p>
-                  <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                    {product?.description || 'Sản phẩm được xác thực nguồn gốc và kiểm định chất lượng chính hãng.'}
-                  </p>
+                  {product?.description ? (
+                    <p style={{ color: '#334155', fontSize: '0.9rem', lineHeight: '1.7', marginBottom: 16, whiteSpace: 'pre-line' }}>
+                      {product.description}
+                    </p>
+                  ) : (
+                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 16 }}>
+                      Sản phẩm được xác thực nguồn gốc và kiểm định chất lượng chính hãng.
+                    </p>
+                  )}
+
+                  {/* Thông số kỹ thuật / thuộc tính */}
+                  {product?.specifications && Object.keys(product.specifications).length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#00695C', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Thông số sản phẩm
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {Object.entries(product.specifications).map(([key, val]) => (
+                          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 6, background: '#f0fdf4', fontSize: '0.86rem' }}>
+                            <span style={{ color: '#4b5563', fontWeight: 500 }}>{key}:</span>
+                            <span style={{ color: '#166534', fontWeight: 600 }}>{val}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thông tin bổ sung nhà sản xuất */}
+                  {product?.producerInfo && (
+                    <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 6 }}>Đơn vị sản xuất:</div>
+                      <div style={{ whiteSpace: 'pre-line', fontSize: '0.86rem', lineHeight: '1.6', color: '#334155' }}>{product.producerInfo}</div>
+                    </div>
+                  )}
+
+                  {/* Ảnh giấy công bố (nếu có) */}
+                  {product?.congBoImages?.filter(img => img && img.trim()).length > 0 && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 8 }}>Giấy công bố sản phẩm:</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
+                          <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                            <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', borderRadius: 8, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 300 }} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

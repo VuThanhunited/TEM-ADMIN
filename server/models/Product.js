@@ -59,6 +59,11 @@ const productSchema = new mongoose.Schema({
     description: { type: String, default: '' },
     image: { type: String, default: '' }
   }],
+  // Ảnh giấy tiếp nhận đăng ký bản công bố sản phẩm
+  congBoImages: [{
+    type: String
+  }],
+  // Giữ lại certifications để backward compat với dữ liệu cũ
   certifications: {
     iso: {
       checked: { type: Boolean, default: false },
