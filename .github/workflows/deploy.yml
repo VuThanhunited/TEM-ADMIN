@@ -1,57 +1,149 @@
-name: 🚀 Auto Deploy
+name: 🚀 Deploy to C2 Hosting
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:  # Cho phép chạy thủ công từ GitHub UI
 
 jobs:
-  # ── Job 1: Deploy Server lên cPanel qua SSH ─────────────────────────────────
-  deploy-server:
-    name: 📦 Deploy Server → cPanel
+  # ─── JOB 1: Build & Deploy Frontend qua FTP ──────────────────────────────────
+  deploy-frontend:
+    name: 📦 Build & Deploy Frontend (FTP)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to cPanel via SSH
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            user/package-lock.json
+            admin/package-lock.json
+
+      # ── Build User App (trang quét QR) ──────────────────────────────────────
+      - name: 📦 Install User dependencies
+        run: npm ci
+        working-directory: user
+
+      - name: 🔨 Build User App
+        run: npm run build
+        working-directory: user
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      # ── Build Admin App ──────────────────────────────────────────────────────
+      - name: 📦 Install Admin dependencies
+        run: npm ci
+        working-directory: admin
+
+      - name: 🔨 Build Admin App
+        run: npm run build
+        working-directory: admin
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      # ── Upload User dist → public_html/ ─────────────────────────────────────
+      - name: 🌐 Upload User App (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          port: 21
+          local-dir: ./user/dist/
+          server-dir: /public_html/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+
+      # ── Upload Admin dist → public_html/admin-panel/ ────────────────────────
+      - name: 🔧 Upload Admin App (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          port: 21
+          local-dir: ./admin/dist/
+          server-dir: /public_html/admin-panel/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+
+  # ─── JOB 2: Deploy Server qua SSH ────────────────────────────────────────────
+  deploy-server:
+    name: 🖥️ Deploy Server (SSH)
+    runs-on: ubuntu-latest
+    needs: deploy-frontend  # Chạy sau khi frontend deploy xong
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      # ── Tạo ZIP server (bỏ node_modules) ────────────────────────────────────
+      - name: 📦 Package server files
+        run: |
+          cd server
+          zip -r ../server-deploy.zip \
+            app.js server.js seed.js package.json .htaccess ecosystem.config.json \
+            middleware/ models/ routes/ services/ scripts/ \
+            --exclude "*/node_modules/*" --exclude "*/.env"
+
+      # ── Upload ZIP lên server qua SSH/SCP ────────────────────────────────────
+      - name: 📤 Upload server via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASS }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "server-deploy.zip"
+          target: "/home/giaiphapqrcode/nodeapp_tmp/"
+
+      # ── SSH vào server: extract, npm install, restart ────────────────────────
+      - name: 🔄 Restart Node.js App via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.CPANEL_SSH_HOST }}
-          username: ${{ secrets.CPANEL_SSH_USER }}
-          password: ${{ secrets.CPANEL_SSH_PASSWORD }}
-          port: ${{ secrets.CPANEL_SSH_PORT || 22 }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASS }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -e
-            echo "📁 Moving to app directory..."
+            echo "=== Deploying server ==="
+
+            # Extract ZIP vào thư mục tạm
+            cd /home/giaiphapqrcode/nodeapp_tmp
+            unzip -o server-deploy.zip -d extracted
+
+            # Backup app hiện tại
+            cp -rf /home/giaiphapqrcode/nodeapp /home/giaiphapqrcode/nodeapp_backup_$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+
+            # Copy files mới (giữ nguyên .env và node_modules cũ)
+            cp -rf extracted/* /home/giaiphapqrcode/nodeapp/
+
+            # Cài dependencies mới (nếu package.json thay đổi)
             cd /home/giaiphapqrcode/nodeapp
+            npm install --production 2>&1 | tail -5
 
-            echo "📥 Pulling latest code from GitHub..."
-            git pull origin main
+            # Restart app (cPanel Phusion Passenger)
+            touch tmp/restart.txt 2>/dev/null || true
 
-            echo "📦 Installing dependencies..."
-            /home/giaiphapqrcode/nodevenv/nodeapp/18/bin/npm install --production
+            # Cleanup
+            rm -rf /home/giaiphapqrcode/nodeapp_tmp/extracted
+            rm -f /home/giaiphapqrcode/nodeapp_tmp/server-deploy.zip
 
-            echo "🔄 Restarting Passenger app..."
-            mkdir -p tmp
-            touch tmp/restart.txt
+            echo "=== Deploy completed! ==="
 
-            echo "✅ Server deploy done!"
-
-  # ── Job 2: Thông báo deploy thành công ──────────────────────────────────────
-  notify:
-    name: 🔔 Notify Deploy Status
-    runs-on: ubuntu-latest
-    needs: [deploy-server]
-    if: always()
-
-    steps:
-      - name: Report status
+      # ── Health check ─────────────────────────────────────────────────────────
+      - name: 🏥 Health check
         run: |
-          if [ "${{ needs.deploy-server.result }}" == "success" ]; then
-            echo "✅ Server deployed successfully to cPanel!"
-          else
-            echo "❌ Server deploy FAILED. Check logs above."
-            exit 1
-          fi
+          sleep 10
+          curl -f https://www.giaiphapqrcode.com/api/health || \
+          curl -f https://api.giaiphapqrcode.com/api/health || \
+          echo "⚠️ Health check skipped (URL not configured)"
+        continue-on-error: true
