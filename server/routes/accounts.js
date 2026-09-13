@@ -13,12 +13,13 @@ router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) 
     const { page = 1, limit = 20, search = '', role } = req.query;
     
     // Non-admin can only see their own enterprise distributors
+    // ADMIN: nếu không truyền enterpriseId thì xem tất cả
     const enterpriseId = req.user.role === 'ADMIN' ? req.query.enterpriseId : req.user.enterpriseId;
-    if (!enterpriseId) {
+    if (!enterpriseId && req.user.role !== 'ADMIN') {
       return res.status(400).json({ error: 'Thiếu mã doanh nghiệp' });
     }
 
-    const query = { enterpriseId };
+    const query = enterpriseId ? { enterpriseId } : {};
     if (role) {
       query.role = role;
     } else {
