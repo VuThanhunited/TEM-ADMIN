@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
@@ -288,7 +288,7 @@ export default function Enterprise() {
         const created = await api.createEnterprise(formData);
         alert('Tạo doanh nghiệp mới thành công!');
         setIsModalOpen(false);
-        loadData();
+        setEnterprises(prev => [...prev, created]);
       } else {
         const updated = await api.updateEnterprise(editingId, formData);
         alert('Cập nhật thông tin doanh nghiệp thành công!');
