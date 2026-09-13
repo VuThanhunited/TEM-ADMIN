@@ -834,6 +834,11 @@ export default function Labels() {
         <div className="search-box">
           <Search size={18} className="search-icon" />
           <input className="input" placeholder={activeTab === 'batches' ? 'Tìm mã lô...' : 'Tìm serial...'} value={search} onChange={e => setSearch(e.target.value)} />
+          {search && (
+            <button type="button" className="search-clear-btn" onClick={() => setSearch('')} title="Xóa tìm kiếm">
+              <X size={15} />
+            </button>
+          )}
         </div>
         {activeTab === 'activate' && (
           <button className="btn btn-primary" onClick={handleDownloadFilteredLabels} disabled={exportingLabels} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

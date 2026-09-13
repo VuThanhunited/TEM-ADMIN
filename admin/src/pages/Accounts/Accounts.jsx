@@ -6,11 +6,13 @@ import {
 } from 'lucide-react';
 import './Accounts.css';
 import Pagination from '../../components/Pagination';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [showModal, setShowModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
@@ -22,12 +24,16 @@ export default function Accounts() {
     role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true
   });
 
-  useEffect(() => { loadAccounts(); }, [pagination.page, search]);
+  // Khi debouncedSearch thay đổi: reset về page 1
+  useEffect(() => { setPagination(prev => ({ ...prev, page: 1 })); }, [debouncedSearch]);
+
+  // Load accounts khi page hoặc debouncedSearch thay đổi
+  useEffect(() => { loadAccounts(); }, [pagination.page, debouncedSearch]);
 
   const loadAccounts = async () => {
     try {
       setLoading(true);
-      const result = await api.getAccounts({ page: pagination.page, search });
+      const result = await api.getAccounts({ page: pagination.page, search: debouncedSearch });
       setAccounts(result.data);
       setPagination(prev => ({ ...prev, ...result.pagination }));
     } catch (err) {
@@ -146,6 +152,11 @@ export default function Accounts() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          {search && (
+            <button type="button" className="search-clear-btn" onClick={() => setSearch('')} title="Xóa tìm kiếm">
+              <X size={15} />
+            </button>
+          )}
         </div>
         <button className="btn btn-ghost" onClick={loadAccounts}>
           <RefreshCw size={16} /> Làm mới

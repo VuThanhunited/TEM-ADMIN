@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import './Products.css';
 import Pagination from '../../components/Pagination';
+import { useDebounce } from '../../hooks/useDebounce';
 
 // ── ImageInput: slot ảnh hỗ trợ cả URL lẫn upload từ thiết bị ──────────────
 function ImageInput({ value, onChange, placeholder, index }) {
@@ -153,6 +154,7 @@ export default function Products() {
   const [manufacturers, setManufacturers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [modalError, setModalError] = useState(null);
@@ -175,16 +177,26 @@ export default function Products() {
 
   const [form, setForm] = useState({ ...initialForm });
 
+  // Load enterprises & manufacturers một lần khi mount
   useEffect(() => {
-    loadProducts();
     if (isAdmin) loadEnterprises();
     loadManufacturers();
-  }, [pagination.page, search, isAdmin]);
+  }, [isAdmin]);
+
+  // Khi debouncedSearch thay đổi: reset về page 1
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [debouncedSearch]);
+
+  // Load products khi page hoặc debouncedSearch thay đổi
+  useEffect(() => {
+    loadProducts();
+  }, [pagination.page, debouncedSearch]);
 
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const result = await api.getProducts({ page: pagination.page, search });
+      const result = await api.getProducts({ page: pagination.page, search: debouncedSearch });
       setProducts(result.data);
       setPagination(prev => ({ ...prev, ...result.pagination }));
     } catch (err) {
@@ -436,6 +448,16 @@ export default function Products() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+          {search && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => setSearch('')}
+              title="Xóa tìm kiếm"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
         <span className="toolbar-count">{pagination.total} sản phẩm</span>
       </div>

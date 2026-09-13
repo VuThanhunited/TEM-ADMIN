@@ -391,8 +391,18 @@ export default function Enterprise() {
                 placeholder="Tìm kiếm theo tên công ty, MST, SĐT, Email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: 38, height: 42 }}
+                style={{ paddingLeft: 38, paddingRight: 36, height: 42 }}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => setSearchQuery('')}
+                  title="Xóa tìm kiếm"
+                >
+                  <X size={15} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -420,6 +430,22 @@ export default function Enterprise() {
           </div>
         </div>
       </div>
+
+      {/* Result count */}
+      {(searchQuery || filterType !== 'ALL') && (
+        <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: -8 }}>
+          Tìm thấy <strong style={{ color: 'var(--color-text-primary)' }}>{filteredEnterprises.length}</strong> / {enterprises.length} doanh nghiệp
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setFilterType('ALL'); }}
+              style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-accent-light)', fontSize: '0.82rem', textDecoration: 'underline' }}
+            >
+              Xóa bộ lọc
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Main Enterprise Management Table */}
       <div className="enterprise-table-container">

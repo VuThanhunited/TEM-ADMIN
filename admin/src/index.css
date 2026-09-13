@@ -596,7 +596,29 @@ input, select, textarea {
 
 .search-box .input {
   padding-left: 40px;
+  padding-right: 32px;
 }
+
+.search-box .search-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color var(--transition-fast);
+}
+
+.search-box .search-clear-btn:hover {
+  color: var(--color-text-primary);
+}
+
 
 /* Pagination */
 .pagination {

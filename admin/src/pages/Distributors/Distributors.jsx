@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import './Distributors.css';
 import Pagination from '../../components/Pagination';
+import { useDebounce } from '../../hooks/useDebounce';
 
 export default function Distributors() {
   const { isAdmin } = useAuth();
@@ -18,6 +19,7 @@ export default function Distributors() {
   const [enterprises, setEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [roleFilter, setRoleFilter] = useState('all'); // 'all', 'NSX', 'NPP'
   const [showModal, setShowModal] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState(null);
@@ -41,7 +43,13 @@ export default function Distributors() {
   const [linkTextInput, setLinkTextInput] = useState('');
   const [linkNewTab, setLinkNewTab] = useState(true);
 
-  useEffect(() => { loadDistributors(); }, [pagination.page, search, roleFilter]);
+  // Khi debouncedSearch hoặc roleFilter thay đổi: reset về page 1
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [debouncedSearch, roleFilter]);
+
+  // Load khi page, debouncedSearch hoặc roleFilter thay đổi
+  useEffect(() => { loadDistributors(); }, [pagination.page, debouncedSearch, roleFilter]);
   useEffect(() => { if (isAdmin) loadEnterprises(); }, [isAdmin]);
 
   const loadEnterprises = async () => {
@@ -58,7 +66,7 @@ export default function Distributors() {
       setLoading(true);
       const params = {
         page: pagination.page,
-        search,
+        search: debouncedSearch,
         ...(roleFilter !== 'all' ? { role: roleFilter } : {})
       };
       const result = await api.getDistributors(params);
@@ -244,6 +252,11 @@ export default function Distributors() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            {search && (
+              <button type="button" className="search-clear-btn" onClick={() => setSearch('')} title="Xóa tìm kiếm">
+                <X size={15} />
+              </button>
+            )}
           </div>
 
           {/* Role Filter Tabs */}
