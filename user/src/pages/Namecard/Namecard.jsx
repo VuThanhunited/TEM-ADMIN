@@ -97,8 +97,8 @@ export default function Namecard() {
       }
       setCard(data);
       setLoading(false);
-      // Lưu URL để vẽ QR sau khi canvas mount
-      qrUrlRef.current = window.location.href;
+      // URL cố định trỏ đến domain chính thức
+      qrUrlRef.current = `https://www.giaiphapqrcode.vn/namecard/${slug}`;
     })();
     return () => { mounted = false; };
   }, [slug]);
