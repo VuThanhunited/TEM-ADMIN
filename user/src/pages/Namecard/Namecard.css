@@ -331,7 +331,12 @@
   box-shadow: 0 0 16px rgba(201,168,76,0.3);
   position: relative; z-index: 1;
 }
-.nc-qr-img { width: 110px; height: 110px; display: block; }
+.nc-qr-canvas {
+  display: block;
+  width: 110px !important;
+  height: 110px !important;
+  border-radius: 4px;
+}
 .nc-qr-caption {
   font-size: 0.72rem; font-weight: 600;
   color: var(--gold);

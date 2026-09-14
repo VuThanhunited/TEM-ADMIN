@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import QRCode from 'qrcode';
 import './Namecard.css';
 
 // ── Static namecard data (HHB Elevator — Thúy Hoàng) ────────────────────────
@@ -79,9 +80,10 @@ END:VCARD`;
 export default function Namecard() {
   const { slug } = useParams();
   const [card, setCard] = useState(null);
-  const [qrDataUrl, setQrDataUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const qrCanvasRef = useRef(null);
+  const qrUrlRef = useRef('');
 
   useEffect(() => {
     let mounted = true;
@@ -95,14 +97,25 @@ export default function Namecard() {
       }
       setCard(data);
       setLoading(false);
-
-      // Generate QR code URL using Google Charts API (no package needed)
-      const ncUrl = window.location.href;
-      const qrApiUrl = `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encodeURIComponent(ncUrl)}&chco=1a1200,FFFFFF&chld=M|1`;
-      if (mounted) setQrDataUrl(qrApiUrl);
+      // Lưu URL để vẽ QR sau khi canvas mount
+      qrUrlRef.current = window.location.href;
     })();
     return () => { mounted = false; };
   }, [slug]);
+
+  // Vẽ QR code vào canvas sau khi card load xong và canvas đã mount
+  useEffect(() => {
+    if (!card || !qrCanvasRef.current || !qrUrlRef.current) return;
+    QRCode.toCanvas(qrCanvasRef.current, qrUrlRef.current, {
+      width: 130,
+      margin: 1,
+      color: {
+        dark: '#1a1200',   // Màu module QR — đen nâu
+        light: '#ffffff',  // Màu nền trắng
+      },
+      errorCorrectionLevel: 'M',
+    }).catch(err => console.error('QR render error:', err));
+  }, [card]);
 
   const getInitial = (name) => name?.charAt(0)?.toUpperCase() || '?';
 
@@ -311,15 +324,14 @@ export default function Namecard() {
 
         {/* ── QR Code + Profile box ── */}
         <div className="nc-qr-section nc-animate nc-animate-d5">
-          {/* QR */}
+          {/* QR — tự generate bằng qrcode library, không cần internet */}
           <div className="nc-qr-box">
             <div className="nc-qr-wrapper">
-              {qrDataUrl
-                ? <img src={qrDataUrl} alt="QR Code" className="nc-qr-img" />
-                : <div style={{ width: 110, height: 110, background: '#f5f5f5', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#999' }}>
-                    Loading QR...
-                  </div>
-              }
+              <canvas
+                ref={qrCanvasRef}
+                className="nc-qr-canvas"
+                title="Quét mã QR để xem namecard"
+              />
             </div>
             <div className="nc-qr-caption">QUÉT MÃ ĐỂ KẾT NỐI</div>
           </div>
