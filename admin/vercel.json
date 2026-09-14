@@ -20,6 +20,14 @@
       "destination": "https://tem-user-page.vercel.app/pdf_assets/:path*"
     },
     {
+      "source": "/namecard/:path*",
+      "destination": "https://tem-user-page.vercel.app/namecard/:path*"
+    },
+    {
+      "source": "/nc/:path*",
+      "destination": "https://tem-user-page.vercel.app/nc/:path*"
+    },
+    {
       "source": "/home",
       "destination": "https://tem-user-page.vercel.app/home"
     },

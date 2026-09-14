@@ -134,11 +134,24 @@ function CatchAllRoute() {
   return null;
 }
 
+function PublicNamecardRedirect() {
+  const currentPath = window.location.pathname;
+  window.location.replace(`https://tem-user-page.vercel.app${currentPath}`);
+  return (
+    <div className="app-loading">
+      <div className="loading-spinner" style={{ width: 48, height: 48 }}></div>
+      <p>Đang chuyển hướng đến danh thiếp...</p>
+    </div>
+  );
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<AppLoader />}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/namecard/:slug" element={<PublicNamecardRedirect />} />
+        <Route path="/nc/:slug" element={<PublicNamecardRedirect />} />
         <Route path="/scan/:serial" element={<Scan />} />
         <Route path="/qrcode/:serial" element={<Scan />} />
         <Route path="/temqr/:serial" element={<Scan />} />
