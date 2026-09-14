@@ -1,430 +1,693 @@
-/* ==========================================
-   Namecard Public Page – Luxury Dark Gold Theme
-   Inspired by premium digital business cards
-   ========================================== */
+/* ==========================================================================
+   NAMECARD PUBLIC LUXURY GOLD STYLING
+   Accurately crafted to match the VIP Executive Gold Business Card sample
+   ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Montserrat:wght@400;500;600;700;800;900&display=swap');
 
-/* ── Root Variables ── */
 :root {
-  --gold: #c9a84c;
-  --gold-light: #f0c060;
-  --gold-dark: #8a6820;
-  --gold-glow: rgba(201, 168, 76, 0.35);
-  --bg-deep: #0a0800;
-  --bg-dark: #110e04;
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-item: rgba(201, 168, 76, 0.07);
-  --text-gold: #d4a843;
-  --text-white: #f5f0e8;
-  --text-muted: #9a8a6a;
-  --border-gold: rgba(201, 168, 76, 0.3);
-  --radius: 16px;
-  --radius-sm: 10px;
+  --gold-highlight: #fff7db;
+  --gold-bright: #fedb72;
+  --gold-mid: #d4af37;
+  --gold-deep: #8c6413;
+  --gold-glow: rgba(220, 180, 70, 0.45);
+  --gold-subtle: rgba(212, 175, 55, 0.2);
+  --bg-deepest: #0a0702;
+  --bg-card-glass: rgba(26, 18, 7, 0.78);
+  --text-gold-muted: #bda880;
 }
 
-/* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-.nc-page {
-  font-family: 'Be Vietnam Pro', sans-serif;
+/* ── Viewport Container ── */
+.nc-viewport {
   min-height: 100vh;
-  background: var(--bg-deep);
-  color: var(--text-white);
-  position: relative;
+  background: radial-gradient(circle at 50% 10%, #1e1507 0%, #0d0903 60%, #050401 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 12px;
+  font-family: 'Montserrat', sans-serif;
+  color: #fff;
   overflow-x: hidden;
-  max-width: 480px;
-  margin: 0 auto;
 }
 
-/* ── Background texture & particles ── */
-.nc-bg {
-  position: fixed;
+/* ── Smartphone Mockup Frame on Desktop ── */
+.nc-phone-frame {
+  width: 100%;
+  max-width: 440px;
+  min-height: 900px;
+  background: #0d0903;
+  border-radius: 46px;
+  position: relative;
+  box-shadow:
+    0 0 0 3px #1f190e,
+    0 0 0 5px rgba(212, 175, 55, 0.65),
+    0 0 35px rgba(212, 175, 55, 0.25),
+    0 30px 80px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile full-width override */
+@media (max-width: 480px) {
+  .nc-viewport {
+    padding: 0;
+    background: #0a0702;
+  }
+  .nc-phone-frame {
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+    min-height: 100vh;
+  }
+}
+
+/* ── Luxury Ambient Background Layers ── */
+.nc-bg-ambient {
+  position: absolute;
   inset: 0;
-  z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 20% 0%, rgba(201,168,76,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 100%, rgba(201,168,76,0.12) 0%, transparent 50%),
-    linear-gradient(180deg, #0d0b03 0%, #0a0800 50%, #0c0a02 100%);
-}
-.nc-bg::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(1px 1px at 15% 25%, rgba(201,168,76,0.4) 0%, transparent 100%),
-    radial-gradient(1px 1px at 65% 15%, rgba(201,168,76,0.3) 0%, transparent 100%),
-    radial-gradient(1px 1px at 45% 60%, rgba(201,168,76,0.2) 0%, transparent 100%),
-    radial-gradient(1px 1px at 80% 40%, rgba(201,168,76,0.35) 0%, transparent 100%),
-    radial-gradient(1px 1px at 30% 80%, rgba(201,168,76,0.25) 0%, transparent 100%);
-}
-
-/* ── Scrollable content ── */
-.nc-content {
-  position: relative;
+    radial-gradient(ellipse at 50% 18%, rgba(212, 175, 55, 0.22) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 88%, rgba(180, 140, 40, 0.15) 0%, transparent 60%);
   z-index: 1;
-  padding: 0 0 40px;
 }
 
-/* ── Hero Banner ── */
-.nc-hero {
-  position: relative;
-  height: 200px;
-  overflow: hidden;
+.nc-bg-executive {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 380px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(254, 219, 114, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 82% 16%, rgba(254, 219, 114, 0.1) 0%, transparent 45%),
+    linear-gradient(180deg, rgba(20, 14, 5, 0.6) 0%, rgba(13, 9, 3, 0.95) 100%);
+  z-index: 1;
 }
-.nc-hero-img {
-  width: 100%; height: 100%; object-fit: cover;
-  filter: brightness(0.55) sepia(0.3);
-}
-.nc-hero-gradient {
+
+.nc-bg-gold-waves {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(10, 8, 0, 0.3) 50%,
-    rgba(10, 8, 0, 0.95) 100%
-  );
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 0% 100%, rgba(212, 175, 55, 0.16) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 95%, rgba(212, 175, 55, 0.14) 0%, transparent 50%);
+  z-index: 1;
 }
-.nc-hero-default {
-  width: 100%; height: 100%;
-  background: linear-gradient(135deg, #1a1400 0%, #2a1f00 40%, #1a1400 100%);
-  display: flex; align-items: center; justify-content: center;
+
+.nc-bg-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 15% 15%, rgba(255, 235, 160, 0.6) 0%, transparent 100%),
+    radial-gradient(2px 2px at 85% 12%, rgba(255, 235, 160, 0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 28%, rgba(255, 235, 160, 0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 78% 34%, rgba(255, 235, 160, 0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 20% 70%, rgba(255, 235, 160, 0.45) 0%, transparent 100%),
+    radial-gradient(2px 2px at 88% 75%, rgba(255, 235, 160, 0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 45% 90%, rgba(255, 235, 160, 0.35) 0%, transparent 100%);
+  z-index: 1;
 }
-/* Gold corner decoration text */
-.nc-corner-left {
-  position: absolute; top: 16px; left: 18px;
-  text-align: left; line-height: 1.3;
+
+/* ── Scrollable Content ── */
+.nc-inner-content {
+  position: relative;
+  z-index: 2;
+  padding: 30px 20px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
-.nc-corner-left span {
-  display: block;
-  font-family: 'Playfair Display', serif;
-  font-size: 1.1rem;
-  font-style: italic;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+
+/* ── Top Header (Calligraphy, Center Badge, Right Badges) ── */
+.nc-top-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  padding-top: 10px;
+}
+
+/* Top-Left Calligraphy */
+.nc-calligraphy-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.35rem;
+  line-height: 1.25;
+  color: #fedb72;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 10px rgba(220, 180, 70, 0.4);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+  transform: rotate(-3deg);
+  margin-top: 8px;
+}
+
+.nc-calligraphy-left span {
+  background: linear-gradient(135deg, #fff7db 0%, #fedb72 50%, #c99b24 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
-.nc-corner-right {
-  position: absolute; top: 16px; right: 18px;
-  text-align: right;
-}
-.nc-corner-right span {
-  display: block;
+
+/* Top-Right Badges */
+.nc-badges-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 1.5px;
-  color: var(--gold);
-  text-transform: uppercase;
-  line-height: 1.6;
+  color: #eed58b;
+  text-align: right;
+  margin-top: 12px;
 }
 
-/* ── Avatar Ring ── */
-.nc-avatar-wrap {
+.nc-badges-right span {
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
+/* Center Glowing Circular Badge */
+.nc-center-badge-wrap {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
-  margin-top: -52px;
-  margin-bottom: 12px;
-  position: relative;
-  z-index: 2;
-}
-.nc-avatar-ring {
-  width: 106px; height: 106px;
-  border-radius: 50%;
-  padding: 3px;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dark), var(--gold-light));
-  box-shadow: 0 0 28px var(--gold-glow), 0 0 8px rgba(0,0,0,0.6);
-  animation: avatarPulse 3s ease-in-out infinite;
-}
-@keyframes avatarPulse {
-  0%, 100% { box-shadow: 0 0 28px var(--gold-glow), 0 0 8px rgba(0,0,0,0.6); }
-  50% { box-shadow: 0 0 45px rgba(201,168,76,0.55), 0 0 8px rgba(0,0,0,0.6); }
-}
-.nc-avatar-inner {
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--bg-dark);
-  display: flex; align-items: center; justify-content: center;
-}
-.nc-avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
-.nc-avatar-placeholder {
-  font-size: 2.8rem; font-weight: 800;
-  background: linear-gradient(135deg, var(--gold-light), var(--gold));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  align-items: center;
 }
 
-/* ── Name & Title block ── */
-.nc-identity {
-  text-align: center;
-  padding: 0 24px 20px;
+.nc-badge-outer-glow {
+  width: 142px;
+  height: 142px;
+  border-radius: 50%;
+  padding: 4px;
+  background: conic-gradient(
+    from 180deg,
+    #fff2c4,
+    #fedb72,
+    #8c6413,
+    #d4af37,
+    #fff2c4,
+    #fedb72,
+    #8c6413,
+    #d4af37
+  );
+  box-shadow:
+    0 0 30px rgba(220, 180, 70, 0.55),
+    0 0 60px rgba(220, 180, 70, 0.25),
+    inset 0 0 10px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.nc-name {
-  font-family: 'Be Vietnam Pro', sans-serif;
-  font-size: 1.75rem;
+
+.nc-badge-gold-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #0f0a03;
+  padding: 4px;
+  box-shadow: inset 0 0 8px rgba(254, 219, 114, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nc-badge-inner-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 0 0 2px #d4af37,
+    inset 0 2px 10px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.nc-badge-logo-img {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+}
+
+.nc-badge-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nc-badge-default-emblem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Identity Section ── */
+.nc-identity-section {
+  text-align: center;
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nc-name-gold {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fff7d6 0%, #fedb72 32%, #d4af37 65%, #8c6413 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(212, 175, 55, 0.45));
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+
+.nc-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 280px;
+  margin-bottom: 8px;
+}
+
+.nc-gold-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+}
+
+.nc-title-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #eed58b;
+  text-shadow: 0 0 6px rgba(212, 175, 55, 0.4);
+}
+
+.nc-company-name {
+  font-size: 0.95rem;
   font-weight: 800;
   letter-spacing: 1px;
   text-transform: uppercase;
-  background: linear-gradient(135deg, #fff5d6 0%, var(--gold-light) 40%, var(--gold) 70%, #fff5d6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 6px;
-  text-shadow: none;
-}
-.nc-divider {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  margin: 8px 0;
-}
-.nc-divider-line {
-  height: 1px; flex: 1; max-width: 60px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-}
-.nc-divider-dot { color: var(--gold); font-size: 0.6rem; }
-.nc-company {
-  font-size: 0.88rem; font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--text-white);
+  color: #ffebaa;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   margin-bottom: 4px;
 }
-.nc-bio {
-  font-size: 0.78rem; color: var(--text-muted);
+
+.nc-bio-slogan {
+  font-size: 0.88rem;
   font-style: italic;
-  margin-top: 2px;
+  color: #d6c6a5;
+  font-weight: 500;
 }
 
-/* ── Save Contact Button ── */
-.nc-save-btn {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  margin: 4px 24px 20px;
-  padding: 14px 24px;
-  border-radius: 50px;
-  border: none; cursor: pointer;
-  background: linear-gradient(135deg, #2a1f00, #3d2e00, #2a1f00);
-  border: 1.5px solid var(--gold);
-  color: var(--gold-light);
-  font-family: 'Be Vietnam Pro', sans-serif;
-  font-size: 1rem; font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  box-shadow: 0 4px 20px rgba(201,168,76,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
-  transition: all 0.25s ease;
-  text-decoration: none;
-}
-.nc-save-btn:hover, .nc-save-btn:active {
-  background: linear-gradient(135deg, #3d2e00, #5a4300, #3d2e00);
-  box-shadow: 0 6px 28px rgba(201,168,76,0.4);
-  transform: translateY(-1px);
-}
-.nc-save-icon { font-size: 1.1rem; }
-
-/* ── Quick Action Icons Row ── */
-.nc-quick-actions {
+/* ── Save Contact Button ("LƯU DANH BẠ") ── */
+.nc-save-btn-wrap {
   display: flex;
   justify-content: center;
-  gap: 24px;
-  padding: 0 20px 24px;
+  margin: 4px 0 6px;
 }
-.nc-qa-item {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  text-decoration: none;
-  cursor: pointer; background: none; border: none;
-}
-.nc-qa-circle {
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1e1600, #2e2200);
-  border: 1.5px solid var(--border-gold);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 0 6px rgba(201,168,76,0.1);
-  transition: all 0.22s ease;
-  position: relative;
-  overflow: hidden;
-}
-.nc-qa-circle::before {
-  content: '';
-  position: absolute; inset: 0; border-radius: 50%;
-  background: radial-gradient(circle at 40% 30%, rgba(201,168,76,0.15), transparent 60%);
-}
-.nc-qa-item:hover .nc-qa-circle,
-.nc-qa-item:active .nc-qa-circle {
-  border-color: var(--gold);
-  box-shadow: 0 4px 18px rgba(201,168,76,0.35);
-  transform: scale(1.08);
-}
-.nc-qa-label { font-size: 0.7rem; color: var(--text-gold); font-weight: 600; }
 
-/* ── Detail Contact Rows ── */
-.nc-details { padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+.nc-save-vcard-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 260px;
+  height: 48px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2e200b 0%, #150e04 100%);
+  border: 1.8px solid #fedb72;
+  box-shadow:
+    0 0 18px rgba(254, 219, 114, 0.45),
+    inset 0 0 10px rgba(254, 219, 114, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.8);
+  color: #fedb72;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-.nc-detail-row {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 16px;
-  background: var(--bg-item);
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius-sm);
+.nc-save-vcard-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 25px rgba(254, 219, 114, 0.7),
+    inset 0 0 14px rgba(254, 219, 114, 0.35),
+    0 10px 30px rgba(0, 0, 0, 0.9);
+  border-color: #fff2c4;
+}
+
+.nc-save-vcard-btn:active {
+  transform: translateY(1px);
+}
+
+.nc-save-icon {
+  filter: drop-shadow(0 0 4px rgba(254, 219, 114, 0.6));
+}
+
+/* ── 5 Quick Action Circles ── */
+.nc-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 4px 0 6px;
+}
+
+.nc-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
+  transition: transform 0.2s;
 }
-.nc-detail-row::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: linear-gradient(180deg, var(--gold-light), var(--gold-dark));
-  border-radius: 3px 0 0 3px;
-}
-.nc-detail-row:hover, .nc-detail-row:active {
-  background: rgba(201,168,76,0.12);
-  border-color: rgba(201,168,76,0.5);
-  transform: translateX(2px);
-}
-.nc-detail-icon {
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2a1f00, #3d2e00);
-  border: 1px solid var(--border-gold);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1rem;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-.nc-detail-text { flex: 1; min-width: 0; }
-.nc-detail-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 500; }
-.nc-detail-value {
-  font-size: 0.92rem; font-weight: 600;
-  color: var(--text-white);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.nc-detail-arrow { color: var(--gold); font-size: 1rem; flex-shrink: 0; }
 
-/* ── QR Section ── */
-.nc-qr-section {
-  margin: 28px 20px 0;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+.nc-quick-btn:hover {
+  transform: translateY(-3px);
 }
-.nc-qr-box {
-  background: var(--bg-item);
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius);
-  padding: 16px 14px 12px;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  position: relative;
+
+.nc-circle-rim {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #291b07 0%, #110c03 100%);
+  border: 1.5px solid #fedb72;
+  box-shadow:
+    0 0 14px rgba(254, 219, 114, 0.35),
+    inset 0 0 8px rgba(254, 219, 114, 0.2),
+    0 4px 10px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.nc-quick-btn:hover .nc-circle-rim {
+  border-color: #fff2c4;
+  box-shadow:
+    0 0 20px rgba(254, 219, 114, 0.6),
+    inset 0 0 12px rgba(254, 219, 114, 0.3);
+}
+
+.nc-quick-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #eed7a1;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* ── Detail Contact Cards (Stacked Rounded Glass Cards) ── */
+.nc-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nc-contact-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(38, 27, 12, 0.75) 0%, rgba(18, 13, 5, 0.88) 100%);
+  border: 1.2px solid rgba(254, 219, 114, 0.35);
+  border-radius: 20px;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 235, 170, 0.2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  text-decoration: none;
+  color: #fff;
+  transition: all 0.25s ease;
+}
+
+.nc-contact-card:hover {
+  border-color: #fedb72;
+  box-shadow:
+    0 0 16px rgba(254, 219, 114, 0.3),
+    0 8px 22px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 235, 170, 0.35);
+  transform: translateY(-1.5px);
+}
+
+.nc-card-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2a1c09 0%, #120d04 100%);
+  border: 1.5px solid #fedb72;
+  box-shadow:
+    0 0 10px rgba(254, 219, 114, 0.3),
+    inset 0 0 6px rgba(254, 219, 114, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nc-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nc-card-lbl {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #b8a682;
+  margin-bottom: 2px;
+}
+
+.nc-card-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
-.nc-qr-box::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(201,168,76,0.1), transparent 60%);
+
+.nc-card-arrow {
+  font-size: 1.35rem;
+  color: #fedb72;
+  font-weight: 300;
+  margin-left: 4px;
+  opacity: 0.85;
 }
-.nc-qr-wrapper {
-  background: #fff;
-  border-radius: 10px;
-  padding: 10px;
-  border: 2px solid var(--gold);
-  box-shadow: 0 0 16px rgba(201,168,76,0.3);
-  position: relative; z-index: 1;
+
+/* ── Bottom Dual Cards: QR Code & Profile Doanh Nhân ── */
+.nc-dual-box-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 6px;
 }
+
+.nc-gold-box {
+  background: linear-gradient(145deg, #241808 0%, #110c03 100%);
+  border: 2px solid #fedb72;
+  border-radius: 24px;
+  box-shadow:
+    0 0 20px rgba(254, 219, 114, 0.42),
+    inset 0 0 12px rgba(254, 219, 114, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.85);
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #fff;
+  transition: all 0.25s ease;
+  min-height: 170px;
+}
+
+.nc-gold-box:hover {
+  border-color: #fff2c4;
+  box-shadow:
+    0 0 28px rgba(254, 219, 114, 0.65),
+    inset 0 0 16px rgba(254, 219, 114, 0.3),
+    0 12px 30px rgba(0, 0, 0, 0.9);
+  transform: translateY(-2px);
+}
+
+/* QR Box */
+.nc-qr-white-frame {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .nc-qr-canvas {
   display: block;
-  width: 110px !important;
-  height: 110px !important;
-  border-radius: 4px;
+  border-radius: 8px;
 }
-.nc-qr-caption {
-  font-size: 0.72rem; font-weight: 600;
-  color: var(--gold);
-  letter-spacing: 0.5px;
+
+.nc-box-caption {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #fedb72;
   text-align: center;
-  position: relative; z-index: 1;
+  margin-top: 10px;
+  text-shadow: 0 0 8px rgba(254, 219, 114, 0.4);
 }
 
-/* Profile box */
-.nc-profile-box {
-  background: linear-gradient(135deg, #1e1600, #2a1f00);
-  border: 1px solid var(--border-gold);
-  border-radius: var(--radius);
-  padding: 16px 14px 12px;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 10px;
-  cursor: pointer; text-decoration: none;
-  transition: all 0.22s ease;
-  position: relative; overflow: hidden;
-}
-.nc-profile-box::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 30%, rgba(201,168,76,0.15), transparent 60%);
-}
-.nc-profile-box:hover { box-shadow: 0 4px 20px rgba(201,168,76,0.3); }
-.nc-profile-icon { font-size: 2.6rem; line-height: 1; }
-.nc-profile-text {
-  font-size: 0.85rem; font-weight: 800;
-  color: var(--gold-light);
-  letter-spacing: 1.5px; text-transform: uppercase;
-  text-align: center; line-height: 1.3;
-  position: relative; z-index: 1;
-}
-.nc-profile-arrow {
-  width: 28px; height: 28px; border-radius: 50%;
-  border: 1px solid var(--gold);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--gold); font-size: 0.9rem;
-  position: relative; z-index: 1;
+/* Profile Card */
+.nc-profile-card {
+  cursor: pointer;
 }
 
-/* ── Footer tagline ── */
-.nc-footer {
-  margin-top: 28px;
-  padding: 16px 20px 4px;
-  border-top: 1px solid var(--border-gold);
+.nc-suit-silhouette {
   display: flex;
+  align-items: center;
   justify-content: center;
-  gap: 0;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 8px rgba(254, 219, 114, 0.5));
 }
-.nc-footer-item {
-  font-size: 0.68rem;
+
+.nc-profile-avatar-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid #fedb72;
+  box-shadow: 0 0 12px rgba(254, 219, 114, 0.45);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.nc-profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nc-profile-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.25;
+  margin: 4px 0 8px;
+}
+
+.nc-profile-heading span {
+  font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 0 12px;
-  position: relative;
-}
-.nc-footer-item:not(:last-child)::after {
-  content: '|'; position: absolute; right: 0;
-  color: var(--border-gold);
+  color: #fedb72;
 }
 
-/* ── Loading / Error state ── */
-.nc-loading {
-  min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 16px;
+.nc-profile-heading strong {
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #fff2c4;
+  text-shadow: 0 0 6px rgba(254, 219, 114, 0.5);
 }
-.nc-spinner {
-  width: 48px; height: 48px;
-  border: 3px solid rgba(201,168,76,0.2);
-  border-top-color: var(--gold);
+
+.nc-profile-arrow-circle {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  animation: spin 0.9s linear infinite;
+  background: linear-gradient(135deg, #fff2c4, #fedb72, #d4af37);
+  box-shadow: 0 0 8px rgba(254, 219, 114, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Animations ── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ── Footer ── */
+.nc-footer-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 8px;
 }
-.nc-animate { animation: fadeUp 0.5s ease forwards; opacity: 0; }
-.nc-animate-d1 { animation-delay: 0.05s; }
-.nc-animate-d2 { animation-delay: 0.15s; }
-.nc-animate-d3 { animation-delay: 0.25s; }
-.nc-animate-d4 { animation-delay: 0.35s; }
-.nc-animate-d5 { animation-delay: 0.45s; }
+
+.nc-footer-emblem {
+  filter: drop-shadow(0 0 6px rgba(254, 219, 114, 0.45));
+}
+
+.nc-footer-tags-line {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #c9b380;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* ── Loading Screen ── */
+.nc-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0a0702;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.nc-loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+.nc-spinner-gold {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(212, 175, 55, 0.2);
+  border-top-color: #fedb72;
+  animation: ncSpin 0.9s linear infinite;
+  box-shadow: 0 0 14px rgba(254, 219, 114, 0.35);
+  margin-bottom: 16px;
+}
+
+.nc-loading-text {
+  color: #eed7a1;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+@keyframes ncSpin {
+  to { transform: rotate(360deg); }
+}

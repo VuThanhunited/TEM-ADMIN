@@ -88,7 +88,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
   try {
     const {
       name, title, company, bio, email, phone, phone2, website, address,
-      avatar, coverImage, socialLinks, isActive, themeColor
+      logo, avatar, coverImage, socialLinks, isActive, themeColor
     } = req.body;
 
     if (!name) return res.status(400).json({ error: 'Tên là bắt buộc' });
@@ -113,7 +113,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       slug,
       name, title, company, bio,
       email, phone, phone2, website, address,
-      avatar, coverImage,
+      logo, avatar, coverImage,
       socialLinks: socialLinks || {},
       isActive: isActive !== undefined ? isActive : true,
       themeColor: themeColor || '#6366f1',
@@ -136,7 +136,7 @@ router.put('/:id', auth, async (req, res) => {
   try {
     const {
       name, title, company, bio, email, phone, phone2, website, address,
-      avatar, coverImage, socialLinks, isActive, themeColor, slug: newSlug
+      logo, avatar, coverImage, socialLinks, isActive, themeColor, slug: newSlug
     } = req.body;
 
     const namecard = await Namecard.findById(req.params.id);
@@ -160,7 +160,7 @@ router.put('/:id', auth, async (req, res) => {
       {
         name, title, company, bio,
         email, phone, phone2, website, address,
-        avatar, coverImage,
+        logo, avatar, coverImage,
         socialLinks: socialLinks || namecard.socialLinks,
         isActive, themeColor, slug,
       },

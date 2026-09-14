@@ -16,14 +16,12 @@ const THEME_COLORS = [
   '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
 ];
 
-// ── ImageInput (tái sử dụng pattern từ Products) ────────────────────────────
-function ImageInput({ value, onChange, placeholder }) {
-  const [mode, setMode] = useState(value?.startsWith('data:') ? 'upload' : 'url');
+// ── ImageInput (Hỗ trợ upload trực tiếp từ máy hoặc link URL) ────────────────
+function ImageInput({ value, onChange, placeholder = 'URL hình ảnh...' }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const fileRef = useRef();
-
-  const effectiveMode = value?.startsWith('data:') ? 'upload' : (value ? 'url' : mode);
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -42,49 +40,129 @@ function ImageInput({ value, onChange, placeholder }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button type="button" onClick={() => setMode('url')} style={{
-          padding: '3px 10px', borderRadius: 6, fontSize: '0.78rem', cursor: 'pointer',
-          border: '1px solid', borderColor: mode === 'url' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-          background: mode === 'url' ? 'rgba(99,102,241,0.15)' : 'transparent',
-          color: mode === 'url' ? 'var(--primary-color)' : 'var(--text-muted)',
-          display: 'flex', alignItems: 'center', gap: 4
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <input
+        type="file"
+        ref={fileRef}
+        accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      {value ? (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '8px 12px',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 10
         }}>
-          <Link size={11} /> Nhập URL
-        </button>
-        <button type="button" onClick={() => { setMode('upload'); fileRef.current?.click(); }} style={{
-          padding: '3px 10px', borderRadius: 6, fontSize: '0.78rem', cursor: 'pointer',
-          border: '1px solid', borderColor: mode === 'upload' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-          background: mode === 'upload' ? 'rgba(99,102,241,0.15)' : 'transparent',
-          color: mode === 'upload' ? 'var(--primary-color)' : 'var(--text-muted)',
-          display: 'flex', alignItems: 'center', gap: 4
-        }}>
-          <Upload size={11} /> Tải từ thiết bị
-        </button>
-        <input type="file" ref={fileRef} accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-      </div>
-      {effectiveMode === 'url' ? (
-        <input className="input" placeholder={placeholder} value={value || ''} onChange={e => onChange(e.target.value)} />
+          <img
+            src={value}
+            alt="preview"
+            style={{
+              width: 54,
+              height: 54,
+              objectFit: 'cover',
+              borderRadius: 8,
+              border: '1.5px solid var(--primary-color, #6366f1)',
+              background: '#fff'
+            }}
+          />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: '0.8rem', color: '#4ade80', fontWeight: 600 }}>✓ Đã có ảnh</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+              >
+                <Upload size={12} /> {uploading ? 'Đang tải...' : 'Thay ảnh từ máy'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => onChange('')}
+                style={{ fontSize: '0.75rem', padding: '3px 8px', color: '#f87171' }}
+              >
+                <Trash2 size={12} /> Xóa
+              </button>
+            </div>
+          </div>
+        </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {value && !uploading ? (
-            <>
-              <img src={value} alt="preview" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)' }} />
-              <button type="button" onClick={() => onChange('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={14} /></button>
-            </>
-          ) : (
-            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} style={{
-              flex: 1, padding: '10px', borderRadius: 8, cursor: 'pointer',
-              border: '1px dashed rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.05)',
-              color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.85rem'
-            }}>
-              {uploading ? <><div className="loading-spinner" style={{ width: 14, height: 14 }} /> Đang tải...</> : <><Upload size={14} /> Chọn ảnh</>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                borderRadius: 10,
+                cursor: 'pointer',
+                border: '1.5px dashed var(--primary-color, #6366f1)',
+                background: 'rgba(99,102,241,0.08)',
+                color: 'var(--primary-color, #6366f1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                fontWeight: 600,
+                fontSize: '0.88rem',
+                transition: 'all 0.2s'
+              }}
+            >
+              {uploading ? (
+                <>
+                  <div className="loading-spinner" style={{ width: 16, height: 16 }} />
+                  Đang xử lý tải ảnh lên...
+                </>
+              ) : (
+                <>
+                  <Upload size={16} />
+                  Chọn & Tải ảnh từ thiết bị
+                </>
+              )}
             </button>
+            <button
+              type="button"
+              onClick={() => setShowUrlInput(!showUrlInput)}
+              style={{
+                padding: '0 12px',
+                borderRadius: 10,
+                cursor: 'pointer',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: showUrlInput ? 'rgba(99,102,241,0.15)' : 'transparent',
+                color: 'var(--text-muted)',
+                fontSize: '0.78rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title="Nhập URL trực tiếp nếu có link ảnh"
+            >
+              <Link size={13} /> Link URL
+            </button>
+          </div>
+
+          {showUrlInput && (
+            <input
+              className="input"
+              placeholder={placeholder}
+              value={value || ''}
+              onChange={e => onChange(e.target.value)}
+              style={{ fontSize: '0.85rem' }}
+            />
           )}
         </div>
       )}
-      {uploadError && <span style={{ fontSize: '0.78rem', color: '#f87171' }}>{uploadError}</span>}
+      {uploadError && <span style={{ fontSize: '0.78rem', color: '#f87171' }}>⚠️ {uploadError}</span>}
     </div>
   );
 }
@@ -122,9 +200,9 @@ export default function Namecards() {
   const initialForm = {
     enterpriseId: '', name: '', title: '', company: '', bio: '',
     email: '', phone: '', phone2: '', website: '', address: '',
-    avatar: '', coverImage: '',
+    logo: '', avatar: '', coverImage: '',
     slug: '',
-    themeColor: '#6366f1',
+    themeColor: '#c9a84c',
     isActive: true,
     socialLinks: { facebook: '', linkedin: '', zalo: '', instagram: '', youtube: '', tiktok: '', twitter: '' },
   };
@@ -185,10 +263,11 @@ export default function Namecards() {
       phone2: card.phone2 || '',
       website: card.website || '',
       address: card.address || '',
+      logo: card.logo || '',
       avatar: card.avatar || '',
       coverImage: card.coverImage || '',
       slug: card.slug || '',
-      themeColor: card.themeColor || '#6366f1',
+      themeColor: card.themeColor || '#c9a84c',
       isActive: card.isActive !== false,
       socialLinks: {
         facebook: card.socialLinks?.facebook || '',
@@ -559,12 +638,36 @@ export default function Namecards() {
                 {activeTab === 'images' && (
                   <>
                     <div className="input-group">
-                      <label>Ảnh đại diện (Avatar)</label>
-                      <ImageInput value={form.avatar} onChange={url => setForm({ ...form, avatar: url })} placeholder="URL ảnh đại diện..." />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                        <span>🏢 Ảnh Logo Doanh nghiệp / Thương hiệu</span>
+                        <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Hiển thị trong khung tròn ở đầu danh thiếp)</small>
+                      </label>
+                      <ImageInput
+                        value={form.logo}
+                        onChange={url => setForm({ ...form, logo: url })}
+                        placeholder="Chọn ảnh logo từ máy hoặc dán link..."
+                      />
                     </div>
                     <div className="input-group">
-                      <label>Ảnh bìa / Banner nền</label>
-                      <ImageInput value={form.coverImage} onChange={url => setForm({ ...form, coverImage: url })} placeholder="URL ảnh bìa..." />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                        <span>👤 Ảnh đại diện cá nhân (Avatar)</span>
+                        <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Ảnh chân dung của bạn)</small>
+                      </label>
+                      <ImageInput
+                        value={form.avatar}
+                        onChange={url => setForm({ ...form, avatar: url })}
+                        placeholder="Chọn ảnh chân dung từ máy hoặc dán link..."
+                      />
+                    </div>
+                    <div className="input-group">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                        <span>🖼️ Ảnh bìa / Banner nền (Tùy chọn)</span>
+                      </label>
+                      <ImageInput
+                        value={form.coverImage}
+                        onChange={url => setForm({ ...form, coverImage: url })}
+                        placeholder="Chọn ảnh bìa từ máy hoặc dán link..."
+                      />
                     </div>
                   </>
                 )}

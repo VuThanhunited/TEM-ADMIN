@@ -25,7 +25,8 @@ const NamecardSchema = new mongoose.Schema({
   address: { type: String, trim: true, default: '' },
 
   // Hình ảnh
-  avatar: { type: String, default: '' },                   // URL ảnh đại diện
+  logo: { type: String, default: '' },                     // URL ảnh logo doanh nghiệp / thương hiệu
+  avatar: { type: String, default: '' },                   // URL ảnh đại diện cá nhân
   coverImage: { type: String, default: '' },               // URL ảnh nền / banner
 
   // Mạng xã hội
