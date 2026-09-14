@@ -38,30 +38,36 @@ END:VCARD`,
 
 // ── Fetch từ API (nếu có backend) ─────────────────────────────────────────
 async function fetchNamecard(slug) {
-  // Ưu tiên static data (offline-capable)
-  if (STATIC_CARDS[slug]) return STATIC_CARDS[slug];
-
-  // Thử fetch từ backend
+  // 1. Thử fetch từ API backend để có dữ liệu mới nhất nếu được chỉnh sửa trong Admin
   try {
     const API = import.meta.env.VITE_API_URL ||
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:5000/api'
         : '/api');
     const res = await fetch(`${API}/public/namecard/${slug}`);
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.name) return data;
+    }
   } catch (_) {}
+
+  // 2. Fallback sang static data (offline-capable)
+  if (STATIC_CARDS[slug]) return STATIC_CARDS[slug];
+
   return null;
 }
 
 // ── vCard download ───────────────────────────────────────────────────────────
 function downloadVCard(card) {
+  const phoneVal = (card.mobile || card.phone || '').replace(/\s/g, '');
+  const hotlineVal = (card.hotline || card.phone2 || '').replace(/\s/g, '');
   const vcfContent = card.vcard || `BEGIN:VCARD
 VERSION:3.0
 FN:${card.name}
 ORG:${card.company || ''}
-TEL;TYPE=CELL:${(card.mobile || card.phone || '').replace(/\s/g, '')}
-EMAIL:${card.email || ''}
-URL:${card.websiteUrl || card.website || ''}
+TEL;TYPE=CELL:${phoneVal}
+${hotlineVal ? `TEL;TYPE=WORK:${hotlineVal}\n` : ''}EMAIL:${card.email || ''}
+URL:${card.websiteUrl || (card.website ? (card.website.startsWith('http') ? card.website : `https://${card.website}`) : '')}
 ADR:;;${card.address || ''};;;Việt Nam
 END:VCARD`;
 
@@ -146,6 +152,9 @@ export default function Namecard() {
     );
   }
 
+  const mobile = card.mobile || card.phone || '';
+  const hotline = card.hotline || card.phone2 || '';
+
   return (
     <div className="nc-page">
       <div className="nc-bg" />
@@ -226,8 +235,8 @@ export default function Namecard() {
 
         {/* ── Quick Action Icons ── */}
         <div className="nc-quick-actions nc-animate nc-animate-d3">
-          {card.mobile && (
-            <a href={`tel:${card.mobile.replace(/\s/g, '')}`} className="nc-qa-item">
+          {mobile && (
+            <a href={`tel:${mobile.replace(/\s/g, '')}`} className="nc-qa-item">
               <div className="nc-qa-circle">📞</div>
               <span className="nc-qa-label">Gọi điện</span>
             </a>
@@ -249,7 +258,7 @@ export default function Namecard() {
             </a>
           )}
           {card.website && (
-            <a href={card.websiteUrl || `https://${card.website}`} target="_blank" rel="noopener noreferrer" className="nc-qa-item">
+            <a href={card.websiteUrl || (card.website.startsWith('http') ? card.website : `https://${card.website}`)} target="_blank" rel="noopener noreferrer" className="nc-qa-item">
               <div className="nc-qa-circle">🌐</div>
               <span className="nc-qa-label">Website</span>
             </a>
@@ -267,22 +276,22 @@ export default function Namecard() {
 
         {/* ── Detail Contact Rows ── */}
         <div className="nc-details nc-animate nc-animate-d4">
-          {card.mobile && (
-            <a href={`tel:${card.mobile.replace(/\s/g, '')}`} className="nc-detail-row">
+          {mobile && (
+            <a href={`tel:${mobile.replace(/\s/g, '')}`} className="nc-detail-row">
               <div className="nc-detail-icon">📱</div>
               <div className="nc-detail-text">
                 <div className="nc-detail-label">Mobile</div>
-                <div className="nc-detail-value">{card.mobile}</div>
+                <div className="nc-detail-value">{mobile}</div>
               </div>
               <span className="nc-detail-arrow">›</span>
             </a>
           )}
-          {card.hotline && (
-            <a href={`tel:${card.hotline.replace(/\s/g, '')}`} className="nc-detail-row">
+          {hotline && (
+            <a href={`tel:${hotline.replace(/\s/g, '')}`} className="nc-detail-row">
               <div className="nc-detail-icon">☎️</div>
               <div className="nc-detail-text">
                 <div className="nc-detail-label">Hotline</div>
-                <div className="nc-detail-value">{card.hotline}</div>
+                <div className="nc-detail-value">{hotline}</div>
               </div>
               <span className="nc-detail-arrow">›</span>
             </a>

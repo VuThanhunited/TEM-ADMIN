@@ -59,6 +59,19 @@ router.get('/', auth, requireOwnership, async (req, res) => {
   }
 });
 
+// ── GET /api/namecards/public/:slug ────────────────────────────────────────
+// Xem namecard public không cần đăng nhập
+router.get('/public/:slug', async (req, res) => {
+  try {
+    const card = await Namecard.findOne({ slug: req.params.slug.toLowerCase(), isActive: true })
+      .populate('enterpriseId', 'name brandConfig');
+    if (!card) return res.status(404).json({ error: 'Không tìm thấy namecard' });
+    res.json(card);
+  } catch (error) {
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+});
+
 // ── GET /api/namecards/:id ─────────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
   try {

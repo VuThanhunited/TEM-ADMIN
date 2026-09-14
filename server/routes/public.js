@@ -9,9 +9,23 @@ const Enterprise = require('../models/Enterprise');
 const Template = require('../models/Template');
 const ScanLog = require('../models/ScanLog');
 const User = require('../models/User');
+const Namecard = require('../models/Namecard');
 
 // URL hệ thống chính – dùng làm fallback khi batch không có customDomain
 const ADMIN_URL = process.env.USER_PAGE_URL || 'https://www.giaiphapqrcode.vn';
+
+// GET /api/public/namecard/:slug
+router.get('/namecard/:slug', async (req, res) => {
+  try {
+    const card = await Namecard.findOne({ slug: req.params.slug.toLowerCase(), isActive: true })
+      .populate('enterpriseId', 'name brandConfig');
+    if (!card) return res.status(404).json({ error: 'Không tìm thấy danh thiếp' });
+    res.json(card);
+  } catch (err) {
+    console.error('GET /public/namecard/:slug error:', err);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+});
 
 // GET /api/public/scan/:serial
 router.get('/scan/:serial', async (req, res) => {

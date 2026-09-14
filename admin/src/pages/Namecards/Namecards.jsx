@@ -381,10 +381,10 @@ export default function Namecards() {
                 {/* Social */}
                 {Object.values(card.socialLinks || {}).some(v => v) && (
                   <div className="namecard-socials">
-                    {card.socialLinks?.facebook && <a href={card.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="Facebook"><Facebook size={12} /></a>}
-                    {card.socialLinks?.linkedin && <a href={card.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="LinkedIn"><Linkedin size={12} /></a>}
-                    {card.socialLinks?.instagram && <a href={card.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="Instagram"><Instagram size={12} /></a>}
-                    {card.socialLinks?.youtube && <a href={card.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="YouTube"><Youtube size={12} /></a>}
+                    {card.socialLinks?.facebook && <a href={card.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="Facebook"><Globe size={12} /></a>}
+                    {card.socialLinks?.linkedin && <a href={card.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="LinkedIn"><Globe size={12} /></a>}
+                    {card.socialLinks?.instagram && <a href={card.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="Instagram"><Globe size={12} /></a>}
+                    {card.socialLinks?.youtube && <a href={card.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="YouTube"><Globe size={12} /></a>}
                     {card.socialLinks?.zalo && <a href={`https://zalo.me/${card.socialLinks.zalo}`} target="_blank" rel="noopener noreferrer" className="namecard-social-link" title="Zalo"><MessageCircle size={12} /></a>}
                   </div>
                 )}
