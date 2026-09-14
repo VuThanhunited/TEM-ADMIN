@@ -4,7 +4,7 @@ import api from '../../services/api';
 import {
   CreditCard, Plus, Search, Edit, Trash2, X, Eye, ToggleLeft, ToggleRight,
   Mail, Phone, Globe, MapPin, Copy, Check, ExternalLink, Upload, Link,
-  Facebook, Linkedin, Instagram, Youtube, MessageCircle
+  MessageCircle
 } from 'lucide-react';
 import './Namecards.css';
 import Pagination from '../../components/Pagination';
