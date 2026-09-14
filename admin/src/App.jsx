@@ -82,6 +82,7 @@ const NppScan = lazy(() => import('./pages/NppScan/NppScan'));
 const NppHistory = lazy(() => import('./pages/NppHistory/NppHistory'));
 const Profile = lazy(() => import('./pages/Profile/Profile'));
 const LabelDesigns = lazy(() => import('./pages/LabelDesigns/LabelDesigns'));
+const Namecards = lazy(() => import('./pages/Namecards/Namecards'));
 
 const AppLoader = () => (
   <div className="app-loading">
@@ -162,6 +163,7 @@ function AppRoutes() {
           <Route path="labels/renew" element={<Labels />} />
           <Route path="templates" element={<Templates />} />
           <Route path="label-designs" element={<ProtectedRoute><LabelDesigns /></ProtectedRoute>} />
+          <Route path="namecards" element={<ProtectedRoute><Namecards /></ProtectedRoute>} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="analytics/map" element={<Analytics />} />
           <Route path="analytics/demo" element={<Analytics />} />

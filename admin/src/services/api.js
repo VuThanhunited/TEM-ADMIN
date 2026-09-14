@@ -232,6 +232,14 @@ class ApiService {
   createLabelDesign(data) { return this.request('POST', '/label-designs', data); }
   updateLabelDesign(id, data) { return this.request('PUT', `/label-designs/${id}`, data); }
   deleteLabelDesign(id) { return this.request('DELETE', `/label-designs/${id}`); }
+
+  // ── Namecards (Danh thiếp kỹ thuật số) ────────────────────────────────────
+  getNamecards(params) { return this.request('GET', '/namecards', null, params); }
+  getNamecard(id) { return this.request('GET', `/namecards/${id}`); }
+  createNamecard(data) { return this.request('POST', '/namecards', data); }
+  updateNamecard(id, data) { return this.request('PUT', `/namecards/${id}`, data); }
+  deleteNamecard(id) { return this.request('DELETE', `/namecards/${id}`); }
+  toggleNamecard(id) { return this.request('PATCH', `/namecards/${id}/toggle`); }
 }
 
 const api = new ApiService();

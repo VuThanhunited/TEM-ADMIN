@@ -12,6 +12,7 @@ const Success = lazy(() => import('./pages/Success/Success'));
 const History = lazy(() => import('./pages/History/History'));
 const ScanChoice = lazy(() => import('./pages/ScanChoice/ScanChoice'));
 const ProductInfo = lazy(() => import('./pages/ProductInfo/ProductInfo'));
+const Namecard = lazy(() => import('./pages/Namecard/Namecard'));
 
 const AppLoader = () => (
   <div className="app-loading">
@@ -206,6 +207,9 @@ function AppRoutes() {
         <Route path="/qrcode/:code" element={<ScanChoice />} />
         <Route path="/temqr/:code" element={<ScanChoice />} />
         <Route path="/product-info" element={<ProductInfo />} />
+        {/* Namecard public routes */}
+        <Route path="/namecard/:slug" element={<Namecard />} />
+        <Route path="/nc/:slug" element={<Namecard />} />
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
@@ -220,7 +224,9 @@ function AppShell() {
     location.pathname.startsWith('/trace') || 
     location.pathname.startsWith('/scan') || 
     location.pathname.startsWith('/qrcode') || 
-    location.pathname.startsWith('/temqr');
+    location.pathname.startsWith('/temqr') ||
+    location.pathname.startsWith('/namecard') ||
+    location.pathname.startsWith('/nc');
 
   return (
     <div className={isFullWidth ? 'app-shell app-shell--fullwidth' : 'app-shell'}>
