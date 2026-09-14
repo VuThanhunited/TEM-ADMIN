@@ -88,7 +88,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
   try {
     const {
       name, title, company, bio, email, phone, phone2, website, address,
-      logo, avatar, coverImage, socialLinks, isActive, themeColor
+      logo, avatar, coverImage, socialLinks, isActive, themeColor, slug: customSlug
     } = req.body;
 
     if (!name) return res.status(400).json({ error: 'Tên là bắt buộc' });
@@ -101,11 +101,13 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng chọn Doanh nghiệp' });
     }
 
-    // Tạo slug unique
-    let slug = generateSlug(name);
+    // Tạo slug unique (ưu tiên slug do client nhập nếu có)
+    let slug = (customSlug && typeof customSlug === 'string' && customSlug.trim())
+      ? customSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-')
+      : generateSlug(name);
     const existing = await Namecard.findOne({ slug });
     if (existing) {
-      slug = generateSlug(name, Date.now().toString(36));
+      slug = generateSlug(slug, Date.now().toString(36));
     }
 
     const namecard = new Namecard({
