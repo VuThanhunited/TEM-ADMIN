@@ -90,11 +90,24 @@ END:VCARD`;
   URL.revokeObjectURL(url);
 }
 
+// ── Download QR Code as PNG ─────────────────────────────────────────────────
+async function generateQrDataUrl(url, size = 480) {
+  const QRCodeLib = await import('qrcode');
+  return QRCodeLib.default.toDataURL(url, {
+    width: size,
+    margin: 2,
+    color: { dark: '#140e03', light: '#ffffff' },
+    errorCorrectionLevel: 'M',
+  });
+}
+
 export default function Namecard() {
   const { slug } = useParams();
   const [card, setCard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrLargeUrl, setQrLargeUrl] = useState('');
   const qrCanvasRef = useRef(null);
   const qrUrlRef = useRef('');
 
@@ -115,7 +128,7 @@ export default function Namecard() {
     return () => { mounted = false; };
   }, [slug]);
 
-  // Render QR Code lên Canvas
+  // Render QR Code lên Canvas (small, in-card)
   useEffect(() => {
     if (!card || !qrCanvasRef.current || !qrUrlRef.current) return;
     QRCode.toCanvas(qrCanvasRef.current, qrUrlRef.current, {
@@ -128,6 +141,34 @@ export default function Namecard() {
       errorCorrectionLevel: 'M',
     }).catch(err => console.error('QR render error:', err));
   }, [card]);
+
+  // Download QR Code as PNG
+  const handleDownloadQr = async () => {
+    if (!qrUrlRef.current) return;
+    try {
+      const dataUrl = await generateQrDataUrl(qrUrlRef.current, 480);
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `QR_Namecard_${card?.name?.replace(/\s+/g, '_') || slug}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Download QR error:', err);
+    }
+  };
+
+  // Open large QR modal
+  const handleShowQrLarge = async () => {
+    if (!qrUrlRef.current) return;
+    try {
+      const dataUrl = await generateQrDataUrl(qrUrlRef.current, 600);
+      setQrLargeUrl(dataUrl);
+      setShowQrModal(true);
+    } catch (err) {
+      console.error('QR large error:', err);
+    }
+  };
 
   if (loading) {
     return (
@@ -399,10 +440,21 @@ export default function Namecard() {
           <div className="nc-dual-box-row">
             {/* Box Left: QR Code */}
             <div className="nc-gold-box nc-qr-card">
-              <div className="nc-qr-white-frame">
+              <div className="nc-qr-white-frame" onClick={handleShowQrLarge} style={{ cursor: 'pointer' }} title="Nhấn để phóng to QR Code">
                 <canvas ref={qrCanvasRef} className="nc-qr-canvas" />
               </div>
               <div className="nc-box-caption">QUÉT MÃ ĐỂ KẾT NỐI</div>
+              {/* Nút tải QR về để in */}
+              <button
+                onClick={handleDownloadQr}
+                className="nc-qr-download-btn"
+                title="Tải QR Code về máy để in"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                </svg>
+                Tải về in
+              </button>
             </div>
 
             {/* Box Right: Profile Doanh Nhân */}
@@ -464,6 +516,47 @@ export default function Namecard() {
 
         </div>
       </div>
+
+      {/* ── QR Code Modal (phóng to để xem / tải về in) ── */}
+      {showQrModal && (
+        <div
+          className="nc-qr-modal-overlay"
+          onClick={() => setShowQrModal(false)}
+        >
+          <div
+            className="nc-qr-modal-box"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="nc-qr-modal-title">QR CODE NAMECARD</div>
+            <div className="nc-qr-modal-sub">{card.name}</div>
+            {qrLargeUrl && (
+              <img
+                src={qrLargeUrl}
+                alt="QR Code"
+                className="nc-qr-modal-img"
+              />
+            )}
+            <div className="nc-qr-modal-url">{qrUrlRef.current}</div>
+            <div className="nc-qr-modal-actions">
+              <button
+                className="nc-qr-modal-btn nc-qr-modal-btn-primary"
+                onClick={handleDownloadQr}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                </svg>
+                Tải QR về in ấn (.PNG)
+              </button>
+              <button
+                className="nc-qr-modal-btn nc-qr-modal-btn-close"
+                onClick={() => setShowQrModal(false)}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
