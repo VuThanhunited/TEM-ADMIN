@@ -81,6 +81,7 @@ function loadApp() {
     app.use('/api/public',       require('./routes/public'));
     app.use('/api/label-designs',require('./routes/labelDesigns'));
     app.use('/api/upload',       require('./routes/upload'));
+    app.use('/api/namecards',    require('./routes/namecards'));
 
     // Health check
     app.get('/api/health', (req, res) => {
