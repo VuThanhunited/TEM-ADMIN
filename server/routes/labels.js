@@ -2,6 +2,8 @@ const express = require('express');
 const crypto = require('crypto');
 const LabelBatch = require('../models/LabelBatch');
 const Label = require('../models/Label');
+const Product = require('../models/Product');
+const Enterprise = require('../models/Enterprise');
 const auth = require('../middleware/auth');
 const { requireRole, requireOwnership } = require('../middleware/rbac');
 
@@ -106,15 +108,45 @@ router.get('/export', auth, requireOwnership, async (req, res) => {
 // GET /api/labels/export-all - Stream export labels with optional search filter (for "Kích hoạt" tab)
 router.get('/export-all', auth, requireOwnership, async (req, res) => {
   try {
-    const { search = '' } = req.query;
+    const { search = '', batchId = '', productId = '', status = '', enterpriseId = '' } = req.query;
 
     // Extend timeout for large exports (5 minutes)
     req.setTimeout(300000);
     res.setTimeout(300000);
 
-    const query = req.enterpriseFilter || {};
+    const query = Object.assign({}, req.enterpriseFilter || {});
+    if (batchId) query.batchId = batchId;
+    if (productId) query.productId = productId;
+    if (status) query.status = status;
+    if (enterpriseId && req.user.role === 'ADMIN') query.enterpriseId = enterpriseId;
+
     if (search) {
-      query.serialNumber = { $regex: search, $options: 'i' };
+      const cleanSearch = String(search).trim();
+
+      // 1. Tìm các sản phẩm có tên khớp với từ khóa
+      const matchingProducts = await Product.find({
+        name: { $regex: cleanSearch, $options: 'i' }
+      }).select('_id').lean();
+      const productIds = matchingProducts.map(p => p._id);
+
+      // 2. Tìm các lô tem có mã lô khớp
+      const matchingBatches = await LabelBatch.find({
+        batchCode: { $regex: cleanSearch, $options: 'i' }
+      }).select('_id').lean();
+      const batchIds = matchingBatches.map(b => b._id);
+
+      const orConditions = [
+        { serialNumber: { $regex: cleanSearch, $options: 'i' } },
+        { distributorName: { $regex: cleanSearch, $options: 'i' } },
+        { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
+        { activeCode: { $regex: cleanSearch, $options: 'i' } },
+        { smsCode: { $regex: cleanSearch, $options: 'i' } }
+      ];
+
+      if (productIds.length > 0) orConditions.push({ productId: { $in: productIds } });
+      if (batchIds.length > 0) orConditions.push({ batchId: { $in: batchIds } });
+
+      query.$or = orConditions;
     }
 
     // Use lean cursor for memory-efficient streaming
@@ -201,16 +233,53 @@ router.delete('/cleanup-orphans', auth, requireRole('ADMIN'), async (req, res) =
 // Allow reading batches, but only ADMIN creates them
 router.get('/batches', auth, requireOwnership, async (req, res) => {
   try {
-    const { page = 1, limit = 20, status = '', search = '' } = req.query;
+    const { page = 1, limit = 20, status = '', search = '', productId = '', enterpriseId = '' } = req.query;
 
     // Bắt đầu từ một object mới để tránh mutate req.enterpriseFilter
     const query = Object.assign({}, req.enterpriseFilter || {});
     if (status) query.status = status;
+    if (productId) query.productId = productId;
+    if (enterpriseId && req.user.role === 'ADMIN') query.enterpriseId = enterpriseId;
+
     if (search) {
-      query.$or = [
-        { batchCode: { $regex: search, $options: 'i' } },
-        { notes: { $regex: search, $options: 'i' } }
+      const cleanSearch = String(search).trim();
+
+      // 1. Tìm các sản phẩm có tên khớp với từ khóa tìm kiếm
+      const matchingProducts = await Product.find({
+        name: { $regex: cleanSearch, $options: 'i' }
+      }).select('_id').lean();
+      const productIds = matchingProducts.map(p => p._id);
+
+      // 2. Tìm doanh nghiệp / NPP có tên khớp
+      const matchingEnterprises = await Enterprise.find({
+        name: { $regex: cleanSearch, $options: 'i' }
+      }).select('_id').lean();
+      const entIds = matchingEnterprises.map(e => e._id);
+
+      // 3. Tìm xem có tem nhãn nào có serial khớp với từ khóa không (để tìm ra Lô chứa serial đó)
+      const matchingLabels = await Label.find({
+        serialNumber: { $regex: cleanSearch, $options: 'i' }
+      }).select('batchId').limit(50).lean();
+      const batchIdsFromLabels = [...new Set(matchingLabels.map(l => String(l.batchId)))];
+
+      const orConditions = [
+        { batchCode: { $regex: cleanSearch, $options: 'i' } },
+        { serialStart: { $regex: cleanSearch, $options: 'i' } },
+        { serialEnd: { $regex: cleanSearch, $options: 'i' } },
+        { notes: { $regex: cleanSearch, $options: 'i' } }
       ];
+
+      if (productIds.length > 0) {
+        orConditions.push({ productId: { $in: productIds } });
+      }
+      if (entIds.length > 0) {
+        orConditions.push({ enterpriseId: { $in: entIds } });
+      }
+      if (batchIdsFromLabels.length > 0) {
+        orConditions.push({ _id: { $in: batchIdsFromLabels } });
+      }
+
+      query.$or = orConditions;
     }
 
     const total = await LabelBatch.countDocuments(query);
@@ -220,20 +289,6 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
-
-    // Cảnh báo nếu search không tìm thấy trong enterprise nhưng tồn tại globally
-    // Giúp phát hiện lô tem bị gán sai enterpriseId
-    if (search && total === 0) {
-      const globalCount = await LabelBatch.countDocuments({
-        $or: [
-          { batchCode: { $regex: search, $options: 'i' } },
-          { notes: { $regex: search, $options: 'i' } }
-        ]
-      });
-      if (globalCount > 0) {
-        console.warn(`[getBatches] Lô "${search}" tồn tại globally (${globalCount}) nhưng không thuộc enterpriseFilter:`, req.enterpriseFilter);
-      }
-    }
 
     res.json({
       data: batches,
@@ -749,12 +804,40 @@ router.post('/migrate', auth, requireRole('ADMIN'), async (req, res) => {
 // GET /api/labels
 router.get('/', auth, requireOwnership, async (req, res) => {
   try {
-    const { page = 1, limit = 50, batchId = '', status = '', search = '' } = req.query;
-    const query = req.enterpriseFilter || {};
+    const { page = 1, limit = 50, batchId = '', productId = '', status = '', enterpriseId = '', search = '' } = req.query;
+    const query = Object.assign({}, req.enterpriseFilter || {});
     if (batchId) query.batchId = batchId;
+    if (productId) query.productId = productId;
     if (status) query.status = status;
+    if (enterpriseId && req.user.role === 'ADMIN') query.enterpriseId = enterpriseId;
+
     if (search) {
-      query.serialNumber = { $regex: search, $options: 'i' };
+      const cleanSearch = String(search).trim();
+
+      // 1. Tìm các sản phẩm có tên khớp với từ khóa
+      const matchingProducts = await Product.find({
+        name: { $regex: cleanSearch, $options: 'i' }
+      }).select('_id').lean();
+      const productIds = matchingProducts.map(p => p._id);
+
+      // 2. Tìm các lô tem có mã lô khớp
+      const matchingBatches = await LabelBatch.find({
+        batchCode: { $regex: cleanSearch, $options: 'i' }
+      }).select('_id').lean();
+      const batchIds = matchingBatches.map(b => b._id);
+
+      const orConditions = [
+        { serialNumber: { $regex: cleanSearch, $options: 'i' } },
+        { distributorName: { $regex: cleanSearch, $options: 'i' } },
+        { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
+        { activeCode: { $regex: cleanSearch, $options: 'i' } },
+        { smsCode: { $regex: cleanSearch, $options: 'i' } }
+      ];
+
+      if (productIds.length > 0) orConditions.push({ productId: { $in: productIds } });
+      if (batchIds.length > 0) orConditions.push({ batchId: { $in: batchIds } });
+
+      query.$or = orConditions;
     }
 
     let total = await Label.countDocuments(query);

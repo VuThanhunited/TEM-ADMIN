@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit
+  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';
@@ -29,6 +29,12 @@ export default function Labels() {
   const [enterprises, setEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  // Quick Filter States
+  const [filterProduct, setFilterProduct] = useState('');
+  const [filterBatch, setFilterBatch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterEnterprise, setFilterEnterprise] = useState('');
+  const [allBatchesForFilter, setAllBatchesForFilter] = useState([]);
   const [showCreateBatch, setShowCreateBatch] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
@@ -64,6 +70,7 @@ export default function Labels() {
   useEffect(() => {
     loadProducts();
     loadTemplates();
+    loadBatchOptions();
     if (isAdmin) loadEnterprises();
   }, [isAdmin]);
 
@@ -93,6 +100,18 @@ export default function Labels() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  // Khi bộ lọc dropdown thay đổi: reset về page 1 và load lại
+  useEffect(() => {
+    if (!tabMounted.current) return;
+    setBatchPagination(p => ({ ...p, page: 1 }));
+    setLabelPagination(p => ({ ...p, page: 1 }));
+    curBatchPage.current = 1;
+    curLabelPage.current = 1;
+    if (activeTab === 'batches') loadBatches(1, curSearch.current);
+    else if (activeTab === 'activate') loadLabels(1, curSearch.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterProduct, filterBatch, filterStatus, filterEnterprise]);
+
   // Khi page thay đổi: load trang mới (bỏ qua nếu page không thực sự đổi)
   useEffect(() => {
     if (!tabMounted.current) return;
@@ -117,6 +136,13 @@ export default function Labels() {
     try { const r = await api.getProducts({ limit: 1000 }); setProducts(r.data || []); } catch (e) {}
   };
 
+  const loadBatchOptions = async () => {
+    try {
+      const r = await api.getBatches({ limit: 1000 });
+      if (r && r.data) setAllBatchesForFilter(r.data);
+    } catch (e) {}
+  };
+
   const loadTemplates = async () => {
     try {
       const r = await api.getTemplates();
@@ -127,7 +153,7 @@ export default function Labels() {
   const loadEnterprises = async () => {
     try {
       const r = await api.getEnterprises();
-      setEnterprises(r);
+      setEnterprises(r || []);
     } catch (e) {}
   };
 
@@ -165,11 +191,14 @@ export default function Labels() {
     return filtered.length > 0 ? filtered : templates;
   };
 
-  // ── Load functions: nhận tường minh page + searchTerm ─────────────────
-  const loadBatches = async (page = 1, searchTerm = '') => {
+  // ── Load functions: nhận tường minh page + searchTerm + filters ─────────────────
+  const loadBatches = async (page = 1, searchTerm = curSearch.current, customFilters = {}) => {
     try {
       setLoading(true);
-      const r = await api.getBatches({ page, search: searchTerm });
+      const prodId = customFilters.productId !== undefined ? customFilters.productId : filterProduct;
+      const stat = customFilters.status !== undefined ? customFilters.status : filterStatus;
+      const entId = customFilters.enterpriseId !== undefined ? customFilters.enterpriseId : filterEnterprise;
+      const r = await api.getBatches({ page, search: searchTerm, productId: prodId, status: stat, enterpriseId: entId });
       if (r && r.data) {
         setBatches(r.data);
         setBatchPagination(prev => ({ ...prev, ...r.pagination, page: r.pagination?.page ?? page }));
@@ -178,16 +207,35 @@ export default function Labels() {
     } catch (e) { console.error('[loadBatches]', e.message); } finally { setLoading(false); }
   };
 
-  const loadLabels = async (page = 1, searchTerm = '') => {
+  const loadLabels = async (page = 1, searchTerm = curSearch.current, customFilters = {}) => {
     try {
       setLoading(true);
-      const r = await api.getLabels({ page, search: searchTerm, limit: 30 });
+      const prodId = customFilters.productId !== undefined ? customFilters.productId : filterProduct;
+      const batId = customFilters.batchId !== undefined ? customFilters.batchId : filterBatch;
+      const stat = customFilters.status !== undefined ? customFilters.status : filterStatus;
+      const entId = customFilters.enterpriseId !== undefined ? customFilters.enterpriseId : filterEnterprise;
+      const r = await api.getLabels({ page, search: searchTerm, productId: prodId, batchId: batId, status: stat, enterpriseId: entId, limit: 30 });
       if (r && r.data) {
         setLabels(r.data);
         setLabelPagination(prev => ({ ...prev, ...r.pagination, page: r.pagination?.page ?? page }));
         curLabelPage.current = r.pagination?.page ?? page;
       }
     } catch (e) { console.error('[loadLabels]', e.message); } finally { setLoading(false); }
+  };
+
+  const handleResetFilters = () => {
+    setSearch('');
+    setFilterProduct('');
+    setFilterBatch('');
+    setFilterStatus('');
+    setFilterEnterprise('');
+    curSearch.current = '';
+    setBatchPagination(p => ({ ...p, page: 1 }));
+    setLabelPagination(p => ({ ...p, page: 1 }));
+    curBatchPage.current = 1;
+    curLabelPage.current = 1;
+    if (activeTab === 'batches') loadBatches(1, '', { productId: '', status: '', enterpriseId: '' });
+    else if (activeTab === 'activate') loadLabels(1, '', { productId: '', batchId: '', status: '', enterpriseId: '' });
   };
 
   const handleCreateBatch = async (e) => {
@@ -408,7 +456,13 @@ export default function Labels() {
     try {
       setExportingLabels(true);
       // Use dedicated streaming export API (single request, no pagination overhead)
-      const labels = await api.exportFilteredLabels({ search });
+      const labels = await api.exportFilteredLabels({
+        search,
+        productId: filterProduct,
+        batchId: filterBatch,
+        status: filterStatus,
+        enterpriseId: filterEnterprise
+      });
       if (!labels || labels.length === 0) {
         alert('Không tìm thấy dữ liệu tem nhãn nào phù hợp với bộ lọc!');
         return;
@@ -829,32 +883,184 @@ export default function Labels() {
         })}
       </div>
 
-      {/* Search & Export Actions */}
-      <div className="toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div className="search-box">
-          <Search size={18} className="search-icon" />
-          <input className="input" placeholder={activeTab === 'batches' ? 'Tìm mã lô...' : 'Tìm serial...'} value={search} onChange={e => setSearch(e.target.value)} />
-          {search && (
-            <button type="button" className="search-clear-btn" onClick={() => setSearch('')} title="Xóa tìm kiếm">
-              <X size={15} />
+      {/* Search & Filter Toolbar */}
+      <div className="filter-toolbar">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          {/* Universal Search Input */}
+          <div className="search-box" style={{ flex: '1 1 300px', minWidth: '240px' }}>
+            <Search size={18} className="search-icon" />
+            <input
+              className="input"
+              placeholder={activeTab === 'batches' ? '🔍 Tìm nhanh: Mã lô, Tên sản phẩm, Serial, Ghi chú...' : '🔍 Tìm nhanh: Mã Serial, Mã lô, Tên sản phẩm, Điểm bán...'}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button type="button" className="search-clear-btn" onClick={() => setSearch('')} title="Xóa tìm kiếm">
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Dropdown Filters */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flex: '2 1 auto' }}>
+            {/* Lọc theo Sản phẩm */}
+            <select
+              className="filter-select select"
+              value={filterProduct}
+              onChange={e => setFilterProduct(e.target.value)}
+              title="Lọc theo sản phẩm"
+            >
+              <option value="">📦 Tất cả sản phẩm</option>
+              {products.map(p => (
+                <option key={p._id} value={p._id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Lọc theo Lô tem (chỉ hiện trong tab activate) */}
+            {activeTab === 'activate' && (
+              <select
+                className="filter-select select"
+                value={filterBatch}
+                onChange={e => setFilterBatch(e.target.value)}
+                title="Lọc theo lô tem"
+              >
+                <option value="">🏷️ Tất cả lô tem</option>
+                {allBatchesForFilter.map(b => (
+                  <option key={b._id} value={b._id}>
+                    {b.batchCode}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Lọc theo Trạng thái */}
+            <select
+              className="filter-select select"
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              title="Lọc theo trạng thái"
+            >
+              <option value="">🔘 Tất cả trạng thái</option>
+              {activeTab === 'batches' ? (
+                <>
+                  <option value="ACTIVE">🟢 Đang hoạt động</option>
+                  <option value="INACTIVE">⚪ Tạm dừng</option>
+                  <option value="EXPIRED">🔴 Đã hết hạn</option>
+                </>
+              ) : (
+                <>
+                  <option value="SCANNED">🔵 Đã quét</option>
+                  <option value="ACTIVE">🟢 Hoạt động / Chưa quét</option>
+                  <option value="INACTIVE">⚪ Chưa kích hoạt</option>
+                </>
+              )}
+            </select>
+
+            {/* Lọc theo Doanh nghiệp (cho ADMIN) */}
+            {isAdmin && enterprises.length > 0 && (
+              <select
+                className="filter-select select"
+                value={filterEnterprise}
+                onChange={e => setFilterEnterprise(e.target.value)}
+                title="Lọc theo doanh nghiệp"
+              >
+                <option value="">🏢 Tất cả doanh nghiệp</option>
+                {enterprises.map(ent => (
+                  <option key={ent._id} value={ent._id}>
+                    {ent.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Nút Xóa lọc nếu đang có bất kỳ điều kiện lọc nào */}
+            {(search || filterProduct || filterBatch || filterStatus || filterEnterprise) && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleResetFilters}
+                style={{ height: '40px', padding: '0 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Đặt lại toàn bộ bộ lọc"
+              >
+                <RotateCcw size={14} /> Xóa lọc
+              </button>
+            )}
+          </div>
+
+          {/* Action: Xuất Excel (tab activate) */}
+          {activeTab === 'activate' && (
+            <button
+              className="btn btn-primary"
+              onClick={handleDownloadFilteredLabels}
+              disabled={exportingLabels}
+              style={{ height: '40px', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
+            >
+              {exportingLabels ? (
+                <>
+                  <div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }}></div>
+                  Đang xuất...
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  Xuất Excel
+                </>
+              )}
             </button>
           )}
         </div>
-        {activeTab === 'activate' && (
-          <button className="btn btn-primary" onClick={handleDownloadFilteredLabels} disabled={exportingLabels} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {exportingLabels ? (
+
+        {/* Thanh trạng thái bộ lọc & tổng kết quả */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', fontSize: '0.82rem', color: 'var(--color-text-secondary)', borderTop: '1px solid var(--color-border)', paddingTop: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              {activeTab === 'batches'
+                ? `📊 Tổng: ${batchPagination.total || batches.length} lô tem`
+                : `📊 Tổng: ${labelPagination.total || labels.length} tem nhãn`}
+            </span>
+            {(search || filterProduct || filterBatch || filterStatus || filterEnterprise) && (
               <>
-                <div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }}></div>
-                Đang xuất...
-              </>
-            ) : (
-              <>
-                <Download size={16} />
-                Xuất Excel
+                <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>• Đang lọc theo:</span>
+                {search && (
+                  <span className="filter-badge-pill">
+                    Từ khóa: "{search}"
+                    <span className="close-icon" onClick={() => setSearch('')} title="Bỏ lọc từ khóa"><X size={12} /></span>
+                  </span>
+                )}
+                {filterProduct && (
+                  <span className="filter-badge-pill">
+                    Sản phẩm: {products.find(p => p._id === filterProduct)?.name || filterProduct}
+                    <span className="close-icon" onClick={() => setFilterProduct('')} title="Bỏ lọc sản phẩm"><X size={12} /></span>
+                  </span>
+                )}
+                {filterBatch && (
+                  <span className="filter-badge-pill">
+                    Lô: {allBatchesForFilter.find(b => b._id === filterBatch)?.batchCode || filterBatch}
+                    <span className="close-icon" onClick={() => setFilterBatch('')} title="Bỏ lọc lô tem"><X size={12} /></span>
+                  </span>
+                )}
+                {filterStatus && (
+                  <span className="filter-badge-pill">
+                    Trạng thái: {getStatusLabel(filterStatus)}
+                    <span className="close-icon" onClick={() => setFilterStatus('')} title="Bỏ lọc trạng thái"><X size={12} /></span>
+                  </span>
+                )}
+                {filterEnterprise && (
+                  <span className="filter-badge-pill">
+                    Doanh nghiệp: {enterprises.find(e => e._id === filterEnterprise)?.name || filterEnterprise}
+                    <span className="close-icon" onClick={() => setFilterEnterprise('')} title="Bỏ lọc doanh nghiệp"><X size={12} /></span>
+                  </span>
+                )}
               </>
             )}
-          </button>
-        )}
+          </div>
+          <span style={{ fontStyle: 'italic', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+            💡 Hỗ trợ tìm kiếm thông minh đa trường: Serial, Mã lô, Tên sản phẩm, Điểm bán
+          </span>
+        </div>
       </div>
 
       {/* Batches Tab */}
