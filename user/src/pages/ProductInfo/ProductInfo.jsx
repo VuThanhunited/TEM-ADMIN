@@ -196,6 +196,11 @@ export default function ProductInfo() {
   // === TẤT CẢ HOOKS phải khai báo TRƯỚC mọi early return (Rules of Hooks) ===
   const [chatOpen, setChatOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
+  const [rewardPhone, setRewardPhone] = useState('');
+  const [rewardSuccess, setRewardSuccess] = useState(false);
+  const [activateName, setActivateName] = useState('');
+  const [activatePhone, setActivatePhone] = useState('');
+  const [activateSuccess, setActivateSuccess] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const chatEndRef = useRef(null);
@@ -969,7 +974,7 @@ export default function ProductInfo() {
 
         {/* 4. 3 Nút Hành Động Trắng Bo Tròn: Kích hoạt | Kiểm tra | Tích điểm */}
         <div className="vyphyto-actions-3">
-          <div className="vyphyto-action-pill" onClick={() => setActiveModal('tem')}>
+          <div className="vyphyto-action-pill" onClick={() => setActiveModal('activate')}>
             <div className="vyphyto-action-icon">
               <img src="/images/vyphyto_icon_activate.png" alt="Kích hoạt" />
             </div>
@@ -1317,15 +1322,16 @@ export default function ProductInfo() {
               background: (activeTheme === 'staycool' || activeTheme === 'vyphyto') ? '#ea580c' : activeTheme === 'medical' ? '#00695C' : activeTheme === 'functional_food' ? '#15803D' : activeTheme === 'agriculture' ? '#166534' : activeTheme === 'cosmetics' ? '#BE185D' : '#003366'
             }}>
               <h4>
+                {activeModal === 'activate' && 'Kích hoạt Xác thực & Bảo hành'}
                 {activeModal === 'tem' && 'Chi tiết Thông tin Tem'}
                 {activeModal === 'scan' && 'Lịch sử & Thông tin Quét'}
                 {activeModal === 'mfg' && 'Thông tin Nhà sản xuất'}
-                {activeModal === 'distributor' && 'Thông tin Nhà phân phối'}
+                {activeModal === 'distributor' && 'Thông tin Độc quyền Phân phối'}
                 {activeModal === 'cert' && 'Giấy công bố sản phẩm'}
                 {activeModal === 'brand' && 'Câu chuyện Thương hiệu'}
                 {activeModal === 'export' && 'Thông tin Xuất khẩu'}
-                {activeModal === 'reward' && 'Tích điểm Thành viên'}
-                {activeModal === 'product_detail' && 'Chi tiết Sản phẩm'}
+                {activeModal === 'reward' && 'Chương trình Tích điểm Đổi quà'}
+                {activeModal === 'product_detail' && 'Chi tiết Thông tin Sản phẩm'}
                 {activeModal === 'all_products' && 'Sản phẩm cùng nhà sản xuất'}
                 {activeModal === 'ingredients' && 'Thành phần & Dược chất'}
                 {activeModal === 'dosage' && 'Chỉ định & Hướng dẫn sử dụng'}
@@ -1336,6 +1342,229 @@ export default function ProductInfo() {
               </button>
             </div>
             <div className="appliance-modal-content">
+              {activeModal === 'activate' && (() => {
+                return (
+                  <div>
+                    <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ShieldCheck size={22} />
+                        </div>
+                        <div>
+                          <h5 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#c2410c' }}>
+                            KÍCH HOẠT XÁC THỰC & BẢO HÀNH
+                          </h5>
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
+                            Bảo vệ quyền lợi khách hàng chính hãng
+                          </p>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '0.86rem', lineHeight: '1.5', color: '#334155', margin: 0 }}>
+                        Sản phẩm <strong>{product?.name || 'Chính hãng'}</strong> đã được xác thực hợp lệ trên hệ thống Smart QR Trace.
+                      </p>
+                    </div>
+
+                    <div className="modal-info-list" style={{ marginBottom: 16 }}>
+                      <div className="modal-info-item"><span>Mã Serial:</span> <strong style={{ color: '#ea580c' }}>{label?.serialNumber || serial}</strong></div>
+                      <div className="modal-info-item"><span>Trạng thái tem:</span> <strong style={{ color: '#059669' }}>Đã xác thực chính hãng</strong></div>
+                      <div className="modal-info-item"><span>Nhà sản xuất:</span> <strong>VYPHYTO LABORATORIES (France) 🇫🇷</strong></div>
+                      <div className="modal-info-item"><span>Đơn vị phân phối:</span> <strong>{enterprise?.name || 'Công Ty TNHH StayCool Việt Nam'}</strong></div>
+                    </div>
+
+                    {activateSuccess ? (
+                      <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 10, padding: '16px', textAlign: 'center' }}>
+                        <CheckCircle2 size={36} color="#059669" style={{ margin: '0 auto 8px' }} />
+                        <h5 style={{ margin: 0, color: '#065f46', fontSize: '0.98rem', fontWeight: 800 }}>KÍCH HOẠT THÀNH CÔNG!</h5>
+                        <p style={{ margin: '6px 0 0', fontSize: '0.86rem', color: '#047857' }}>
+                          Sản phẩm đã được đăng ký thông tin bảo hành điện tử cho khách hàng <strong>{activateName || 'Quý khách'}</strong> ({activatePhone}).
+                        </p>
+                      </div>
+                    ) : (
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!activatePhone.trim()) return alert('Vui lòng nhập số điện thoại kích hoạt!');
+                        setActivateSuccess(true);
+                      }} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <label style={{ fontSize: '0.84rem', fontWeight: 700, color: '#334155' }}>Đăng ký kích hoạt thông tin:</label>
+                        <input
+                          type="text"
+                          placeholder="Họ và tên của bạn"
+                          value={activateName}
+                          onChange={(e) => setActivateName(e.target.value)}
+                          style={{ padding: '10px 14px', borderRadius: 8, border: '1.5px solid #fed7aa', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input
+                            type="tel"
+                            placeholder="Số điện thoại (*)"
+                            value={activatePhone}
+                            onChange={(e) => setActivatePhone(e.target.value)}
+                            style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1.5px solid #fed7aa', fontSize: '0.9rem', outline: 'none' }}
+                            required
+                          />
+                          <button
+                            type="submit"
+                            style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            Kích Hoạt
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {activeModal === 'distributor' && (() => {
+                const isStayCool = activeTheme === 'staycool' || activeTheme === 'vyphyto' || (enterprise?.name || '').toLowerCase().includes('staycool');
+                return (
+                  <div>
+                    {isStayCool ? (
+                      <div>
+                        <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                              <Handshake size={22} />
+                            </div>
+                            <div>
+                              <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
+                                ĐẠI DIỆN NHẬP KHẨU & PHÂN PHỐI ĐỘC QUYỀN
+                              </h5>
+                              <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
+                                Đối tác phân phối độc quyền chính thức nhãn hàng VYPHYTO tại Việt Nam
+                              </p>
+                            </div>
+                          </div>
+                          <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
+                            Các sản phẩm của thương hiệu <strong>VYPHYTO LABORATORIES</strong> được nhập khẩu chính ngạch từ Pháp bởi <strong>Công ty TNHH StayCool Việt Nam</strong>, có đầy đủ giấy phép lưu hành và giấy tiếp nhận đăng ký bản công bố của Cục An Toàn Thực Phẩm – Bộ Y Tế Việt Nam.
+                          </p>
+                        </div>
+
+                        <div className="modal-info-list">
+                          <div className="modal-info-item">
+                            <span>Đơn vị độc quyền:</span>
+                            <strong style={{ color: '#ea580c' }}>CÔNG TY TNHH STAYCOOL VIỆT NAM</strong>
+                          </div>
+                          <div className="modal-info-item">
+                            <span>Thương hiệu phân phối:</span>
+                            <strong>VYPHYTO LABORATORIES (France)</strong>
+                          </div>
+                          <div className="modal-info-item">
+                            <span>Địa chỉ trụ sở:</span>
+                            <strong>{enterprise?.address || '28 Đặng Thuỳ Châm, Phường 13, Quận Bình Thạnh, TP. Hồ Chí Minh'}</strong>
+                          </div>
+                          <div className="modal-info-item">
+                            <span>Hotline hỗ trợ:</span>
+                            <strong>{enterprise?.phone || '1900 636 828 / 0988 567 890'}</strong>
+                          </div>
+                          <div className="modal-info-item">
+                            <span>Email liên hệ:</span>
+                            <strong>{enterprise?.email || 'staycool@gmail.com'}</strong>
+                          </div>
+                          <div className="modal-info-item">
+                            <span>Website chính thức:</span>
+                            <a href={enterprise?.website ? (enterprise.website.startsWith('http') ? enterprise.website : `https://${enterprise.website}`) : 'https://staycool.vn'} target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>
+                              {enterprise?.website || 'staycool.vn'}
+                            </a>
+                          </div>
+                        </div>
+
+                        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px dashed #ea580c', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
+                          🛡️ <strong>Cam kết vàng từ StayCool:</strong> 100% sản phẩm phân phối ra thị trường đều dán tem niêm phong chống giả thông minh tích hợp công nghệ QR Trace. Phát hiện hàng giả cam kết đền bù gấp 10 lần giá trị sản phẩm.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="modal-info-list">
+                        <div className="modal-info-item"><span>Đơn vị phân phối:</span> <strong>{enterprise?.name || 'Đơn vị phân phối chính thức'}</strong></div>
+                        <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{enterprise?.address || 'Toàn quốc'}</strong></div>
+                        <div className="modal-info-item"><span>Hotline:</span> <strong>{enterprise?.phone || '1900 1234'}</strong></div>
+                        <div className="modal-info-item"><span>Email:</span> <strong>{enterprise?.email || 'info@domain.com'}</strong></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {activeModal === 'reward' && (() => {
+                const isStayCool = activeTheme === 'staycool' || activeTheme === 'vyphyto' || (enterprise?.name || '').toLowerCase().includes('staycool');
+                return (
+                  <div>
+                    <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Gift size={22} />
+                        </div>
+                        <div>
+                          <h5 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#c2410c' }}>
+                            TÍCH ĐIỂM ĐỔI QUÀ - TRI ÂN KHÁCH HÀNG
+                          </h5>
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
+                            {isStayCool ? 'Chương trình thành viên VIP VYPHYTO Club' : 'Chương trình khách hàng thân thiết'}
+                          </p>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '0.86rem', lineHeight: '1.5', color: '#334155', margin: 0 }}>
+                        Mỗi mã tem quét thành công được ghi nhận <strong>+100 điểm thưởng</strong>. Tích lũy điểm để nhận voucher mua hàng, quà tặng chăm sóc sức khỏe và tham gia quay số may mắn.
+                      </p>
+                    </div>
+
+                    {/* Hướng dẫn 3 bước */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#ea580c', color: '#fff', fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</span>
+                        <div style={{ fontSize: '0.84rem', color: '#334155' }}><strong>Quét mã QR</strong> trên tem niêm phong sản phẩm để xác thực hàng chính hãng.</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#ea580c', color: '#fff', fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</span>
+                        <div style={{ fontSize: '0.84rem', color: '#334155' }}><strong>Nhập số điện thoại</strong> bên dưới để tích lũy điểm thưởng vào tài khoản thành viên.</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                        <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#ea580c', color: '#fff', fontSize: '0.78rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>3</span>
+                        <div style={{ fontSize: '0.84rem', color: '#334155' }}><strong>Đổi quà hấp dẫn</strong> hoặc voucher giảm giá trực tiếp cho lần mua tiếp theo.</div>
+                      </div>
+                    </div>
+
+                    {/* Interactive Form */}
+                    {rewardSuccess ? (
+                      <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 10, padding: '16px', textAlign: 'center' }}>
+                        <CheckCircle2 size={36} color="#059669" style={{ margin: '0 auto 8px' }} />
+                        <h5 style={{ margin: 0, color: '#065f46', fontSize: '0.98rem', fontWeight: 800 }}>TÍCH ĐIỂM THÀNH CÔNG!</h5>
+                        <p style={{ margin: '6px 0 0', fontSize: '0.86rem', color: '#047857' }}>
+                          Chúc mừng bạn đã tích lũy thành công <strong>+100 điểm</strong> cho số điện thoại <strong>{rewardPhone}</strong>.
+                        </p>
+                      </div>
+                    ) : (
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!rewardPhone.trim()) return alert('Vui lòng nhập số điện thoại để tích điểm!');
+                        setRewardSuccess(true);
+                      }} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <label style={{ fontSize: '0.84rem', fontWeight: 700, color: '#334155' }}>Nhập số điện thoại nhận điểm:</label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input
+                            type="tel"
+                            placeholder="VD: 0912 345 678"
+                            value={rewardPhone}
+                            onChange={(e) => setRewardPhone(e.target.value)}
+                            style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1.5px solid #fed7aa', fontSize: '0.9rem', outline: 'none' }}
+                            required
+                          />
+                          <button
+                            type="submit"
+                            style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            Tích Điểm
+                          </button>
+                        </div>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                          Mỗi mã tem hợp lệ chỉ được tích điểm 01 lần duy nhất cho chủ sở hữu đầu tiên.
+                        </span>
+                      </form>
+                    )}
+                  </div>
+                );
+              })()}
+
               {activeModal === 'tem' && (
                 <div className="modal-info-list">
                   <div className="modal-info-item"><span>Mã Serial:</span> <strong>{label?.serialNumber || serial}</strong></div>
@@ -1353,6 +1582,44 @@ export default function ProductInfo() {
                 </div>
               )}
               {activeModal === 'mfg' && (() => {
+                const isStayCool = activeTheme === 'staycool' || activeTheme === 'vyphyto' || (enterprise?.name || '').toLowerCase().includes('staycool');
+                if (isStayCool) {
+                  return (
+                    <div>
+                      <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.1rem' }}>
+                            🇫🇷
+                          </div>
+                          <div>
+                            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
+                              VYPHYTO LABORATORIES (FRANCE)
+                            </h5>
+                            <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
+                              Viện Nghiên Cứu & Sản Xuất Dược Phẩm Sinh Học Cộng Hòa Pháp
+                            </p>
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
+                          <strong>VYPHYTO LABORATORIES</strong> là viện nghiên cứu và sản xuất các dòng thực phẩm bảo vệ sức khỏe, vitamin và khoáng chất hàng đầu tại Pháp, dựa trên công nghệ sinh học và chiết xuất hữu cơ tự nhiên đạt chuẩn Châu Âu.
+                        </p>
+                      </div>
+
+                      <div className="modal-info-list">
+                        <div className="modal-info-item"><span>Đơn vị sản xuất:</span> <strong style={{ color: '#ea580c' }}>VYPHYTO LABORATORIES</strong></div>
+                        <div className="modal-info-item"><span>Quốc gia xuất xứ:</span> <strong>Cộng hòa Pháp (Made in France) 🇫🇷</strong></div>
+                        <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000, HACCP Châu Âu</strong></div>
+                        <div className="modal-info-item"><span>Định hướng phát triển:</span> <strong>Tinh Hoa Pháp – Sức Khỏe Bạn</strong></div>
+                        <div className="modal-info-item"><span>Website hãng:</span> <a href="https://vyphyto.com" target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>vyphyto.com</a></div>
+                      </div>
+
+                      <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
+                        🔬 <strong>Cam kết chất lượng Châu Âu:</strong> 100% nguyên liệu đều trải qua quy trình kiểm nghiệm nghiêm ngặt của Liên minh Châu Âu (EU) trước khi đưa vào sản xuất và đóng gói.
+                      </div>
+                    </div>
+                  );
+                }
+
                 const mfg = product?.manufacturerId || enterprise;
                 return (
                   <div>
@@ -1457,62 +1724,122 @@ export default function ProductInfo() {
                   )}
                 </div>
               )}
-              {activeModal === 'product_detail' && (
-                <div>
-                  {/* Tên & mô tả */}
-                  <p style={{ fontWeight: 700, fontSize: '1rem', color: '#00695C', marginBottom: '8px' }}>
-                    {product?.name || 'Sản phẩm chính hãng'}
-                  </p>
-                  {product?.description ? (
-                    <p style={{ color: '#334155', fontSize: '0.9rem', lineHeight: '1.7', marginBottom: 16, whiteSpace: 'pre-line' }}>
-                      {product.description}
-                    </p>
-                  ) : (
-                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 16 }}>
-                      Sản phẩm được xác thực nguồn gốc và kiểm định chất lượng chính hãng.
-                    </p>
-                  )}
-
-                  {/* Thông số kỹ thuật / thuộc tính */}
-                  {product?.specifications && Object.keys(product.specifications).length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#00695C', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Thông số sản phẩm
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {Object.entries(product.specifications).map(([key, val]) => (
-                          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 6, background: '#f0fdf4', fontSize: '0.86rem' }}>
-                            <span style={{ color: '#4b5563', fontWeight: 500 }}>{key}:</span>
-                            <span style={{ color: '#166534', fontWeight: 600 }}>{val}</span>
+              {activeModal === 'product_detail' && (() => {
+                const isStayCool = activeTheme === 'staycool' || activeTheme === 'vyphyto' || (enterprise?.name || '').toLowerCase().includes('staycool');
+                if (isStayCool) {
+                  return (
+                    <div>
+                      <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Package size={22} />
                           </div>
-                        ))}
+                          <div>
+                            <h5 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#c2410c' }}>
+                              {product?.name || 'MUMMACAL-ZT DIAMOND'}
+                            </h5>
+                            <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
+                              {product?.category || 'Thực phẩm bảo vệ sức khỏe'} • Chuẩn Dược phẩm Châu Âu 🇫🇷
+                            </p>
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
+                          {product?.description || 'MUMMACAL-ZT DIAMOND là dòng sản phẩm bổ sung Canxi hữu cơ tự nhiên chiết xuất từ Tảo biển đỏ Aquamin F Iceland kết hợp Vitamin D3, Vitamin K2-MK7, Magie và Kẽm. Giúp tăng cường mật độ xương răng chắc khỏe, ngừa loãng xương và thúc đẩy chiều cao vượt trội, hoàn toàn không gây nóng hay lắng cặn sỏi thận.'}
+                        </p>
+                      </div>
+
+                      <div className="modal-info-list" style={{ marginBottom: 16 }}>
+                        <div className="modal-info-item"><span>Tên sản phẩm:</span> <strong style={{ color: '#ea580c' }}>{product?.name || 'MUMMACAL-ZT DIAMOND'}</strong></div>
+                        <div className="modal-info-item"><span>Xuất xứ thương hiệu:</span> <strong>VYPHYTO LABORATORIES (Pháp) 🇫🇷</strong></div>
+                        <div className="modal-info-item"><span>Đơn vị nhập khẩu:</span> <strong>{enterprise?.name || 'Công Ty TNHH StayCool Việt Nam'}</strong></div>
+                        <div className="modal-info-item"><span>Quy cách đóng gói:</span> <strong>{product?.specifications?.['Quy cách'] || 'Hộp 30 viên / 60 viên nang mềm'}</strong></div>
+                        <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000</strong></div>
+                        <div className="modal-info-item"><span>Hạn sử dụng:</span> <strong>{formatDate(scanData?.label?.batchId?.expiryDate || label?.expiryDate) || '36 tháng kể từ NSX'}</strong></div>
+                      </div>
+
+                      {/* Thành phần & Công dụng nổi bật */}
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#c2410c', marginBottom: 8, textTransform: 'uppercase' }}>
+                          🌟 Thành phần & Công dụng nổi bật:
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #fed7aa', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                            🌱 <strong>Aquamin F (Tảo biển đỏ Iceland):</strong> Cung cấp Canxi hữu cơ và hơn 70 khoáng chất vi lượng sinh khả dụng cao, cấu trúc xốp tổ ong giúp hấp thu êm dịu, không gây táo bón.
+                          </div>
+                          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #fed7aa', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                            ☀️ <strong>Bộ đôi Vitamin D3 & K2-MK7:</strong> Hỗ trợ hấp thu Canxi tối đa từ ruột vào máu và định hướng canxi gắn trúng đích vào mô xương, tránh vôi hóa mạch máu.
+                          </div>
+                          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #fed7aa', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                            🛡️ <strong>Magie Oxyd & Kẽm Gluconat:</strong> Củng cố khung xương dẻo dai và nâng cao sức đề kháng toàn diện cho mẹ bầu và thanh thiếu niên.
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Đối tượng sử dụng */}
+                      <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #ffedd5', fontSize: '0.84rem', color: '#7c2d12', lineHeight: 1.5 }}>
+                        👥 <strong>Đối tượng khuyên dùng:</strong> Phụ nữ chuẩn bị mang thai, đang mang thai và nuôi con bú; trẻ em từ 6 tuổi trở lên đang trong giai đoạn phát triển chiều cao; người cao tuổi, người có nguy cơ loãng xương hoặc gãy xương.
                       </div>
                     </div>
-                  )}
+                  );
+                }
 
-                  {/* Thông tin bổ sung nhà sản xuất */}
-                  {product?.producerInfo && (
-                    <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 6 }}>Đơn vị sản xuất:</div>
-                      <div style={{ whiteSpace: 'pre-line', fontSize: '0.86rem', lineHeight: '1.6', color: '#334155' }}>{product.producerInfo}</div>
-                    </div>
-                  )}
+                return (
+                  <div>
+                    {/* Tên & mô tả */}
+                    <p style={{ fontWeight: 700, fontSize: '1rem', color: '#00695C', marginBottom: '8px' }}>
+                      {product?.name || 'Sản phẩm chính hãng'}
+                    </p>
+                    {product?.description ? (
+                      <p style={{ color: '#334155', fontSize: '0.9rem', lineHeight: '1.7', marginBottom: 16, whiteSpace: 'pre-line' }}>
+                        {product.description}
+                      </p>
+                    ) : (
+                      <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 16 }}>
+                        Sản phẩm được xác thực nguồn gốc và kiểm định chất lượng chính hãng.
+                      </p>
+                    )}
 
-                  {/* Ảnh giấy công bố (nếu có) */}
-                  {product?.congBoImages?.filter(img => img && img.trim()).length > 0 && (
-                    <div style={{ marginTop: 14 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 8 }}>Giấy công bố sản phẩm:</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
-                          <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
-                            <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', borderRadius: 8, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 300 }} />
-                          </a>
-                        ))}
+                    {/* Thông số kỹ thuật / thuộc tính */}
+                    {product?.specifications && Object.keys(product.specifications).length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#00695C', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Thông số sản phẩm
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {Object.entries(product.specifications).map(([key, val]) => (
+                            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 6, background: '#f0fdf4', fontSize: '0.86rem' }}>
+                              <span style={{ color: '#4b5563', fontWeight: 500 }}>{key}:</span>
+                              <span style={{ color: '#166534', fontWeight: 600 }}>{val}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+
+                    {/* Thông tin bổ sung nhà sản xuất */}
+                    {product?.producerInfo && (
+                      <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 6 }}>Đơn vị sản xuất:</div>
+                        <div style={{ whiteSpace: 'pre-line', fontSize: '0.86rem', lineHeight: '1.6', color: '#334155' }}>{product.producerInfo}</div>
+                      </div>
+                    )}
+
+                    {/* Ảnh giấy công bố (nếu có) */}
+                    {product?.congBoImages?.filter(img => img && img.trim()).length > 0 && (
+                      <div style={{ marginTop: 14 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 8 }}>Giấy công bố sản phẩm:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
+                            <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                              <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', borderRadius: 8, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 300 }} />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
