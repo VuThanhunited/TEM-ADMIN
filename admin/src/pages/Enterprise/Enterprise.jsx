@@ -36,7 +36,7 @@ export default function Enterprise() {
     domain: '',
     subdomain: '',
     chatbotConfig: { enabled: false, script: '', welcomeMessage: '' },
-    displayConfig: { showRelatedProducts: true }
+    displayConfig: { showRelatedProducts: true, defaultTheme: 'default' }
   });
 
   // Rich Text Editor State inside Modal
@@ -104,7 +104,7 @@ export default function Enterprise() {
       domain: '',
       subdomain: '',
       chatbotConfig: { enabled: false, script: '', welcomeMessage: '' },
-      displayConfig: { showRelatedProducts: true }
+      displayConfig: { showRelatedProducts: true, defaultTheme: 'default' }
     });
     setEditorMode('visual');
     setIsModalOpen(true);
@@ -133,7 +133,7 @@ export default function Enterprise() {
       domain: ent.domain || '',
       subdomain: ent.subdomain || '',
       chatbotConfig: ent.chatbotConfig || { enabled: false, script: '', welcomeMessage: '' },
-      displayConfig: ent.displayConfig || { showRelatedProducts: true }
+      displayConfig: ent.displayConfig || { showRelatedProducts: true, defaultTheme: 'default' }
     });
     setEditorMode('visual');
     setIsModalOpen(true);
@@ -899,6 +899,33 @@ export default function Enterprise() {
                       <p style={{ marginTop: 8, fontSize: '0.8rem', opacity: 0.6, lineHeight: 1.5 }}>
                         Khi tắt, mục sản phẩm liên quan sẽ bị ẩn hoàn toàn trên trang xem thông tin tem của doanh nghiệp này.
                       </p>
+
+                      {/* Default Theme Selector */}
+                      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
+                        <label className="label" style={{ marginBottom: 6, fontWeight: 700 }}>
+                          🎨 Giao diện Tem Mặc định (Default Theme)
+                        </label>
+                        <select
+                          className="input"
+                          value={formData.displayConfig?.defaultTheme || 'default'}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            displayConfig: { ...prev.displayConfig, defaultTheme: e.target.value }
+                          }))}
+                        >
+                          <option value="default">🔲 Tự động nhận diện theo danh mục sản phẩm</option>
+                          <option value="staycool">🇫🇷 StayCool / VYPHYTO France (Giao diện Cam chuyên biệt)</option>
+                          <option value="functional_food">🌿 Thực phẩm chức năng / TPCN (Xanh lá)</option>
+                          <option value="cosmetics">💄 Mỹ phẩm & Làm đẹp (Hồng/Đỏ)</option>
+                          <option value="medical">⚕️ Dược phẩm & Y tế (Xanh teal)</option>
+                          <option value="appliance">🔧 Điện gia dụng & Bảo hành (Xanh navy)</option>
+                          <option value="agriculture">🌾 Nông sản & Hợp tác xã (Xanh đậm)</option>
+                          <option value="ocop">🏅 OCOP & Đặc sản vùng miền (Vàng/Nâu)</option>
+                        </select>
+                        <p style={{ marginTop: 6, fontSize: '0.78rem', opacity: 0.55, lineHeight: 1.5 }}>
+                          Khi chọn, tất cả mã tem của doanh nghiệp này sẽ hiển thị giao diện đã chọn, bất kể danh mục sản phẩm.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}

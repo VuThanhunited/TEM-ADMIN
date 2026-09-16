@@ -68,7 +68,7 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'Không có quyền chỉnh sửa' });
     }
 
-    const { name, type, address, phone, email, website, taxCode, logo, partnerDetails, domain, subdomain, chatbotConfig } = req.body;
+    const { name, type, address, phone, email, website, taxCode, logo, partnerDetails, domain, subdomain, chatbotConfig, displayConfig } = req.body;
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
@@ -82,6 +82,7 @@ router.put('/:id', auth, async (req, res) => {
     if (domain !== undefined) updateData.domain = domain;
     if (subdomain !== undefined) updateData.subdomain = subdomain;
     if (chatbotConfig !== undefined) updateData.chatbotConfig = chatbotConfig;
+    if (displayConfig !== undefined) updateData.displayConfig = displayConfig;
 
     const enterprise = await Enterprise.findByIdAndUpdate(
       req.params.id,

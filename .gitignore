@@ -13,3 +13,4 @@ server/backups/*.json
 *.xls
 *.xlsx
 *.mdq*
+*.pdf

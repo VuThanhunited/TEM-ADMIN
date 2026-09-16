@@ -261,7 +261,14 @@ router.get('/scan/:serial', async (req, res) => {
     }
 
     let responseTheme = batch.theme || (template && template.layout ? template.layout : 'default');
-    if (responseTheme === 'default' && label.productId) {
+
+    // Nếu enterprise đã cấu hình theme mặc định, dùng ngay (override auto-detect)
+    const enterpriseDefaultTheme = enterprise.displayConfig?.defaultTheme;
+    if (enterpriseDefaultTheme && enterpriseDefaultTheme !== 'default') {
+      responseTheme = enterpriseDefaultTheme;
+    } else if (responseTheme === 'default' && (enterprise.name || '').toLowerCase().includes('staycool')) {
+      responseTheme = 'staycool';
+    } else if (responseTheme === 'default' && label.productId) {
       const cat = (label.productId.category || '').toLowerCase().trim();
       const pName = (label.productId.name || '').toLowerCase().trim();
       

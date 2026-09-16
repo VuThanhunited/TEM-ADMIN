@@ -62,7 +62,12 @@ const enterpriseSchema = new mongoose.Schema({
     fontFamily: { type: String, default: 'Inter' }
   },
   displayConfig: {
-    showRelatedProducts: { type: Boolean, default: true }
+    showRelatedProducts: { type: Boolean, default: true },
+    defaultTheme: {
+      type: String,
+      enum: ['default', 'medical', 'appliance', 'functional_food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
+      default: 'default'
+    }
   },
   subscriptionPlan: {
     type: String,

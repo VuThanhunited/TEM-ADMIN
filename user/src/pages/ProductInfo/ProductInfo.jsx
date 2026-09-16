@@ -105,6 +105,19 @@ export default function ProductInfo() {
     const paramTheme = searchParams.get('theme');
     if (paramTheme) return paramTheme;
 
+    // Ưu tiên theme mặc định từ cấu hình doanh nghiệp (override tất cả auto-detect)
+    const enterpriseDefaultTheme = scanData?.enterprise?.displayConfig?.defaultTheme;
+    if (enterpriseDefaultTheme && enterpriseDefaultTheme !== 'default') {
+      return enterpriseDefaultTheme;
+    }
+
+    // Tự động nhận diện doanh nghiệp StayCool / Vyphyto
+    const entName = (scanData?.enterprise?.name || '').toLowerCase();
+    if (entName.includes('staycool') || entName.includes('vyphyto')) {
+      return 'staycool';
+    }
+
+    // Ưu tiên theme từ API scan response (đã xử lý ở server)
     let t = scanData?.theme || scanData?.label?.batchId?.theme || scanData?.template?.layout;
     if (t && t !== 'default' && t !== 'warranty') {
       return t;
@@ -114,7 +127,6 @@ export default function ProductInfo() {
     const cat = (scanData?.product?.category || '').toLowerCase();
     const pName = (scanData?.product?.name || '').toLowerCase();
     const desc = (scanData?.product?.description || '').toLowerCase();
-    const entName = (scanData?.enterprise?.name || '').toLowerCase();
 
     const textToMatch = `${cat} ${pName} ${desc} ${entName}`;
 
@@ -910,6 +922,148 @@ export default function ProductInfo() {
   };
 
   // =========================================================================
+  // 3B. STAYCOOL / VYPHYTO FRANCE THEME (Exact Match with Reference Graphic)
+  // =========================================================================
+  const renderStayCoolView = () => {
+    const isMock = !product?.name || product?.name === 'VINSUMI';
+    const productName = isMock ? 'VYPHYTOZINC' : product.name;
+    const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
+      ? product.images[0]
+      : '/images/vyphyto_full_design.jpg';
+
+    return (
+      <div className="exact-vyphyto-container">
+        {/* 1. Header trên cùng: Quốc kỳ Pháp + Logo Vyphyto + Slogan Tinh Hoa Pháp */}
+        <div className="vyphyto-header-banner">
+          <img
+            src="/images/vyphyto_header_clean.png"
+            alt="VYPHYTO LABORATORIES - Tinh Hoa Pháp, Sức Khỏe Bạn"
+            className="vyphyto-header-img"
+          />
+        </div>
+
+        {/* 2. Banner Cam Capsule 1: SẢN PHẨM CHÍNH HÃNG - TRUY XUẤT MINH BẠCH */}
+        <div className="vyphyto-pill-banner">
+          <span>SẢN PHẨM CHÍNH HÃNG - TRUY XUẤT MINH BẠCH</span>
+        </div>
+
+        {/* 3. Khối Ảnh Sản Phẩm với khung viền cam đôi & bóng đổ */}
+        <div className="vyphyto-hero-card">
+          <div className="vyphyto-hero-img-box">
+            <img
+              src={heroImage}
+              alt={productName}
+              className="vyphyto-hero-img"
+              onError={(e) => { e.target.src = '/images/vyphyto_full_design.jpg'; }}
+            />
+          </div>
+          <div className="vyphyto-hero-info">
+            <h3 className="vyphyto-product-title">{productName}</h3>
+            {product?.category && <div className="vyphyto-product-cat">{product.category}</div>}
+            <div className="vyphyto-sku-serial">
+              <span>Mã serial: <strong>{label?.serialNumber || serial}</strong></span>
+              {product?.sku && <span>SKU: <strong>{product.sku}</strong></span>}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. 3 Nút Hành Động Trắng Bo Tròn: Kích hoạt | Kiểm tra | Tích điểm */}
+        <div className="vyphyto-actions-3">
+          <div className="vyphyto-action-pill" onClick={() => setActiveModal('tem')}>
+            <div className="vyphyto-action-icon">
+              <img src="/images/vyphyto_icon_activate.png" alt="Kích hoạt" />
+            </div>
+            <span>Kích hoạt</span>
+          </div>
+
+          <div className="vyphyto-action-pill" onClick={() => setActiveModal('scan')}>
+            <div className="vyphyto-action-icon">
+              <img src="/images/vyphyto_icon_verify.png" alt="Kiểm tra" />
+            </div>
+            <span>Kiểm tra</span>
+          </div>
+
+          <div className="vyphyto-action-pill" onClick={() => setActiveModal('reward')}>
+            <div className="vyphyto-action-icon">
+              <img src="/images/vyphyto_icon_reward.png" alt="Tích điểm" />
+            </div>
+            <span>Tích điểm</span>
+          </div>
+        </div>
+
+        {/* 5. Banner Cam Capsule 2: SẢN PHẨM CỦA VYPHYTO NHẬP KHẨU VÀ PHÂN PHỐI */}
+        <div className="vyphyto-pill-banner vyphyto-pill-banner-2">
+          <span>SẢN PHẨM CỦA VYPHYTO NHẬP KHẨU VÀ PHÂN PHỐI</span>
+        </div>
+
+        {/* 6. Lưới 4 Nút 2x2: Nhà sản xuất | Độc quyền P.Phối | Thông tin tem | Thông tin sản phẩm */}
+        <div className="vyphyto-grid-4">
+          <div className="vyphyto-grid-item" onClick={() => setActiveModal('mfg')}>
+            <div className="vyphyto-grid-icon">
+              <img src="/images/vyphyto_icon_mfg.png" alt="Nhà sản xuất" />
+            </div>
+            <span className="vyphyto-grid-label">Nhà sản xuất</span>
+          </div>
+
+          <div className="vyphyto-grid-item" onClick={() => setActiveModal('distributor')}>
+            <div className="vyphyto-grid-icon">
+              <img src="/images/vyphyto_icon_dist.png" alt="Độc quyền P.Phối" />
+            </div>
+            <span className="vyphyto-grid-label">Độc quyền P.Phối</span>
+          </div>
+
+          <div className="vyphyto-grid-item" onClick={() => setActiveModal('tem')}>
+            <div className="vyphyto-grid-icon">
+              <img src="/images/vyphyto_icon_tem.png" alt="Thông tin tem" />
+            </div>
+            <span className="vyphyto-grid-label">Thông tin tem</span>
+          </div>
+
+          <div className="vyphyto-grid-item" onClick={() => setActiveModal('product_detail')}>
+            <div className="vyphyto-grid-icon">
+              <img src="/images/vyphyto_icon_product.png" alt="Thông tin sản phẩm" />
+            </div>
+            <span className="vyphyto-grid-label">Thông tin sản phẩm</span>
+          </div>
+        </div>
+
+        {/* 7. Sản Phẩm Cùng Doanh Nghiệp (nếu có) */}
+        {showRelated && filteredRelated.length > 0 && (
+          <div className="vyphyto-related-card">
+            <div className="vyphyto-related-header">
+              <h3>SẢN PHẨM VYPHYTO PHÂN PHỐI</h3>
+            </div>
+            <div className="vyphyto-related-grid">
+              {filteredRelated.map((p, idx) => (
+                <div key={p._id || idx} className="vyphyto-related-item">
+                  {p.images?.[0] ? (
+                    <img src={p.images[0]} alt={p.name} />
+                  ) : (
+                    <div className="vyphyto-related-placeholder">
+                      <Package size={26} color="#ea580c" />
+                    </div>
+                  )}
+                  <h4>{p.name}</h4>
+                  {p.category && <div className="vyphyto-related-cat">{p.category}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 8. Bottom Wave Landscape & Footer */}
+        <div className="vyphyto-bottom-landscape">
+          <img src="/images/vyphyto_bottom_wave.png" alt="Vyphyto" className="vyphyto-bottom-wave-img" />
+          <div className="vyphyto-footer-text">
+            <p>&copy; {new Date().getFullYear()} {enterprise?.name || 'StayCool / VYPHYTO'}. All rights reserved.</p>
+            <p className="vyphyto-subnote">Giải Pháp Truy Xuất Nguồn Gốc Thông Minh</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // =========================================================================
   // 4. TEM NÔNG SẢN & NÔNG NGHIỆP (Agriculture Theme)
   // =========================================================================
   const renderAgricultureView = () => (
@@ -1146,6 +1300,7 @@ export default function ProductInfo() {
 
 
       {/* Render Active View by Industry */}
+      {(activeTheme === 'staycool' || activeTheme === 'vyphyto') && renderStayCoolView()}
       {activeTheme === 'medical' && renderMedicalView()}
       {activeTheme === 'appliance' && renderApplianceView()}
       {(activeTheme === 'functional_food' || activeTheme === 'food') && renderFoodView()}
@@ -1159,7 +1314,7 @@ export default function ProductInfo() {
         <div className="appliance-modal-overlay" onClick={() => setActiveModal(null)}>
           <div className="appliance-modal-body" onClick={e => e.stopPropagation()}>
             <div className="appliance-modal-header" style={{
-              background: activeTheme === 'medical' ? '#00695C' : activeTheme === 'functional_food' ? '#15803D' : activeTheme === 'agriculture' ? '#166534' : activeTheme === 'cosmetics' ? '#BE185D' : '#003366'
+              background: (activeTheme === 'staycool' || activeTheme === 'vyphyto') ? '#ea580c' : activeTheme === 'medical' ? '#00695C' : activeTheme === 'functional_food' ? '#15803D' : activeTheme === 'agriculture' ? '#166534' : activeTheme === 'cosmetics' ? '#BE185D' : '#003366'
             }}>
               <h4>
                 {activeModal === 'tem' && 'Chi tiết Thông tin Tem'}
