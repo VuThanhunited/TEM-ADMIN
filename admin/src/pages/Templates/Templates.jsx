@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Palette, Plus, X, Save, Eye, Trash2, CheckCircle, XCircle, FileText, Settings, Layers, ShieldCheck
+  Palette, Plus, X, Save, Eye, Trash2, CheckCircle, XCircle, FileText, Settings, Layers, ShieldCheck, Package
 } from 'lucide-react';
 import './Templates.css';
 
@@ -42,10 +42,16 @@ export default function Templates() {
   const [editing, setEditing] = useState(null);
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [modalError, setModalError] = useState(null);
+
+  // Quick On/Off Toggle for Related Products
+  const [selectedEnterpriseId, setSelectedEnterpriseId] = useState('');
+  const [togglingRelated, setTogglingRelated] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+
   const [form, setForm] = useState({
     name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0',
     backgroundColor: '#f0f4f8', textColor: '#0f172a', layout: 'warranty_solution',
-    showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, enterpriseId: '',
+    showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, showRelatedProducts: true, enterpriseId: '',
     logo: '', backgroundImage: '',
     contentConfig: { ...defaultContentConfig }
   });
@@ -54,8 +60,10 @@ export default function Templates() {
     loadTemplates();
     if (isAdmin) {
       loadEnterprises();
+    } else if (enterpriseId) {
+      loadCurrentEnterprise();
     }
-  }, [isAdmin]);
+  }, [isAdmin, enterpriseId]);
 
   const loadTemplates = async () => {
     try { const data = await api.getTemplates(); setTemplates(data); }
@@ -65,7 +73,20 @@ export default function Templates() {
   const loadEnterprises = async () => {
     try {
       const data = await api.getEnterprises();
-      setEnterprises(data);
+      setEnterprises(data || []);
+      if (data && data.length > 0 && !selectedEnterpriseId) {
+        setSelectedEnterpriseId(data[0]._id);
+      }
+    } catch (e) {}
+  };
+
+  const loadCurrentEnterprise = async () => {
+    try {
+      const ent = await api.getEnterprise(enterpriseId);
+      if (ent) {
+        setEnterprises([ent]);
+        setSelectedEnterpriseId(ent._id);
+      }
     } catch (e) {}
   };
 
@@ -74,7 +95,7 @@ export default function Templates() {
     setModalError(null);
     setModalTab('basic');
     setForm({
-      name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0', backgroundColor: '#f0f4f8', textColor: '#0f172a', layout: 'warranty_solution', showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, enterpriseId: '', logo: '', backgroundImage: '',
+      name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0', backgroundColor: '#f0f4f8', textColor: '#0f172a', layout: 'warranty_solution', showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, showRelatedProducts: true, enterpriseId: '', logo: '', backgroundImage: '',
       contentConfig: { ...defaultContentConfig }
     });
     setShowModal(true);
@@ -99,6 +120,7 @@ export default function Templates() {
       showProductInfo: tmpl.showProductInfo ?? true,
       showDistributorInfo: tmpl.showDistributorInfo ?? true,
       showScanCount: tmpl.showScanCount ?? false,
+      showRelatedProducts: tmpl.showRelatedProducts ?? true,
       enterpriseId: tmpl.enterpriseId?._id || tmpl.enterpriseId || '',
       logo: tmpl.logo || '',
       backgroundImage: tmpl.backgroundImage || '',
@@ -246,6 +268,55 @@ export default function Templates() {
     catch (err) { alert(err.message); }
   };
 
+  const targetEnterprise = enterprises.find(e => e._id === selectedEnterpriseId) || enterprises[0];
+  const currentEntShowRelated = targetEnterprise?.displayConfig?.showRelatedProducts !== false;
+
+  const handleToggleQuickRelated = async () => {
+    if (!targetEnterprise) return;
+    const nextVal = !currentEntShowRelated;
+    setTogglingRelated(true);
+
+    // Optimistic update
+    setEnterprises(prev => prev.map(ent => {
+      if (ent._id === targetEnterprise._id) {
+        return {
+          ...ent,
+          displayConfig: {
+            ...(ent.displayConfig || {}),
+            showRelatedProducts: nextVal
+          }
+        };
+      }
+      return ent;
+    }));
+
+    try {
+      await api.toggleRelatedProducts(targetEnterprise._id, nextVal);
+      setToastMessage({
+        type: 'success',
+        text: `Đã ${nextVal ? 'BẬT' : 'TẮT'} hiển thị Sản phẩm liên quan cho "${targetEnterprise.name}"`
+      });
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      // Revert on failure
+      setEnterprises(prev => prev.map(ent => {
+        if (ent._id === targetEnterprise._id) {
+          return {
+            ...ent,
+            displayConfig: {
+              ...(ent.displayConfig || {}),
+              showRelatedProducts: currentEntShowRelated
+            }
+          };
+        }
+        return ent;
+      }));
+      alert(err.message || 'Lỗi khi cập nhật cấu hình hiển thị sản phẩm liên quan');
+    } finally {
+      setTogglingRelated(false);
+    }
+  };
+
   if (loading) return <div className="loading-overlay"><div className="loading-spinner" style={{width:40,height:40}}></div></div>;
 
   return (
@@ -253,9 +324,65 @@ export default function Templates() {
       <div className="page-header">
         <div>
           <h1>Cấu hình Giao diện Tem</h1>
-          <p>Tùy chỉnh màu sắc, logo và nội dung hiển thị khi quét tem</p>
+          <p>Tùy chỉnh màu sắc, logo, các mục hiển thị và bật/tắt khối sản phẩm liên quan khi quét tem</p>
         </div>
         <button className="btn btn-primary" onClick={openCreate}><Plus size={18}/> Tạo Template Mới</button>
+      </div>
+
+      {/* Quick Global / Enterprise Display Setting for Related Products */}
+      <div className="related-products-banner card animate-fade-in-up">
+        <div className="related-banner-content">
+          <div className="related-banner-header">
+            <div className="related-banner-icon">
+              <Package size={24} />
+            </div>
+            <div>
+              <div className="related-banner-title-row">
+                <h3>Cài đặt Bật / Tắt Khối "Sản phẩm liên quan"</h3>
+                <span className={`badge ${currentEntShowRelated ? 'badge-success' : 'badge-danger'}`}>
+                  {currentEntShowRelated ? 'ĐANG BẬT' : 'ĐANG TẮT'}
+                </span>
+              </div>
+              <p className="related-banner-desc">
+                Bật hoặc tắt tùy ý mục "Sản phẩm liên quan" / "Sản phẩm phân phối" trên toàn bộ tem của doanh nghiệp
+              </p>
+            </div>
+          </div>
+
+          <div className="related-banner-actions">
+            {isAdmin && enterprises.length > 0 && (
+              <div className="related-banner-select-box">
+                <label>Doanh nghiệp:</label>
+                <select
+                  className="input select"
+                  value={selectedEnterpriseId}
+                  onChange={(e) => setSelectedEnterpriseId(e.target.value)}
+                >
+                  {enterprises.map(ent => (
+                    <option key={ent._id} value={ent._id}>
+                      {ent.name} ({ent.displayConfig?.showRelatedProducts !== false ? 'Bật' : 'Tắt'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className={`related-main-toggle-btn ${currentEntShowRelated ? 'active' : 'inactive'}`}
+              disabled={togglingRelated}
+              onClick={handleToggleQuickRelated}
+              title={`Bấm để ${currentEntShowRelated ? 'TẮT' : 'BẬT'} hiển thị sản phẩm liên quan cho doanh nghiệp này`}
+            >
+              <span className="related-toggle-track">
+                <span className="related-toggle-thumb"></span>
+              </span>
+              <span className="related-toggle-text">
+                {togglingRelated ? 'Đang lưu...' : (currentEntShowRelated ? 'BẬT (Hiển thị)' : 'TẮT (Đã ẩn)')}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="templates-grid">
@@ -427,6 +554,7 @@ export default function Templates() {
                       <label className="toggle-label"><input type="checkbox" checked={form.showProductInfo} onChange={e => setForm({...form, showProductInfo: e.target.checked})} /><span className="toggle-switch"></span><span>Hiển thị thông tin SP</span></label>
                       <label className="toggle-label"><input type="checkbox" checked={form.showDistributorInfo} onChange={e => setForm({...form, showDistributorInfo: e.target.checked})} /><span className="toggle-switch"></span><span>Hiển thị điểm bán</span></label>
                       <label className="toggle-label"><input type="checkbox" checked={form.showScanCount} onChange={e => setForm({...form, showScanCount: e.target.checked})} /><span className="toggle-switch"></span><span>Hiển thị lượt quét</span></label>
+                      <label className="toggle-label"><input type="checkbox" checked={form.showRelatedProducts} onChange={e => setForm({...form, showRelatedProducts: e.target.checked})} /><span className="toggle-switch"></span><span>Hiển thị sản phẩm liên quan</span></label>
                     </div>
                   </>
                 ) : (
@@ -609,6 +737,31 @@ export default function Templates() {
               <div className="preview-footer" style={{ marginTop: 20 }}>Template: {previewTemplate.name}</div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="toast-notification animate-fade-in" style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.95)',
+          border: '1px solid #22c55e',
+          color: '#fff',
+          padding: '12px 20px',
+          borderRadius: 10,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          backdropFilter: 'blur(8px)',
+          fontSize: '0.9rem',
+          fontWeight: 600
+        }}>
+          <CheckCircle size={18} style={{ color: '#22c55e', flexShrink: 0 }} />
+          <span>{toastMessage.text}</span>
         </div>
       )}
     </div>

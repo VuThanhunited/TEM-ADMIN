@@ -324,12 +324,17 @@ router.get('/scan/:serial', async (req, res) => {
       }
     }
 
+    const showRelated = (template?.showRelatedProducts !== undefined)
+      ? template.showRelatedProducts
+      : (enterprise?.displayConfig?.showRelatedProducts !== false);
+
     res.json({
       label,
       product: label.productId,
       enterprise,
       template,
       relatedProducts,
+      showRelated,
       isFirstScan,
       firstScanTime,
       theme: responseTheme
@@ -948,10 +953,15 @@ router.get('/barcode/:barcode', async (req, res) => {
       responseTheme = 'medical';
     }
 
+    const showRelated = (template?.showRelatedProducts !== undefined)
+      ? template.showRelatedProducts
+      : (enterprise?.displayConfig?.showRelatedProducts !== false);
+
     res.json({
       product,
       enterprise,
       template,
+      showRelated,
       theme: responseTheme,
       isBarcode: true,
       label: {

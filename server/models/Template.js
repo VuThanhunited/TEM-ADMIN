@@ -65,6 +65,10 @@ const templateSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  showRelatedProducts: {
+    type: Boolean,
+    default: true
+  },
   customCSS: {
     type: String,
     default: ''

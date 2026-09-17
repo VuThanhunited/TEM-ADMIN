@@ -143,3 +143,194 @@
   min-width: 24px;
 }
 
+/* ── Quick Related Products Toggle Banner ── */
+.related-products-banner {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1.5px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius-xl, 16px);
+  padding: 20px 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  margin-bottom: var(--spacing-lg, 16px);
+}
+
+.related-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.related-banner-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 300px;
+}
+
+.related-banner-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--color-primary-light, #818cf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.related-banner-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.related-banner-title-row h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.related-banner-desc {
+  margin: 4px 0 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.related-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.related-banner-select-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.related-banner-select-box label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.related-banner-select-box select {
+  max-width: 240px;
+  height: 40px;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  padding: 0 12px;
+}
+
+/* Big Toggle Button */
+.related-main-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px 6px 8px;
+  border-radius: 30px;
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.8);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.related-main-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.related-main-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.related-toggle-track {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 24px;
+  background: #475569;
+  transition: background 0.25s ease;
+}
+
+.related-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.related-toggle-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+/* Active State */
+.related-main-toggle-btn.active {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+}
+
+.related-main-toggle-btn.active .related-toggle-track {
+  background: #22c55e;
+}
+
+.related-main-toggle-btn.active .related-toggle-thumb {
+  transform: translateX(18px);
+}
+
+.related-main-toggle-btn.active .related-toggle-text {
+  color: #22c55e;
+}
+
+/* Inactive State */
+.related-main-toggle-btn.inactive {
+  background: rgba(100, 116, 139, 0.1);
+  border-color: #64748b;
+}
+
+.related-main-toggle-btn.inactive .related-toggle-track {
+  background: #64748b;
+}
+
+.related-main-toggle-btn.inactive .related-toggle-text {
+  color: #94a3b8;
+}
+
+@media (max-width: 768px) {
+  .related-banner-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .related-banner-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .related-banner-select-box {
+    flex: 1;
+  }
+  .related-banner-select-box select {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+

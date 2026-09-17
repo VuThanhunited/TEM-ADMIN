@@ -23,6 +23,10 @@ export default function Enterprise() {
   const [editingId, setEditingId] = useState(null);
   const [activeModalTab, setActiveModalTab] = useState('info'); // 'info' | 'partnerDetails' | 'domainChatbot'
 
+  // Quick On/Off Toggle State & Notification Toast
+  const [toastMessage, setToastMessage] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+
   // Modal Form Data
   const [formData, setFormData] = useState({
     name: '',
@@ -317,6 +321,53 @@ export default function Enterprise() {
     }
   };
 
+  // Quick On/Off Toggle for Related Products
+  const handleToggleRelatedProducts = async (ent) => {
+    const currentVal = ent.displayConfig?.showRelatedProducts !== false;
+    const nextVal = !currentVal;
+    setTogglingId(ent._id);
+
+    // Optimistic local state update
+    setEnterprises(prev => prev.map(item => {
+      if (item._id === ent._id) {
+        return {
+          ...item,
+          displayConfig: {
+            ...(item.displayConfig || {}),
+            showRelatedProducts: nextVal
+          }
+        };
+      }
+      return item;
+    }));
+
+    try {
+      await api.toggleRelatedProducts(ent._id, nextVal);
+      setToastMessage({
+        type: 'success',
+        text: `Đã ${nextVal ? 'BẬT' : 'TẮT'} hiển thị Sản phẩm liên quan cho "${ent.name}"`
+      });
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      // Revert on failure
+      setEnterprises(prev => prev.map(item => {
+        if (item._id === ent._id) {
+          return {
+            ...item,
+            displayConfig: {
+              ...(item.displayConfig || {}),
+              showRelatedProducts: currentVal
+            }
+          };
+        }
+        return item;
+      }));
+      alert(err.message || 'Lỗi khi cập nhật cấu hình sản phẩm liên quan');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="loading-overlay">
@@ -468,6 +519,7 @@ export default function Enterprise() {
                 <th>Liên hệ (SĐT / Email)</th>
                 <th>Địa chỉ</th>
                 <th>Domain / Subdomain</th>
+                <th style={{ width: 140, textAlign: 'center' }}>SP Liên Quan</th>
                 <th style={{ width: 140, textAlign: 'center' }}>Thao tác</th>
               </tr>
             </thead>
@@ -518,6 +570,20 @@ export default function Enterprise() {
                     ) : (
                       <span style={{ fontSize: '0.8rem', opacity: 0.4 }}>Chưa gán</span>
                     )}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      className={`enterprise-toggle-switch ${ent.displayConfig?.showRelatedProducts !== false ? 'active' : 'inactive'}`}
+                      disabled={togglingId === ent._id}
+                      onClick={() => handleToggleRelatedProducts(ent)}
+                      title={`Bấm để ${ent.displayConfig?.showRelatedProducts !== false ? 'TẮT' : 'BẬT'} hiển thị sản phẩm liên quan`}
+                    >
+                      <span className="toggle-slider"></span>
+                      <span className="toggle-text">
+                        {ent.displayConfig?.showRelatedProducts !== false ? 'BẬT' : 'TẮT'}
+                      </span>
+                    </button>
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -884,7 +950,7 @@ export default function Enterprise() {
                         </h4>
                       </div>
 
-                      <label className="toggle-label">
+                      <label className="toggle-label" style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                         <input
                           type="checkbox"
                           checked={formData.displayConfig?.showRelatedProducts ?? true}
@@ -894,11 +960,20 @@ export default function Enterprise() {
                           }))}
                         />
                         <span className="toggle-switch"></span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Hiển thị phần "Sản phẩm Liên Quan" trên trang tem</span>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>Hiển thị phần "Sản phẩm Liên Quan" trên trang tem</span>
+                            <span className={`badge ${formData.displayConfig?.showRelatedProducts ?? true ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                              {formData.displayConfig?.showRelatedProducts ?? true ? 'ĐANG BẬT' : 'ĐANG TẮT'}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.78rem', opacity: 0.7 }}>
+                            {formData.displayConfig?.showRelatedProducts ?? true 
+                              ? 'Hiển thị khối "Sản phẩm liên quan / phân phối" khi người dùng quét tem' 
+                              : 'Ẩn hoàn toàn khối sản phẩm liên quan trên toàn bộ tem của doanh nghiệp'}
+                          </span>
+                        </div>
                       </label>
-                      <p style={{ marginTop: 8, fontSize: '0.8rem', opacity: 0.6, lineHeight: 1.5 }}>
-                        Khi tắt, mục sản phẩm liên quan sẽ bị ẩn hoàn toàn trên trang xem thông tin tem của doanh nghiệp này.
-                      </p>
 
                       {/* Default Theme Selector */}
                       <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
@@ -1070,6 +1145,31 @@ export default function Enterprise() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="toast-notification animate-fade-in" style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 9999,
+          background: 'rgba(15, 23, 42, 0.95)',
+          border: '1px solid #22c55e',
+          color: '#fff',
+          padding: '12px 20px',
+          borderRadius: 10,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          backdropFilter: 'blur(8px)',
+          fontSize: '0.9rem',
+          fontWeight: 600
+        }}>
+          <CheckCircle size={18} style={{ color: '#22c55e', flexShrink: 0 }} />
+          <span>{toastMessage.text}</span>
         </div>
       )}
     </div>

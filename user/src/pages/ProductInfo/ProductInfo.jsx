@@ -212,7 +212,11 @@ export default function ProductInfo() {
   const relatedProducts = scanData?.relatedProducts || scanData?.enterpriseProducts || [];
   const currentProductId = product?._id || product?.id;
   const filteredRelated = relatedProducts.filter(p => (p._id || p.id) !== currentProductId);
-  const showRelated = enterprise?.displayConfig?.showRelatedProducts !== false;
+  const showRelated = (scanData?.showRelated !== undefined)
+    ? scanData.showRelated
+    : (scanData?.template?.showRelatedProducts !== undefined
+        ? scanData.template.showRelatedProducts
+        : (enterprise?.displayConfig?.showRelatedProducts !== false));
 
 
   // useEffect cũng phải TRƯỚC early return

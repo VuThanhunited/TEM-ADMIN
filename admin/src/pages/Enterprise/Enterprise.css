@@ -256,3 +256,96 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Inline On/Off Toggle Switch for Related Products ── */
+.enterprise-toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1.5px solid var(--color-border);
+  padding: 4px 10px 4px 6px;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.enterprise-toggle-switch:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.enterprise-toggle-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.enterprise-toggle-switch .toggle-slider {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 18px;
+  background: #475569;
+  transition: background 0.25s ease;
+}
+
+.enterprise-toggle-switch .toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.enterprise-toggle-switch .toggle-text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* Active State (BẬT - Green) */
+.enterprise-toggle-switch.active {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.enterprise-toggle-switch.active:hover {
+  border-color: #22c55e;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25);
+}
+
+.enterprise-toggle-switch.active .toggle-slider {
+  background: #22c55e;
+}
+
+.enterprise-toggle-switch.active .toggle-slider::after {
+  transform: translateX(14px);
+}
+
+.enterprise-toggle-switch.active .toggle-text {
+  color: #22c55e;
+}
+
+/* Inactive State (TẮT - Muted Slate) */
+.enterprise-toggle-switch.inactive {
+  background: rgba(148, 163, 184, 0.06);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.enterprise-toggle-switch.inactive .toggle-slider {
+  background: #64748b;
+}
+
+.enterprise-toggle-switch.inactive .toggle-text {
+  color: #94a3b8;
+}
+

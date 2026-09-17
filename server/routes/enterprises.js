@@ -129,6 +129,41 @@ router.put('/:id/chatbot', auth, async (req, res) => {
   }
 });
 
+// PATCH /api/enterprises/:id/toggle-related-products - Bật/tắt nhanh hiển thị sản phẩm liên quan
+router.patch('/:id/toggle-related-products', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.enterpriseId?.toString() !== req.params.id) {
+      return res.status(403).json({ error: 'Không có quyền chỉnh sửa' });
+    }
+    const enterprise = await Enterprise.findById(req.params.id);
+    if (!enterprise) return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
+
+    if (!enterprise.displayConfig) {
+      enterprise.displayConfig = { showRelatedProducts: true, defaultTheme: 'default' };
+    }
+
+    const currentVal = enterprise.displayConfig.showRelatedProducts !== false;
+    const newVal = req.body.showRelatedProducts !== undefined 
+      ? Boolean(req.body.showRelatedProducts) 
+      : !currentVal;
+
+    enterprise.displayConfig.showRelatedProducts = newVal;
+    enterprise.markModified('displayConfig');
+    await enterprise.save();
+
+    res.json({
+      success: true,
+      enterprise,
+      showRelatedProducts: newVal,
+      message: `Đã ${newVal ? 'bật' : 'tắt'} hiển thị sản phẩm liên quan thành công`
+    });
+  } catch (error) {
+    console.error('Toggle related products error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật hiển thị sản phẩm liên quan: ' + error.message });
+  }
+});
+
+
 // POST /api/enterprises - Create new enterprise (Admin, NSX, NPP)
 router.post('/', auth, async (req, res) => {
   try {

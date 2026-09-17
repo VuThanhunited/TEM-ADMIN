@@ -154,6 +154,7 @@ class ApiService {
   deleteEnterprise(id) { return this.request('DELETE', `/enterprises/${id}`); }
   updateDomain(id, data) { return this.request('PUT', `/enterprises/${id}/domain`, data); }
   updateChatbot(id, data) { return this.request('PUT', `/enterprises/${id}/chatbot`, data); }
+  toggleRelatedProducts(id, showRelatedProducts) { return this.request('PATCH', `/enterprises/${id}/toggle-related-products`, { showRelatedProducts }); }
 
   // ── Products ──────────────────────────────────────────────────────────────
   getProducts(params) { return this.request('GET', '/products', null, params); }
