@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Package, Plus, Search, Edit, Trash2, X, Eye, Image, XCircle, Upload, Link, Building2
+  Package, Plus, Search, Edit, Trash2, X, Eye, Image, XCircle, Upload, Link, Building2, ExternalLink
 } from 'lucide-react';
 import './Products.css';
 import Pagination from '../../components/Pagination';
@@ -172,7 +173,8 @@ export default function Products() {
     distributorInfo: '',
     chatbotQA: [],
     manufacturerId: '',
-    manufacturerInfo: ''
+    manufacturerInfo: '',
+    distributionBannerText: ''
   };
 
   const [form, setForm] = useState({ ...initialForm });
@@ -217,57 +219,41 @@ export default function Products() {
 
   const loadManufacturers = async () => {
     try {
-      // Ưu tiên endpoint getManufacturers() lấy tất cả Enterprise có type NSX
-      const data = await api.getManufacturers();
-      const entList = Array.isArray(data) ? data : [];
+      // 1. Lấy danh sách NSX từ API getManufacturers (backend đã gộp cả User NSX và Enterprise NSX)
+      const mfgData = await api.getManufacturers();
+      const mfgList = Array.isArray(mfgData) ? mfgData : [];
 
-      // Fallback: nếu Enterprise NSX rỗng, lấy thêm từ Distributor accounts (User role=NSX)
-      // vì user thường tạo NSX từ trang Quản lý NSX/NPP (lưu vào User table, không phải Enterprise)
-      if (entList.length === 0) {
-        try {
-          const distResult = await api.getDistributors({ role: 'NSX', limit: 200 });
-          const distList = Array.isArray(distResult?.data) ? distResult.data : [];
-          // Chuẩn hóa field để tương thích với dropdown (dùng _id và name)
-          const normalized = distList.map(d => ({
+      // 2. Dự phòng lấy thêm từ getDistributors
+      let distList = [];
+      try {
+        const distResult = await api.getDistributors({ role: 'NSX', limit: 200 });
+        distList = Array.isArray(distResult?.data) ? distResult.data : [];
+      } catch (e) {}
+
+      // Chuẩn hóa và gộp danh sách, loại bỏ trùng _id
+      const map = new Map();
+      mfgList.forEach(m => {
+        if (m._id) map.set(String(m._id), m);
+      });
+      distList.forEach(d => {
+        if (d._id && !map.has(String(d._id))) {
+          map.set(String(d._id), {
             _id: d._id,
             name: d.fullName || d.name || '',
             address: d.address || '',
             phone: d.phone || '',
             email: d.email || '',
-            isEnterprise: false // Đây là User record, không phải Enterprise
-          }));
-          setManufacturers(normalized);
-          return;
-        } catch (distErr) {
-          console.warn('Fallback getDistributors NSX lỗi:', distErr);
+            partnerDetails: d.details || '',
+            logo: d.logo || null,
+            source: 'USER_NSX',
+            isEnterprise: false
+          });
         }
-      }
+      });
 
-      // Tag là Enterprise để phân biệt với User NSX
-      setManufacturers(entList.map(e => ({ ...e, isEnterprise: true })));
+      setManufacturers(Array.from(map.values()));
     } catch (err) {
-      // Fallback sang getEnterprises filter
-      try {
-        const data = await api.getEnterprises();
-        const filtered = Array.isArray(data) ? data.filter(e => e.type === 'NSX') : [];
-        if (filtered.length > 0) {
-          setManufacturers(filtered.map(e => ({ ...e, isEnterprise: true })));
-          return;
-        }
-        // Cuối cùng thử lấy từ distributors
-        const distResult = await api.getDistributors({ role: 'NSX', limit: 200 });
-        const distList = Array.isArray(distResult?.data) ? distResult.data : [];
-        setManufacturers(distList.map(d => ({
-          _id: d._id,
-          name: d.fullName || d.name || '',
-          address: d.address || '',
-          phone: d.phone || '',
-          email: d.email || '',
-          isEnterprise: false // Đây là User record, không phải Enterprise
-        })));
-      } catch (fallbackErr) {
-        console.error('Lỗi tải NSX:', fallbackErr);
-      }
+      console.error('Lỗi tải NSX:', err);
     }
   };
 
@@ -310,7 +296,8 @@ export default function Products() {
       distributorInfo: product.distributorInfo || '',
       chatbotQA: product.chatbotQA || [],
       manufacturerId: product.manufacturerId?._id || product.manufacturerId || '',
-      manufacturerInfo: product.manufacturerInfo || ''
+      manufacturerInfo: product.manufacturerInfo || '',
+      distributionBannerText: product.distributionBannerText || ''
     });
     setShowModal(true);
   };
@@ -404,26 +391,35 @@ export default function Products() {
   };
   const removeProductQA = (idx) => setForm({ ...form, chatbotQA: form.chatbotQA.filter((_, i) => i !== idx) });
 
-  const selectedManufacturer = manufacturers.find(m => m._id === form.manufacturerId);
+  const selectedManufacturer = manufacturers.find(m => String(m._id) === String(form.manufacturerId));
+  const partnerManufacturers = manufacturers.filter(m => m.source === 'USER_NSX' || !m.isEnterprise);
+  const enterpriseManufacturers = manufacturers.filter(m => m.source === 'ENTERPRISE_NSX' || m.isEnterprise);
 
-  const handleManufacturerSelect = (id) => {
-    const nsx = manufacturers.find(m => m._id === id);
-    let autoInfo = '';
-    if (nsx) {
-      const parts = [];
-      if (nsx.name) parts.push(nsx.name);
-      if (nsx.address) parts.push('Địa chỉ: ' + nsx.address);
-      if (nsx.phone) parts.push('ĐT: ' + nsx.phone);
-      if (nsx.email) parts.push('Email: ' + nsx.email);
-      autoInfo = parts.join('\n');
+  const handleManufacturerSelect = (id, forceUpdate = true) => {
+    const nsx = manufacturers.find(m => String(m._id) === String(id));
+    if (!nsx) {
+      setForm(prev => ({
+        ...prev,
+        manufacturerId: '',
+        manufacturerInfo: ''
+      }));
+      return;
     }
-    setForm({
-      ...form,
-      // Chỉ set manufacturerId khi NSX là Enterprise record (mới có thể populate).
-      // Nếu là User record (isEnterprise=false), chỉ tự điền text, không set ID để tránh populate fail.
-      manufacturerId: (nsx?.isEnterprise !== false) ? id : '',
-      manufacturerInfo: form.manufacturerInfo.trim() ? form.manufacturerInfo : autoInfo
-    });
+
+    const parts = [
+      nsx.name ? `Đơn vị sản xuất: ${nsx.name}` : '',
+      nsx.address ? `Địa chỉ: ${nsx.address}` : '',
+      nsx.phone ? `Hotline / ĐT: ${nsx.phone}` : '',
+      nsx.email ? `Email: ${nsx.email}` : '',
+      nsx.partnerDetails ? `Tiêu chuẩn / Giấy phép: ${nsx.partnerDetails.replace(/<[^>]*>?/gm, '').trim()}` : ''
+    ].filter(Boolean);
+    const autoInfo = parts.join('\n');
+
+    setForm(prev => ({
+      ...prev,
+      manufacturerId: id,
+      manufacturerInfo: forceUpdate ? autoInfo : (prev.manufacturerInfo || autoInfo)
+    }));
   };
 
 
@@ -591,26 +587,114 @@ export default function Products() {
                   <textarea className="input textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Mô tả công dụng, thành phần, đặc điểm nổi bật..." />
                 </div>
 
+                {/* Banner Nhập Khẩu & Phân Phối (Theo yêu cầu khách hàng: sửa tự động dòng cam) */}
+                <div style={{ marginBottom: 20, background: 'rgba(234, 88, 12, 0.06)', border: '1.5px solid rgba(234, 88, 12, 0.3)', padding: '16px 18px', borderRadius: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.9rem', color: '#ea580c', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      🏷️ Tiêu Đề Banner Nhập Khẩu & Phân Phối (Dòng chữ cam trên tem)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ent = enterprises.find(e => e._id === (form.enterpriseId || enterpriseId)) || enterprises[0];
+                        const entName = ent?.name || 'VYPHYTO';
+                        setForm(prev => ({
+                          ...prev,
+                          distributionBannerText: `SẢN PHẨM CỦA ${entName.toUpperCase()} NHẬP KHẨU VÀ PHÂN PHỐI`
+                        }));
+                      }}
+                      style={{ background: 'rgba(234, 88, 12, 0.12)', border: '1px solid #ea580c', color: '#ea580c', padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}
+                      title="Bấm để tự động tạo tiêu đề theo tên Doanh nghiệp sở hữu"
+                    >
+                      ⚡ Tự động tạo theo Doanh nghiệp
+                    </button>
+                  </div>
+                  <input
+                    className="input"
+                    value={form.distributionBannerText || ''}
+                    onChange={e => setForm({ ...form, distributionBannerText: e.target.value })}
+                    placeholder="VD: SẢN PHẨM CỦA VYPHYTO NHẬP KHẨU VÀ PHÂN PHỐI"
+                    style={{ fontWeight: 600 }}
+                  />
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 6, display: 'block', lineHeight: 1.4 }}>
+                    Dòng chữ xuất hiện trên thanh banner màu cam ở trang xem thông tin tem. Nếu để trống, hệ thống sẽ tự động hiển thị: <em>SẢN PHẨM CỦA [TÊN DOANH NGHIỆP] NHẬP KHẨU VÀ PHÂN PHỐI</em>.
+                  </span>
+                </div>
+
                 {/* NSX Section - Theo yêu cầu khách hàng: chọn NSX và bổ sung thông tin */}
                 <div className="distributors-section" style={{ marginBottom: 20 }}>
                   <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6, marginBottom: '10px', color: 'var(--primary-color)' }}>
                     <Building2 size={16} /> Nhà Sản Xuất (NSX)
                   </label>
 
-                  <div className="input-group" style={{ marginBottom: 10 }}>
-                    <label>Chọn Nhà Sản Xuất</label>
-                    <select className="input select" value={form.manufacturerId || ''} onChange={e => handleManufacturerSelect(e.target.value)}>
+                  <div className="input-group" style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <label style={{ margin: 0 }}>Chọn Nhà Sản Xuất ({manufacturers.length} đơn vị có sẵn)</label>
+                      <NavLink to="/distributors" target="_blank" style={{ fontSize: '0.78rem', color: 'var(--color-primary-light, #818cf8)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        + Thêm NSX mới trong Quản lý NSX <ExternalLink size={12} />
+                      </NavLink>
+                    </div>
+
+                    <select 
+                      className="input select" 
+                      value={form.manufacturerId || ''} 
+                      onChange={e => handleManufacturerSelect(e.target.value, true)}
+                    >
                       <option value="">-- Không chọn / Nhập thủ công bên dưới --</option>
-                      {manufacturers.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                      {partnerManufacturers.length > 0 && (
+                        <optgroup label="🏢 Nhà Sản Xuất Đối Tác (từ Quản lý NSX / NPP / Điểm bán)">
+                          {partnerManufacturers.map(m => (
+                            <option key={m._id} value={m._id}>
+                              {m.name} {m.address ? `— (${m.address})` : ''}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {enterpriseManufacturers.length > 0 && (
+                        <optgroup label="🏭 Doanh Nghiệp Sở Hữu (từ Cấu hình Doanh nghiệp)">
+                          {enterpriseManufacturers.map(m => (
+                            <option key={m._id} value={m._id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
+
                     {manufacturers.length === 0 && (
                       <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                         Chưa có Nhà Sản Xuất trong danh sách. Bạn có thể nhập thông tin trực tiếp bên dưới hoặc thêm NSX trong menu "Quản lý NSX / NPP".
                       </span>
                     )}
+
                     {selectedManufacturer && (
-                      <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        Địa chỉ: {selectedManufacturer.address || 'Chưa cập nhật'} | ĐT: {selectedManufacturer.phone || 'Chưa cập nhật'}
+                      <div style={{ marginTop: 10, padding: '12px 14px', borderRadius: 8, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <strong style={{ color: 'var(--color-primary-light, #818cf8)', fontSize: '0.92rem' }}>
+                            🏢 {selectedManufacturer.name}
+                          </strong>
+                          <button
+                            type="button"
+                            onClick={() => handleManufacturerSelect(selectedManufacturer._id, true)}
+                            style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '0.78rem', textDecoration: 'underline' }}
+                          >
+                            🔄 Tự động điền lại vào ô bên dưới
+                          </button>
+                        </div>
+                        {selectedManufacturer.address && (
+                          <div style={{ opacity: 0.85, marginTop: 2 }}>📍 Địa chỉ: {selectedManufacturer.address}</div>
+                        )}
+                        {selectedManufacturer.phone && (
+                          <div style={{ opacity: 0.85, marginTop: 2 }}>📞 ĐT: {selectedManufacturer.phone}</div>
+                        )}
+                        {selectedManufacturer.email && (
+                          <div style={{ opacity: 0.85, marginTop: 2 }}>✉️ Email: {selectedManufacturer.email}</div>
+                        )}
+                        {selectedManufacturer.partnerDetails && (
+                          <div style={{ opacity: 0.75, marginTop: 4, fontSize: '0.8rem', fontStyle: 'italic' }}>
+                            📋 {selectedManufacturer.partnerDetails.replace(/<[^>]*>?/gm, '').slice(0, 150)}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -619,7 +703,7 @@ export default function Products() {
                     <label>Thông tin bổ sung Nhà Sản Xuất (hiển thị trên trang quét QR)</label>
                     <textarea
                       className="input textarea"
-                      rows={3}
+                      rows={4}
                       placeholder={'VD: Công ty TNHH Sản Xuất Thực Phẩm ABC\nĐịa chỉ: Lô B2-3, KCN Thăng Long, Đông Anh, Hà Nội\nĐT: 024 6688 1234'}
                       value={form.manufacturerInfo || ''}
                       onChange={e => setForm({ ...form, manufacturerInfo: e.target.value })}

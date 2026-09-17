@@ -49,17 +49,57 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+// Helper to normalize populated manufacturer details
+const normalizeManufacturer = async (product) => {
+  if (!product) return product;
+  const prod = product.toObject ? product.toObject() : { ...product };
+  if (prod.manufacturerId) {
+    if (typeof prod.manufacturerId === 'object' && prod.manufacturerId._id) {
+      const m = prod.manufacturerId;
+      if (m.fullName && !m.name) m.name = m.fullName;
+      if (m.details && !m.partnerDetails) m.partnerDetails = m.details;
+    } else {
+      // Fallback manual resolution if populate failed
+      const User = require('../models/User');
+      const Enterprise = require('../models/Enterprise');
+      const u = await User.findById(prod.manufacturerId).select('fullName address phone email details logo').lean();
+      if (u) {
+        prod.manufacturerId = {
+          _id: u._id,
+          name: u.fullName,
+          address: u.address || '',
+          phone: u.phone || '',
+          email: u.email || '',
+          partnerDetails: u.details || '',
+          logo: u.logo || null
+        };
+      } else {
+        const ent = await Enterprise.findById(prod.manufacturerId).select('name address phone email logo partnerDetails').lean();
+        if (ent) prod.manufacturerId = ent;
+      }
+    }
+  }
+  return prod;
+};
+
 // POST /api/products
 router.post('/', auth, requireOwnership, async (req, res) => {
   try {
     const {
       name, images, description, category, sku, barcode, distributors, specifications,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo, congBoImages
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, distributionBannerText
     } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
     if (!enterpriseId) {
       return res.status(400).json({ error: 'Vui lòng chọn Doanh nghiệp sở hữu sản phẩm' });
+    }
+
+    let manufacturerModel = 'Enterprise';
+    if (manufacturerId) {
+      const User = require('../models/User');
+      const isUser = await User.exists({ _id: manufacturerId });
+      if (isUser) manufacturerModel = 'User';
     }
 
     const product = new Product({
@@ -84,18 +124,21 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       distributorInfo,
       chatbotQA: chatbotQA || [],
       manufacturerId: manufacturerId || null,
+      manufacturerModel,
       manufacturerInfo: manufacturerInfo || '',
+      distributionBannerText: distributionBannerText || '',
       congBoImages: (congBoImages || []).filter(img => img && img.trim())
     });
     await product.save();
     
     const populated = await Product.findById(product._id)
       .populate('enterpriseId', 'name')
-      .populate('manufacturerId', 'name address phone email');
-    res.status(201).json(populated);
+      .populate('manufacturerId');
+    const result = await normalizeManufacturer(populated);
+    res.status(201).json(result);
   } catch (error) {
     console.error('Create product error:', error);
-    res.status(500).json({ error: 'Lỗi máy chủ' });
+    res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
   }
 });
 
@@ -105,15 +148,23 @@ router.put('/:id', auth, async (req, res) => {
     const {
       name, images, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo, congBoImages
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, distributionBannerText
     } = req.body;
+
+    let manufacturerModel = 'Enterprise';
+    if (manufacturerId) {
+      const User = require('../models/User');
+      const isUser = await User.exists({ _id: manufacturerId });
+      if (isUser) manufacturerModel = 'User';
+    }
 
     // Xây dựng updateData — chỉ set images nếu client gửi mảng không rỗng
     // Tránh bug xóa ảnh cũ khi admin submit form mà không chủ ý thay ảnh
     const updateData = {
       name, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo,
+      chatbotQA, manufacturerId: manufacturerId || null, manufacturerModel, manufacturerInfo,
+      distributionBannerText: distributionBannerText !== undefined ? distributionBannerText : undefined,
       congBoImages: Array.isArray(congBoImages) ? congBoImages.filter(img => img && img.trim()) : undefined
     };
 
@@ -135,10 +186,11 @@ router.put('/:id', auth, async (req, res) => {
       req.params.id,
       updateData,
       { new: true }
-    ).populate('enterpriseId', 'name').populate('manufacturerId', 'name address phone email');
+    ).populate('enterpriseId', 'name').populate('manufacturerId');
 
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
-    res.json(product);
+    const result = await normalizeManufacturer(product);
+    res.json(result);
   } catch (error) {
     console.error('Update product error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ' });

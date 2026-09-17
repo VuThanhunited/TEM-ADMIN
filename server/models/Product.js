@@ -8,10 +8,19 @@ const productSchema = new mongoose.Schema({
   },
   manufacturerId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Enterprise',
+    refPath: 'manufacturerModel',
     default: null
   },
+  manufacturerModel: {
+    type: String,
+    enum: ['Enterprise', 'User'],
+    default: 'Enterprise'
+  },
   manufacturerInfo: {
+    type: String,
+    default: ''
+  },
+  distributionBannerText: {
     type: String,
     default: ''
   },

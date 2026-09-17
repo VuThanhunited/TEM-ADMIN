@@ -940,6 +940,13 @@ export default function ProductInfo() {
       ? product.images[0]
       : '/images/vyphyto_full_design.jpg';
 
+    const distributorName = label?.distributorName || label?.distributorId?.fullName || product?.distributors?.[0]?.name;
+    const entName = enterprise?.name || 'VYPHYTO';
+    const defaultBanner = `SẢN PHẨM CỦA ${(distributorName || entName).toUpperCase()} NHẬP KHẨU VÀ PHÂN PHỐI`;
+    const bannerText = product?.distributionBannerText?.trim()
+      || enterprise?.displayConfig?.distributionBannerText?.trim()
+      || defaultBanner;
+
     return (
       <div className="exact-vyphyto-container">
         {/* 1. Header trên cùng: Quốc kỳ Pháp + Logo Vyphyto + Slogan Tinh Hoa Pháp */}
@@ -1000,9 +1007,9 @@ export default function ProductInfo() {
           </div>
         </div>
 
-        {/* 5. Banner Cam Capsule 2: SẢN PHẨM CỦA VYPHYTO NHẬP KHẨU VÀ PHÂN PHỐI */}
+        {/* 5. Banner Cam Capsule 2: SẢN PHẨM CỦA ... NHẬP KHẨU VÀ PHÂN PHỐI */}
         <div className="vyphyto-pill-banner vyphyto-pill-banner-2">
-          <span>SẢN PHẨM CỦA VYPHYTO NHẬP KHẨU VÀ PHÂN PHỐI</span>
+          <span>{bannerText}</span>
         </div>
 
         {/* 6. Lưới 4 Nút 2x2: Nhà sản xuất | Độc quyền P.Phối | Thông tin tem | Thông tin sản phẩm */}
@@ -1040,7 +1047,7 @@ export default function ProductInfo() {
         {showRelated && filteredRelated.length > 0 && (
           <div className="vyphyto-related-card">
             <div className="vyphyto-related-header">
-              <h3>SẢN PHẨM VYPHYTO PHÂN PHỐI</h3>
+              <h3>SẢN PHẨM {(distributorName || entName).toUpperCase()} PHÂN PHỐI</h3>
             </div>
             <div className="vyphyto-related-grid">
               {filteredRelated.map((p, idx) => (
@@ -1421,6 +1428,10 @@ export default function ProductInfo() {
 
               {activeModal === 'distributor' && (() => {
                 const isStayCool = activeTheme === 'staycool' || activeTheme === 'vyphyto' || (enterprise?.name || '').toLowerCase().includes('staycool');
+                const distributorName = label?.distributorName || label?.distributorId?.fullName || product?.distributors?.[0]?.name;
+                const entName = enterprise?.name || 'Công ty TNHH StayCool Việt Nam';
+                const mainDistributor = (distributorName || entName).toUpperCase();
+
                 return (
                   <div>
                     {isStayCool ? (
@@ -1435,23 +1446,23 @@ export default function ProductInfo() {
                                 ĐẠI DIỆN NHẬP KHẨU & PHÂN PHỐI ĐỘC QUYỀN
                               </h5>
                               <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
-                                Đối tác phân phối độc quyền chính thức nhãn hàng VYPHYTO tại Việt Nam
+                                Đối tác phân phối độc quyền chính thức tại Việt Nam
                               </p>
                             </div>
                           </div>
                           <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
-                            Các sản phẩm của thương hiệu <strong>VYPHYTO LABORATORIES</strong> được nhập khẩu chính ngạch từ Pháp bởi <strong>Công ty TNHH StayCool Việt Nam</strong>, có đầy đủ giấy phép lưu hành và giấy tiếp nhận đăng ký bản công bố của Cục An Toàn Thực Phẩm – Bộ Y Tế Việt Nam.
+                            Các sản phẩm chính hãng được nhập khẩu và phân phối độc quyền bởi <strong>{mainDistributor}</strong>, có đầy đủ giấy phép lưu hành và giấy tiếp nhận đăng ký bản công bố của Cục An Toàn Thực Phẩm – Bộ Y Tế Việt Nam.
                           </p>
                         </div>
 
                         <div className="modal-info-list">
                           <div className="modal-info-item">
                             <span>Đơn vị độc quyền:</span>
-                            <strong style={{ color: '#ea580c' }}>CÔNG TY TNHH STAYCOOL VIỆT NAM</strong>
+                            <strong style={{ color: '#ea580c' }}>{mainDistributor}</strong>
                           </div>
                           <div className="modal-info-item">
                             <span>Thương hiệu phân phối:</span>
-                            <strong>VYPHYTO LABORATORIES (France)</strong>
+                            <strong>{product?.brand || enterprise?.name || 'VYPHYTO LABORATORIES (France)'}</strong>
                           </div>
                           <div className="modal-info-item">
                             <span>Địa chỉ trụ sở:</span>
@@ -1474,12 +1485,12 @@ export default function ProductInfo() {
                         </div>
 
                         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px dashed #ea580c', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
-                          🛡️ <strong>Cam kết vàng từ StayCool:</strong> 100% sản phẩm phân phối ra thị trường đều dán tem niêm phong chống giả thông minh tích hợp công nghệ QR Trace. Phát hiện hàng giả cam kết đền bù gấp 10 lần giá trị sản phẩm.
+                          🛡️ <strong>Cam kết vàng từ {mainDistributor}:</strong> 100% sản phẩm phân phối ra thị trường đều dán tem niêm phong chống giả thông minh tích hợp công nghệ QR Trace. Phát hiện hàng giả cam kết đền bù gấp 10 lần giá trị sản phẩm.
                         </div>
                       </div>
                     ) : (
                       <div className="modal-info-list">
-                        <div className="modal-info-item"><span>Đơn vị phân phối:</span> <strong>{enterprise?.name || 'Đơn vị phân phối chính thức'}</strong></div>
+                        <div className="modal-info-item"><span>Đơn vị phân phối:</span> <strong>{mainDistributor}</strong></div>
                         <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{enterprise?.address || 'Toàn quốc'}</strong></div>
                         <div className="modal-info-item"><span>Hotline:</span> <strong>{enterprise?.phone || '1900 1234'}</strong></div>
                         <div className="modal-info-item"><span>Email:</span> <strong>{enterprise?.email || 'info@domain.com'}</strong></div>
@@ -1587,44 +1598,135 @@ export default function ProductInfo() {
               )}
               {activeModal === 'mfg' && (() => {
                 const isStayCool = activeTheme === 'staycool' || activeTheme === 'vyphyto' || (enterprise?.name || '').toLowerCase().includes('staycool');
+                const mfg = (product?.manufacturerId && typeof product.manufacturerId === 'object') ? product.manufacturerId : null;
+                const hasAssignedMfg = Boolean(mfg?.name || product?.manufacturerInfo?.trim());
+
+                // Detect quốc gia xuất xứ theo địa chỉ/tên đối tác
+                const getCountryMeta = (addr = '', name = '') => {
+                  const s = `${addr} ${name}`.toLowerCase();
+                  if (s.includes('france') || s.includes('pháp') || s.includes('paris')) return { flag: '🇫🇷', country: 'Cộng hòa Pháp (France)' };
+                  if (s.includes('poland') || s.includes('ba lan') || s.includes('polska') || s.includes('warsaw') || s.includes('warszawa')) return { flag: '🇵🇱', country: 'Cộng hòa Ba Lan (Poland)' };
+                  if (s.includes('spain') || s.includes('tây ban nha') || s.includes('espana') || s.includes('españa') || s.includes('madrid') || s.includes('barcelona')) return { flag: '🇪🇸', country: 'Vương quốc Tây Ban Nha (Spain)' };
+                  if (s.includes('germany') || s.includes('đức') || s.includes('deutschland')) return { flag: '🇩🇪', country: 'Cộng hòa Liên bang Đức (Germany)' };
+                  if (s.includes('usa') || s.includes('mỹ') || s.includes('united states') || s.includes('america')) return { flag: '🇺🇸', country: 'Hoa Kỳ (USA)' };
+                  if (s.includes('japan') || s.includes('nhật')) return { flag: '🇯🇵', country: 'Nhật Bản (Japan)' };
+                  if (s.includes('korea') || s.includes('hàn')) return { flag: '🇰🇷', country: 'Hàn Quốc (South Korea)' };
+                  if (s.includes('việt nam') || s.includes('vietnam')) return { flag: '🇻🇳', country: 'Việt Nam' };
+                  return { flag: '🏭', country: 'Quốc tế' };
+                };
+
+                const countryMeta = getCountryMeta(mfg?.address, mfg?.name);
+                const mfgName = mfg?.name || (product?.manufacturerInfo ? 'Đơn Vị Sản Xuất Tiêu Chuẩn Quốc Tế' : 'VYPHYTO LABORATORIES (FRANCE)');
+                const mfgAddress = mfg?.address || '';
+                const mfgPhone = mfg?.phone || '';
+                const mfgEmail = mfg?.email || '';
+                const mfgDetails = mfg?.partnerDetails || '';
+
                 if (isStayCool) {
+                  // Nếu sản phẩm CHƯA gắn NSX riêng -> Hiển thị mặc định viện Vyphyto France
+                  if (!hasAssignedMfg) {
+                    return (
+                      <div>
+                        <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.1rem' }}>
+                              🇫🇷
+                            </div>
+                            <div>
+                              <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
+                                VYPHYTO LABORATORIES (FRANCE)
+                              </h5>
+                              <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
+                                Viện Nghiên Cứu & Sản Xuất Dược Phẩm Sinh Học Cộng Hòa Pháp
+                              </p>
+                            </div>
+                          </div>
+                          <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
+                            <strong>VYPHYTO LABORATORIES</strong> là viện nghiên cứu và sản xuất các dòng thực phẩm bảo vệ sức khỏe, vitamin và khoáng chất hàng đầu tại Pháp, dựa trên công nghệ sinh học và chiết xuất hữu cơ tự nhiên đạt chuẩn Châu Âu.
+                          </p>
+                        </div>
+
+                        <div className="modal-info-list">
+                          <div className="modal-info-item"><span>Đơn vị sản xuất:</span> <strong style={{ color: '#ea580c' }}>VYPHYTO LABORATORIES</strong></div>
+                          <div className="modal-info-item"><span>Quốc gia xuất xứ:</span> <strong>Cộng hòa Pháp (Made in France) 🇫🇷</strong></div>
+                          <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000, HACCP Châu Âu</strong></div>
+                          <div className="modal-info-item"><span>Định hướng phát triển:</span> <strong>Tinh Hoa Pháp – Sức Khỏe Bạn</strong></div>
+                          <div className="modal-info-item"><span>Website hãng:</span> <a href="https://vyphyto.com" target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>vyphyto.com</a></div>
+                        </div>
+
+                        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
+                          🔬 <strong>Cam kết chất lượng Châu Âu:</strong> 100% nguyên liệu đều trải qua quy trình kiểm nghiệm nghiêm ngặt của Liên minh Châu Âu (EU) trước khi đưa vào sản xuất và đóng gói.
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Khi đã gắn NSX cụ thể (UNIPRO, HC CLOVER, MASENZ DANYA, PHYTÉO, v.v...)
                   return (
                     <div>
                       <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.1rem' }}>
-                            🇫🇷
+                          <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem' }}>
+                            {countryMeta.flag}
                           </div>
                           <div>
                             <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
-                              VYPHYTO LABORATORIES (FRANCE)
+                              {mfgName.toUpperCase()}
                             </h5>
                             <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
-                              Viện Nghiên Cứu & Sản Xuất Dược Phẩm Sinh Học Cộng Hòa Pháp
+                              Nhà máy & cơ sở sản xuất đạt chuẩn tiêu chuẩn Quốc Tế
                             </p>
                           </div>
                         </div>
-                        <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
-                          <strong>VYPHYTO LABORATORIES</strong> là viện nghiên cứu và sản xuất các dòng thực phẩm bảo vệ sức khỏe, vitamin và khoáng chất hàng đầu tại Pháp, dựa trên công nghệ sinh học và chiết xuất hữu cơ tự nhiên đạt chuẩn Châu Âu.
-                        </p>
+                        {mfgAddress && (
+                          <p style={{ fontSize: '0.84rem', lineHeight: '1.5', color: '#334155', margin: '6px 0 0' }}>
+                            📍 <strong>Địa chỉ:</strong> {mfgAddress}
+                          </p>
+                        )}
                       </div>
 
                       <div className="modal-info-list">
-                        <div className="modal-info-item"><span>Đơn vị sản xuất:</span> <strong style={{ color: '#ea580c' }}>VYPHYTO LABORATORIES</strong></div>
-                        <div className="modal-info-item"><span>Quốc gia xuất xứ:</span> <strong>Cộng hòa Pháp (Made in France) 🇫🇷</strong></div>
-                        <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000, HACCP Châu Âu</strong></div>
-                        <div className="modal-info-item"><span>Định hướng phát triển:</span> <strong>Tinh Hoa Pháp – Sức Khỏe Bạn</strong></div>
-                        <div className="modal-info-item"><span>Website hãng:</span> <a href="https://vyphyto.com" target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>vyphyto.com</a></div>
+                        <div className="modal-info-item"><span>Đơn vị sản xuất:</span> <strong style={{ color: '#ea580c' }}>{mfgName}</strong></div>
+                        {countryMeta.country && <div className="modal-info-item"><span>Xuất xứ / Quốc gia:</span> <strong>{countryMeta.country} {countryMeta.flag}</strong></div>}
+                        {mfgAddress && <div className="modal-info-item"><span>Địa chỉ nhà máy:</span> <strong>{mfgAddress}</strong></div>}
+                        {mfgPhone && <div className="modal-info-item"><span>Điện thoại:</span> <strong>{mfgPhone}</strong></div>}
+                        {mfgEmail && <div className="modal-info-item"><span>Email:</span> <strong>{mfgEmail}</strong></div>}
+                        <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000, HACCP Quốc Tế</strong></div>
                       </div>
 
-                      <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
-                        🔬 <strong>Cam kết chất lượng Châu Âu:</strong> 100% nguyên liệu đều trải qua quy trình kiểm nghiệm nghiêm ngặt của Liên minh Châu Âu (EU) trước khi đưa vào sản xuất và đóng gói.
+                      {product?.manufacturerInfo && (
+                        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #fed7aa' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#ea580c', marginBottom: 6 }}>
+                            📋 CHI TIẾT THÔNG TIN NHÀ SẢN XUẤT:
+                          </div>
+                          <div style={{ whiteSpace: 'pre-line', fontSize: '0.85rem', lineHeight: '1.6', color: '#334155' }}>
+                            {product.manufacturerInfo}
+                          </div>
+                        </div>
+                      )}
+
+                      {mfgDetails && (
+                        <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#ffffff', border: '1px solid #fed7aa' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#ea580c', marginBottom: 6 }}>
+                            🏭 GIỚI THIỆU NHÀ MÁY & ĐỐI TÁC:
+                          </div>
+                          <div 
+                            className="partner-details-html"
+                            dangerouslySetInnerHTML={{ __html: mfgDetails }}
+                            style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#334155' }}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px dashed #ea580c', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
+                        🔬 <strong>Cam kết chất lượng:</strong> 100% quy trình sản xuất và đóng gói được kiểm tra, chứng nhận kiểm định chất lượng nghiêm ngặt trước khi xuất xưởng lưu hành.
                       </div>
                     </div>
                   );
                 }
 
-                const mfg = product?.manufacturerId || enterprise;
+                // Giao diện cho các theme khác
+                const fallbackMfg = mfg || enterprise;
                 return (
                   <div>
                     {product?.manufacturerInfo && (
@@ -1638,19 +1740,19 @@ export default function ProductInfo() {
                       </div>
                     )}
                     <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Tên đơn vị:</span> <strong>{mfg?.name || 'Doanh nghiệp sản xuất'}</strong></div>
-                      <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{mfg?.address || enterprise?.address || 'Việt Nam'}</strong></div>
-                      <div className="modal-info-item"><span>Hotline:</span> <strong>{mfg?.phone || enterprise?.phone || '1900 1234'}</strong></div>
-                      <div className="modal-info-item"><span>Email:</span> <strong>{mfg?.email || enterprise?.email || 'N/A'}</strong></div>
+                      <div className="modal-info-item"><span>Tên đơn vị:</span> <strong>{mfg?.name || fallbackMfg?.name || 'Doanh nghiệp sản xuất'}</strong></div>
+                      <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{mfg?.address || fallbackMfg?.address || 'Việt Nam'}</strong></div>
+                      {(mfg?.phone || fallbackMfg?.phone) && <div className="modal-info-item"><span>Hotline:</span> <strong>{mfg?.phone || fallbackMfg?.phone}</strong></div>}
+                      {(mfg?.email || fallbackMfg?.email) && <div className="modal-info-item"><span>Email:</span> <strong>{mfg?.email || fallbackMfg?.email}</strong></div>}
                     </div>
-                    {(mfg?.partnerDetails || enterprise?.partnerDetails) && (
+                    {(mfg?.partnerDetails || fallbackMfg?.partnerDetails) && (
                       <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
                         <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#003366', marginBottom: '8px', textTransform: 'uppercase' }}>
                           Chi tiết đối tác:
                         </div>
                         <div 
                           className="partner-details-html"
-                          dangerouslySetInnerHTML={{ __html: mfg?.partnerDetails || enterprise?.partnerDetails }}
+                          dangerouslySetInnerHTML={{ __html: mfg?.partnerDetails || fallbackMfg?.partnerDetails }}
                           style={{ fontSize: '0.9rem', lineHeight: '1.6', color: '#334155' }}
                         />
                       </div>

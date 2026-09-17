@@ -14,6 +14,57 @@ const Namecard = require('../models/Namecard');
 // URL hệ thống chính – dùng làm fallback khi batch không có customDomain
 const ADMIN_URL = process.env.USER_PAGE_URL || 'https://www.giaiphapqrcode.vn';
 
+// Helper: Resolve & normalize manufacturer for Product (từ Enterprise hoặc User NSX)
+async function resolveProductManufacturer(product) {
+  if (!product) return product;
+  const prod = product.toObject ? product.toObject() : { ...product };
+  if (!prod.manufacturerId) return prod;
+
+  // Nếu đã được Mongoose populate thành Object
+  if (typeof prod.manufacturerId === 'object' && prod.manufacturerId._id) {
+    const m = prod.manufacturerId;
+    prod.manufacturerId = {
+      _id: m._id,
+      name: m.fullName || m.name || '',
+      address: m.address || '',
+      phone: m.phone || '',
+      email: m.email || '',
+      partnerDetails: m.details || m.partnerDetails || '',
+      logo: m.logo || null
+    };
+    return prod;
+  }
+
+  // Nếu là ObjectId/String (chưa được populate do ref mismatch)
+  try {
+    const User = require('../models/User');
+    const Enterprise = require('../models/Enterprise');
+
+    const mfgUser = await User.findById(prod.manufacturerId).select('fullName address phone email details logo role').lean();
+    if (mfgUser) {
+      prod.manufacturerId = {
+        _id: mfgUser._id,
+        name: mfgUser.fullName || '',
+        address: mfgUser.address || '',
+        phone: mfgUser.phone || '',
+        email: mfgUser.email || '',
+        partnerDetails: mfgUser.details || '',
+        logo: mfgUser.logo || null
+      };
+      return prod;
+    }
+
+    const mfgEnt = await Enterprise.findById(prod.manufacturerId).select('name address phone email logo partnerDetails').lean();
+    if (mfgEnt) {
+      prod.manufacturerId = mfgEnt;
+      return prod;
+    }
+  } catch (e) {
+    console.error('Error resolving manufacturer:', e);
+  }
+  return prod;
+}
+
 // GET /api/public/namecard/:slug
 router.get('/namecard/:slug', async (req, res) => {
   try {
@@ -135,6 +186,11 @@ router.get('/scan/:serial', async (req, res) => {
 
     if (!label) {
       return res.status(404).json({ error: 'Không tìm thấy tem nhãn này trên hệ thống!' });
+    }
+
+    // Resolve & normalize manufacturerId on product (hỗ trợ cả NSX từ Quản lý NSX/NPP và Doanh nghiệp)
+    if (label.productId) {
+      label.productId = await resolveProductManufacturer(label.productId);
     }
 
     // Find the batch
@@ -878,10 +934,11 @@ router.post('/guest-login', async (req, res) => {
 router.get('/barcode/:barcode', async (req, res) => {
   try {
     const { barcode } = req.params;
-    const product = await Product.findOne({ barcode }).populate('enterpriseId');
+    let product = await Product.findOne({ barcode }).populate('enterpriseId');
     if (!product) {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm nào có mã vạch này trên hệ thống!' });
     }
+    product = await resolveProductManufacturer(product);
 
     const enterprise = product.enterpriseId;
     if (!enterprise || !enterprise.isActive) {

@@ -5,26 +5,70 @@ const { requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
 
-// GET /api/enterprises/manufacturers - Lấy danh sách Nhà Sản Xuất (ưu tiên type NSX, fallback tất cả)
+// GET /api/enterprises/manufacturers - Lấy danh sách Nhà Sản Xuất (từ cả Quản lý NSX/NPP và Doanh nghiệp)
 router.get('/manufacturers', auth, async (req, res) => {
   try {
-    // Ưu tiên lấy Enterprise có type NSX
-    let list = await Enterprise.find({ type: 'NSX', isActive: true })
-      .select('name address phone email logo partnerDetails')
-      .sort({ name: 1 });
+    const User = require('../models/User');
 
-    // Nếu không có NSX nào, fallback lấy tất cả Enterprise đang active
-    // (Trường hợp khách nhập NSX nhưng không gán type = 'NSX')
-    if (list.length === 0) {
-      list = await Enterprise.find({ isActive: true })
-        .select('name address phone email logo partnerDetails')
-        .sort({ name: 1 });
+    // 1. Lấy danh sách NSX từ User collection (được tạo ở menu "Quản lý NSX / NPP / Điểm bán")
+    const userQuery = { role: 'NSX', isActive: { $ne: false } };
+    if (req.user.role !== 'ADMIN' && req.user.enterpriseId) {
+      userQuery.enterpriseId = req.user.enterpriseId;
+    }
+    const userNSXList = await User.find(userQuery)
+      .select('fullName address phone email details logo role enterpriseId')
+      .sort({ fullName: 1 })
+      .lean();
+
+    // 2. Lấy danh sách NSX từ Enterprise collection (được tạo ở menu "Cấu hình Doanh nghiệp")
+    const entQuery = { isActive: true };
+    if (req.user.role !== 'ADMIN' && req.user.enterpriseId) {
+      entQuery._id = req.user.enterpriseId;
+    } else {
+      entQuery.type = 'NSX';
+    }
+    let enterpriseNSXList = await Enterprise.find(entQuery)
+      .select('name address phone email logo partnerDetails type')
+      .sort({ name: 1 })
+      .lean();
+
+    if (enterpriseNSXList.length === 0 && req.user.role === 'ADMIN') {
+      enterpriseNSXList = await Enterprise.find({ isActive: true })
+        .select('name address phone email logo partnerDetails type')
+        .sort({ name: 1 })
+        .lean();
     }
 
-    res.json(list);
+    // Chuẩn hóa và gộp 2 danh sách
+    const normalizedUserNSX = (userNSXList || []).map(u => ({
+      _id: u._id,
+      name: u.fullName || '',
+      address: u.address || '',
+      phone: u.phone || '',
+      email: u.email || '',
+      partnerDetails: u.details || '',
+      logo: u.logo || null,
+      source: 'USER_NSX',
+      isEnterprise: false
+    }));
+
+    const normalizedEntNSX = (enterpriseNSXList || []).map(e => ({
+      _id: e._id,
+      name: e.name || '',
+      address: e.address || '',
+      phone: e.phone || '',
+      email: e.email || '',
+      partnerDetails: e.partnerDetails || '',
+      logo: e.logo || null,
+      source: 'ENTERPRISE_NSX',
+      isEnterprise: true
+    }));
+
+    // Đưa các NSX đối tác lên đầu, sau đó đến doanh nghiệp sở hữu
+    res.json([...normalizedUserNSX, ...normalizedEntNSX]);
   } catch (error) {
     console.error('Get manufacturers error:', error);
-    res.status(500).json({ error: 'Lỗi lấy danh sách nhà sản xuất' });
+    res.status(500).json({ error: 'Lỗi lấy danh sách nhà sản xuất: ' + error.message });
   }
 });
 
