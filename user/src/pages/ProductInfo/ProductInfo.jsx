@@ -1041,6 +1041,16 @@ export default function ProductInfo() {
             </div>
             <span className="vyphyto-grid-label">Thông tin sản phẩm</span>
           </div>
+
+          {/* Nút NHẬN DIỆN THƯƠNG HIỆU - theo yêu cầu khách hàng */}
+          <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('brand')}>
+            <span className="vyphyto-grid-label-bold">NHẬN DIỆN<br />THƯƠNG HIỆU</span>
+          </div>
+
+          {/* Nút CÔNG BỐ - theo yêu cầu khách hàng */}
+          <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('cert')}>
+            <span className="vyphyto-grid-label-bold">CÔNG BỐ</span>
+          </div>
         </div>
 
         {/* 7. Sản Phẩm Cùng Doanh Nghiệp (nếu có) */}
