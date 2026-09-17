@@ -1862,48 +1862,29 @@ export default function ProductInfo() {
                           </div>
                           <div>
                             <h5 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#c2410c' }}>
-                              {product?.name || 'MUMMACAL-ZT DIAMOND'}
+                              {product?.name || ''}
                             </h5>
                             <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
-                              {product?.category || 'Thực phẩm bảo vệ sức khỏe'} • Chuẩn Dược phẩm Châu Âu 🇫🇷
+                              {product?.category || ''}
                             </p>
                           </div>
                         </div>
-                        <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
-                          {product?.description || 'MUMMACAL-ZT DIAMOND là dòng sản phẩm bổ sung Canxi hữu cơ tự nhiên chiết xuất từ Tảo biển đỏ Aquamin F Iceland kết hợp Vitamin D3, Vitamin K2-MK7, Magie và Kẽm. Giúp tăng cường mật độ xương răng chắc khỏe, ngừa loãng xương và thúc đẩy chiều cao vượt trội, hoàn toàn không gây nóng hay lắng cặn sỏi thận.'}
-                        </p>
+                        {product?.description && (
+                          <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
+                            {product.description}
+                          </p>
+                        )}
                       </div>
 
                       <div className="modal-info-list" style={{ marginBottom: 16 }}>
-                        <div className="modal-info-item"><span>Tên sản phẩm:</span> <strong style={{ color: '#ea580c' }}>{product?.name || 'MUMMACAL-ZT DIAMOND'}</strong></div>
-                        <div className="modal-info-item"><span>Xuất xứ thương hiệu:</span> <strong>VYPHYTO LABORATORIES (Pháp) 🇫🇷</strong></div>
-                        <div className="modal-info-item"><span>Đơn vị nhập khẩu:</span> <strong>{enterprise?.name || 'Công Ty TNHH StayCool Việt Nam'}</strong></div>
-                        <div className="modal-info-item"><span>Quy cách đóng gói:</span> <strong>{product?.specifications?.['Quy cách'] || 'Hộp 30 viên / 60 viên nang mềm'}</strong></div>
-                        <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000</strong></div>
-                        <div className="modal-info-item"><span>Hạn sử dụng:</span> <strong>{formatDate(scanData?.label?.batchId?.expiryDate || label?.expiryDate) || '36 tháng kể từ NSX'}</strong></div>
-                      </div>
-
-                      {/* Thành phần & Công dụng nổi bật */}
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#c2410c', marginBottom: 8, textTransform: 'uppercase' }}>
-                          🌟 Thành phần & Công dụng nổi bật:
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #fed7aa', fontSize: '0.85rem', lineHeight: 1.5 }}>
-                            🌱 <strong>Aquamin F (Tảo biển đỏ Iceland):</strong> Cung cấp Canxi hữu cơ và hơn 70 khoáng chất vi lượng sinh khả dụng cao, cấu trúc xốp tổ ong giúp hấp thu êm dịu, không gây táo bón.
-                          </div>
-                          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #fed7aa', fontSize: '0.85rem', lineHeight: 1.5 }}>
-                            ☀️ <strong>Bộ đôi Vitamin D3 & K2-MK7:</strong> Hỗ trợ hấp thu Canxi tối đa từ ruột vào máu và định hướng canxi gắn trúng đích vào mô xương, tránh vôi hóa mạch máu.
-                          </div>
-                          <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #fed7aa', fontSize: '0.85rem', lineHeight: 1.5 }}>
-                            🛡️ <strong>Magie Oxyd & Kẽm Gluconat:</strong> Củng cố khung xương dẻo dai và nâng cao sức đề kháng toàn diện cho mẹ bầu và thanh thiếu niên.
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Đối tượng sử dụng */}
-                      <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #ffedd5', fontSize: '0.84rem', color: '#7c2d12', lineHeight: 1.5 }}>
-                        👥 <strong>Đối tượng khuyên dùng:</strong> Phụ nữ chuẩn bị mang thai, đang mang thai và nuôi con bú; trẻ em từ 6 tuổi trở lên đang trong giai đoạn phát triển chiều cao; người cao tuổi, người có nguy cơ loãng xương hoặc gãy xương.
+                        <div className="modal-info-item"><span>Tên sản phẩm:</span> <strong style={{ color: '#ea580c' }}>{product?.name || ''}</strong></div>
+                        <div className="modal-info-item"><span>Đơn vị nhập khẩu:</span> <strong>{enterprise?.name || ''}</strong></div>
+                        {product?.specifications?.['Quy cách'] && (
+                          <div className="modal-info-item"><span>Quy cách đóng gói:</span> <strong>{product.specifications['Quy cách']}</strong></div>
+                        )}
+                        {formatDate(scanData?.label?.batchId?.expiryDate || label?.expiryDate) && (
+                          <div className="modal-info-item"><span>Hạn sử dụng:</span> <strong>{formatDate(scanData?.label?.batchId?.expiryDate || label?.expiryDate)}</strong></div>
+                        )}
                       </div>
                     </div>
                   );
