@@ -1782,6 +1782,16 @@ export default function ProductInfo() {
               )}
               {activeModal === 'cert' && (
                 <div>
+                  {/* Hiển thị số công bố nếu có */}
+                  {product?.congBoNumber && (
+                    <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: '#f0fdf4', border: '1.5px solid #6ee7b7', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: '1.2rem' }}>🏷️</span>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Số công bố</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#065f46', marginTop: 2 }}>{product.congBoNumber}</div>
+                      </div>
+                    </div>
+                  )}
                   {product?.congBoImages?.filter(img => img && img.trim()).length > 0 ? (
                     <div>
                       <p style={{ fontSize: '0.88rem', color: '#4b5563', marginBottom: 14, lineHeight: 1.5 }}>
@@ -1931,16 +1941,27 @@ export default function ProductInfo() {
                     )}
 
                     {/* Ảnh giấy công bố (nếu có) */}
-                    {product?.congBoImages?.filter(img => img && img.trim()).length > 0 && (
+                    {(product?.congBoNumber || product?.congBoImages?.filter(img => img && img.trim()).length > 0) && (
                       <div style={{ marginTop: 14 }}>
                         <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 8 }}>Giấy công bố sản phẩm:</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
-                            <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
-                              <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', borderRadius: 8, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 300 }} />
-                            </a>
-                          ))}
-                        </div>
+                        {product?.congBoNumber && (
+                          <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #6ee7b7', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: '1rem' }}>🏷️</span>
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, textTransform: 'uppercase' }}>Số công bố</div>
+                              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#065f46' }}>{product.congBoNumber}</div>
+                            </div>
+                          </div>
+                        )}
+                        {product?.congBoImages?.filter(img => img && img.trim()).length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
+                              <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
+                                <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', borderRadius: 8, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 300 }} />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

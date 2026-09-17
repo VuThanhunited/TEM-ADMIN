@@ -19,13 +19,17 @@ router.get('/', auth, requireOwnership, async (req, res) => {
     }
     if (category) query.category = category;
 
-    const total = await Product.countDocuments(query);
-    const products = await Product.find(query)
-      .populate('enterpriseId', 'name')
-      .populate('manufacturerId', 'name address phone email')
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    const [total, products] = await Promise.all([
+      Product.countDocuments(query),
+      Product.find(query)
+        .populate('enterpriseId', 'name')
+        .populate('manufacturerId', 'name address phone email')
+        .select('-congBoImages -productionProcess -chatbotQA -specifications') // Bỏ qua field nặng khi list
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(parseInt(limit))
+        .lean()
+    ]);
 
     res.json({
       data: products,
@@ -88,7 +92,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
     const {
       name, images, description, category, sku, barcode, distributors, specifications,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, distributionBannerText
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText
     } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
     if (!enterpriseId) {
@@ -127,7 +131,8 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       manufacturerModel,
       manufacturerInfo: manufacturerInfo || '',
       distributionBannerText: distributionBannerText || '',
-      congBoImages: (congBoImages || []).filter(img => img && img.trim())
+      congBoImages: (congBoImages || []).filter(img => img && img.trim()),
+      congBoNumber: congBoNumber || ''
     });
     await product.save();
     
@@ -148,7 +153,7 @@ router.put('/:id', auth, async (req, res) => {
     const {
       name, images, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, distributionBannerText
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText
     } = req.body;
 
     let manufacturerModel = 'Enterprise';
@@ -165,7 +170,8 @@ router.put('/:id', auth, async (req, res) => {
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
       chatbotQA, manufacturerId: manufacturerId || null, manufacturerModel, manufacturerInfo,
       distributionBannerText: distributionBannerText !== undefined ? distributionBannerText : undefined,
-      congBoImages: Array.isArray(congBoImages) ? congBoImages.filter(img => img && img.trim()) : undefined
+      congBoImages: Array.isArray(congBoImages) ? congBoImages.filter(img => img && img.trim()) : undefined,
+      congBoNumber: congBoNumber !== undefined ? congBoNumber : undefined
     };
 
     // Chỉ cập nhật images nếu client gửi mảng có nội dung (>0 URL hợp lệ)

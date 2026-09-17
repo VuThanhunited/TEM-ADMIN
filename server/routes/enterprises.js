@@ -92,11 +92,11 @@ router.get('/:id', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     if (req.user.role === 'ADMIN') {
-      const enterprises = await Enterprise.find().sort({ createdAt: -1 });
+      const enterprises = await Enterprise.find().select('name type address logo domain').sort({ createdAt: -1 }).lean();
       return res.json(enterprises);
     }
     if (req.user.enterpriseId) {
-      const enterprise = await Enterprise.findById(req.user.enterpriseId);
+      const enterprise = await Enterprise.findById(req.user.enterpriseId).lean();
       return res.json(enterprise ? [enterprise] : []);
     }
     res.json([]);

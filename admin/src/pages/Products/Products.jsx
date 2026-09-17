@@ -154,12 +154,16 @@ export default function Products() {
   const [enterprises, setEnterprises] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalDataLoading, setModalDataLoading] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 400);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [modalError, setModalError] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+
+  // Cache flag — chỉ gọi API 1 lần trong suốt session
+  const modalDataLoadedRef = useRef(false);
 
   const MAX_IMAGES = 6;
 
@@ -169,6 +173,7 @@ export default function Products() {
     verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
     productionProcess: [],
     congBoImages: ['', '', ''],
+    congBoNumber: '',
     producerInfo: '',
     distributorInfo: '',
     chatbotQA: [],
@@ -179,11 +184,7 @@ export default function Products() {
 
   const [form, setForm] = useState({ ...initialForm });
 
-  // Load enterprises & manufacturers một lần khi mount
-  useEffect(() => {
-    if (isAdmin) loadEnterprises();
-    loadManufacturers();
-  }, [isAdmin]);
+  // Chỉ load products khi vào trang. Enterprises & Manufacturers được lazy-load khi mở modal.
 
   // Khi debouncedSearch thay đổi: reset về page 1
   useEffect(() => {
@@ -219,16 +220,14 @@ export default function Products() {
 
   const loadManufacturers = async () => {
     try {
-      // 1. Lấy danh sách NSX từ API getManufacturers (backend đã gộp cả User NSX và Enterprise NSX)
-      const mfgData = await api.getManufacturers();
-      const mfgList = Array.isArray(mfgData) ? mfgData : [];
+      // Gọi song song 2 API, bỏ qua lỗi getDistributors
+      const [mfgData, distResult] = await Promise.allSettled([
+        api.getManufacturers(),
+        api.getDistributors({ role: 'NSX', limit: 200 })
+      ]);
 
-      // 2. Dự phòng lấy thêm từ getDistributors
-      let distList = [];
-      try {
-        const distResult = await api.getDistributors({ role: 'NSX', limit: 200 });
-        distList = Array.isArray(distResult?.data) ? distResult.data : [];
-      } catch (e) {}
+      const mfgList = mfgData.status === 'fulfilled' && Array.isArray(mfgData.value) ? mfgData.value : [];
+      const distList = distResult.status === 'fulfilled' && Array.isArray(distResult.value?.data) ? distResult.value.data : [];
 
       // Chuẩn hóa và gộp danh sách, loại bỏ trùng _id
       const map = new Map();
@@ -257,16 +256,62 @@ export default function Products() {
     }
   };
 
+  /**
+   * Lazy-load dữ liệu cần thiết cho modal (enterprises + manufacturers).
+   * Chỉ gọi API lần đầu, những lần sau dùng cache từ state hiện tại.
+   */
+  const ensureModalData = async () => {
+    if (modalDataLoadedRef.current) return; // Đã tải rồi, bỏ qua
+    setModalDataLoading(true);
+    try {
+      // Gọi song song tất cả, bỏ qua lỗi riêng lẻ
+      const tasks = [
+        api.getManufacturers().catch(() => []),
+        api.getDistributors({ role: 'NSX', limit: 200 }).catch(() => ({ data: [] }))
+      ];
+      if (isAdmin) tasks.push(api.getEnterprises().catch(() => []));
+
+      const results = await Promise.all(tasks);
+      const [mfgData, distResult, entData] = results;
+
+      const mfgList = Array.isArray(mfgData) ? mfgData : [];
+      const distList = Array.isArray(distResult?.data) ? distResult.data : [];
+
+      const map = new Map();
+      mfgList.forEach(m => { if (m._id) map.set(String(m._id), m); });
+      distList.forEach(d => {
+        if (d._id && !map.has(String(d._id))) {
+          map.set(String(d._id), {
+            _id: d._id, name: d.fullName || d.name || '',
+            address: d.address || '', phone: d.phone || '',
+            email: d.email || '', partnerDetails: d.details || '',
+            logo: d.logo || null, source: 'USER_NSX', isEnterprise: false
+          });
+        }
+      });
+      setManufacturers(Array.from(map.values()));
+      if (isAdmin && Array.isArray(entData)) setEnterprises(entData);
+
+      modalDataLoadedRef.current = true; // Đánh dấu đã tải xong
+    } catch (err) {
+      console.error('Lỗi tải dữ liệu modal:', err);
+    } finally {
+      setModalDataLoading(false);
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
     setModalError(null);
     setForm({ ...initialForm });
     setShowModal(true);
+    ensureModalData(); // Lazy-load: chỉ gọi API khi mở modal
   };
 
   const openEdit = (product) => {
     setEditing(product);
     setModalError(null);
+    ensureModalData(); // Lazy-load: chỉ gọi API khi mở modal
     const specList = product.specifications
       ? Object.entries(product.specifications).map(([key, value]) => ({ key, value }))
       : [];
@@ -292,6 +337,7 @@ export default function Products() {
         while (imgs.length < 3) imgs.push('');
         return imgs;
       })(),
+      congBoNumber: product.congBoNumber || '',
       producerInfo: product.producerInfo || '',
       distributorInfo: product.distributorInfo || '',
       chatbotQA: product.chatbotQA || [],
@@ -343,7 +389,8 @@ export default function Products() {
         specifications: specObj,
         manufacturerId: form.manufacturerId || null,
         manufacturerInfo: form.manufacturerInfo || '',
-        congBoImages: (form.congBoImages || []).filter(img => img && img.trim())
+        congBoImages: (form.congBoImages || []).filter(img => img && img.trim()),
+        congBoNumber: form.congBoNumber || ''
       };
       if (editing) {
         await api.updateProduct(editing._id, data);
@@ -508,7 +555,14 @@ export default function Products() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal" style={{ maxWidth: 680 }}>
             <div className="modal-header">
-              <h3 className="modal-title">{editing ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}</h3>
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {editing ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
+                {modalDataLoading && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                    <div className="loading-spinner" style={{ width: 12, height: 12 }} /> Đang tải dữ liệu...
+                  </span>
+                )}
+              </h3>
               <button className="btn-icon" onClick={() => setShowModal(false)}><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -719,6 +773,23 @@ export default function Products() {
                   <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '8px', color: 'var(--primary-color)' }}>
                     📄 Giấy tiếp nhận đăng ký bản công bố sản phẩm
                   </label>
+
+                  {/* Số công bố */}
+                  <div className="input-group" style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      🏷️ Số công bố (Mã số tiếp nhận)
+                    </label>
+                    <input
+                      className="input"
+                      placeholder="VD: 24/2025/ĐKSP-ATTP hay 0101/2024/ĐKBCB-TP..."
+                      value={form.congBoNumber || ''}
+                      onChange={e => setForm({ ...form, congBoNumber: e.target.value })}
+                    />
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                      Mã số trên giấy tiếp nhận đăng ký bản công bố sản phẩm — sẽ hiển thị trên trang quét QR.
+                    </span>
+                  </div>
+
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>
                     Tải lên ảnh chụp / scan giấy công bố sản phẩm (tối đa 3 ảnh)
                   </p>

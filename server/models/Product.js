@@ -72,6 +72,11 @@ const productSchema = new mongoose.Schema({
   congBoImages: [{
     type: String
   }],
+  // Số / Mã công bố hộ sản phẩm
+  congBoNumber: {
+    type: String,
+    default: ''
+  },
   // Giữ lại certifications để backward compat với dữ liệu cũ
   certifications: {
     iso: {
