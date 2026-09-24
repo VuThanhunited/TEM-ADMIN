@@ -70,7 +70,7 @@ class ApiService {
       // Retry khi lỗi mạng hoặc timeout
       if (_retryCount < MAX_RETRIES) {
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
-        return this.request(method, endpoint, data, params, _retryCount + 1);
+        return this.request(method, endpoint, data, params, _retryCount + 1, timeoutMs);
       }
 
       if (isTimeout) {
@@ -195,8 +195,8 @@ class ApiService {
   updateLabelStatus(id, data) { return this.request('PUT', `/labels/${id}/status`, data); }
   bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data, {}, 0, 300000); } // 5 min timeout for large serial ranges
   fixEncryption(data) { return this.request('POST', '/labels/fix-encryption', data); }
-  exportBatchLabels(batchId) { return this.request('GET', '/labels/export', null, { batchId }); }
-  exportFilteredLabels(params) { return this.request('GET', '/labels/export-all', null, params); }
+  exportBatchLabels(batchId) { return this.request('GET', '/labels/export', null, { batchId }, 0, 300000); } // 5 min timeout for large batches
+  exportFilteredLabels(params) { return this.request('GET', '/labels/export-all', null, params, 0, 300000); } // 5 min timeout for large datasets
 
   // ── Analytics ─────────────────────────────────────────────────────────────
   getOverview() { return this.request('GET', '/analytics/overview'); }
