@@ -791,6 +791,12 @@ export default function ProductInfo() {
     const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
       ? product.images[0]
       : '/images/ocop_hero_product.png';
+    // Đọc text chứng nhận từ verificationText, chỉ dùng nếu chứa keyword OCOP/sao
+    const rawVerif = product?.verificationText || '';
+    const isOcopRelated = /ocop|sao|chứng nhận|tiêu chuẩn/i.test(rawVerif);
+    const ocopCertText = (!isMock && isOcopRelated)
+      ? rawVerif.toUpperCase()
+      : 'CHỨNG NHẬN OCOP';
 
     return (
       <div className="exact-ocop-container">
@@ -820,7 +826,7 @@ export default function ProductInfo() {
               </div>
               <div>
                 <span className="exact-ocop-sublabel">Sản phẩm đã được cấp:</span>
-                <div className="exact-ocop-red-cert">CHỨNG NHẬN OCOP 4 SAO</div>
+                <div className="exact-ocop-red-cert">{ocopCertText}</div>
               </div>
             </div>
 
@@ -833,11 +839,6 @@ export default function ProductInfo() {
                 <div className="exact-ocop-owner-name">{ownerName}</div>
               </div>
             </div>
-          </div>
-
-          <div className="exact-ocop-cert-right">
-            {/* Official OCOP Badge Image from reference */}
-            <img src="/images/ocop_official_badge.png" alt="OCOP 4 SAO" style={{ width: 145, height: 'auto', objectFit: 'contain' }} />
           </div>
         </div>
 

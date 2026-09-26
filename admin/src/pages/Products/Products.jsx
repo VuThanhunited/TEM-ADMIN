@@ -607,7 +607,7 @@ export default function Products() {
                     <input className="input" value={form.barcode} onChange={e => setForm({ ...form, barcode: e.target.value })} placeholder="VD: 8931234567890" />
                   </div>
                   <div className="input-group">
-                    <label>Dòng thông tin xác thực (CMS)</label>
+                    <label>Dòng thông tin xác thực (CMS) <span style={{fontWeight:400, color:'var(--text-muted)', fontSize:'0.82em'}}>— Với sản phẩm OCOP: nhập text chứng nhận sao (VD: Sản Phẩm đạt tiêu chuẩn OCOP 3 sao)</span></label>
                     <input className="input" value={form.verificationText} onChange={e => setForm({ ...form, verificationText: e.target.value })} />
                   </div>
                 </div>
