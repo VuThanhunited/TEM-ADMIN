@@ -791,12 +791,16 @@ export default function ProductInfo() {
     const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
       ? product.images[0]
       : '/images/ocop_hero_product.png';
-    // Đọc text chứng nhận từ verificationText, chỉ dùng nếu chứa keyword OCOP/sao
+    // Ưu tiên đọc từ distributionBannerText (field "Tiêu Đề Banner" trong admin),
+    // fallback về verificationText nếu có OCOP keyword, cuối cùng default 'CHỨNG NHẬN OCOP'
+    const rawBanner = product?.distributionBannerText?.trim() || '';
     const rawVerif = product?.verificationText || '';
     const isOcopRelated = /ocop|sao|chứng nhận|tiêu chuẩn/i.test(rawVerif);
-    const ocopCertText = (!isMock && isOcopRelated)
-      ? rawVerif.toUpperCase()
-      : 'CHỨNG NHẬN OCOP';
+    const ocopCertText = (!isMock && rawBanner)
+      ? rawBanner.toUpperCase()
+      : (!isMock && isOcopRelated)
+        ? rawVerif.toUpperCase()
+        : 'CHỨNG NHẬN OCOP';
 
     return (
       <div className="exact-ocop-container">
