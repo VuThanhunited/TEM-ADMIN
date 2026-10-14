@@ -3977,3 +3977,22 @@
   margin-top: 3px;
 }
 
+/* ========================================================
+   Cards cho NSX, Nhà Phân Phối và Giấy Tờ Công Bố (Default View)
+   ======================================================== */
+.product-info-nsx-card {
+  border-left: 4px solid #16a34a !important;
+  margin-top: 14px;
+}
+
+.product-info-npp-card {
+  border-left: 4px solid #2563eb !important;
+  margin-top: 14px;
+}
+
+.product-info-cert-card {
+  border-left: 4px solid #d97706 !important;
+  margin-top: 14px;
+}
+
+

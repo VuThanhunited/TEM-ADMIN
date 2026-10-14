@@ -203,6 +203,7 @@ export default function ProductInfo() {
   const [activateSuccess, setActivateSuccess] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
+  const [previewImage, setPreviewImage] = useState(null);
   const chatEndRef = useRef(null);
 
   // Computed values (không phải hooks, an toàn để đặt đây)
@@ -1229,91 +1230,326 @@ export default function ProductInfo() {
   // =========================================================================
   // 6. TEM XÁC THỰC TIÊU CHUẨN (Default Layout)
   // =========================================================================
-  const renderDefaultView = () => (
-    <div className="product-info-body">
-      <div className={`product-info-verify ${label?.scanCount > 5 ? 'product-info-verify--warning' : ''}`}>
-        <div className="product-info-verify-icon">
-          {label?.scanCount > 5 ? <AlertTriangle size={22} /> : <ShieldCheck size={22} />}
-        </div>
-        <div className="product-info-verify-text">
-          {label?.scanCount > 5 ? (
-            <>
-              <h3>Cảnh báo</h3>
-              <p>Sản phẩm đã được quét {label.scanCount} lần. Vui lòng kiểm tra kỹ nguồn gốc.</p>
-            </>
-          ) : (
-            <>
-              <h3>Sản phẩm chính hãng</h3>
-              <p>Thông tin truy xuất nguồn gốc đã được xác thực</p>
-            </>
-          )}
-        </div>
-      </div>
+  const renderDefaultView = () => {
+    // 1. Dữ liệu Nhà sản xuất (NSX)
+    const mfg = product?.manufacturerId || null;
+    const mfgName = mfg?.name || product?.producerInfo || enterprise?.name;
+    const mfgAddress = mfg?.address || enterprise?.address;
+    const mfgPhone = mfg?.phone || enterprise?.phone;
+    const mfgEmail = mfg?.email || enterprise?.email;
 
-      <div className="product-info-card">
-        <div className="product-info-image-area">
-          {product?.images?.[0] ? (
-            <img src={product.images[0]} alt={product.name} />
-          ) : (
-            <div className="product-info-image-placeholder">
-              <Package size={48} />
-              <span>Chưa có hình ảnh</span>
-            </div>
-          )}
+    // 2. Dữ liệu Nhà phân phối (NPP) & Mã sở hữu
+    const distributorName = label?.distributorName || product?.distributors?.[0]?.name || product?.distributorInfo;
+    const distributorAddress = label?.distributorAddress || product?.distributors?.[0]?.address || '';
+    const ownerCode = label?.ownerCode;
+
+    // 3. Dữ liệu Giấy tờ công bố & Chứng nhận
+    const congBoImagesList = (product?.congBoImages || []).filter(img => img && img.trim());
+
+    // Các chứng chỉ đạt chuẩn (nếu có)
+    const certList = [];
+    if (product?.certifications) {
+      if (product.certifications.iso?.checked) certList.push({ name: 'ISO', no: product.certifications.iso.certNo, color: '#0284c7' });
+      if (product.certifications.vetinhATTP?.checked) certList.push({ name: 'ATTP', no: product.certifications.vetinhATTP.certNo, color: '#16a34a' });
+      if (product.certifications.gmp?.checked) certList.push({ name: 'GMP', no: product.certifications.gmp.certNo, color: '#0d9488' });
+      if (product.certifications.cgmp?.checked) certList.push({ name: 'c-GMP', no: product.certifications.cgmp.certNo, color: '#8b5cf6' });
+      if (product.certifications.vietgap?.checked) certList.push({ name: 'VietGAP', no: product.certifications.vietgap.certNo, color: '#15803d' });
+      if (product.certifications.organic?.checked) certList.push({ name: 'Organic', no: product.certifications.organic.certNo, color: '#65a30d' });
+    }
+
+    return (
+      <div className="product-info-body">
+        {/* Banner xác thực chính hãng */}
+        <div className={`product-info-verify ${label?.scanCount > 5 ? 'product-info-verify--warning' : ''}`}>
+          <div className="product-info-verify-icon">
+            {label?.scanCount > 5 ? <AlertTriangle size={22} /> : <ShieldCheck size={22} />}
+          </div>
+          <div className="product-info-verify-text">
+            {label?.scanCount > 5 ? (
+              <>
+                <h3>Cảnh báo lượt quét ({label.scanCount})</h3>
+                <p>Sản phẩm đã được quét nhiều lần. Vui lòng kiểm tra kỹ tem niêm phong và nguồn gốc.</p>
+              </>
+            ) : (
+              <>
+                <h3>Sản phẩm chính hãng</h3>
+                <p>Thông tin truy xuất nguồn gốc đã được xác thực</p>
+              </>
+            )}
+          </div>
         </div>
-        <div className="product-info-details">
-          <h2 className="product-info-name">{product?.name || 'Sản phẩm'}</h2>
-          {product?.description && <p className="product-info-desc">{product.description}</p>}
-          <div className="product-info-rows">
-            <div className="product-info-row">
-              <div className="product-info-row-icon"><QrCode size={16} /></div>
-              <span className="product-info-row-label">Mã serial</span>
-              <span className="product-info-row-value">{label?.serialNumber || serial}</span>
-            </div>
-            {product?.category && (
+
+        {/* Thẻ sản phẩm */}
+        <div className="product-info-card">
+          <div className="product-info-image-area">
+            {product?.images?.[0] ? (
+              <img src={product.images[0]} alt={product.name} />
+            ) : (
+              <div className="product-info-image-placeholder">
+                <Package size={48} />
+                <span>Chưa có hình ảnh</span>
+              </div>
+            )}
+          </div>
+          <div className="product-info-details">
+            <h2 className="product-info-name">{product?.name || 'Sản phẩm'}</h2>
+            {product?.description && <p className="product-info-desc">{product.description}</p>}
+            <div className="product-info-rows">
               <div className="product-info-row">
-                <div className="product-info-row-icon"><Hash size={16} /></div>
-                <span className="product-info-row-label">Danh mục</span>
-                <span className="product-info-row-value">{product.category}</span>
+                <div className="product-info-row-icon"><QrCode size={16} /></div>
+                <span className="product-info-row-label">Mã serial</span>
+                <span className="product-info-row-value">{label?.serialNumber || serial}</span>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="product-info-stats">
-        <div className="product-info-stat">
-          <span className="product-info-stat-number">{label?.scanCount || 1}</span>
-          <span className="product-info-stat-label">Lần quét</span>
-        </div>
-        <div className="product-info-stat">
-          <span className="product-info-stat-number" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-            {formatDate(label?.firstScannedAt || scanData?.firstScanTime)}
-          </span>
-          <span className="product-info-stat-label">Quét lần đầu</span>
-        </div>
-      </div>
-
-      {(product?.manufacturerId || product?.manufacturerInfo || enterprise) && (() => {
-        const mfg = product?.manufacturerId || enterprise;
-        return (
-          <div className="product-info-enterprise">
-            <div className="product-info-enterprise-title">
-              {product?.manufacturerId ? 'Nhà sản xuất' : 'Doanh nghiệp sản xuất'}
+              {product?.category && (
+                <div className="product-info-row">
+                  <div className="product-info-row-icon"><Hash size={16} /></div>
+                  <span className="product-info-row-label">Danh mục</span>
+                  <span className="product-info-row-value">{product.category}</span>
+                </div>
+              )}
             </div>
-            <div className="product-info-enterprise-name">{mfg?.name || enterprise?.name}</div>
-            {product?.manufacturerInfo && (
-              <div style={{ whiteSpace: 'pre-line', fontSize: '0.85rem', color: '#475569', margin: '6px 0 10px', padding: '8px 10px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                {product.manufacturerInfo}
-              </div>
-            )}
-            {mfg?.address && <div className="product-info-enterprise-row"><MapPin size={14} />{mfg.address}</div>}
-            {mfg?.phone && <div className="product-info-enterprise-row"><Phone size={14} />{mfg.phone}</div>}
           </div>
-        );
-      })()}
-    </div>
-  );
+        </div>
+
+        {/* Lượt quét */}
+        <div className="product-info-stats">
+          <div className="product-info-stat">
+            <span className="product-info-stat-number">{label?.scanCount || 1}</span>
+            <span className="product-info-stat-label">Lần quét</span>
+          </div>
+          <div className="product-info-stat">
+            <span className="product-info-stat-number" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+              {formatDate(label?.firstScannedAt || scanData?.firstScanTime)}
+            </span>
+            <span className="product-info-stat-label">Quét lần đầu</span>
+          </div>
+        </div>
+
+        {/* KHỐI 1: THÔNG TIN NHÀ SẢN XUẤT (NSX) */}
+        <div className="product-info-enterprise product-info-nsx-card">
+          <div className="product-info-enterprise-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#166534' }}>
+            <Building2 size={16} color="#166534" />
+            <span>Thông tin Nhà sản xuất (NSX)</span>
+          </div>
+          <div className="product-info-enterprise-name" style={{ fontSize: '1.05rem', color: '#0f172a' }}>
+            {mfgName}
+          </div>
+          {product?.manufacturerInfo && (
+            <div style={{ whiteSpace: 'pre-line', fontSize: '0.86rem', color: '#475569', margin: '6px 0 10px', padding: '8px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', lineHeight: '1.5' }}>
+              {product.manufacturerInfo}
+            </div>
+          )}
+          {mfgAddress && (
+            <div className="product-info-enterprise-row">
+              <MapPin size={15} color="#166534" style={{ flexShrink: 0 }} />
+              <span>{mfgAddress}</span>
+            </div>
+          )}
+          {mfgPhone && (
+            <div className="product-info-enterprise-row">
+              <Phone size={15} color="#166534" style={{ flexShrink: 0 }} />
+              <a href={`tel:${mfgPhone}`} style={{ color: '#166534', fontWeight: 600 }}>{mfgPhone}</a>
+            </div>
+          )}
+          {mfgEmail && (
+            <div className="product-info-enterprise-row">
+              <Mail size={15} color="#166534" style={{ flexShrink: 0 }} />
+              <span>{mfgEmail}</span>
+            </div>
+          )}
+          {enterprise?.name && enterprise.name !== mfgName && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #e2e8f0', fontSize: '0.8rem', color: '#64748b' }}>
+              Chủ sở hữu nhãn hiệu: <strong style={{ color: '#334155' }}>{enterprise.name}</strong>
+            </div>
+          )}
+        </div>
+
+        {/* KHỐI 2: THÔNG TIN NHÀ PHÂN PHỐI (NHÀ PP) & MÃ SỞ HỮU */}
+        <div className="product-info-enterprise product-info-npp-card">
+          <div className="product-info-enterprise-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#1e40af' }}>
+            <Truck size={16} color="#1e40af" />
+            <span>Thông tin Nhà phân phối (Nhà PP)</span>
+          </div>
+
+          {distributorName ? (
+            <>
+              <div className="product-info-enterprise-name" style={{ fontSize: '1.02rem', color: '#1e3a8a' }}>
+                {distributorName}
+              </div>
+              {distributorAddress && (
+                <div className="product-info-enterprise-row">
+                  <MapPin size={15} color="#1e40af" style={{ flexShrink: 0 }} />
+                  <span>{distributorAddress}</span>
+                </div>
+              )}
+            </>
+          ) : product?.distributors && product.distributors.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {product.distributors.map((dist, idx) => (
+                <div key={idx} style={{ padding: '8px 10px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e40af' }}>{dist.name}</div>
+                  {dist.address && <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: 2 }}>{dist.address}</div>}
+                  {dist.phone && <div style={{ fontSize: '0.8rem', color: '#1e40af', marginTop: 2 }}>Hotline: {dist.phone}</div>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ fontSize: '0.86rem', color: '#475569', padding: '6px 0', lineHeight: 1.5 }}>
+              Sản phẩm chính hãng được phân phối và lưu hành thông qua hệ thống đại lý trên toàn quốc.
+            </div>
+          )}
+
+          {/* Trường MÃ SỞ HỮU (Yêu cầu quan trọng từ khách hàng) */}
+          {ownerCode ? (
+            <div style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+              border: '1.5px solid #6ee7b7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ShieldCheck size={20} color="#059669" />
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    Mã sở hữu sản phẩm
+                  </div>
+                  <div style={{ fontSize: '0.98rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
+                    {ownerCode}
+                  </div>
+                </div>
+              </div>
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#059669', color: '#fff', padding: '3px 8px', borderRadius: 12 }}>
+                ĐÃ XÁC THỰC
+              </span>
+            </div>
+          ) : (
+            <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
+              Mã sở hữu sẽ được cập nhật khi đại lý xuất bán cho khách hàng.
+            </div>
+          )}
+        </div>
+
+        {/* KHỐI 3: PHẦN GIẤY TỜ / HỒ SƠ CÔNG BỐ SẢN PHẨM */}
+        <div className="product-info-enterprise product-info-cert-card">
+          <div className="product-info-enterprise-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#b45309' }}>
+            <FileText size={16} color="#b45309" />
+            <span>Phần giấy tờ & Bản công bố sản phẩm</span>
+          </div>
+
+          {/* Số công bố */}
+          {product?.congBoNumber && (
+            <div style={{
+              marginBottom: 12,
+              padding: '9px 12px',
+              borderRadius: 8,
+              background: '#fffbeb',
+              border: '1.5px solid #fde68a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Số tiếp nhận bản công bố
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#92400e', marginTop: 2 }}>
+                  {product.congBoNumber}
+                </div>
+              </div>
+              <Award size={22} color="#f59e0b" />
+            </div>
+          )}
+
+          {/* Huy hiệu các chứng chỉ chất lượng */}
+          {certList.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {certList.map((c, idx) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  background: '#f8fafc',
+                  border: `1px solid ${c.color}`,
+                  color: c.color,
+                  fontSize: '0.78rem',
+                  fontWeight: 700
+                }}>
+                  <CheckCircle2 size={13} color={c.color} />
+                  <span>Đạt chuẩn {c.name}{c.no ? ` (${c.no})` : ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Ảnh giấy công bố */}
+          {congBoImagesList.length > 0 ? (
+            <div>
+              <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: 10 }}>
+                Giấy tiếp nhận bản công bố đã được thẩm định bởi cơ quan có thẩm quyền (nhấn để phóng to):
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: congBoImagesList.length === 1 ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
+                {congBoImagesList.map((img, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setPreviewImage(img)}
+                    style={{
+                      cursor: 'pointer',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      border: '1.5px solid #e2e8f0',
+                      background: '#f8fafc',
+                      position: 'relative'
+                    }}
+                  >
+                    <img
+                      src={img}
+                      alt={`Giấy công bố ${idx + 1}`}
+                      style={{ width: '100%', height: 160, objectFit: 'contain', background: '#fff', display: 'block' }}
+                    />
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: '4px 6px',
+                      background: 'rgba(0,0,0,0.6)',
+                      color: '#fff',
+                      fontSize: '0.72rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4
+                    }}>
+                      <Eye size={12} />
+                      <span>Xem phóng to</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : !product?.congBoNumber && certList.length === 0 ? (
+            <div style={{
+              padding: '12px 14px',
+              borderRadius: 8,
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              fontSize: '0.84rem',
+              color: '#64748b',
+              lineHeight: 1.5
+            }}>
+              Hồ sơ công bố sản phẩm hợp quy và chứng nhận kiểm định chất lượng đã được lưu trữ hợp lệ trên hệ thống cơ sở dữ liệu quốc gia.
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className={`product-info-page theme-${activeTheme}`}>
@@ -2006,6 +2242,60 @@ export default function ProductInfo() {
               </form>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Lightbox Preview Modal cho Ảnh Giấy công bố */}
+      {previewImage && (
+        <div
+          onClick={() => setPreviewImage(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.88)',
+            zIndex: 99999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              color: '#fff',
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={26} />
+          </button>
+          <img
+            src={previewImage}
+            alt="Giấy công bố sản phẩm"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '96%',
+              maxHeight: '85vh',
+              objectFit: 'contain',
+              borderRadius: 12,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+            }}
+          />
+          <p style={{ color: '#e2e8f0', fontSize: '0.86rem', marginTop: 12, textAlign: 'center' }}>
+            Nhấn ra ngoài hoặc bấm dấu (X) để đóng
+          </p>
         </div>
       )}
     </div>

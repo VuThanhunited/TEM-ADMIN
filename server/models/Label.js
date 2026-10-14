@@ -42,6 +42,11 @@ const labelSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  ownerCode: {
+    type: String,
+    trim: true,
+    default: null
+  },
   scanCount: {
     type: Number,
     default: 0
@@ -88,5 +93,6 @@ labelSchema.index({ legacyQrCode: 1 });
 labelSchema.index({ legacyTemQr: 1 });
 labelSchema.index({ activeCode: 1 });
 labelSchema.index({ smsCode: 1 });
+labelSchema.index({ ownerCode: 1 });
 
 module.exports = mongoose.model('Label', labelSchema);

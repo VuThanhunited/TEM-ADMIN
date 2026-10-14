@@ -543,7 +543,7 @@ router.post('/distributor-entry', async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
-    const { batchId, serialStart, serialEnd, distributorName, distributorAddress } = req.body;
+    const { batchId, serialStart, serialEnd, distributorName, distributorAddress, ownerCode } = req.body;
 
     if (!batchId || !serialStart || !serialEnd) {
       return res.status(400).json({ error: 'Thiếu thông tin bắt buộc: Lô tem, Serial bắt đầu, Serial kết thúc' });
@@ -570,6 +570,9 @@ router.post('/distributor-entry', async (req, res) => {
       distributorName: distributorName || user.fullName || user.username,
       distributorAddress: distributorAddress || user.enterpriseId?.address || ''
     };
+    if (ownerCode !== undefined) {
+      updateData.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+    }
 
     const result = await Label.updateMany(query, updateData);
 
@@ -656,7 +659,7 @@ router.post('/distributor-entry-single', async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
-    const { serialNumber, distributorName, distributorAddress } = req.body;
+    const { serialNumber, distributorName, distributorAddress, ownerCode } = req.body;
 
     if (!serialNumber) {
       return res.status(400).json({ error: 'Thiếu mã serial sản phẩm' });
@@ -678,6 +681,9 @@ router.post('/distributor-entry-single', async (req, res) => {
     // Update the label
     label.distributorName = distributorName || user.fullName || user.username;
     label.distributorAddress = distributorAddress || user.enterpriseId?.address || '';
+    if (ownerCode !== undefined) {
+      label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+    }
     await label.save();
 
     // Get total count for this store
@@ -691,6 +697,8 @@ router.post('/distributor-entry-single', async (req, res) => {
       message: 'Đã nhập hàng thành công.',
       serialNumber: label.serialNumber,
       distributorName: label.distributorName,
+      distributorAddress: label.distributorAddress,
+      ownerCode: label.ownerCode,
       totalForStore
     });
   } catch (error) {
@@ -740,6 +748,8 @@ router.get('/npp-scan-history', async (req, res) => {
       productName: l.productId?.name || 'Sản phẩm',
       serial: l.serialNumber,
       storeName: l.distributorName,
+      storeAddress: l.distributorAddress,
+      ownerCode: l.ownerCode || null,
       time: l.updatedAt
     }));
 

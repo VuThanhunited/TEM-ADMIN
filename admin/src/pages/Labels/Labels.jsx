@@ -48,7 +48,7 @@ export default function Labels() {
   const [exportingBatchId, setExportingBatchId] = useState(null);
   const [exportingLabels, setExportingLabels] = useState(false);
   const [showBulkMapModal, setShowBulkMapModal] = useState(false);
-  const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' });
+  const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '', ownerCode: '' });
   const [createSuccessToast, setCreateSuccessToast] = useState(null); // { batchCode, totalLabels }
 
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
@@ -532,6 +532,7 @@ export default function Labels() {
         'Mã Kích hoạt': label.activeCode || '',
         'Điểm bán': label.distributorName || '—',
         'Địa chỉ điểm bán': label.distributorAddress || '—',
+        'Mã sở hữu': label.ownerCode || '—',
         'Trạng thái': getStatusLabel(label.status),
         'Số lượt quét': label.scanCount || 0
       }));
@@ -598,11 +599,12 @@ export default function Labels() {
         serialEnd: bulkForm.serialEnd,
         productId: bulkForm.productId || null,
         distributorName: bulkForm.distributorName || null,
-        distributorAddress: bulkForm.distributorAddress || null
+        distributorAddress: bulkForm.distributorAddress || null,
+        ownerCode: bulkForm.ownerCode || null
       });
 
       setShowBulkMapModal(false);
-      setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' });
+      setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '', ownerCode: '' });
       
       // Reload lists
       if (activeTab === 'batches') loadBatches();
@@ -1318,6 +1320,7 @@ export default function Labels() {
                 <th>Lô tem</th>
                 <th>Sản phẩm</th>
                 <th>Điểm bán</th>
+                <th>Mã sở hữu</th>
                 <th>Trạng thái</th>
                 <th>Lượt quét</th>
                 <th>Hành động</th>
@@ -1325,9 +1328,9 @@ export default function Labels() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7}><div className="loading-overlay"><div className="loading-spinner"></div></div></td></tr>
+                <tr><td colSpan={8}><div className="loading-overlay"><div className="loading-spinner"></div></div></td></tr>
               ) : labels.length === 0 ? (
-                <tr><td colSpan={7}><div className="empty-state"><Tag size={40}/><h3>Chưa có tem nào</h3></div></td></tr>
+                <tr><td colSpan={8}><div className="empty-state"><Tag size={40}/><h3>Chưa có tem nào</h3></div></td></tr>
               ) : (
                 labels.map(label => (
                   <tr key={label._id}>
@@ -1335,6 +1338,7 @@ export default function Labels() {
                     <td>{label.batchId?.batchCode || '—'}</td>
                     <td>{label.productId?.name || <span className="text-muted">Chưa gắn</span>}</td>
                     <td>{label.distributorName || <span className="text-muted">—</span>}</td>
+                    <td>{label.ownerCode ? <strong style={{ color: '#059669', fontSize: '0.86rem' }}>{label.ownerCode}</strong> : <span className="text-muted">—</span>}</td>
                     <td><span className={`badge badge-dot ${getStatusBadge(label.status)}`}>{getStatusLabel(label.status)}</span></td>
                     <td>{label.scanCount || 0}</td>
                     <td>
@@ -1351,10 +1355,11 @@ export default function Labels() {
                             productId: label.productId?._id || label.productId || '',
                             distributorIdx: '',
                             distributorName: label.distributorName || '',
-                            distributorAddress: label.distributorAddress || ''
+                            distributorAddress: label.distributorAddress || '',
+                            ownerCode: label.ownerCode || ''
                           });
                           setShowBulkMapModal(true);
-                        }} title="Gắn SP/Điểm bán">
+                        }} title="Gắn SP/Điểm bán/Mã sở hữu">
                           <Link2 size={14}/>
                         </button>
                         <a href={`/scan/${label.serialNumber}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost" title="Mở link quét">
@@ -2035,6 +2040,17 @@ export default function Labels() {
                       placeholder="VD: Quận 1, TP.HCM"
                     />
                   </div>
+                </div>
+
+                <div className="input-group" style={{ marginTop: '12px' }}>
+                  <label style={{ fontWeight: 600, color: '#059669' }}>Mã sở hữu sản phẩm (Tùy chọn)</label>
+                  <input
+                    className="input"
+                    value={bulkForm.ownerCode || ''}
+                    onChange={e => setBulkForm({ ...bulkForm, ownerCode: e.target.value })}
+                    placeholder="VD: MSH-992, CUST-8839"
+                    style={{ borderColor: '#6ee7b7' }}
+                  />
                 </div>
               </div>
               <div className="modal-footer">

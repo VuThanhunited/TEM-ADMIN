@@ -72,6 +72,11 @@ export default function History() {
                   <div className="history-item-name">{item.productName || 'Sản phẩm'}</div>
                   <div className="history-item-serial">Serial: {item.serial}</div>
                   <div className="history-item-store">{item.storeName}</div>
+                  {item.ownerCode && (
+                    <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 700, marginTop: 2 }}>
+                      Mã sở hữu: {item.ownerCode}
+                    </div>
+                  )}
                   <div className="history-item-time">{formatDateTime(item.time)}</div>
                 </div>
               </div>

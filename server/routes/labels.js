@@ -842,6 +842,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
         { serialNumber: { $regex: cleanSearch, $options: 'i' } },
         { distributorName: { $regex: cleanSearch, $options: 'i' } },
         { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
+        { ownerCode: { $regex: cleanSearch, $options: 'i' } },
         { activeCode: { $regex: cleanSearch, $options: 'i' } },
         { smsCode: { $regex: cleanSearch, $options: 'i' } }
       ];
@@ -930,10 +931,14 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 // PUT /api/labels/:id/map - Map individual label to product/distributor
 router.put('/:id/map', auth, async (req, res) => {
   try {
-    const { productId, distributorName, distributorAddress } = req.body;
+    const { productId, distributorName, distributorAddress, ownerCode } = req.body;
+    const updatePayload = { productId, distributorName, distributorAddress };
+    if (ownerCode !== undefined) {
+      updatePayload.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+    }
     const label = await Label.findByIdAndUpdate(
       req.params.id,
-      { productId, distributorName, distributorAddress },
+      updatePayload,
       { new: true }
     ).populate('productId', 'name').populate('batchId', 'batchCode');
 
@@ -963,7 +968,7 @@ router.put('/:id/status', auth, async (req, res) => {
 // POST /api/labels/bulk-map - Bulk map a range of serials in a batch to a product/distributor
 router.post('/bulk-map', auth, async (req, res) => {
   try {
-    const { batchId, serialStart, serialEnd, productId, distributorName, distributorAddress } = req.body;
+    const { batchId, serialStart, serialEnd, productId, distributorName, distributorAddress, ownerCode } = req.body;
     
     if (!batchId || !serialStart || !serialEnd) {
       return res.status(400).json({ error: 'Thiếu thông tin bắt buộc (Lô tem, Serial bắt đầu, Serial kết thúc)' });
@@ -985,6 +990,9 @@ router.post('/bulk-map', auth, async (req, res) => {
     if (productId !== undefined) updateData.productId = productId || null;
     if (distributorName !== undefined) updateData.distributorName = distributorName || null;
     if (distributorAddress !== undefined) updateData.distributorAddress = distributorAddress || null;
+    if (ownerCode !== undefined) {
+      updateData.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+    }
 
     // We can also activate them automatically if a product is mapped
     if (productId) {

@@ -43,7 +43,7 @@ export default function Success() {
   const location = useLocation();
   const { logout } = useAuth();
 
-  const { scanData, serial, storeName, storeAddress, scanTime, totalForStore } = location.state || {};
+  const { scanData, serial, storeName, storeAddress, ownerCode, scanTime, totalForStore } = location.state || {};
   const product = scanData?.product;
   const label = scanData?.label;
 
@@ -94,6 +94,9 @@ export default function Success() {
             Đã nhập thêm 1 sản phẩm<br />cho điểm bán
           </p>
           <p className="success-store-name">{storeName}</p>
+          {storeAddress && (
+            <p style={{ fontSize: '0.8rem', color: '#546E7A', marginTop: 4 }}>{storeAddress}</p>
+          )}
         </div>
 
         {/* Product card */}
@@ -109,9 +112,17 @@ export default function Success() {
             <div className="success-product-info">
               <div className="success-product-name">{product.name}</div>
               <div className="success-product-code">
-                Mã hàng: <span>{product.sku || label?.serialNumber || serial}</span>
+                Mã tem: <span>{label?.serialNumber || serial}</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Mã sở hữu (nếu có) */}
+        {ownerCode && (
+          <div className="success-meta-row" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, padding: '10px 14px' }}>
+            <span className="success-meta-label" style={{ color: '#15803D', fontWeight: 700 }}>Mã sở hữu:</span>
+            <span className="success-meta-value" style={{ color: '#065F46', fontWeight: 800, fontSize: '0.95rem' }}>{ownerCode}</span>
           </div>
         )}
 
