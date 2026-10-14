@@ -1189,10 +1189,10 @@ export default function Labels() {
               <tr>
                 <th>Mã lô</th>
                 <th>Sản phẩm</th>
-                <th>Giao diện (Theme)</th>
+                {activeTab !== 'renew' && <th>Giao diện (Theme)</th>}
                 <th>Số lượng</th>
                 <th>Serial</th>
-                <th>Ngày tạo</th>
+                {activeTab !== 'renew' && <th>Ngày tạo</th>}
                 <th>Hết hạn</th>
                 <th>Trạng thái</th>
                 <th>Hành động</th>
@@ -1208,14 +1208,16 @@ export default function Labels() {
                   <tr key={batch._id}>
                     <td><span className="batch-code">{batch.batchCode}</span></td>
                     <td>{batch.productId?.name || <span className="text-muted">Chưa gắn</span>}</td>
-                    <td>
-                      <span className="badge badge-info" style={{ fontWeight: 600, fontSize: '0.75rem', padding: '4px 8px' }}>
-                        {getThemeLabel(batch.theme)}
-                      </span>
-                    </td>
+                    {activeTab !== 'renew' && (
+                      <td>
+                        <span className="badge badge-info" style={{ fontWeight: 600, fontSize: '0.75rem', padding: '4px 8px' }}>
+                          {getThemeLabel(batch.theme)}
+                        </span>
+                      </td>
+                    )}
                     <td><strong>{batch.totalLabels}</strong></td>
                     <td><span className="serial-range">{batch.serialStart} → {batch.serialEnd}</span></td>
-                    <td>{formatDate(batch.createdDate || batch.createdAt)}</td>
+                    {activeTab !== 'renew' && <td>{formatDate(batch.createdDate || batch.createdAt)}</td>}
                     <td className={new Date(batch.expiryDate) < new Date() ? 'text-danger' : ''}>{formatDate(batch.expiryDate)}</td>
                     <td>
                       <span className={`badge badge-dot ${getStatusBadge(batch.status)}`}>{getStatusLabel(batch.status)}</span>
@@ -1223,51 +1225,55 @@ export default function Labels() {
                     </td>
                     <td>
                       <div className="action-buttons">
-                        <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
-                          {batch.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
-                        </button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => { 
-                          setSelectedBatch(batch); 
-                          setMapForm({ 
-                            productId: batch.productId?._id || batch.productId || '', 
-                            theme: batch.theme || 'default', 
-                            distributorIdx: '',
-                            distributorName: '', 
-                            distributorAddress: '', 
-                            customDomain: batch.customDomain || '',
-                            serialStart: batch.serialStart || '',
-                            serialEnd: batch.serialEnd || ''
-                          }); 
-                          setShowMapModal(true); 
-                        }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
-                          <Edit size={14} className="text-primary"/>
-                        </button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => {
-                          setModalError(null);
-                          setBulkForm({
-                            batchId: batch._id,
-                            serialStart: batch.serialStart,
-                            serialEnd: batch.serialEnd,
-                            productId: batch.productId?._id || batch.productId || '',
-                            distributorIdx: '',
-                            distributorName: '',
-                            distributorAddress: ''
-                          });
-                          setShowBulkMapModal(true);
-                        }} title="Gắn Serial cho Điểm bán">
-                          <MapPin size={14} className="text-primary"/>
-                        </button>
-                        <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
-                          {exportingBatchId === batch._id ? (
-                            <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
-                          ) : (
-                            <Download size={14} className="text-success" />
-                          )}
-                        </button>
-                        {isAdmin && (
-                          <button className="btn btn-sm btn-ghost" onClick={() => handleDeleteBatch(batch)} title="Xóa lô tem">
-                            <Trash2 size={14} style={{ color: '#ef4444' }} />
-                          </button>
+                        {activeTab !== 'renew' && (
+                          <>
+                            <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
+                              {batch.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
+                            </button>
+                            <button className="btn btn-sm btn-ghost" onClick={() => {
+                              setSelectedBatch(batch);
+                              setMapForm({
+                                productId: batch.productId?._id || batch.productId || '',
+                                theme: batch.theme || 'default',
+                                distributorIdx: '',
+                                distributorName: '',
+                                distributorAddress: '',
+                                customDomain: batch.customDomain || '',
+                                serialStart: batch.serialStart || '',
+                                serialEnd: batch.serialEnd || ''
+                              });
+                              setShowMapModal(true);
+                            }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
+                              <Edit size={14} className="text-primary"/>
+                            </button>
+                            <button className="btn btn-sm btn-ghost" onClick={() => {
+                              setModalError(null);
+                              setBulkForm({
+                                batchId: batch._id,
+                                serialStart: batch.serialStart,
+                                serialEnd: batch.serialEnd,
+                                productId: batch.productId?._id || batch.productId || '',
+                                distributorIdx: '',
+                                distributorName: '',
+                                distributorAddress: ''
+                              });
+                              setShowBulkMapModal(true);
+                            }} title="Gắn Serial cho Điểm bán">
+                              <MapPin size={14} className="text-primary"/>
+                            </button>
+                            <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
+                              {exportingBatchId === batch._id ? (
+                                <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
+                              ) : (
+                                <Download size={14} className="text-success" />
+                              )}
+                            </button>
+                            {isAdmin && (
+                              <button className="btn btn-sm btn-ghost" onClick={() => handleDeleteBatch(batch)} title="Xóa lô tem">
+                                <Trash2 size={14} style={{ color: '#ef4444' }} />
+                              </button>
+                            )}
+                          </>
                         )}
                         {activeTab === 'renew' && (
                           <button
@@ -1283,7 +1289,7 @@ export default function Labels() {
                             style={{
                               background: 'linear-gradient(135deg, #10b981, #059669)',
                               color: '#fff', border: 'none', borderRadius: '7px',
-                              padding: '5px 12px', fontSize: '0.78rem', fontWeight: 700,
+                              padding: '5px 14px', fontSize: '0.82rem', fontWeight: 700,
                               display: 'flex', alignItems: 'center', gap: '5px',
                               cursor: 'pointer', whiteSpace: 'nowrap'
                             }}
@@ -1300,6 +1306,7 @@ export default function Labels() {
           </table>
         </div>
       )}
+
 
       {/* Activate Tab - Individual Labels */}
       {activeTab === 'activate' && (
