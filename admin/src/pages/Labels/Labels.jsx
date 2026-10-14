@@ -54,6 +54,11 @@ export default function Labels() {
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [nextSerialInfo, setNextSerialInfo] = useState(null);
   const [renewMonths, setRenewMonths] = useState(12);
+  const [renewMode, setRenewMode] = useState('months'); // 'months' | 'date'
+  const [renewNewDate, setRenewNewDate] = useState('');
+  const [renewFilterMode, setRenewFilterMode] = useState('expired'); // 'expired' | 'expiringSoon' | 'all'
+  const [expiredCount, setExpiredCount] = useState(0);
+  const [expiringSoonCount, setExpiringSoonCount] = useState(0);
   const [migrateForm, setMigrateForm] = useState({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: '' });
   const [mapForm, setMapForm] = useState({ 
     productId: '', 
@@ -85,6 +90,10 @@ export default function Labels() {
     tabMounted.current = true;
     if (activeTab === 'batches') loadBatches(1, curSearch.current);
     else if (activeTab === 'activate') loadLabels(1, curSearch.current);
+    else if (activeTab === 'renew') {
+      loadBatches(1, curSearch.current, { expired: 'true' });
+      loadRenewStats();
+    }
   }, [activeTab]);
 
   // Khi search thay đổi: reset về page 1 và load
@@ -198,13 +207,28 @@ export default function Labels() {
       const prodId = customFilters.productId !== undefined ? customFilters.productId : filterProduct;
       const stat = customFilters.status !== undefined ? customFilters.status : filterStatus;
       const entId = customFilters.enterpriseId !== undefined ? customFilters.enterpriseId : filterEnterprise;
-      const r = await api.getBatches({ page, search: searchTerm, productId: prodId, status: stat, enterpriseId: entId });
+      // Các param gia hạn
+      const expired = customFilters.expired !== undefined ? customFilters.expired : '';
+      const expiringSoon = customFilters.expiringSoon !== undefined ? customFilters.expiringSoon : '';
+      const r = await api.getBatches({ page, search: searchTerm, productId: prodId, status: stat, enterpriseId: entId, expired, expiringSoon });
       if (r && r.data) {
         setBatches(r.data);
         setBatchPagination(prev => ({ ...prev, ...r.pagination, page: r.pagination?.page ?? page }));
         curBatchPage.current = r.pagination?.page ?? page;
       }
     } catch (e) { console.error('[loadBatches]', e.message); } finally { setLoading(false); }
+  };
+
+  // Load thống kê số lô hết hạn / sắp hết hạn cho tab Gia hạn
+  const loadRenewStats = async () => {
+    try {
+      const [rExpired, rSoon] = await Promise.all([
+        api.getBatches({ limit: 1, page: 1, expired: 'true' }),
+        api.getBatches({ limit: 1, page: 1, expiringSoon: '30' })
+      ]);
+      setExpiredCount(rExpired?.pagination?.total ?? 0);
+      setExpiringSoonCount(rSoon?.pagination?.total ?? 0);
+    } catch (e) {}
   };
 
   const loadLabels = async (page = 1, searchTerm = curSearch.current, customFilters = {}) => {
@@ -384,10 +408,40 @@ export default function Labels() {
 
   const handleRenew = async () => {
     try {
-      await api.renewBatch(selectedBatch._id, { months: renewMonths });
+      let body;
+      if (renewMode === 'date' && renewNewDate) {
+        // Tính số tháng từ ngày hết hạn hiện tại đến ngày mới
+        const currentExpiry = selectedBatch.expiryDate && new Date(selectedBatch.expiryDate) > new Date()
+          ? new Date(selectedBatch.expiryDate) : new Date();
+        const targetDate = new Date(renewNewDate);
+        const diffMs = targetDate - currentExpiry;
+        const diffMonths = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30)));
+        body = { months: diffMonths };
+      } else {
+        body = { months: renewMonths };
+      }
+      await api.renewBatch(selectedBatch._id, body);
       setShowRenewModal(false);
-      loadBatches(curBatchPage.current, curSearch.current);
-    } catch (err) { alert(err.message); }
+      // Reload với filter hiện tại của tab renew
+      const filterMap = {
+        expired: { expired: 'true' },
+        expiringSoon: { expiringSoon: '30' },
+        all: {}
+      };
+      loadBatches(curBatchPage.current, curSearch.current, filterMap[renewFilterMode] || { expired: 'true' });
+      loadRenewStats();
+    } catch (err) { alert(err.message || 'Lỗi gia hạn lô tem'); }
+  };
+
+  // Tính ngày hết hạn mới dự kiến
+  const calcNewExpiryDate = () => {
+    if (!selectedBatch) return null;
+    if (renewMode === 'date' && renewNewDate) return new Date(renewNewDate);
+    const base = selectedBatch.expiryDate && new Date(selectedBatch.expiryDate) > new Date()
+      ? new Date(selectedBatch.expiryDate) : new Date();
+    const d = new Date(base);
+    d.setMonth(d.getMonth() + (parseInt(renewMonths) || 0));
+    return d;
   };
 
   const handleFixEncryption = async () => {
@@ -1063,6 +1117,70 @@ export default function Labels() {
         </div>
       </div>
 
+      {/* ── Renew Tab: Banner thống kê & bộ lọc ── */}
+      {activeTab === 'renew' && (
+        <div style={{ marginBottom: '20px' }}>
+          {/* Banner tổng quan */}
+          <div style={{
+            display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px'
+          }}>
+            <div style={{
+              flex: '1', minWidth: '180px',
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))',
+              border: '1px solid rgba(239,68,68,0.3)', borderRadius: '12px', padding: '16px 20px',
+              display: 'flex', alignItems: 'center', gap: '14px'
+            }}>
+              <div style={{ fontSize: '2rem' }}>⚠️</div>
+              <div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', lineHeight: 1 }}>{expiredCount}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '3px' }}>Lô đã hết hạn</div>
+              </div>
+            </div>
+            <div style={{
+              flex: '1', minWidth: '180px',
+              background: 'linear-gradient(135deg, rgba(234,179,8,0.15), rgba(234,179,8,0.05))',
+              border: '1px solid rgba(234,179,8,0.3)', borderRadius: '12px', padding: '16px 20px',
+              display: 'flex', alignItems: 'center', gap: '14px'
+            }}>
+              <div style={{ fontSize: '2rem' }}>⏰</div>
+              <div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#eab308', lineHeight: 1 }}>{expiringSoonCount}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '3px' }}>Sắp hết hạn (30 ngày)</div>
+              </div>
+            </div>
+            <div style={{
+              flex: '2', minWidth: '240px',
+              background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)',
+              borderRadius: '12px', padding: '14px 20px',
+              display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'var(--color-text-muted)'
+            }}>
+              <span style={{ fontSize: '1.4rem' }}>💡</span>
+              <span>Chọn lô tem hết hạn và nhấn nút <strong style={{ color: 'var(--color-primary)' }}>Gia hạn</strong> để gia hạn thêm thời gian. Lô tem sẽ tự động chuyển về trạng thái <strong>Hoạt động</strong>.</span>
+            </div>
+          </div>
+          {/* Bộ lọc tab renew */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {[['expired', '🔴 Đã hết hạn'], ['expiringSoon', '🟡 Sắp hết hạn (30 ngày)'], ['all', '📋 Tất cả lô tem']].map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => {
+                  setRenewFilterMode(mode);
+                  const filterMap = { expired: { expired: 'true' }, expiringSoon: { expiringSoon: '30' }, all: {} };
+                  loadBatches(1, curSearch.current, filterMap[mode] || {});
+                }}
+                style={{
+                  padding: '7px 16px', borderRadius: '8px', fontSize: '0.83rem', fontWeight: 600, cursor: 'pointer',
+                  border: renewFilterMode === mode ? '2px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                  background: renewFilterMode === mode ? 'rgba(99,102,241,0.18)' : 'transparent',
+                  color: renewFilterMode === mode ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  transition: 'all 0.2s'
+                }}
+              >{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Batches Tab */}
       {(activeTab === 'batches' || activeTab === 'renew') && (
         <div className="table-container">
@@ -1152,8 +1270,25 @@ export default function Labels() {
                           </button>
                         )}
                         {activeTab === 'renew' && (
-                          <button className="btn btn-sm btn-ghost" onClick={() => { setSelectedBatch(batch); setShowRenewModal(true); }} title="Gia hạn">
-                            <RefreshCw size={14}/>
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => {
+                              setSelectedBatch(batch);
+                              setRenewMode('months');
+                              setRenewMonths(12);
+                              setRenewNewDate('');
+                              setShowRenewModal(true);
+                            }}
+                            title="Gia hạn lô tem này"
+                            style={{
+                              background: 'linear-gradient(135deg, #10b981, #059669)',
+                              color: '#fff', border: 'none', borderRadius: '7px',
+                              padding: '5px 12px', fontSize: '0.78rem', fontWeight: 700,
+                              display: 'flex', alignItems: 'center', gap: '5px',
+                              cursor: 'pointer', whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <RefreshCw size={13}/> Gia hạn
                           </button>
                         )}
                       </div>
@@ -1537,28 +1672,140 @@ export default function Labels() {
       )}
 
       {/* Renew Modal */}
-      {showRenewModal && selectedBatch && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowRenewModal(false)}>
-          <div className="modal" style={{maxWidth: 420}}>
-            <div className="modal-header">
-              <h3 className="modal-title">Gia hạn lô tem</h3>
-              <button className="btn-icon" onClick={() => setShowRenewModal(false)}><X size={20}/></button>
-            </div>
-            <div className="modal-body">
-              <div className="renew-info">
-                <p><strong>Lô tem:</strong> {selectedBatch.batchCode}</p>
-                <p><strong>Hạn hiện tại:</strong> {formatDate(selectedBatch.expiryDate)}</p>
-                <p><strong>Số lượng:</strong> {selectedBatch.totalLabels} tem</p>
+      {showRenewModal && selectedBatch && (() => {
+        const newExpiry = calcNewExpiryDate();
+        const isExpired = selectedBatch.expiryDate && new Date(selectedBatch.expiryDate) < new Date();
+        const todayStr = new Date().toISOString().split('T')[0];
+        return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowRenewModal(false)}>
+            <div className="modal" style={{ maxWidth: 480 }}>
+              <div className="modal-header">
+                <h3 className="modal-title">🔄 Gia hạn lô tem</h3>
+                <button className="btn-icon" onClick={() => setShowRenewModal(false)}><X size={20}/></button>
               </div>
-              <div className="input-group"><label>Gia hạn thêm (tháng)</label><input className="input" type="number" min={1} value={renewMonths} onChange={e => setRenewMonths(parseInt(e.target.value) || 0)} onFocus={e => e.target.select()} /></div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setShowRenewModal(false)}>Hủy</button>
-              <button className="btn btn-success" onClick={handleRenew}><RefreshCw size={16}/> Gia hạn</button>
+              <div className="modal-body">
+                {/* Thông tin lô tem */}
+                <div style={{
+                  background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)',
+                  borderRadius: '10px', padding: '14px 16px', marginBottom: '20px'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.875rem' }}>
+                    <div><span style={{ color: 'var(--color-text-muted)' }}>Mã lô: </span><strong>{selectedBatch.batchCode}</strong></div>
+                    <div><span style={{ color: 'var(--color-text-muted)' }}>Số lượng: </span><strong>{selectedBatch.totalLabels} tem</strong></div>
+                    <div>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Hạn hiện tại: </span>
+                      <strong style={{ color: isExpired ? '#ef4444' : 'inherit' }}>
+                        {formatDate(selectedBatch.expiryDate)} {isExpired ? '⚠️ Đã hết hạn' : ''}
+                      </strong>
+                    </div>
+                    <div><span style={{ color: 'var(--color-text-muted)' }}>Sản phẩm: </span><strong>{selectedBatch.productId?.name || '—'}</strong></div>
+                  </div>
+                </div>
+
+                {/* Chọn kiểu gia hạn */}
+                <div className="input-group" style={{ marginBottom: '16px' }}>
+                  <label>Hình thức gia hạn</label>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setRenewMode('months')}
+                      style={{
+                        flex: 1, padding: '9px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600,
+                        border: renewMode === 'months' ? '2px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                        background: renewMode === 'months' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                        color: renewMode === 'months' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        cursor: 'pointer'
+                      }}
+                    >📅 Theo tháng</button>
+                    <button
+                      type="button"
+                      onClick={() => setRenewMode('date')}
+                      style={{
+                        flex: 1, padding: '9px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600,
+                        border: renewMode === 'date' ? '2px solid var(--color-primary)' : '1px solid rgba(255,255,255,0.1)',
+                        background: renewMode === 'date' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                        color: renewMode === 'date' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        cursor: 'pointer'
+                      }}
+                    >🗓️ Chọn ngày cụ thể</button>
+                  </div>
+                </div>
+
+                {/* Input theo tháng hoặc ngày */}
+                {renewMode === 'months' ? (
+                  <div className="input-group">
+                    <label>Gia hạn thêm (tháng)</label>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                      {[3, 6, 12, 24].map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setRenewMonths(m)}
+                          style={{
+                            padding: '6px 14px', borderRadius: '7px', fontSize: '0.82rem', fontWeight: 700,
+                            border: renewMonths === m ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.1)',
+                            background: renewMonths === m ? 'rgba(16,185,129,0.15)' : 'transparent',
+                            color: renewMonths === m ? '#10b981' : 'var(--color-text-muted)', cursor: 'pointer'
+                          }}
+                        >{m} tháng</button>
+                      ))}
+                      <input
+                        className="input"
+                        type="number" min={1} max={120}
+                        value={renewMonths}
+                        onChange={e => setRenewMonths(parseInt(e.target.value) || 1)}
+                        onFocus={e => e.target.select()}
+                        style={{ width: '90px', textAlign: 'center' }}
+                        placeholder="Tháng"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="input-group">
+                    <label>Ngày hết hạn mới</label>
+                    <input
+                      className="input"
+                      type="date"
+                      min={todayStr}
+                      value={renewNewDate}
+                      onChange={e => setRenewNewDate(e.target.value)}
+                      style={{ marginTop: '6px' }}
+                    />
+                  </div>
+                )}
+
+                {/* Preview ngày hết hạn mới */}
+                {newExpiry && (
+                  <div style={{
+                    marginTop: '16px', padding: '12px 16px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.05))',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                    display: 'flex', alignItems: 'center', gap: '10px'
+                  }}>
+                    <span style={{ fontSize: '1.3rem' }}>✅</span>
+                    <div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>Ngày hết hạn mới (dự kiến)</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#10b981' }}>
+                        {newExpiry.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={() => setShowRenewModal(false)}>Hủy</button>
+                <button
+                  className="btn btn-success"
+                  onClick={handleRenew}
+                  disabled={renewMode === 'date' && !renewNewDate}
+                >
+                  <RefreshCw size={16}/> Xác nhận gia hạn
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Migrate Modal */}
       {showMigrateModal && (

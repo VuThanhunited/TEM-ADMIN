@@ -233,13 +233,25 @@ router.delete('/cleanup-orphans', auth, requireRole('ADMIN'), async (req, res) =
 // Allow reading batches, but only ADMIN creates them
 router.get('/batches', auth, requireOwnership, async (req, res) => {
   try {
-    const { page = 1, limit = 20, status = '', search = '', productId = '', enterpriseId = '' } = req.query;
+    const { page = 1, limit = 20, status = '', search = '', productId = '', enterpriseId = '', expired = '', expiringSoon = '' } = req.query;
 
     // Bắt đầu từ một object mới để tránh mutate req.enterpriseFilter
     const query = Object.assign({}, req.enterpriseFilter || {});
     if (status) query.status = status;
     if (productId) query.productId = productId;
     if (enterpriseId && req.user.role === 'ADMIN') query.enterpriseId = enterpriseId;
+
+    // Filter: chỉ lấy lô đã hết hạn
+    if (expired === 'true') {
+      query.expiryDate = { $lt: new Date() };
+    }
+    // Filter: lấy lô hết hạn HOẶC sắp hết hạn trong N ngày tới
+    if (expiringSoon) {
+      const days = parseInt(expiringSoon) || 30;
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + days);
+      query.expiryDate = { $lt: futureDate };
+    }
 
     if (search) {
       const cleanSearch = String(search).trim();
