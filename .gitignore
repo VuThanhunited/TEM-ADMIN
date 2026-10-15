@@ -19,3 +19,7 @@ server/backups/*.json
 GEMINI.md
 AGENTS.md
 .agents/
+
+# Local embedded MongoDB cache
+mongodb_data/
+server/mongodb_data/

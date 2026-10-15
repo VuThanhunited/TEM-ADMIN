@@ -129,97 +129,110 @@ const MONGOOSE_OPTIONS = {
   family: 4,                        // Bắt buộc dùng IPv4, tránh IPv6 lookup timeout
 };
 
+let mongoServerInstance = null;
+
+async function startServerApp() {
+  if (app.listening) return;
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT} | ENV: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🟢 MongoDB: Connected (${mongoose.connection.readyState === 1 ? 'OK' : 'Pending'})`);
+
+    // Auto-restore nếu DB trống – chạy background sau 1s không block request
+    setTimeout(async () => {
+      try {
+        const runAutoRestore = require('./scripts/restore_backup');
+        const User = require('./models/User');
+        const count = await User.countDocuments();
+        if (count === 0) {
+          console.log('⚠️ DB trống – đang khôi phục dữ liệu từ backup...');
+          runAutoRestore().then(ok => {
+            if (!ok) seed(false);
+          }).catch(e => console.error('⚠️ Restore error:', e.message));
+        } else {
+          console.log(`✅ DB có ${count} users – không cần khôi phục.`);
+        }
+      } catch (e) {
+        console.error('⚠️ Restore check error:', e.message);
+      }
+    }, 1000);
+
+    // Mongoose connection health monitoring
+    mongoose.connection.on('disconnected', () =>
+      console.warn('⚠️ [MongoDB] Mất kết nối – Mongoose sẽ tự reconnect...')
+    );
+    mongoose.connection.on('reconnected', () =>
+      console.log('✅ [MongoDB] Đã kết nối lại thành công')
+    );
+    mongoose.connection.on('error', err =>
+      console.error('❌ [MongoDB] Lỗi:', err.message)
+    );
+
+    // Auto backup mỗi 24h
+    try {
+      const runAutoBackup = require('./scripts/auto_backup');
+      setTimeout(() => runAutoBackup(), 2 * 60 * 1000);        // 2 min sau khi start
+      setInterval(() => runAutoBackup(), 24 * 60 * 60 * 1000); // mỗi 24h
+    } catch (e) {
+      console.error('⚠️ Không thể lập lịch auto backup:', e.message);
+    }
+  });
+}
+
 async function connectMongo(attempt = 1) {
-  const MAX_ATTEMPTS = 5;
-  const DELAY_MS = Math.min(3000 * attempt, 15000); // backoff: 3s, 6s, 9s, 12s, 15s
+  const MAX_ATTEMPTS = 2;
 
   try {
-    console.log(`📡 [MongoDB] Kết nối lần ${attempt}... (${MONGO_URI.replace(/\/\/.*@/, '//<credentials>@')})`);
-    await mongoose.connect(MONGO_URI, MONGOOSE_OPTIONS);
-    console.log('✅ [MongoDB] Kết nối thành công!');
-
-    // Khởi động server sau khi DB sẵn sàng
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT} | ENV: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🟢 MongoDB: Connected`);
-
-      // Auto-restore nếu DB trống – chạy background sau 3s không block request
-      setTimeout(async () => {
-        try {
-          const runAutoRestore = require('./scripts/restore_backup');
-          const User = require('./models/User');
-          const count = await User.countDocuments();
-          if (count === 0) {
-            console.log('⚠️ DB trống – đang khôi phục dữ liệu từ backup...');
-            runAutoRestore().then(ok => {
-              if (!ok) seed(false);
-            }).catch(e => console.error('⚠️ Restore error:', e.message));
-          } else {
-            console.log(`✅ DB có ${count} users – không cần khôi phục.`);
-          }
-        } catch (e) {
-          console.error('⚠️ Restore check error:', e.message);
-        }
-      }, 3000);
-
-      // Mongoose connection health monitoring
-      mongoose.connection.on('disconnected', () =>
-        console.warn('⚠️ [MongoDB] Mất kết nối – Mongoose sẽ tự reconnect...')
-      );
-      mongoose.connection.on('reconnected', () =>
-        console.log('✅ [MongoDB] Đã kết nối lại thành công')
-      );
-      mongoose.connection.on('error', err =>
-        console.error('❌ [MongoDB] Lỗi:', err.message)
-      );
-
-      // Auto backup mỗi 24h
-      try {
-        const runAutoBackup = require('./scripts/auto_backup');
-        setTimeout(() => runAutoBackup(), 2 * 60 * 1000);        // 2 min sau khi start
-        setInterval(() => runAutoBackup(), 24 * 60 * 60 * 1000); // mỗi 24h
-      } catch (e) {
-        console.error('⚠️ Không thể lập lịch auto backup:', e.message);
-      }
-
-      // ─── Keep-Alive self-ping (tránh Render free tier sleep) ───────────────
-      // Render free tier ngủ sau 15 phút không có request → self-ping mỗi 14 phút
-      if (process.env.NODE_ENV === 'production') {
-        const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-        const KEEP_ALIVE_INTERVAL = 14 * 60 * 1000; // 14 phút
-        setInterval(async () => {
-          try {
-            const http = require('http');
-            const https = require('https');
-            const lib = SELF_URL.startsWith('https') ? https : http;
-            lib.get(`${SELF_URL}/api/ping`, (res) => {
-              console.log(`🏓 [Keep-Alive] Ping OK – status ${res.statusCode}`);
-            }).on('error', (e) => {
-              console.warn(`⚠️ [Keep-Alive] Ping failed: ${e.message}`);
-            });
-          } catch (e) {
-            console.warn('⚠️ [Keep-Alive] Error:', e.message);
-          }
-        }, KEEP_ALIVE_INTERVAL);
-        console.log(`🏓 [Keep-Alive] Self-ping mỗi 14 phút để tránh Render sleep`);
-      }
-    });
-
+    console.log(`📡 [MongoDB] Đang kết nối... (${MONGO_URI.replace(/\/\/.*@/, '//<credentials>@')})`);
+    await mongoose.connect(MONGO_URI, { ...MONGOOSE_OPTIONS, serverSelectionTimeoutMS: 5000 });
+    console.log('✅ [MongoDB] Kết nối Atlas thành công!');
+    await startServerApp();
   } catch (err) {
-    console.error(`❌ [MongoDB] Kết nối thất bại lần ${attempt}: ${err.message}`);
+    console.warn(`⚠️ [MongoDB] Không thể kết nối Atlas (${err.message.slice(0, 100)}...)`);
 
     if (attempt < MAX_ATTEMPTS) {
-      console.log(`🔄 Thử lại sau ${DELAY_MS / 1000}s...`);
-      setTimeout(() => connectMongo(attempt + 1), DELAY_MS);
-    } else {
-      // Sau MAX_ATTEMPTS lần thất bại → exit để PM2/Supervisor restart sạch
-      console.error('❌ [MongoDB] Không thể kết nối sau ' + MAX_ATTEMPTS + ' lần thử. Thoát process.');
+      console.log(`🔄 Thử lại kết nối Atlas lần ${attempt + 1}...`);
+      return connectMongo(attempt + 1);
+    }
+
+    // Fallback: Khởi động MongoMemoryServer dự phòng cho môi trường dev / offline
+    try {
+      console.log('🚀 [MongoDB] Đang khởi động MongoMemoryServer dự phòng...');
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const path = require('path');
+      const fs = require('fs');
+      const dbPath = path.join(__dirname, 'mongodb_data');
+      if (!fs.existsSync(dbPath)) fs.mkdirSync(dbPath, { recursive: true });
+
+      mongoServerInstance = await MongoMemoryServer.create({
+        instance: { dbPath, storageEngine: 'wiredTiger' }
+      });
+      const localUri = mongoServerInstance.getUri();
+      await mongoose.connect(localUri);
+      console.log('✅ [MongoDB] Đã kết nối MongoMemoryServer thành công!');
+      await startServerApp();
+    } catch (fallbackErr) {
+      console.error('❌ [MongoDB] Cả kết nối Atlas và MongoMemoryServer đều thất bại:', fallbackErr.message);
       process.exit(1);
     }
   }
 }
 
 connectMongo();
+
+// Dọn dẹp mongoServer khi tắt process
+process.on('SIGINT', async () => {
+  if (mongoServerInstance) {
+    await mongoServerInstance.stop();
+  }
+  process.exit(0);
+});
+process.on('SIGTERM', async () => {
+  if (mongoServerInstance) {
+    await mongoServerInstance.stop();
+  }
+  process.exit(0);
+});
 
 // Process-level error handlers - giữ server không crash silent
 process.on('uncaughtException', err =>

@@ -1,8 +1,10 @@
-const API_BASE =
-  typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL
+const isLocal = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const API_BASE = isLocal
+  ? 'http://localhost:5000/api'
+  : (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
     ? import.meta.env.VITE_API_URL
-    : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:5000/api'
     : '/api';
 
 class UserApiService {
