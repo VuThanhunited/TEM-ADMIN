@@ -8,7 +8,7 @@ import {
   Headphones, Gift, Lock, LayoutGrid, Check, Activity, Shield, Flame, Eye,
   Wrench, FileText, Scan, Handshake, ShoppingBag, Ribbon,
   Pill, Stethoscope, ShieldAlert, FileCheck, Sprout, Utensils, Heart, Sparkle,
-  BookOpen, AlertCircle
+  BookOpen, AlertCircle, UserCheck, User
 } from 'lucide-react';
 import { useDomain } from '../../contexts/DomainContext';
 import './ProductInfo.css';
@@ -1228,6 +1228,50 @@ export default function ProductInfo() {
   );
 
   // =========================================================================
+  // KHỐI CHUNG: THÔNG TIN KHÁCH HÀNG SỞ HỮU SẢN PHẨM (NPP nhập khi kích hoạt tem)
+  // =========================================================================
+  const ownerInfo = label?.ownerInfo;
+  const hasOwnerInfo = Boolean(ownerInfo?.activatedAt && ownerInfo?.name);
+
+  const renderOwnerInfoCard = () => {
+    if (!hasOwnerInfo) return null;
+    return (
+      <div className="product-info-enterprise product-info-owner-card">
+        <div className="product-info-enterprise-title owner-card-title">
+          <UserCheck size={16} />
+          <span>Thông tin KH sở hữu sản phẩm</span>
+        </div>
+        <div className="owner-card-list">
+          <div className="owner-card-row">
+            <User size={15} className="owner-card-icon" />
+            <span className="owner-card-label">Tên NPP / cá nhân:</span>
+            <strong className="owner-card-value">{ownerInfo.name}</strong>
+          </div>
+          {ownerInfo.address && (
+            <div className="owner-card-row">
+              <MapPin size={15} className="owner-card-icon" />
+              <span className="owner-card-label">Địa chỉ:</span>
+              <span className="owner-card-value">{ownerInfo.address}</span>
+            </div>
+          )}
+          {ownerInfo.phone && (
+            <div className="owner-card-row">
+              <Phone size={15} className="owner-card-icon" />
+              <span className="owner-card-label">Số ĐT liên hệ:</span>
+              <span className="owner-card-value">{ownerInfo.phone}</span>
+            </div>
+          )}
+        </div>
+        <div className="owner-card-serial">
+          <ShieldCheck size={18} />
+          <span>Serial đã được kích hoạt:</span>
+          <strong>{ownerInfo.activatedSerial || label?.serialNumber}</strong>
+        </div>
+      </div>
+    );
+  };
+
+  // =========================================================================
   // 6. TEM XÁC THỰC TIÊU CHUẨN (Default Layout)
   // =========================================================================
   const renderDefaultView = () => {
@@ -1547,6 +1591,9 @@ export default function ProductInfo() {
             </div>
           ) : null}
         </div>
+
+        {/* KHỐI 4: THÔNG TIN KH SỞ HỮU SẢN PHẨM */}
+        {renderOwnerInfoCard()}
       </div>
     );
   };
@@ -1575,6 +1622,13 @@ export default function ProductInfo() {
       {activeTheme === 'cosmetics' && renderCosmeticsView()}
       {activeTheme === 'ocop' && renderOcopView()}
       {activeTheme === 'default' && renderDefaultView()}
+
+      {/* Thông tin KH sở hữu cho các theme ngành hàng (default view đã tự hiển thị) */}
+      {activeTheme !== 'default' && hasOwnerInfo && (
+        <div className="product-info-body owner-card-standalone">
+          {renderOwnerInfoCard()}
+        </div>
+      )}
 
       {/* Modals Popup */}
       {activeModal && (

@@ -14,6 +14,30 @@ const Namecard = require('../models/Namecard');
 // URL hệ thống chính – dùng làm fallback khi batch không có customDomain
 const ADMIN_URL = process.env.USER_PAGE_URL || 'https://www.giaiphapqrcode.vn';
 
+// Helper: escape ký tự đặc biệt trước khi đưa input vào RegExp
+const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Helper: che bớt số điện thoại khi trả ra API công khai (VD: 0987***336)
+const maskPhone = (phone) => {
+  const s = String(phone || '').trim();
+  if (!s) return s;
+  if (s.length < 7) return s.replace(/.(?=.{2})/g, '*');
+  return `${s.slice(0, 4)}***${s.slice(-3)}`;
+};
+
+// Helper: chuẩn hóa serial để đối chiếu (bỏ khoảng trắng, ký tự phân cách, in hoa)
+const normalizeSerial = (s) => String(s || '').replace(/[\s\-_.]/g, '').toUpperCase();
+
+// Helper: serial NPP nhập có khớp với serial của tem không
+// Chấp nhận nhập đầy đủ hoặc phần đuôi (VD tem 100000004 ↔ nhập 00000004), tối thiểu 6 ký tự
+const isSerialMatch = (input, labelSerial) => {
+  const a = normalizeSerial(input);
+  const b = normalizeSerial(labelSerial);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return a.length >= Math.min(6, b.length) && b.endsWith(a);
+};
+
 // Helper: Resolve & normalize manufacturer for Product (từ Enterprise hoặc User NSX)
 async function resolveProductManufacturer(product) {
   if (!product) return product;
@@ -83,6 +107,8 @@ router.get('/scan/:serial', async (req, res) => {
   try {
     const { serial } = req.params;
     const cleanSerial = String(serial).trim();
+    // noCount=1: chỉ lấy dữ liệu (form NPP / sau khi lưu), không tính thêm lượt quét
+    const skipCount = req.query.noCount === '1';
 
     // Find the label by qrCode, serialNumber, legacy QR, legacy TEMQR suffix, activeCode, or smsCode
     let label = await Label.findOne({
@@ -274,37 +300,39 @@ router.get('/scan/:serial', async (req, res) => {
     const isFirstScan = !label.lastScannedAt;
     const firstScanTime = label.lastScannedAt || new Date();
 
-    label.scanCount = (label.scanCount || 0) + 1;
-    label.status = 'SCANNED';
-    label.lastScannedAt = new Date();
-    await label.save();
+    if (!skipCount) {
+      label.scanCount = (label.scanCount || 0) + 1;
+      label.status = 'SCANNED';
+      label.lastScannedAt = new Date();
+      await label.save();
 
-    batch.scannedCount = (batch.scannedCount || 0) + 1;
-    if (batch.status === 'ACTIVE' && batch.activatedCount === 0) {
-      batch.activatedCount = 1;
-    }
-    await batch.save();
+      batch.scannedCount = (batch.scannedCount || 0) + 1;
+      if (batch.status === 'ACTIVE' && batch.activatedCount === 0) {
+        batch.activatedCount = 1;
+      }
+      await batch.save();
 
-    // Create ScanLog entry – bọc try/catch để không crash toàn bộ request nếu log lỗi
-    try {
-      await ScanLog.create({
-        labelId: label._id,
-        enterpriseId: enterprise._id,
-        productId: label.productId?._id,
-        serialNumber: label.serialNumber,
-        location: {
-          lat: cityCoord.lat + (Math.random() - 0.5) * 0.1,
-          lng: cityCoord.lng + (Math.random() - 0.5) * 0.1,
-          city: selectedCity,
-          country: 'Vietnam'
-        },
-        ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
-        deviceType,
-        scannedAt: new Date()
-      });
-    } catch (logErr) {
-      // Log lỗi nhưng KHÔNG abort response – scan data vẫn phải trả về
-      console.error('ScanLog create error (non-fatal):', logErr.message);
+      // Create ScanLog entry – bọc try/catch để không crash toàn bộ request nếu log lỗi
+      try {
+        await ScanLog.create({
+          labelId: label._id,
+          enterpriseId: enterprise._id,
+          productId: label.productId?._id,
+          serialNumber: label.serialNumber,
+          location: {
+            lat: cityCoord.lat + (Math.random() - 0.5) * 0.1,
+            lng: cityCoord.lng + (Math.random() - 0.5) * 0.1,
+            city: selectedCity,
+            country: 'Vietnam'
+          },
+          ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+          deviceType,
+          scannedAt: new Date()
+        });
+      } catch (logErr) {
+        // Log lỗi nhưng KHÔNG abort response – scan data vẫn phải trả về
+        console.error('ScanLog create error (non-fatal):', logErr.message);
+      }
     }
 
     // Lấy TẤT CẢ sản phẩm của cùng NSX (không giới hạn số lượng)
@@ -384,8 +412,14 @@ router.get('/scan/:serial', async (req, res) => {
       ? template.showRelatedProducts
       : (enterprise?.displayConfig?.showRelatedProducts !== false);
 
+    // Che bớt SĐT khách hàng sở hữu – trang thông tin SP là công khai
+    const labelOut = label.toJSON();
+    if (labelOut.ownerInfo?.phone) {
+      labelOut.ownerInfo.phone = maskPhone(labelOut.ownerInfo.phone);
+    }
+
     res.json({
-      label,
+      label: labelOut,
       product: label.productId,
       enterprise,
       template,
@@ -659,23 +693,63 @@ router.post('/distributor-entry-single', async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
-    const { serialNumber, distributorName, distributorAddress, ownerCode } = req.body;
+    const {
+      serialNumber, distributorName, distributorAddress, ownerCode,
+      ownerName, ownerAddress, ownerPhone, activatedSerial
+    } = req.body;
 
-    if (!serialNumber) {
+    if (!serialNumber || typeof serialNumber !== 'string') {
       return res.status(400).json({ error: 'Thiếu mã serial sản phẩm' });
     }
+    const cleanCode = serialNumber.trim();
 
-    // Find the label
+    // Find the label – QR in trên tem chứa qrCode (mã bí mật), nên phải tra cả qrCode
     const label = await Label.findOne({
       $or: [
-        { serialNumber },
-        { legacyQrCode: { $regex: new RegExp(serialNumber + '$', 'i') } },
-        { activeCode: serialNumber }
+        { serialNumber: cleanCode },
+        { qrCode: cleanCode },
+        { legacyQrCode: { $regex: new RegExp(escapeRegex(cleanCode) + '$', 'i') } },
+        { activeCode: cleanCode }
       ]
     });
 
     if (!label) {
       return res.status(404).json({ error: 'Không tìm thấy tem nhãn với serial này' });
+    }
+
+    // Bổ sung thông tin khách hàng sở hữu (chỉ khi form gửi các trường này)
+    const isOwnerUpdate = ownerName !== undefined || ownerPhone !== undefined || activatedSerial !== undefined;
+    if (isOwnerUpdate) {
+      const name = typeof ownerName === 'string' ? ownerName.trim() : '';
+      const address = typeof ownerAddress === 'string' ? ownerAddress.trim() : '';
+      const phone = typeof ownerPhone === 'string' ? ownerPhone.replace(/[\s.\-]/g, '') : '';
+      const inputSerial = typeof activatedSerial === 'string' ? activatedSerial.trim() : '';
+
+      if (!name) return res.status(400).json({ error: 'Vui lòng nhập tên NPP hoặc cá nhân đã mua sản phẩm' });
+      if (name.length > 200) return res.status(400).json({ error: 'Tên quá dài (tối đa 200 ký tự)' });
+      if (!address) return res.status(400).json({ error: 'Vui lòng nhập địa chỉ' });
+      if (address.length > 500) return res.status(400).json({ error: 'Địa chỉ quá dài (tối đa 500 ký tự)' });
+      if (!/^(\+84|84|0)\d{9,10}$/.test(phone)) {
+        return res.status(400).json({ error: 'Số điện thoại không hợp lệ' });
+      }
+      if (!inputSerial) return res.status(400).json({ error: 'Vui lòng nhập số serial có trên tem' });
+      if (!isSerialMatch(inputSerial, label.serialNumber)) {
+        return res.status(400).json({ error: 'Số serial không khớp với tem vừa quét. Vui lòng kiểm tra lại số in trên tem.' });
+      }
+
+      // Tem đã kích hoạt: NPP không được ghi đè (chỉ NSX được sửa)
+      if (label.ownerInfo?.activatedAt && decoded.role === 'NPP') {
+        return res.status(409).json({ error: 'Tem này đã được kích hoạt thông tin khách hàng sở hữu trước đó. Liên hệ Nhà sản xuất nếu cần chỉnh sửa.' });
+      }
+
+      label.ownerInfo = {
+        name,
+        address,
+        phone,
+        activatedSerial: inputSerial,
+        activatedAt: new Date(),
+        activatedBy: user._id
+      };
     }
 
     // Update the label
@@ -694,8 +768,9 @@ router.post('/distributor-entry-single', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Đã nhập hàng thành công.',
+      message: isOwnerUpdate ? 'Đã kích hoạt thông tin khách hàng sở hữu.' : 'Đã nhập hàng thành công.',
       serialNumber: label.serialNumber,
+      qrCode: label.qrCode,
       distributorName: label.distributorName,
       distributorAddress: label.distributorAddress,
       ownerCode: label.ownerCode,

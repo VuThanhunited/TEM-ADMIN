@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   // Giải mã JWT để lấy role tạm thời (không cần verify, chỉ đọc payload)
   const parseJwtPayload = (token) => {
     try {
-      const payload = token.split('.')[1];
+      const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
       return JSON.parse(atob(payload));
     } catch {
       return null;
@@ -19,6 +19,25 @@ export function AuthProvider({ children }) {
   };
 
   const loadUser = useCallback(async () => {
+    // Nhận token truyền qua URL (?adminToken=...) từ user app ở mọi route,
+    // tránh việc NPP bị đá về trang đăng nhập và phải đăng nhập lần 2
+    try {
+      const url = new URL(window.location.href);
+      const urlToken = url.searchParams.get('adminToken');
+      if (urlToken) {
+        if (localStorage.getItem('tem_token') !== urlToken) {
+          localStorage.removeItem('tem_user'); // cache của phiên cũ
+        }
+        localStorage.setItem('tem_token', urlToken);
+        if (url.pathname !== '/login') {
+          url.searchParams.delete('adminToken');
+          window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+        }
+      }
+    } catch {
+      // URL không hợp lệ – bỏ qua
+    }
+
     const token = localStorage.getItem('tem_token');
     if (!token) {
       setLoading(false);
@@ -66,6 +85,9 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('npp_scan_token');
         localStorage.removeItem('npp_scan_user');
         setUser(null);
+      } else if (!cachedUser && payload?.userId) {
+        // Lỗi mạng / cold start và chưa có cache → dựng user tạm từ JWT để không bị đá về login
+        setUser({ _id: payload.userId, role: payload.role, fullName: '', username: '' });
       }
       // Nếu là lỗi mạng → giữ user từ cache, server sẽ được retry sau
     } finally {

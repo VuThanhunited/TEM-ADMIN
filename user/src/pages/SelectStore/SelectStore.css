@@ -454,3 +454,149 @@
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18) !important;
 }
 
+/* ==========================================
+   Form "Bổ sung thông tin KH sở hữu"
+   ========================================== */
+.owner-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.owner-form-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1565C0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #E0E7EF;
+}
+
+.owner-field-index {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #1565C0;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.owner-serial-input {
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.owner-field-help {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #78909C;
+}
+
+.owner-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 16px 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.owner-alert svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.owner-alert--error {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+}
+
+.owner-alert--warning {
+  margin-top: 14px;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+}
+
+.owner-activated-box {
+  margin: 14px 16px 0;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  border: 1.5px solid #93C5FD;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.owner-activated-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #1E40AF;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.owner-activated-row {
+  font-size: 0.86rem;
+  color: #1F2937;
+}
+
+.owner-activated-row span {
+  color: #64748B;
+}
+
+.owner-activated-note {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: #1E3A8A;
+  font-style: italic;
+}
+
+.owner-secondary-btn {
+  margin-top: 8px;
+  padding: 11px 14px;
+  background: #fff;
+  color: #1565C0;
+  border: 1.5px solid #1565C0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.owner-secondary-btn:hover {
+  background: #EFF6FF;
+}
+
+.owner-state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  color: #546E7A;
+}
+
+.owner-state-icon {
+  color: #EF4444;
+}
+

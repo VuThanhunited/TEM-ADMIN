@@ -58,16 +58,15 @@ export default function ScanChoice() {
   };
 
   const handleNppEntry = () => {
-    if (!isLoggedIn || user?.role !== 'NPP') {
+    // Form bổ sung thông tin KH sở hữu – luôn mang theo mã tem trên URL để không phải quét lại
+    const target = `/select-store?code=${encodeURIComponent(code)}`;
+    if (!isLoggedIn || !['NPP', 'NSX'].includes(user?.role)) {
       // Save intended destination and redirect to login
-      sessionStorage.setItem('npp_redirect_after_login', JSON.stringify({
-        path: '/select-store',
-        state: { scanData, serial: code }
-      }));
-      navigate('/npp/login');
+      sessionStorage.setItem('npp_redirect_after_login', JSON.stringify({ path: target }));
+      navigate('/login?tab=npp');
     } else {
-      // Already logged in, go to select store
-      navigate('/select-store', {
+      // Already logged in, go to owner info form
+      navigate(target, {
         state: { scanData, serial: code }
       });
     }
@@ -168,15 +167,15 @@ export default function ScanChoice() {
                 <ChevronRight size={20} className="scan-choice-card-arrow" />
               </div>
 
-              {/* Option 2: NPP distribution entry */}
+              {/* Option 2: NPP – bổ sung thông tin khách hàng sở hữu */}
               <div className="scan-choice-card" onClick={handleNppEntry}>
                 <div className="scan-choice-card-icon scan-choice-card-icon--npp">
                   <Store size={24} />
                 </div>
                 <div className="scan-choice-card-body">
-                  <div className="scan-choice-card-title">Nhập hàng (Nhà phân phối)</div>
+                  <div className="scan-choice-card-title">Bổ sung thông tin KH sở hữu</div>
                   <div className="scan-choice-card-desc">
-                    Ghi nhận sản phẩm nhập vào điểm bán hàng của bạn
+                    Dành cho Nhà phân phối: ghi nhận đại lý / khách hàng đã mua sản phẩm này
                   </div>
                   <span className="scan-choice-card-badge scan-choice-card-badge--npp">
                     Yêu cầu đăng nhập NPP

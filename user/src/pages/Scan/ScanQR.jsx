@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Zap, ZapOff, CheckCircle, Camera } from 'lucide-react';
+import { ArrowLeft, Zap, ZapOff, CheckCircle, Camera, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import userApi from '../../services/api';
 import './ScanQR.css';
@@ -154,7 +154,7 @@ export default function ScanQR() {
 
       try {
         const scanData = await userApi.getPublicScan(serial);
-        navigate('/select-store', {
+        navigate(`/select-store?code=${encodeURIComponent(serial)}`, {
           state: { scanData, serial }
         });
       } catch (err) {

@@ -47,6 +47,15 @@ const labelSchema = new mongoose.Schema({
     trim: true,
     default: null
   },
+  // Thông tin khách hàng sở hữu sản phẩm (NPP nhập khi kích hoạt tem)
+  ownerInfo: {
+    name: { type: String, trim: true, maxlength: 200, default: null },
+    address: { type: String, trim: true, maxlength: 500, default: null },
+    phone: { type: String, trim: true, maxlength: 20, default: null },
+    activatedSerial: { type: String, trim: true, maxlength: 50, default: null },
+    activatedAt: { type: Date, default: null },
+    activatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+  },
   scanCount: {
     type: Number,
     default: 0

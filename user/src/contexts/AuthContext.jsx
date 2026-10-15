@@ -13,10 +13,21 @@ export function AuthProvider({ children }) {
     const savedUser = localStorage.getItem('npp_scan_user');
     if (savedToken && savedUser) {
       try {
+        // Bỏ qua token đã hết hạn (đọc payload JWT dạng base64url, không verify)
+        let exp = null;
+        try {
+          const b64 = savedToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+          exp = JSON.parse(atob(b64))?.exp ?? null;
+        } catch {
+          exp = null; // Không đọc được payload → để server xác thực
+        }
+        if (exp && Date.now() / 1000 > exp) {
+          throw new Error('expired');
+        }
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
       } catch {
-        // corrupted data, clear it
+        // corrupted / expired data, clear it
         localStorage.removeItem('npp_scan_token');
         localStorage.removeItem('npp_scan_user');
       }

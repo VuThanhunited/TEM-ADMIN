@@ -101,9 +101,27 @@ export default function Login() {
 
       const role = result.user?.role;
       const ADMIN_DOMAIN = 'https://www.giaiphapqrcode.vn';
-      const adminAppUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      const { hostname, origin } = window.location;
+      // Dùng đúng origin hiện tại (www / không www) để giữ chung localStorage với admin app
+      const adminAppUrl = hostname === 'localhost' || hostname === '127.0.0.1'
         ? 'http://localhost:5173'
-        : ADMIN_DOMAIN;
+        : hostname.includes('giaiphapqrcode.vn') ? origin : ADMIN_DOMAIN;
+
+      // Đến từ màn quét tem (mục 2) → quay lại form bổ sung thông tin KH, không bắt quét lại
+      const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
+      if (savedRedirect && (role === 'NPP' || role === 'NSX')) {
+        sessionStorage.removeItem('npp_redirect_after_login');
+        try {
+          const { path, state } = JSON.parse(savedRedirect);
+          localStorage.setItem('tem_token', result.token);
+          localStorage.setItem('tem_user', JSON.stringify(result.user));
+          login(result.user, result.token);
+          navigate(path || '/scan', { replace: true, state });
+          return;
+        } catch {
+          // Dữ liệu redirect hỏng → tiếp tục luồng mặc định bên dưới
+        }
+      }
 
       if (role === 'ADMIN' || role === 'NSX') {
         // Redirect thẳng đến admin dashboard (không qua /login nữa)
@@ -113,6 +131,8 @@ export default function Login() {
       } else if (role === 'NPP') {
         // NPP → trang quét của admin app
         localStorage.setItem('tem_token', result.token);
+        localStorage.setItem('tem_user', JSON.stringify(result.user));
+        login(result.user, result.token);
         window.location.href = `${adminAppUrl}/npp/scan?adminToken=${encodeURIComponent(result.token)}`;
         return;
       } else {

@@ -125,9 +125,9 @@ class UserApiService {
     return this.request('POST', '/public/guest-login', credentials, {}, false, 2, 50000);
   }
 
-  // Public scan data
-  getPublicScan(serial) {
-    return this.request('GET', `/public/scan/${serial}`, null, {}, false);
+  // Public scan data – params.noCount = '1' để chỉ lấy dữ liệu, không tăng lượt quét
+  getPublicScan(serial, params = {}) {
+    return this.request('GET', `/public/scan/${serial}`, null, params, false);
   }
 
   getPublicBarcode(barcode) {

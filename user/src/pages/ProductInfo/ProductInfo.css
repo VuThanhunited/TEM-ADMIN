@@ -3995,4 +3995,76 @@
   margin-top: 14px;
 }
 
+/* Thông tin KH sở hữu sản phẩm (do NPP kích hoạt) */
+.product-info-owner-card {
+  border-left: 4px solid #7c3aed !important;
+  margin-top: 14px;
+}
+
+.owner-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6d28d9;
+}
+
+.owner-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.owner-card-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.owner-card-icon {
+  color: #7c3aed;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.owner-card-label {
+  color: #64748b;
+}
+
+.owner-card-value {
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.owner-card-serial {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1.5px solid #c4b5fd;
+  color: #5b21b6;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.owner-card-serial strong {
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #4c1d95;
+}
+
+.owner-card-standalone {
+  flex: 0 0 auto;
+  padding-top: 0;
+}
+
 

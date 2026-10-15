@@ -136,6 +136,18 @@ export default function NppScan() {
         const parts = url.pathname.split('/').filter(Boolean);
         if (parts.length >= 1) serial = parts[parts.length - 1];
       } catch { /* not a URL */ }
+
+      // QR trên tem → mở form "Bổ sung thông tin KH sở hữu" (trang của user app, cùng domain)
+      const token = localStorage.getItem('tem_token');
+      if (token && user) {
+        // Đồng bộ phiên cho user app để không phải đăng nhập lại
+        localStorage.setItem('npp_scan_token', token);
+        localStorage.setItem('npp_scan_user', JSON.stringify(user));
+      }
+      const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      const userAppBase = isLocal ? 'http://localhost:5174' : '';
+      window.location.href = `${userAppBase}/select-store?code=${encodeURIComponent(serial)}`;
+      return;
     }
 
     try {
@@ -268,7 +280,7 @@ export default function NppScan() {
 
       {/* Bottom tip */}
       <div className="npp-scan-footer">
-        <p>Mỗi lần quét sẽ tự động ghi nhận thông tin phân phối của bạn</p>
+        <p>Quét mã QR trên tem để bổ sung thông tin khách hàng sở hữu sản phẩm</p>
         <button
           className="btn btn-ghost"
           onClick={() => navigate('/npp/history')}
