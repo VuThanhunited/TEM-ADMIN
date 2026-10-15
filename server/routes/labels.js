@@ -85,9 +85,19 @@ router.get('/export', auth, requireOwnership, async (req, res) => {
       res.write(chunk);
     });
 
-    cursor.on('end', () => {
+    cursor.on('end', async () => {
       res.write(']');
       res.end();
+      // Tự động ghi nhận số lượng tem đã in khi tải/xuất file Excel in tem
+      try {
+        await LabelBatch.findByIdAndUpdate(batchId, {
+          isPrinted: true,
+          printedCount: count,
+          printedAt: new Date()
+        });
+      } catch (err) {
+        console.warn('Update batch printed status error:', err.message);
+      }
     });
 
     cursor.on('error', (err) => {
@@ -102,6 +112,28 @@ router.get('/export', auth, requireOwnership, async (req, res) => {
   } catch (error) {
     console.error('Export labels error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
+  }
+});
+
+// PUT /api/labels/batches/:id/mark-printed - Toggle/Set printed status for a batch
+router.put('/batches/:id/mark-printed', auth, requireOwnership, async (req, res) => {
+  try {
+    const { isPrinted = true, printedCount } = req.body;
+    const batch = await LabelBatch.findById(req.params.id);
+    if (!batch) return res.status(404).json({ error: 'Không tìm thấy lô tem' });
+
+    batch.isPrinted = Boolean(isPrinted);
+    batch.printedCount = isPrinted ? (printedCount !== undefined ? Number(printedCount) : batch.totalLabels) : 0;
+    batch.printedAt = isPrinted ? new Date() : null;
+    await batch.save();
+
+    const populated = await LabelBatch.findById(batch._id)
+      .populate('enterpriseId', 'name')
+      .populate('productId', 'name');
+    res.json(populated);
+  } catch (error) {
+    console.error('Mark batch printed error:', error);
+    res.status(500).json({ error: 'Lỗi cập nhật trạng thái in: ' + error.message });
   }
 });
 

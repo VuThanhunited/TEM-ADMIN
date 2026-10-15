@@ -18,6 +18,16 @@ export default function NppScan() {
   const [detected, setDetected] = useState(false);
   const [detectedSerial, setDetectedSerial] = useState('');
   const [toast, setToast] = useState(null); // { type: 'success'|'error', msg }
+  const [stats, setStats] = useState({ totalPrinted: 0, totalImported: 0 });
+
+  useEffect(() => {
+    api.nppGetHistory().then(res => {
+      setStats({
+        totalPrinted: res.totalPrinted || 0,
+        totalImported: res.totalImported !== undefined ? res.totalImported : (res.history?.length || 0)
+      });
+    }).catch(() => {});
+  }, []);
 
   const showToast = (type, msg) => {
     setToast({ type, msg });
@@ -135,6 +145,7 @@ export default function NppScan() {
         distributorAddress: user?.address || '',
       });
       showToast('success', `✅ Đã nhập hàng thành công: ${serial}`);
+      setStats(prev => ({ ...prev, totalImported: prev.totalImported + 1 }));
     } catch (err) {
       showToast('error', `❌ ${err.message || 'Lỗi khi nhập hàng'}`);
     }
@@ -175,7 +186,15 @@ export default function NppScan() {
       <div className="npp-scan-header">
         <div className="npp-scan-header-info">
           <span className="npp-scan-title">Quét Tem Phân Phối</span>
-          <span className="npp-scan-sub">{user?.fullName || user?.username}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+            <span className="npp-scan-sub">{user?.fullName || user?.username}</span>
+            <span style={{ fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              🖨️ Tem đã in: {stats.totalPrinted.toLocaleString('vi-VN')}
+            </span>
+            <span style={{ fontSize: '0.75rem', background: 'rgba(34, 197, 94, 0.12)', color: '#16a34a', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+              📦 Đã nhập: {stats.totalImported.toLocaleString('vi-VN')}
+            </span>
+          </div>
         </div>
         <button
           className="npp-flash-btn"

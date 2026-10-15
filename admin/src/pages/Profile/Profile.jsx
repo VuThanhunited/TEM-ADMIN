@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { User, Lock, Mail, MapPin, Building, Key, CheckCircle } from 'lucide-react';
+import { User, Lock, Mail, MapPin, Building, Key, CheckCircle, Phone, FileText } from 'lucide-react';
 import './Profile.css';
 
 export default function Profile() {
@@ -13,10 +13,26 @@ export default function Profile() {
     username: user?.username || '',
     email: user?.email || '',
     fullName: user?.fullName || '',
+    phone: user?.phone || '',
     address: user?.address || '',
+    details: user?.details || '',
     password: '',
     confirmPassword: ''
   });
+
+  useEffect(() => {
+    if (user) {
+      setForm(prev => ({
+        ...prev,
+        username: user.username || '',
+        email: user.email || '',
+        fullName: user.fullName || '',
+        phone: user.phone || '',
+        address: user.address || '',
+        details: user.details || ''
+      }));
+    }
+  }, [user]);
 
   const showMessage = (type, text) => {
     setMessage({ type, text });
@@ -42,7 +58,9 @@ export default function Profile() {
         username: form.username,
         email: form.email,
         fullName: form.fullName,
+        phone: form.phone,
         address: form.address,
+        details: form.details,
         password: form.password || undefined
       });
 
@@ -54,20 +72,32 @@ export default function Profile() {
         localStorage.setItem('npp_scan_user', JSON.stringify(updatedUser));
       }
       
-      showMessage('success', 'Cập nhật thông tin tài khoản thành công!');
+      showMessage('success', 'Cập nhật thông tin thành công!');
       setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
     } catch (err) {
-      showMessage('error', err.message || 'Lỗi khi cập nhật tài khoản');
+      showMessage('error', err.message || 'Lỗi khi cập nhật thông tin');
     } finally {
       setLoading(false);
     }
   };
 
+  const getPageTitle = () => {
+    if (user?.role === 'NPP') return 'Thông tin Nhà Phân Phối';
+    if (user?.role === 'NSX') return 'Thông tin Nhà Sản Xuất';
+    return 'Thông tin Tài khoản';
+  };
+
+  const getPageSub = () => {
+    if (user?.role === 'NPP') return 'Xem và cập nhật thông tin nhà phân phối / đại lý của bạn';
+    if (user?.role === 'NSX') return 'Xem và cập nhật thông tin nhà sản xuất của bạn';
+    return 'Xem và tùy chỉnh thông tin tài khoản của bạn';
+  };
+
   return (
     <div className="profile-page">
       <div className="profile-header-section">
-        <h2>Thông tin Tài khoản</h2>
-        <p>Xem và tùy chỉnh thông tin tài khoản của bạn</p>
+        <h2>{getPageTitle()}</h2>
+        <p>{getPageSub()}</p>
       </div>
 
       <div className="profile-container">
@@ -85,6 +115,34 @@ export default function Profile() {
             
             <div className="form-group-row">
               <div className="input-group">
+                <label>{user?.role === 'NPP' ? 'Tên Nhà phân phối / Đại lý' : user?.role === 'NSX' ? 'Tên Nhà sản xuất' : 'Họ và tên'}</label>
+                <div className="input-with-icon">
+                  <User size={16} className="input-icon" />
+                  <input
+                    className="input"
+                    value={form.fullName}
+                    onChange={e => setForm({ ...form, fullName: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="input-group">
+                <label>Số điện thoại liên hệ</label>
+                <div className="input-with-icon">
+                  <Phone size={16} className="input-icon" />
+                  <input
+                    className="input"
+                    value={form.phone}
+                    onChange={e => setForm({ ...form, phone: e.target.value })}
+                    placeholder="VD: 0912345678"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group-row">
+              <div className="input-group">
                 <label>Tên đăng nhập</label>
                 <div className="input-with-icon">
                   <User size={16} className="input-icon" />
@@ -98,7 +156,7 @@ export default function Profile() {
               </div>
 
               <div className="input-group">
-                <label>Email</label>
+                <label>Địa chỉ Email</label>
                 <div className="input-with-icon">
                   <Mail size={16} className="input-icon" />
                   <input
@@ -113,28 +171,30 @@ export default function Profile() {
             </div>
 
             <div className="form-group-row">
-              <div className="input-group">
-                <label>Họ và tên</label>
-                <input
-                  className="input"
-                  value={form.fullName}
-                  onChange={e => setForm({ ...form, fullName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="input-group">
-                <label>Địa chỉ</label>
+              <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                <label>Địa chỉ kho hàng / Điểm bán</label>
                 <div className="input-with-icon">
                   <MapPin size={16} className="input-icon" />
                   <input
                     className="input"
                     value={form.address}
                     onChange={e => setForm({ ...form, address: e.target.value })}
-                    placeholder="Nhập địa chỉ của bạn..."
+                    placeholder="Nhập địa chỉ..."
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="input-group" style={{ marginTop: '12px' }}>
+              <label>Giới thiệu / Ghi chú đơn vị</label>
+              <textarea
+                className="input"
+                rows={3}
+                value={form.details}
+                onChange={e => setForm({ ...form, details: e.target.value })}
+                placeholder="Mô tả về đơn vị, chi nhánh, hotline, địa bàn hoạt động..."
+                style={{ padding: '10px 14px', resize: 'vertical' }}
+              />
             </div>
 
             <hr className="divider" />
@@ -196,6 +256,15 @@ export default function Profile() {
                   <span className="detail-value">{user?.enterpriseId?.name || 'Hệ thống'}</span>
                 </div>
               </div>
+              {user?.phone && (
+                <div className="detail-item">
+                  <Phone size={16} />
+                  <div>
+                    <span className="detail-label">Điện thoại</span>
+                    <span className="detail-value">{user.phone}</span>
+                  </div>
+                </div>
+              )}
               <div className="detail-item">
                 <Lock size={16} />
                 <div>

@@ -753,7 +753,24 @@ router.get('/npp-scan-history', async (req, res) => {
       time: l.updatedAt
     }));
 
-    res.json({ history: historyList });
+    // Tính tổng số tem đã nhập của NPP và tổng số tem đã in của NSX liên kết
+    const totalImported = await Label.countDocuments({
+      enterpriseId,
+      distributorName: { $ne: null }
+    });
+
+    const printedBatches = await LabelBatch.find({
+      enterpriseId,
+      isPrinted: true
+    }).select('printedCount totalLabels').lean();
+    const totalPrinted = printedBatches.reduce((sum, b) => sum + (b.printedCount || b.totalLabels || 0), 0);
+
+    res.json({
+      history: historyList,
+      totalImported,
+      totalPrinted,
+      enterpriseName: user.enterpriseId?.name || ''
+    });
   } catch (error) {
     console.error('Get NPP scan history error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi lấy lịch sử quét' });

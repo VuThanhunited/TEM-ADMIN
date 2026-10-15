@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw
+  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';
@@ -499,10 +499,22 @@ export default function Labels() {
       ];
 
       XLSX.writeFile(workbook, `Danh_sach_tem_lo_${batch.batchCode}.xlsx`);
+      // Tự động cập nhật trạng thái đã in trên giao diện
+      setBatches(prev => prev.map(b => b._id === batch._id ? { ...b, isPrinted: true, printedCount: batch.totalLabels } : b));
     } catch (err) {
       alert('Lỗi xuất Excel lô tem: ' + err.message);
     } finally {
       setExportingBatchId(null);
+    }
+  };
+
+  const handleTogglePrinted = async (batch) => {
+    try {
+      const nextStatus = !batch.isPrinted;
+      const updated = await api.markBatchPrinted(batch._id, { isPrinted: nextStatus, printedCount: nextStatus ? batch.totalLabels : 0 });
+      setBatches(prev => prev.map(b => b._id === batch._id ? { ...b, isPrinted: updated.isPrinted, printedCount: updated.printedCount, printedAt: updated.printedAt } : b));
+    } catch (err) {
+      alert('Lỗi cập nhật trạng thái in: ' + (err.message || err));
     }
   };
 
@@ -1193,6 +1205,7 @@ export default function Labels() {
                 <th>Sản phẩm</th>
                 {activeTab !== 'renew' && <th>Giao diện (Theme)</th>}
                 <th>Số lượng</th>
+                {activeTab !== 'renew' && <th>Tem đã in</th>}
                 <th>Serial</th>
                 {activeTab !== 'renew' && <th>Ngày tạo</th>}
                 <th>Hết hạn</th>
@@ -1202,9 +1215,9 @@ export default function Labels() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9}><div className="loading-overlay"><div className="loading-spinner"></div></div></td></tr>
+                <tr><td colSpan={activeTab !== 'renew' ? 10 : 9}><div className="loading-overlay"><div className="loading-spinner"></div></div></td></tr>
               ) : batches.length === 0 ? (
-                <tr><td colSpan={9}><div className="empty-state"><Tag size={40}/><h3>Chưa có lô tem nào</h3></div></td></tr>
+                <tr><td colSpan={activeTab !== 'renew' ? 10 : 9}><div className="empty-state"><Tag size={40}/><h3>Chưa có lô tem nào</h3></div></td></tr>
               ) : (
                 batches.map(batch => (
                   <tr key={batch._id}>
@@ -1218,6 +1231,19 @@ export default function Labels() {
                       </td>
                     )}
                     <td><strong>{batch.totalLabels}</strong></td>
+                    {activeTab !== 'renew' && (
+                      <td>
+                        {batch.isPrinted ? (
+                          <span className="badge badge-success" style={{ fontWeight: 600, fontSize: '0.75rem', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <CheckCircle size={12} /> Đã in ({batch.printedCount || batch.totalLabels})
+                          </span>
+                        ) : (
+                          <span className="badge" style={{ background: 'rgba(148,163,184,0.15)', color: '#94a3b8', fontSize: '0.75rem', padding: '4px 8px' }}>
+                            Chưa in
+                          </span>
+                        )}
+                      </td>
+                    )}
                     <td><span className="serial-range">{batch.serialStart} → {batch.serialEnd}</span></td>
                     {activeTab !== 'renew' && <td>{formatDate(batch.createdDate || batch.createdAt)}</td>}
                     <td className={new Date(batch.expiryDate) < new Date() ? 'text-danger' : ''}>{formatDate(batch.expiryDate)}</td>
@@ -1231,6 +1257,14 @@ export default function Labels() {
                           <>
                             <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
                               {batch.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
+                            </button>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => handleTogglePrinted(batch)}
+                              title={batch.isPrinted ? "Đã in (Bấm để hủy đánh dấu)" : "Bấm để đánh dấu đã in ấn"}
+                              style={{ color: batch.isPrinted ? '#10b981' : '#94a3b8' }}
+                            >
+                              <Printer size={15} />
                             </button>
                             <button className="btn btn-sm btn-ghost" onClick={() => {
                               setSelectedBatch(batch);

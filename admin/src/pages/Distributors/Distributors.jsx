@@ -344,12 +344,18 @@ export default function Distributors() {
                   </td>
                   <td>
                     <div className="action-buttons">
-                      <button className="btn btn-sm btn-ghost" onClick={() => handleOpenEdit(dist)} title="Chỉnh sửa">
-                        <Edit size={14} />
-                      </button>
-                      <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(dist._id)} title="Xóa">
-                        <Trash2 size={14} />
-                      </button>
+                      {isAdmin ? (
+                        <>
+                          <button className="btn btn-sm btn-ghost" onClick={() => handleOpenEdit(dist)} title="Chỉnh sửa">
+                            <Edit size={14} />
+                          </button>
+                          <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(dist._id)} title="Xóa">
+                            <Trash2 size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Chỉ xem</span>
+                      )}
                     </div>
                   </td>
                 </tr>

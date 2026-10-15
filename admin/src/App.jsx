@@ -161,6 +161,9 @@ function AppRoutes() {
         <Route path="/npp/history" element={<NppRoute><MainLayout /></NppRoute>}>
           <Route index element={<NppHistory />} />
         </Route>
+        <Route path="/npp/profile" element={<NppRoute><MainLayout /></NppRoute>}>
+          <Route index element={<Profile />} />
+        </Route>
         <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />

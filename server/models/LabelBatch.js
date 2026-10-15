@@ -48,6 +48,18 @@ const labelBatchSchema = new mongoose.Schema({
     enum: ['ACTIVE', 'INACTIVE', 'EXPIRED'],
     default: 'INACTIVE'
   },
+  isPrinted: {
+    type: Boolean,
+    default: false
+  },
+  printedCount: {
+    type: Number,
+    default: 0
+  },
+  printedAt: {
+    type: Date,
+    default: null
+  },
   activatedCount: {
     type: Number,
     default: 0

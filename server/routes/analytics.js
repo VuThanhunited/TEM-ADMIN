@@ -37,6 +37,10 @@ router.get('/overview', auth, requireOwnership, async (req, res) => {
       scannedAt: { $gte: sevenDaysAgo }
     });
 
+    // Tính tổng số tem đã in từ các lô tem
+    const printedBatches = await LabelBatch.find({ ...filter, isPrinted: true }).select('printedCount totalLabels').lean();
+    const printedLabels = printedBatches.reduce((sum, b) => sum + (b.printedCount || b.totalLabels || 0), 0);
+
     // Admin-only stats
     let totalEnterprises = 0;
     let totalUsers = 0;
@@ -48,6 +52,7 @@ router.get('/overview', auth, requireOwnership, async (req, res) => {
     res.json({
       totalLabels,
       activeLabels,
+      printedLabels,
       inactiveLabels: totalLabels - activeLabels,
       totalScans,
       recentScans,

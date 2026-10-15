@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
   Tag, ScanLine, Package, Building2, Users, Activity,
-  TrendingUp, TrendingDown, BarChart3, MapPin, Clock, Download
+  TrendingUp, TrendingDown, BarChart3, MapPin, Clock, Download, Printer
 } from 'lucide-react';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import {
@@ -80,6 +80,14 @@ export default function Dashboard() {
       icon: Activity,
       gradient: 'var(--gradient-success)',
       change: `${stats?.totalLabels ? Math.round((stats.activeLabels / stats.totalLabels) * 100) : 0}%`,
+      up: true
+    },
+    {
+      label: 'Tem đã in',
+      value: stats?.printedLabels || 0,
+      icon: Printer,
+      gradient: 'linear-gradient(135deg, #3b82f6, #60a5fa)',
+      change: `${stats?.totalLabels ? Math.round(((stats.printedLabels || 0) / stats.totalLabels) * 100) : 0}% tổng tem`,
       up: true
     },
     {

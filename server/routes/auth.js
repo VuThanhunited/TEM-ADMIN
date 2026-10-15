@@ -105,7 +105,7 @@ router.post('/change-password', auth, async (req, res) => {
 // PUT /api/auth/profile - Update own profile (for ADMIN, NSX, NPP)
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { username, email, fullName, address, password } = req.body;
+    const { username, email, fullName, address, phone, details, password } = req.body;
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -132,6 +132,8 @@ router.put('/profile', auth, async (req, res) => {
 
     if (fullName) user.fullName = fullName;
     if (address !== undefined) user.address = address;
+    if (phone !== undefined) user.phone = phone;
+    if (details !== undefined) user.details = details;
 
     if (password) {
       if (password.length < 6) {

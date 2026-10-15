@@ -109,8 +109,8 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
   }
 });
 
-// PUT /api/accounts/distributors/:id - Update NPP / NSX account
-router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
+// PUT /api/accounts/distributors/:id - Update NPP / NSX account (ADMIN ONLY)
+router.put('/distributors/:id', auth, requireRole('ADMIN'), async (req, res) => {
   try {
     const { fullName, address, details, isActive, role } = req.body;
 

@@ -195,6 +195,7 @@ class ApiService {
   updateLabelStatus(id, data) { return this.request('PUT', `/labels/${id}/status`, data); }
   bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data, {}, 0, 300000); } // 5 min timeout for large serial ranges
   fixEncryption(data) { return this.request('POST', '/labels/fix-encryption', data); }
+  markBatchPrinted(id, data) { return this.request('PUT', `/labels/batches/${id}/mark-printed`, data); }
   exportBatchLabels(batchId) { return this.request('GET', '/labels/export', null, { batchId }, 0, 300000); } // 5 min timeout for large batches
   exportFilteredLabels(params) { return this.request('GET', '/labels/export-all', null, params, 0, 300000); } // 5 min timeout for large datasets
 

@@ -109,6 +109,12 @@ const nppMenuItems = [
     path: '/npp/history',
     roles: ['NPP'],
   },
+  {
+    label: 'Thông Tin NPP',
+    icon: Store,
+    path: '/npp/profile',
+    roles: ['NPP'],
+  },
 ];
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }) {
@@ -270,7 +276,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
               className="user-clickable" 
               onClick={() => {
                 onCloseMobile?.();
-                navigate('/profile');
+                navigate(isNPP ? '/npp/profile' : '/profile');
               }} 
               style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, cursor: 'pointer' }}
               title="Xem & sửa thông tin tài khoản"
