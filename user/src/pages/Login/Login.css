@@ -24,6 +24,12 @@
   --glow-color: rgba(21,101,192,0.12);
 }
 
+.login-page.nsx-mode {
+  --primary-color: #0D7357; /* nsx emerald/teal */
+  --primary-bg: #E6F5F0;
+  --glow-color: rgba(13,115,87,0.14);
+}
+
 /* Background decoration */
 .login-bg-top {
   position: fixed;
@@ -439,4 +445,177 @@
   .login-brand-sub {
     margin-bottom: 12px;
   }
+}
+
+/* ==========================================
+   Enhanced Register Page Specific Styles
+   ========================================== */
+
+.login-card.register-card {
+  max-width: 540px;
+  padding: 32px 28px 28px;
+}
+
+.register-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.register-section-divider span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary-color);
+  white-space: nowrap;
+}
+
+.register-section-divider::before,
+.register-section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #E2E8F0;
+}
+
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 540px) {
+  .form-row-2col {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .login-card.register-card {
+    max-width: 100%;
+    padding: 24px 16px 20px;
+  }
+}
+
+.register-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.register-input-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.25;
+}
+
+.register-input-label .required-star {
+  color: #DC2626;
+  font-weight: bold;
+}
+
+.register-input-label .optional-tag {
+  font-size: 0.72rem;
+  color: #9CA3AF;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* Success state box */
+.register-success-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.register-success-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #DCFCE7;
+  color: #16A34A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.register-success-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 6px;
+}
+
+.register-success-desc {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.register-success-details {
+  width: 100%;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.register-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.register-detail-row .label {
+  color: #64748B;
+}
+
+.register-detail-row .value {
+  font-weight: 600;
+  color: #0F172A;
+}
+
+.register-badge-role {
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.register-badge-role.nsx {
+  background: #E6F5F0;
+  color: #0D7357;
+}
+
+.register-badge-role.npp {
+  background: #E3F2FD;
+  color: #1565C0;
 }

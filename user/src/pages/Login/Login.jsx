@@ -255,11 +255,11 @@ export default function Login() {
 
         {activeTab === 'npp' && (
           <p className="login-register-text" style={{ fontSize: '0.85rem', color: '#546E7A', marginTop: '18px', textAlign: 'center' }}>
-            Chưa có tài khoản?{' '}
+            Chưa có tài khoản Nhà sản xuất hoặc NPP?{' '}
             <span
               className="login-register-link"
               style={{ color: 'var(--primary-color)', fontWeight: '600', cursor: 'pointer' }}
-              onClick={() => navigate(`/register?tab=${activeTab}`)}
+              onClick={() => navigate('/register?tab=nsx')}
             >
               Đăng ký ngay
             </span>

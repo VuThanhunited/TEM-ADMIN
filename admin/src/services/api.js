@@ -216,9 +216,10 @@ class ApiService {
   getPublicBarcode(barcode) { return this.request('GET', `/public/barcode/${barcode}`); }
   sendScanLocation(serial, data) { return this.request('POST', `/public/scan/${serial}/location`, data); }
 
-  // ── NPP distributor features ──────────────────────────────────────────────
+  // ── NPP / NSX registration & features ────────────────────────────────────
   nppLogin(credentials) { return this.request('POST', '/public/npp-login', credentials); }
   nppRegister(data) { return this.request('POST', '/public/npp-register', data); }
+  nsxRegister(data) { return this.request('POST', '/public/nsx-register', data); }
   nppScanSerial(data) { return this.request('POST', '/public/distributor-entry-single', data); }
   nppGetHistory() { return this.request('GET', '/public/npp-scan-history'); }
   getPublicDistributors(enterpriseId) { return this.request('GET', `/public/distributors/${enterpriseId}`); }

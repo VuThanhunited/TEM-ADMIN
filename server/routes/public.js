@@ -774,13 +774,26 @@ router.get('/enterprises', async (req, res) => {
   }
 });
 
-// POST /api/public/npp-register - Register a new NPP account
-router.post('/npp-register', async (req, res) => {
+// POST /api/public/nsx-register - Register a new NSX (Manufacturer) account
+router.post('/nsx-register', async (req, res) => {
   try {
-    const { username, email, password, fullName, address, enterpriseId } = req.body;
+    const { username, email, password, fullName, enterpriseName, phone, address, taxCode } = req.body;
 
-    if (!username || !email || !password || !fullName || !enterpriseId) {
-      return res.status(400).json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc' });
+    if (!username || !email || !password || !fullName || !enterpriseName) {
+      return res.status(400).json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc (*)' });
+    }
+
+    if (username.trim().length < 3) {
+      return res.status(400).json({ error: 'Tên đăng nhập phải có ít nhất 3 ký tự' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ error: 'Địa chỉ email không hợp lệ' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
 
     // Check existing user case-insensitively
@@ -791,7 +804,97 @@ router.post('/npp-register', async (req, res) => {
       ]
     });
     if (existing) {
-      return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
+      return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại trong hệ thống' });
+    }
+
+    // Default trial period: 1 year (12 months)
+    const expiry = new Date();
+    expiry.setFullYear(expiry.getFullYear() + 1);
+
+    // 1. Create Enterprise for NSX
+    const enterprise = new Enterprise({
+      name: enterpriseName.trim(),
+      type: 'NSX',
+      phone: phone ? phone.trim() : '',
+      email: email.trim().toLowerCase(),
+      address: address ? address.trim() : '',
+      taxCode: taxCode ? taxCode.trim() : '',
+      subscriptionPlan: 'BASIC',
+      subscriptionExpiry: expiry,
+      isActive: true
+    });
+    await enterprise.save();
+
+    // 2. Create User account with role 'NSX'
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      password: hashedPassword,
+      fullName: fullName.trim(),
+      phone: phone ? phone.trim() : '',
+      address: address ? address.trim() : '',
+      role: 'NSX',
+      enterpriseId: enterprise._id,
+      subscriptionExpiry: expiry,
+      isActive: true
+    });
+    await user.save();
+
+    // 3. Generate JWT Token
+    const token = jwt.sign(
+      { userId: user._id, role: user.role, enterpriseId: enterprise._id },
+      process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
+      { expiresIn: '7d' }
+    );
+
+    const userData = user.toObject();
+    delete userData.password;
+    userData.enterpriseId = enterprise;
+
+    res.status(201).json({
+      message: 'Đăng ký tài khoản Nhà sản xuất thành công',
+      token,
+      user: userData,
+      enterprise
+    });
+  } catch (error) {
+    console.error('NSX register error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi đăng ký tài khoản Nhà sản xuất' });
+  }
+});
+
+// POST /api/public/npp-register - Register a new NPP account
+router.post('/npp-register', async (req, res) => {
+  try {
+    const { username, email, password, fullName, phone, address, enterpriseId, contactPerson } = req.body;
+
+    if (!username || !email || !password || !fullName || !enterpriseId) {
+      return res.status(400).json({ error: 'Vui lòng điền đầy đủ các thông tin bắt buộc (*)' });
+    }
+
+    if (username.trim().length < 3) {
+      return res.status(400).json({ error: 'Tên đăng nhập phải có ít nhất 3 ký tự' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ error: 'Địa chỉ email không hợp lệ' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
+    }
+
+    // Check existing user case-insensitively
+    const existing = await User.findOne({
+      $or: [
+        { username: { $regex: new RegExp(`^${username.trim()}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } }
+      ]
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại trong hệ thống' });
     }
 
     // Get enterprise to copy subscriptionExpiry
@@ -807,7 +910,9 @@ router.post('/npp-register', async (req, res) => {
       email: email.trim().toLowerCase(),
       password: hashedPassword,
       fullName: fullName.trim(),
+      phone: phone ? phone.trim() : '',
       address: address ? address.trim() : '',
+      details: contactPerson ? `Người liên hệ: ${contactPerson.trim()}` : '',
       role: 'NPP',
       enterpriseId,
       subscriptionExpiry: enterprise.subscriptionExpiry,
@@ -817,7 +922,7 @@ router.post('/npp-register', async (req, res) => {
 
     // Auto-login after registration: generate token
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id, role: user.role, enterpriseId: enterprise._id },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
       { expiresIn: '7d' }
     );
@@ -826,12 +931,13 @@ router.post('/npp-register', async (req, res) => {
     delete userData.password;
 
     res.status(201).json({
+      message: 'Đăng ký tài khoản Nhà phân phối thành công',
       token,
       user: userData
     });
   } catch (error) {
     console.error('NPP register error:', error);
-    res.status(500).json({ error: 'Lỗi máy chủ khi đăng ký tài khoản' });
+    res.status(500).json({ error: 'Lỗi máy chủ khi đăng ký tài khoản Nhà phân phối' });
   }
 });
 

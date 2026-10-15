@@ -1,31 +1,58 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Leaf, Store, User, Mail, Lock, Eye, EyeOff, MapPin, Building2, AlertCircle, UserPlus } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import {
+  Building2,
+  Store,
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  MapPin,
+  Phone,
+  FileText,
+  AlertCircle,
+  UserPlus,
+  CheckCircle2,
+  ArrowRight
+} from 'lucide-react';
 import userApi from '../../services/api';
-import '../Login/Login.css'; // Reuse Login styles
+import '../Login/Login.css'; // Shared Login & Register styles
 
 export default function Register() {
-  const { login } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Determine initial tab from query parameter (?tab=npp)
+  // Determine initial tab from query parameter (?tab=npp or ?tab=nsx)
   const queryTab = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(queryTab === 'npp' ? 'npp' : 'guest');
+  const [activeTab, setActiveTab] = useState(queryTab === 'npp' ? 'npp' : 'nsx');
 
+  // Shared account fields
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [enterpriseId, setEnterpriseId] = useState('');
+
+  // NSX specific fields
+  const [enterpriseName, setEnterpriseName] = useState('');
+  const [taxCode, setTaxCode] = useState('');
+  const [representativeName, setRepresentativeName] = useState(''); // Họ tên người đại diện NSX
+
+  // NPP specific fields
+  const [nppName, setNppName] = useState(''); // Tên nhà phân phối / Đại lý
+  const [contactPerson, setContactPerson] = useState(''); // Người phụ trách kho / liên hệ
+  const [enterpriseId, setEnterpriseId] = useState(''); // NSX liên kết
   const [enterprises, setEnterprises] = useState([]);
 
+  // UI States
   const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successData, setSuccessData] = useState(null);
 
   // Clear inputs and error when switching tabs
   const handleTabChange = (tab) => {
@@ -33,10 +60,17 @@ export default function Register() {
     setUsername('');
     setEmail('');
     setPassword('');
-    setFullName('');
+    setConfirmPassword('');
+    setPhone('');
     setAddress('');
+    setEnterpriseName('');
+    setTaxCode('');
+    setRepresentativeName('');
+    setNppName('');
+    setContactPerson('');
     setEnterpriseId('');
     setError('');
+    setSuccessData(null);
     setSearchParams({ tab });
   };
 
@@ -47,7 +81,7 @@ export default function Register() {
         setFetchLoading(true);
         try {
           const list = await userApi.getPublicEnterprises();
-          setEnterprises(list);
+          setEnterprises(Array.isArray(list) ? list : []);
 
           // Pre-select enterprise if coming from a QR scan redirect
           const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
@@ -62,7 +96,7 @@ export default function Register() {
           }
         } catch (err) {
           console.error('Failed to load enterprises:', err);
-          setError('Không thể tải danh sách doanh nghiệp liên kết');
+          setError('Không thể tải danh sách nhà sản xuất liên kết');
         } finally {
           setFetchLoading(false);
         }
@@ -75,45 +109,118 @@ export default function Register() {
   useEffect(() => {
     if (queryTab === 'npp' && activeTab !== 'npp') {
       setActiveTab('npp');
-    } else if (queryTab !== 'npp' && activeTab !== 'guest') {
-      setActiveTab('guest');
+    } else if (queryTab === 'nsx' && activeTab !== 'nsx') {
+      setActiveTab('nsx');
     }
   }, [queryTab]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
 
-    if (!username.trim()) { setError('Vui lòng nhập tên đăng nhập'); return; }
-    if (username.trim().length < 3) { setError('Tên đăng nhập phải có ít nhất 3 ký tự'); return; }
-    if (!email.trim()) { setError('Vui lòng nhập email'); return; }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) { setError('Email không hợp lệ'); return; }
-    if (!password) { setError('Vui lòng nhập mật khẩu'); return; }
-    if (password.length < 6) { setError('Mật khẩu phải có ít nhất 6 ký tự'); return; }
-    if (!fullName.trim()) {
-      setError(activeTab === 'npp' ? 'Vui lòng nhập tên nhà phân phối' : 'Vui lòng nhập họ và tên');
+    // --- Validation logic ---
+    if (activeTab === 'nsx') {
+      if (!enterpriseName.trim()) {
+        setError('Vui lòng nhập tên doanh nghiệp / nhà sản xuất');
+        return;
+      }
+      if (!representativeName.trim()) {
+        setError('Vui lòng nhập họ và tên người đại diện');
+        return;
+      }
+    } else {
+      if (!enterpriseId) {
+        setError('Vui lòng chọn doanh nghiệp sản xuất liên kết');
+        return;
+      }
+      if (!nppName.trim()) {
+        setError('Vui lòng nhập tên nhà phân phối / đại lý');
+        return;
+      }
+    }
+
+    if (!phone.trim()) {
+      setError('Vui lòng nhập số điện thoại liên hệ');
       return;
     }
-    if (activeTab === 'npp' && !enterpriseId) {
-      setError('Vui lòng chọn doanh nghiệp sản xuất liên kết');
+    const cleanPhone = phone.replace(/[\s.-]/g, '');
+    if (!/^[0-9]{8,15}$/.test(cleanPhone)) {
+      setError('Số điện thoại không hợp lệ (từ 8 đến 15 chữ số)');
+      return;
+    }
+
+    if (!email.trim()) {
+      setError('Vui lòng nhập địa chỉ email');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Địa chỉ email không đúng định dạng');
+      return;
+    }
+
+    if (!username.trim()) {
+      setError('Vui lòng nhập tên đăng nhập');
+      return;
+    }
+    if (username.trim().length < 3) {
+      setError('Tên đăng nhập phải có ít nhất 3 ký tự');
+      return;
+    }
+    if (/\s/.test(username.trim())) {
+      setError('Tên đăng nhập không được chứa khoảng trắng');
+      return;
+    }
+
+    if (!password) {
+      setError('Vui lòng nhập mật khẩu');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
-      let result;
-      if (activeTab === 'npp') {
-        result = await userApi.nppRegister({
+      if (activeTab === 'nsx') {
+        const result = await userApi.nsxRegister({
           username: username.trim(),
           email: email.trim(),
           password,
-          fullName: fullName.trim(),
+          fullName: representativeName.trim(),
+          enterpriseName: enterpriseName.trim(),
+          phone: phone.trim(),
           address: address.trim(),
-          enterpriseId
+          taxCode: taxCode.trim()
         });
-        // Redirect after registration
+
+        setSuccessData({
+          role: 'NSX',
+          roleTitle: 'Nhà sản xuất',
+          name: enterpriseName.trim(),
+          username: username.trim(),
+          email: email.trim(),
+          token: result?.token
+        });
+      } else {
+        const result = await userApi.nppRegister({
+          username: username.trim(),
+          email: email.trim(),
+          password,
+          fullName: nppName.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          enterpriseId,
+          contactPerson: contactPerson.trim()
+        });
+
+        // Pre-check for scan redirect
         const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
         if (savedRedirect) {
           try {
@@ -123,27 +230,15 @@ export default function Register() {
             return;
           } catch { /* ignore parse error */ }
         }
-        navigate('/login?tab=npp', { replace: true });
-      } else {
-        result = await userApi.guestRegister({
+
+        setSuccessData({
+          role: 'NPP',
+          roleTitle: 'Nhà phân phối',
+          name: nppName.trim(),
           username: username.trim(),
           email: email.trim(),
-          password,
-          fullName: fullName.trim(),
-          address: address.trim()
+          token: result?.token
         });
-
-        // Redirect after registration
-        const savedRedirect = sessionStorage.getItem('guest_redirect_after_login');
-        if (savedRedirect) {
-          try {
-            const { path, state } = JSON.parse(savedRedirect);
-            sessionStorage.removeItem('guest_redirect_after_login');
-            navigate(`/login?tab=guest&redirect=${encodeURIComponent(path)}`, { state, replace: true });
-            return;
-          } catch { /* ignore parse error */ }
-        }
-        navigate('/login?tab=guest', { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Đăng ký không thành công. Vui lòng kiểm tra lại thông tin.');
@@ -152,194 +247,442 @@ export default function Register() {
     }
   };
 
+  const handleGoToLogin = () => {
+    navigate('/login?tab=npp', { replace: true });
+  };
+
   return (
-    <div className={`login-page ${activeTab === 'npp' ? 'npp-mode' : ''}`}>
+    <div className={`login-page ${activeTab === 'npp' ? 'npp-mode' : 'nsx-mode'}`}>
       <div className="login-bg-top" />
 
-      <div className="login-card">
-        {/* Role Tabs */}
-        <div className="auth-tabs">
-          <button
-            type="button"
-            className={`auth-tab ${activeTab === 'guest' ? 'active' : ''}`}
-            onClick={() => handleTabChange('guest')}
-          >
-            <User size={15} />
-            Khách hàng
-          </button>
-          <button
-            type="button"
-            className={`auth-tab ${activeTab === 'npp' ? 'active' : ''}`}
-            onClick={() => handleTabChange('npp')}
-          >
-            <Store size={15} />
-            Nhà phân phối
-          </button>
-        </div>
-
-        {/* Dynamic Logo/Branding */}
-        <div className="login-logo-wrap">
-          {activeTab === 'npp' ? (
-            <Store size={42} className="login-logo-icon" strokeWidth={1.6} />
-          ) : (
-            <Leaf size={42} className="login-logo-icon" strokeWidth={1.6} />
-          )}
-        </div>
-
-        <h1 className="login-brand-name">
-          {activeTab === 'npp' ? 'ĐĂNG KÝ NPP' : 'ĐĂNG KÝ THÀNH VIÊN'}
-        </h1>
-        <p className="login-brand-sub">
-          {activeTab === 'npp' ? 'Nhà phân phối liên kết hệ thống' : 'Đồng hành cùng sản phẩm chính hãng'}
-        </p>
-
-        {/* Form */}
-        <form className="login-form" onSubmit={handleSubmit} noValidate>
-          {error && (
-            <div className="login-error">
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
-              <span>{error}</span>
+      <div className="login-card register-card">
+        {/* Success Screen */}
+        {successData ? (
+          <div className="register-success-box">
+            <div className="register-success-icon-wrap">
+              <CheckCircle2 size={40} strokeWidth={2.2} />
             </div>
-          )}
 
-          {/* Username */}
-          <div className="login-input-wrap">
-            <User size={16} className="login-input-icon" />
-            <input
-              id="auth-reg-username"
-              type="text"
-              className="login-input"
-              placeholder="Tên đăng nhập (viết liền không dấu)*"
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setError(''); }}
-              autoComplete="username"
-              autoCapitalize="none"
-              disabled={loading}
-            />
-          </div>
+            <h2 className="register-success-title">Đăng ký thành công!</h2>
+            <p className="register-success-desc">
+              Tài khoản <strong>{successData.roleTitle}</strong> đã được khởi tạo thành công trên hệ thống.
+            </p>
 
-          {/* Email */}
-          <div className="login-input-wrap">
-            <Mail size={16} className="login-input-icon" />
-            <input
-              id="auth-reg-email"
-              type="email"
-              className="login-input"
-              placeholder="Địa chỉ Email*"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(''); }}
-              autoComplete="email"
-              disabled={loading}
-            />
-          </div>
+            <div className="register-success-details">
+              <div className="register-detail-row">
+                <span className="label">Loại tài khoản:</span>
+                <span className={`register-badge-role ${successData.role.toLowerCase()}`}>
+                  {successData.roleTitle}
+                </span>
+              </div>
+              <div className="register-detail-row">
+                <span className="label">Đơn vị:</span>
+                <span className="value">{successData.name}</span>
+              </div>
+              <div className="register-detail-row">
+                <span className="label">Tên đăng nhập:</span>
+                <span className="value">{successData.username}</span>
+              </div>
+              <div className="register-detail-row">
+                <span className="label">Email:</span>
+                <span className="value">{successData.email}</span>
+              </div>
+            </div>
 
-          {/* Password */}
-          <div className="login-input-wrap">
-            <Lock size={16} className="login-input-icon" />
-            <input
-              id="auth-reg-password"
-              type={showPw ? 'text' : 'password'}
-              className="login-input"
-              placeholder="Mật khẩu (tối thiểu 6 ký tự)*"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(''); }}
-              autoComplete="new-password"
-              disabled={loading}
-            />
             <button
               type="button"
-              className="login-pw-toggle"
-              onClick={() => setShowPw(!showPw)}
-              tabIndex={-1}
-              aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              className="login-submit-btn"
+              onClick={handleGoToLogin}
             >
-              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              Đăng nhập ngay
+              <ArrowRight size={18} />
             </button>
           </div>
-
-          {/* Full Name */}
-          <div className="login-input-wrap">
-            <User size={16} className="login-input-icon" />
-            <input
-              id="auth-reg-fullname"
-              type="text"
-              className="login-input"
-              placeholder={activeTab === 'npp' ? 'Tên nhà phân phối*' : 'Họ và tên của bạn*'}
-              value={fullName}
-              onChange={(e) => { setFullName(e.target.value); setError(''); }}
-              disabled={loading}
-            />
-          </div>
-
-          {/* Enterprise Dropdown (NPP only) */}
-          {activeTab === 'npp' && (
-            <div className="login-input-wrap">
-              <Building2 size={16} className="login-input-icon" />
-              <select
-                id="auth-reg-enterprise"
-                className="login-select"
-                value={enterpriseId}
-                onChange={(e) => { setEnterpriseId(e.target.value); setError(''); }}
-                disabled={loading || fetchLoading}
+        ) : (
+          <>
+            {/* Role Tabs */}
+            <div className="auth-tabs">
+              <button
+                type="button"
+                className={`auth-tab ${activeTab === 'nsx' ? 'active' : ''}`}
+                onClick={() => handleTabChange('nsx')}
               >
-                <option value="">-- Chọn doanh nghiệp liên kết * --</option>
-                {enterprises.map((ent) => (
-                  <option key={ent._id} value={ent._id}>
-                    {ent.name}
-                  </option>
-                ))}
-              </select>
+                <Building2 size={16} />
+                Nhà sản xuất
+              </button>
+              <button
+                type="button"
+                className={`auth-tab ${activeTab === 'npp' ? 'active' : ''}`}
+                onClick={() => handleTabChange('npp')}
+              >
+                <Store size={16} />
+                Nhà phân phối
+              </button>
             </div>
-          )}
 
-          {/* Address */}
-          <div className="login-input-wrap">
-            <MapPin size={16} className="login-input-icon" />
-            <input
-              id="auth-reg-address"
-              type="text"
-              className="login-input"
-              placeholder="Địa chỉ liên hệ"
-              value={address}
-              onChange={(e) => { setAddress(e.target.value); setError(''); }}
-              disabled={loading}
-            />
-          </div>
+            {/* Dynamic Logo/Branding */}
+            <div className="login-logo-wrap">
+              {activeTab === 'nsx' ? (
+                <Building2 size={40} className="login-logo-icon" strokeWidth={1.6} />
+              ) : (
+                <Store size={40} className="login-logo-icon" strokeWidth={1.6} />
+              )}
+            </div>
 
-          {/* Submit */}
-          <button
-            type="submit"
-            id="auth-register-submit"
-            className="login-submit-btn"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="btn-spinner" />
-                Đang xử lý đăng ký...
-              </>
-            ) : (
-              <>
-                <UserPlus size={17} />
-                Đăng ký tài khoản
-              </>
-            )}
-          </button>
-        </form>
+            <h1 className="login-brand-name">
+              {activeTab === 'nsx' ? 'ĐĂNG KÝ NHÀ SẢN XUẤT' : 'ĐĂNG KÝ NHÀ PHÂN PHỐI'}
+            </h1>
+            <p className="login-brand-sub">
+              {activeTab === 'nsx'
+                ? 'Dành cho Doanh nghiệp & Cơ sở sản xuất sản phẩm'
+                : 'Dành cho Đại lý & Nhà phân phối liên kết chuỗi cung ứng'}
+            </p>
 
-        <p className="login-register-text" style={{ fontSize: '0.85rem', color: '#546E7A', marginTop: '18px', textAlign: 'center' }}>
-          Đã có tài khoản?{' '}
-          <span
-            className="login-register-link"
-            style={{ color: 'var(--primary-color)', fontWeight: '600', cursor: 'pointer' }}
-            onClick={() => navigate(`/login?tab=${activeTab}`)}
-          >
-            Đăng nhập ngay
-          </span>
-        </p>
+            {/* Form */}
+            <form className="login-form" onSubmit={handleSubmit} noValidate>
+              {error && (
+                <div className="login-error">
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* ---------------- SECTION 1: THÔNG TIN ĐƠN VỊ ---------------- */}
+              <div className="register-section-divider">
+                <span>
+                  {activeTab === 'nsx' ? 'Thông tin doanh nghiệp sản xuất' : 'Thông tin nhà phân phối & liên kết'}
+                </span>
+              </div>
+
+              {activeTab === 'nsx' ? (
+                <>
+                  {/* Tên doanh nghiệp */}
+                  <div className="register-input-group">
+                    <label className="register-input-label">
+                      Tên doanh nghiệp / Cơ sở sản xuất <span className="required-star">*</span>
+                    </label>
+                    <div className="login-input-wrap">
+                      <Building2 size={16} className="login-input-icon" />
+                      <input
+                        id="auth-reg-enterprise-name"
+                        type="text"
+                        className="login-input"
+                        placeholder="Tên doanh nghiệp / cơ sở sản xuất"
+                        value={enterpriseName}
+                        onChange={(e) => { setEnterpriseName(e.target.value); setError(''); }}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Họ tên người đại diện */}
+                  <div className="register-input-group">
+                    <label className="register-input-label">
+                      Người đại diện / Người liên hệ <span className="required-star">*</span>
+                    </label>
+                    <div className="login-input-wrap">
+                      <User size={16} className="login-input-icon" />
+                      <input
+                        id="auth-reg-rep-name"
+                        type="text"
+                        className="login-input"
+                        placeholder="Họ và tên người đại diện"
+                        value={representativeName}
+                        onChange={(e) => { setRepresentativeName(e.target.value); setError(''); }}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 2 cột: Mã số thuế & Địa chỉ trụ sở */}
+                  <div className="form-row-2col">
+                    <div className="register-input-group">
+                      <label className="register-input-label">
+                        Mã số thuế <span className="optional-tag">(tùy chọn)</span>
+                      </label>
+                      <div className="login-input-wrap">
+                        <FileText size={16} className="login-input-icon" />
+                        <input
+                          id="auth-reg-taxcode"
+                          type="text"
+                          className="login-input"
+                          placeholder="Mã số thuế / GPKD"
+                          value={taxCode}
+                          onChange={(e) => { setTaxCode(e.target.value); setError(''); }}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="register-input-group">
+                      <label className="register-input-label">
+                        Địa chỉ trụ sở / Xưởng <span className="optional-tag">(tùy chọn)</span>
+                      </label>
+                      <div className="login-input-wrap">
+                        <MapPin size={16} className="login-input-icon" />
+                        <input
+                          id="auth-reg-address-nsx"
+                          type="text"
+                          className="login-input"
+                          placeholder="Địa chỉ trụ sở hoặc xưởng"
+                          value={address}
+                          onChange={(e) => { setAddress(e.target.value); setError(''); }}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Doanh nghiệp sản xuất liên kết (Bắt buộc cho NPP) */}
+                  <div className="register-input-group">
+                    <label className="register-input-label">
+                      Doanh nghiệp sản xuất liên kết <span className="required-star">*</span>
+                    </label>
+                    <div className="login-input-wrap">
+                      <Building2 size={16} className="login-input-icon" />
+                      <select
+                        id="auth-reg-enterprise"
+                        className="login-select"
+                        value={enterpriseId}
+                        onChange={(e) => { setEnterpriseId(e.target.value); setError(''); }}
+                        disabled={loading || fetchLoading}
+                      >
+                        <option value="">-- Chọn doanh nghiệp sản xuất liên kết --</option>
+                        {enterprises.map((ent) => (
+                          <option key={ent._id} value={ent._id}>
+                            {ent.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Tên nhà phân phối / Đại lý */}
+                  <div className="register-input-group">
+                    <label className="register-input-label">
+                      Tên Nhà phân phối / Đại lý <span className="required-star">*</span>
+                    </label>
+                    <div className="login-input-wrap">
+                      <Store size={16} className="login-input-icon" />
+                      <input
+                        id="auth-reg-npp-name"
+                        type="text"
+                        className="login-input"
+                        placeholder="Tên Nhà phân phối / Đại lý"
+                        value={nppName}
+                        onChange={(e) => { setNppName(e.target.value); setError(''); }}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 2 cột: Người phụ trách & Địa chỉ kho hàng */}
+                  <div className="form-row-2col">
+                    <div className="register-input-group">
+                      <label className="register-input-label">
+                        Người phụ trách <span className="optional-tag">(tùy chọn)</span>
+                      </label>
+                      <div className="login-input-wrap">
+                        <User size={16} className="login-input-icon" />
+                        <input
+                          id="auth-reg-contact-person"
+                          type="text"
+                          className="login-input"
+                          placeholder="Người liên hệ / kho"
+                          value={contactPerson}
+                          onChange={(e) => { setContactPerson(e.target.value); setError(''); }}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="register-input-group">
+                      <label className="register-input-label">
+                        Địa chỉ kho hàng <span className="optional-tag">(tùy chọn)</span>
+                      </label>
+                      <div className="login-input-wrap">
+                        <MapPin size={16} className="login-input-icon" />
+                        <input
+                          id="auth-reg-address-npp"
+                          type="text"
+                          className="login-input"
+                          placeholder="Địa chỉ kho / đại lý"
+                          value={address}
+                          onChange={(e) => { setAddress(e.target.value); setError(''); }}
+                          disabled={loading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ---------------- SECTION 2: TÀI KHOẢN ĐĂNG NHẬP ---------------- */}
+              <div className="register-section-divider">
+                <span>Thông tin tài khoản đăng nhập</span>
+              </div>
+
+              {/* 2 cột: Số điện thoại & Email */}
+              <div className="form-row-2col">
+                <div className="register-input-group">
+                  <label className="register-input-label">
+                    Số điện thoại liên hệ <span className="required-star">*</span>
+                  </label>
+                  <div className="login-input-wrap">
+                    <Phone size={16} className="login-input-icon" />
+                    <input
+                      id="auth-reg-phone"
+                      type="tel"
+                      className="login-input"
+                      placeholder="VD: 0901234567"
+                      value={phone}
+                      onChange={(e) => { setPhone(e.target.value); setError(''); }}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div className="register-input-group">
+                  <label className="register-input-label">
+                    Địa chỉ Email <span className="required-star">*</span>
+                  </label>
+                  <div className="login-input-wrap">
+                    <Mail size={16} className="login-input-icon" />
+                    <input
+                      id="auth-reg-email"
+                      type="email"
+                      className="login-input"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                      autoComplete="email"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tên đăng nhập */}
+              <div className="register-input-group">
+                <label className="register-input-label">
+                  Tên đăng nhập <span className="required-star">*</span>
+                </label>
+                <div className="login-input-wrap">
+                  <User size={16} className="login-input-icon" />
+                  <input
+                    id="auth-reg-username"
+                    type="text"
+                    className="login-input"
+                    placeholder="Tên đăng nhập (viết liền không dấu)"
+                    value={username}
+                    onChange={(e) => { setUsername(e.target.value); setError(''); }}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* 2 cột: Mật khẩu & Nhập lại mật khẩu */}
+              <div className="form-row-2col">
+                <div className="register-input-group">
+                  <label className="register-input-label">
+                    Mật khẩu <span className="required-star">*</span>
+                  </label>
+                  <div className="login-input-wrap">
+                    <Lock size={16} className="login-input-icon" />
+                    <input
+                      id="auth-reg-password"
+                      type={showPw ? 'text' : 'password'}
+                      className="login-input"
+                      placeholder="Mật khẩu (≥ 6 ký tự)"
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                      autoComplete="new-password"
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      className="login-pw-toggle"
+                      onClick={() => setShowPw(!showPw)}
+                      tabIndex={-1}
+                      aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    >
+                      {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="register-input-group">
+                  <label className="register-input-label">
+                    Xác nhận mật khẩu <span className="required-star">*</span>
+                  </label>
+                  <div className="login-input-wrap">
+                    <Lock size={16} className="login-input-icon" />
+                    <input
+                      id="auth-reg-confirm-password"
+                      type={showConfirmPw ? 'text' : 'password'}
+                      className="login-input"
+                      placeholder="Nhập lại mật khẩu"
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                      autoComplete="new-password"
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      className="login-pw-toggle"
+                      onClick={() => setShowConfirmPw(!showConfirmPw)}
+                      tabIndex={-1}
+                      aria-label={showConfirmPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                    >
+                      {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                id="auth-register-submit"
+                className="login-submit-btn"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="btn-spinner" />
+                    Đang xử lý đăng ký...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={18} />
+                    {activeTab === 'nsx' ? 'Đăng ký Nhà sản xuất' : 'Đăng ký Nhà phân phối'}
+                  </>
+                )}
+              </button>
+            </form>
+
+            <p
+              className="login-register-text"
+              style={{ fontSize: '0.85rem', color: '#546E7A', marginTop: '18px', textAlign: 'center' }}
+            >
+              Đã có tài khoản?{' '}
+              <span
+                className="login-register-link"
+                style={{ color: 'var(--primary-color)', fontWeight: '600', cursor: 'pointer' }}
+                onClick={handleGoToLogin}
+              >
+                Đăng nhập ngay
+              </span>
+            </p>
+          </>
+        )}
       </div>
 
-      <p className="login-footer">Phiên bản 1.0.0</p>
+      <p className="login-footer">Hệ thống Tem Thông Minh © Phiên bản 1.0.0</p>
     </div>
   );
 }

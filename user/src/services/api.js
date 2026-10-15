@@ -166,6 +166,11 @@ class UserApiService {
     return this.request('GET', '/public/enterprises', null, {}, false);
   }
 
+  // Register new NSX (Manufacturer) account
+  nsxRegister(data) {
+    return this.request('POST', '/public/nsx-register', data, {}, false);
+  }
+
   // Register new NPP account
   nppRegister(data) {
     return this.request('POST', '/public/npp-register', data, {}, false);
