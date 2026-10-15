@@ -30,7 +30,9 @@ export default function SelectStore() {
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [form, setForm] = useState({ name: '', address: '', phone: '', serial: '' });
+  const detectedSerial = label?.serialNumber || serial || codeParam || '';
+  const initialSerial = stateScanData?.label?.serialNumber || stateSerial || codeParam || '';
+  const [form, setForm] = useState({ name: '', address: '', phone: '', serial: initialSerial });
 
   // Trường Mã sở hữu (NPP nhập tay theo yêu cầu khách hàng)
   const [ownerCode, setOwnerCode] = useState('');
@@ -51,6 +53,14 @@ export default function SelectStore() {
       loadScanData();
     }
   }, []);
+
+  // Tự động sinh / gán serial chống giả dựa vào con tem đang quét
+  useEffect(() => {
+    const autoSerial = label?.serialNumber || serial || codeParam || '';
+    if (autoSerial) {
+      setForm(prev => (prev.serial === autoSerial ? prev : { ...prev, serial: autoSerial }));
+    }
+  }, [label?.serialNumber, serial, codeParam]);
 
   useEffect(() => {
     // Nếu tem đã từng có mã sở hữu trước đó, nạp làm mặc định
@@ -81,7 +91,8 @@ export default function SelectStore() {
     if (!form.name.trim()) return 'Vui lòng nhập tên NPP hoặc cá nhân đã mua sản phẩm';
     if (!form.address.trim()) return 'Vui lòng nhập địa chỉ';
     if (!PHONE_REGEX.test(form.phone.replace(/[\s.\-]/g, ''))) return 'Số điện thoại không hợp lệ';
-    if (!form.serial.trim()) return 'Vui lòng nhập số serial có trên tem';
+    const activeSerial = (form.serial || detectedSerial || '').trim();
+    if (!activeSerial) return 'Không tìm thấy serial chống giả của tem';
     return '';
   };
 
@@ -117,7 +128,7 @@ export default function SelectStore() {
         ownerName: form.name.trim(),
         ownerAddress: form.address.trim(),
         ownerPhone: form.phone.trim(),
-        activatedSerial: form.serial.trim(),
+        activatedSerial: form.serial.trim() || detectedSerial,
         ownerCode: cleanOwnerCode || null
       });
 
@@ -227,7 +238,7 @@ export default function SelectStore() {
               <div className="owner-activated-row"><span>Tên:</span> <strong>{ownerInfo.name}</strong></div>
               {ownerInfo.address && <div className="owner-activated-row"><span>Địa chỉ:</span> {ownerInfo.address}</div>}
               {ownerInfo.phone && <div className="owner-activated-row"><span>SĐT:</span> {ownerInfo.phone}</div>}
-              <div className="owner-activated-row"><span>Serial:</span> <strong>{ownerInfo.activatedSerial}</strong></div>
+              <div className="owner-activated-row"><span>Serial chống giả:</span> <strong>{ownerInfo.activatedSerial || label?.serialNumber}</strong></div>
               {isLocked && (
                 <>
                   <p className="owner-activated-note">
@@ -309,20 +320,28 @@ export default function SelectStore() {
                     <label className="store-field-label" htmlFor="owner-serial">
                       <span className="owner-field-index">4</span>
                       <Hash size={15} />
-                      <span>Số serial có trên tem <strong className="text-danger">*</strong></span>
+                      <span>Serial chống giả <strong className="text-danger">*</strong></span>
                     </label>
                     <input
                       id="owner-serial"
                       type="text"
                       className="store-field-input owner-serial-input"
-                      placeholder="VD: 00000004"
-                      value={form.serial}
+                      placeholder="Tự động lấy từ tem quét"
+                      value={form.serial || detectedSerial}
                       onChange={handleChange('serial')}
+                      readOnly={Boolean(detectedSerial)}
+                      style={detectedSerial ? {
+                        backgroundColor: '#F8FAFC',
+                        color: '#0D1B2A',
+                        fontWeight: 700,
+                        cursor: 'default',
+                        border: '1.5px solid #CBD5E1'
+                      } : {}}
                       maxLength={50}
                       autoComplete="off"
                       autoCapitalize="characters"
                     />
-                    <p className="owner-field-help">Nhập số serial in trên tem để xác nhận đúng sản phẩm.</p>
+                    <p className="owner-field-help">Serial chống giả được tự động trích xuất từ con tem đã quét.</p>
                   </div>
                 </div>
               </div>
@@ -338,12 +357,12 @@ export default function SelectStore() {
                     <span className="store-owner-badge">Không bắt buộc</span>
                   </div>
                   <p className="store-owner-help">
-                    Mã định danh sở hữu do nhà phân phối hoặc đại lý cấp khi xuất lưu hành.
+                    Nhập serial trên con tem vào đây
                   </p>
                   <input
                     type="text"
                     className="store-field-input store-owner-input"
-                    placeholder="Nhập mã sở hữu (VD: MSH-992, CUST-8839...)"
+                    placeholder="Nhập serial trên con tem vào đây"
                     value={ownerCode}
                     onChange={(e) => setOwnerCode(e.target.value)}
                   />
