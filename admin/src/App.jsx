@@ -80,6 +80,8 @@ const Scan = lazy(() => import('./pages/Scan/Scan'));
 const Distributors = lazy(() => import('./pages/Distributors/Distributors'));
 const NppScan = lazy(() => import('./pages/NppScan/NppScan'));
 const NppHistory = lazy(() => import('./pages/NppHistory/NppHistory'));
+const NppProducts = lazy(() => import('./pages/NppProducts/NppProducts'));
+const NppLabels = lazy(() => import('./pages/NppLabels/NppLabels'));
 const Profile = lazy(() => import('./pages/Profile/Profile'));
 const LabelDesigns = lazy(() => import('./pages/LabelDesigns/LabelDesigns'));
 const Namecards = lazy(() => import('./pages/Namecards/Namecards'));
@@ -101,7 +103,11 @@ function ProtectedRoute({ children, adminOnly = false }) {
     window.location.href = USER_LOGIN_URL;
     return null;
   }
-  if (isNPP) return <Navigate to="/npp/scan" replace />;
+  if (isNPP) {
+    if (window.location.pathname.startsWith('/products')) return <Navigate to="/npp/products" replace />;
+    if (window.location.pathname.startsWith('/labels')) return <Navigate to="/npp/labels" replace />;
+    return <Navigate to="/npp/scan" replace />;
+  }
   if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
   return children;
 }
@@ -157,6 +163,12 @@ function AppRoutes() {
         <Route path="/temqr/:serial" element={<Scan />} />
         <Route path="/npp/scan" element={<NppRoute><MainLayout /></NppRoute>}>
           <Route index element={<NppScan />} />
+        </Route>
+        <Route path="/npp/products" element={<NppRoute><MainLayout /></NppRoute>}>
+          <Route index element={<NppProducts />} />
+        </Route>
+        <Route path="/npp/labels" element={<NppRoute><MainLayout /></NppRoute>}>
+          <Route index element={<NppLabels />} />
         </Route>
         <Route path="/npp/history" element={<NppRoute><MainLayout /></NppRoute>}>
           <Route index element={<NppHistory />} />

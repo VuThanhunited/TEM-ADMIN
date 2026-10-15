@@ -223,6 +223,8 @@ class ApiService {
   nsxRegister(data) { return this.request('POST', '/public/nsx-register', data); }
   nppScanSerial(data) { return this.request('POST', '/public/distributor-entry-single', data); }
   nppGetHistory() { return this.request('GET', '/public/npp-scan-history'); }
+  nppGetProducts() { return this.request('GET', '/public/npp-products'); }
+  nppGetLabels(params) { return this.request('GET', '/public/npp-labels', null, params); }
   getPublicDistributors(enterpriseId) { return this.request('GET', `/public/distributors/${enterpriseId}`); }
   submitDistributorEntry(data) { return this.request('POST', '/public/distributor-entry', data); }
 

@@ -104,6 +104,18 @@ const nppMenuItems = [
     roles: ['NPP'],
   },
   {
+    label: 'Sản Phẩm Đã Nhận',
+    icon: Package,
+    path: '/npp/products',
+    roles: ['NPP'],
+  },
+  {
+    label: 'Tem Đã Phân Phối',
+    icon: Tag,
+    path: '/npp/labels',
+    roles: ['NPP'],
+  },
+  {
     label: 'Lịch Sử Phân Phối',
     icon: History,
     path: '/npp/history',

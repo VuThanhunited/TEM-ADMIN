@@ -707,6 +707,23 @@ router.post('/distributor-entry-single', async (req, res) => {
   }
 });
 
+// Helper: Tạo filter xác định tem thuộc sở hữu của tài khoản NPP
+function buildNppLabelFilter(user) {
+  const nppNames = [user.fullName, user.username, user.enterpriseId?.name].filter(Boolean);
+  const conditions = [
+    { distributorName: { $in: nppNames } },
+    { ownerCode: user.username }
+  ];
+  if (user.enterpriseId) {
+    const entId = user.enterpriseId._id || user.enterpriseId;
+    conditions.push({ enterpriseId: entId, distributorName: { $ne: null } });
+    if (user.enterpriseId?.type === 'NPP') {
+      conditions.push({ enterpriseId: entId });
+    }
+  }
+  return { $or: conditions };
+}
+
 // GET /api/public/npp-scan-history - Get scan/distribution history for the logged-in NPP
 router.get('/npp-scan-history', async (req, res) => {
   try {
@@ -723,8 +740,7 @@ router.get('/npp-scan-history', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
     }
 
-    // Cho phép NPP hoặc Admin đang impersonate NPP
-    if (decoded.role !== 'NPP') {
+    if (decoded.role !== 'NPP' && !decoded.isAdminImpersonating) {
       return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
     }
 
@@ -733,13 +749,10 @@ router.get('/npp-scan-history', async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
-    const enterpriseId = user.enterpriseId?._id || user.enterpriseId;
-    
-    // Find labels distributed by this enterprise (NPP)
-    const labels = await Label.find({
-      enterpriseId,
-      distributorName: { $ne: null }
-    })
+    const nppFilter = buildNppLabelFilter(user);
+
+    // Find labels distributed to this NPP
+    const labels = await Label.find(nppFilter)
       .populate('productId')
       .sort({ updatedAt: -1 })
       .limit(50);
@@ -753,17 +766,17 @@ router.get('/npp-scan-history', async (req, res) => {
       time: l.updatedAt
     }));
 
-    // Tính tổng số tem đã nhập của NPP và tổng số tem đã in của NSX liên kết
-    const totalImported = await Label.countDocuments({
-      enterpriseId,
-      distributorName: { $ne: null }
-    });
+    const totalImported = await Label.countDocuments(nppFilter);
 
-    const printedBatches = await LabelBatch.find({
-      enterpriseId,
-      isPrinted: true
-    }).select('printedCount totalLabels').lean();
-    const totalPrinted = printedBatches.reduce((sum, b) => sum + (b.printedCount || b.totalLabels || 0), 0);
+    const enterpriseId = user.enterpriseId?._id || user.enterpriseId;
+    let totalPrinted = 0;
+    if (enterpriseId) {
+      const printedBatches = await LabelBatch.find({
+        enterpriseId,
+        isPrinted: true
+      }).select('printedCount totalLabels').lean();
+      totalPrinted = printedBatches.reduce((sum, b) => sum + (b.printedCount || b.totalLabels || 0), 0);
+    }
 
     res.json({
       history: historyList,
@@ -774,6 +787,162 @@ router.get('/npp-scan-history', async (req, res) => {
   } catch (error) {
     console.error('Get NPP scan history error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi lấy lịch sử quét' });
+  }
+});
+
+// GET /api/public/npp-products - Get products received/distributed by the logged-in NPP
+router.get('/npp-products', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+    } catch {
+      return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    if (decoded.role !== 'NPP' && !decoded.isAdminImpersonating) {
+      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
+    }
+
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    }
+
+    const nppFilter = buildNppLabelFilter(user);
+
+    // 1. Lấy tất cả productId từ các tem NPP đã nhận
+    const labelProductIds = await Label.find({ ...nppFilter, productId: { $ne: null } }).distinct('productId');
+
+    // 2. Tìm các sản phẩm thuộc tem NPP đã nhận HOẶC thuộc Doanh nghiệp của NPP HOẶC có NPP trong mảng distributors
+    const productQuery = {
+      $or: [
+        { _id: { $in: labelProductIds } },
+        ...(user.enterpriseId ? [{ enterpriseId: user.enterpriseId._id || user.enterpriseId }] : []),
+        { 'distributors.name': { $regex: user.fullName || user.username, $options: 'i' } }
+      ]
+    };
+
+    const products = await Product.find(productQuery)
+      .populate('enterpriseId', 'name logo address phone email')
+      .populate('manufacturerId', 'name address phone email logo')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 3. Đếm số lượng tem của từng sản phẩm mà NPP đang sở hữu
+    const productsWithStats = await Promise.all(products.map(async (prod) => {
+      const labelCount = await Label.countDocuments({
+        ...nppFilter,
+        productId: prod._id
+      });
+      return {
+        ...prod,
+        totalLabelsReceived: labelCount
+      };
+    }));
+
+    res.json({
+      success: true,
+      data: productsWithStats,
+      total: productsWithStats.length
+    });
+  } catch (error) {
+    console.error('Get NPP products error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách sản phẩm' });
+  }
+});
+
+// GET /api/public/npp-labels - Get paginated labels received by the logged-in NPP
+router.get('/npp-labels', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+    } catch {
+      return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    if (decoded.role !== 'NPP' && !decoded.isAdminImpersonating) {
+      return res.status(403).json({ error: 'Chỉ tài khoản NPP mới được truy cập' });
+    }
+
+    const user = await User.findById(decoded.userId).populate('enterpriseId');
+    if (!user) {
+      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    }
+
+    const { page = 1, limit = 20, search = '', productId = '', status = '' } = req.query;
+    const baseNppFilter = buildNppLabelFilter(user);
+
+    const query = { ...baseNppFilter };
+
+    if (productId) {
+      query.productId = productId;
+    }
+    if (status) {
+      query.status = status;
+    }
+
+    if (search) {
+      const cleanSearch = String(search).trim();
+      // Tìm sản phẩm khớp tên
+      const matchProds = await Product.find({ name: { $regex: cleanSearch, $options: 'i' } }).select('_id').lean();
+      const prodIds = matchProds.map(p => p._id);
+
+      const searchOr = [
+        { serialNumber: { $regex: cleanSearch, $options: 'i' } },
+        { activeCode: { $regex: cleanSearch, $options: 'i' } },
+        { smsCode: { $regex: cleanSearch, $options: 'i' } }
+      ];
+      if (prodIds.length > 0) searchOr.push({ productId: { $in: prodIds } });
+
+      query.$and = [{ $or: searchOr }];
+    }
+
+    const [total, labels, totalActive, totalScanned, allNppCount] = await Promise.all([
+      Label.countDocuments(query),
+      Label.find(query)
+        .populate('productId', 'name sku images category')
+        .populate('batchId', 'batchCode expiryDate isPrinted')
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .skip((parseInt(page) - 1) * parseInt(limit))
+        .limit(parseInt(limit))
+        .lean(),
+      Label.countDocuments({ ...baseNppFilter, status: 'ACTIVE' }),
+      Label.countDocuments({ ...baseNppFilter, status: 'SCANNED' }),
+      Label.countDocuments(baseNppFilter)
+    ]);
+
+    res.json({
+      success: true,
+      data: labels,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
+      },
+      stats: {
+        totalLabels: allNppCount,
+        activeLabels: totalActive,
+        scannedLabels: totalScanned
+      }
+    });
+  } catch (error) {
+    console.error('Get NPP labels error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách tem nhãn' });
   }
 });
 
