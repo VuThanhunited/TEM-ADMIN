@@ -55,11 +55,11 @@ export default function NppProducts() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span className="badge badge-neutral" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
-            📦 <strong>{products.length}</strong> loại sản phẩm
+          <span className="badge badge-neutral" style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <Package size={13} style={{ color: 'var(--color-accent)' }} /> <strong>{products.length}</strong> loại sản phẩm
           </span>
-          <span className="badge badge-success" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
-            🏷️ <strong>{totalLabels.toLocaleString('vi-VN')}</strong> tem đã nhận
+          <span className="badge badge-success" style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <Tag size={13} /> <strong>{totalLabels.toLocaleString('vi-VN')}</strong> tem đã nhận
           </span>
           <button
             className="btn btn-ghost"
@@ -75,22 +75,20 @@ export default function NppProducts() {
       {/* ── Thanh lọc Filter Toolbar chuẩn Admin ── */}
       <div className="filter-toolbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 300px', position: 'relative' }}>
+          <div className="search-box" style={{ flex: '1 1 300px' }}>
+            <Search size={16} className="search-icon" />
             <input
               className="input"
-              placeholder="🔍 Tìm nhanh: Tên sản phẩm, mã SKU, danh mục, NSX..."
+              placeholder="Tìm nhanh: Tên sản phẩm, mã SKU, danh mục, NSX..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             {search && (
               <button
                 type="button"
+                className="search-clear-btn"
                 onClick={() => setSearch('')}
                 title="Xóa tìm kiếm"
-                style={{
-                  position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)'
-                }}
               >
                 <X size={15} />
               </button>

@@ -1,4 +1,6 @@
 /* NppLabels.css - Kế thừa 100% từ Labels.css và Design System chuẩn của Admin */
+@import '../Labels/Labels.css';
+
 .npp-labels-page {
   display: flex;
   flex-direction: column;

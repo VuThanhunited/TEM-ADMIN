@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer
+  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer, ChevronDown, Building2
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';
@@ -959,7 +959,7 @@ export default function Labels() {
             <Search size={18} className="search-icon" />
             <input
               className="input"
-              placeholder={activeTab === 'batches' ? '🔍 Tìm nhanh: Mã lô, Tên sản phẩm, Serial, Ghi chú...' : '🔍 Tìm nhanh: Mã Serial, Mã lô, Tên sản phẩm, Điểm bán...'}
+              placeholder={activeTab === 'batches' ? 'Tìm nhanh: Mã lô, Tên sản phẩm, Serial, Ghi chú...' : 'Tìm nhanh: Mã Serial, Mã lô, Tên sản phẩm, Điểm bán...'}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -973,87 +973,103 @@ export default function Labels() {
           {/* Quick Dropdown Filters */}
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', flex: '2 1 auto' }}>
             {/* Lọc theo Sản phẩm */}
-            <select
-              className="filter-select select"
-              value={filterProduct}
-              onChange={e => setFilterProduct(e.target.value)}
-              title="Lọc theo sản phẩm"
-            >
-              <option value="">📦 Tất cả sản phẩm</option>
-              {products.map(p => (
-                <option key={p._id} value={p._id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <div className={`filter-select-wrapper ${filterProduct ? 'is-active' : ''}`} style={{ minWidth: '180px' }}>
+              <Package size={16} className="filter-icon" />
+              <select
+                className="filter-select"
+                value={filterProduct}
+                onChange={e => setFilterProduct(e.target.value)}
+                title="Lọc theo sản phẩm"
+              >
+                <option value="">Tất cả sản phẩm</option>
+                {products.map(p => (
+                  <option key={p._id} value={p._id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="filter-arrow" />
+            </div>
 
             {/* Lọc theo Lô tem (chỉ hiện trong tab activate) */}
             {activeTab === 'activate' && (
-              <select
-                className="filter-select select"
-                value={filterBatch}
-                onChange={e => setFilterBatch(e.target.value)}
-                title="Lọc theo lô tem"
-              >
-                <option value="">🏷️ Tất cả lô tem</option>
-                {allBatchesForFilter.map(b => (
-                  <option key={b._id} value={b._id}>
-                    {b.batchCode}
-                  </option>
-                ))}
-              </select>
+              <div className={`filter-select-wrapper ${filterBatch ? 'is-active' : ''}`} style={{ minWidth: '160px' }}>
+                <Tag size={15} className="filter-icon" />
+                <select
+                  className="filter-select"
+                  value={filterBatch}
+                  onChange={e => setFilterBatch(e.target.value)}
+                  title="Lọc theo lô tem"
+                >
+                  <option value="">Tất cả lô tem</option>
+                  {allBatchesForFilter.map(b => (
+                    <option key={b._id} value={b._id}>
+                      {b.batchCode}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="filter-arrow" />
+              </div>
             )}
 
             {/* Lọc theo Trạng thái */}
-            <select
-              className="filter-select select"
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              title="Lọc theo trạng thái"
-            >
-              <option value="">🔘 Tất cả trạng thái</option>
-              {activeTab === 'batches' ? (
-                <>
-                  <option value="ACTIVE">🟢 Đang hoạt động</option>
-                  <option value="INACTIVE">⚪ Tạm dừng</option>
-                  <option value="EXPIRED">🔴 Đã hết hạn</option>
-                </>
-              ) : (
-                <>
-                  <option value="SCANNED">🔵 Đã quét</option>
-                  <option value="ACTIVE">🟢 Hoạt động / Chưa quét</option>
-                  <option value="INACTIVE">⚪ Chưa kích hoạt</option>
-                </>
-              )}
-            </select>
+            <div className={`filter-select-wrapper ${filterStatus ? 'is-active' : ''}`} style={{ minWidth: '160px' }}>
+              <Filter size={15} className="filter-icon" />
+              <select
+                className="filter-select"
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+                title="Lọc theo trạng thái"
+              >
+                <option value="">Tất cả trạng thái</option>
+                {activeTab === 'batches' ? (
+                  <>
+                    <option value="ACTIVE">Đang hoạt động</option>
+                    <option value="INACTIVE">Tạm dừng</option>
+                    <option value="EXPIRED">Đã hết hạn</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="SCANNED">Đã quét</option>
+                    <option value="ACTIVE">Hoạt động / Chưa quét</option>
+                    <option value="INACTIVE">Chưa kích hoạt</option>
+                  </>
+                )}
+              </select>
+              <ChevronDown size={14} className="filter-arrow" />
+            </div>
 
             {/* Lọc theo Doanh nghiệp (cho ADMIN) */}
             {isAdmin && enterprises.length > 0 && (
-              <select
-                className="filter-select select"
-                value={filterEnterprise}
-                onChange={e => setFilterEnterprise(e.target.value)}
-                title="Lọc theo doanh nghiệp"
-              >
-                <option value="">🏢 Tất cả doanh nghiệp</option>
-                {enterprises.map(ent => (
-                  <option key={ent._id} value={ent._id}>
-                    {ent.name}
-                  </option>
-                ))}
-              </select>
+              <div className={`filter-select-wrapper ${filterEnterprise ? 'is-active' : ''}`} style={{ minWidth: '180px' }}>
+                <Building2 size={15} className="filter-icon" />
+                <select
+                  className="filter-select"
+                  value={filterEnterprise}
+                  onChange={e => setFilterEnterprise(e.target.value)}
+                  title="Lọc theo doanh nghiệp"
+                >
+                  <option value="">Tất cả doanh nghiệp</option>
+                  {enterprises.map(ent => (
+                    <option key={ent._id} value={ent._id}>
+                      {ent.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="filter-arrow" />
+              </div>
             )}
 
             {/* Nút Xóa lọc nếu đang có bất kỳ điều kiện lọc nào */}
             {(search || filterProduct || filterBatch || filterStatus || filterEnterprise) && (
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="filter-reset-btn"
                 onClick={handleResetFilters}
-                style={{ height: '40px', padding: '0 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Đặt lại toàn bộ bộ lọc"
               >
-                <RotateCcw size={14} /> Xóa lọc
+                <RotateCcw size={13} />
+                <span>Đặt lại</span>
               </button>
             )}
           </div>

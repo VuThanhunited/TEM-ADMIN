@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Download, RefreshCw, X, CheckCircle, Clock, Eye, Package, ExternalLink, QrCode
+  Tag, Download, RefreshCw, X, CheckCircle, Clock, Eye, Package, ExternalLink, QrCode, Search, ChevronDown, Filter, RotateCcw
 } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import Pagination from '../../components/Pagination';
@@ -161,38 +161,35 @@ export default function NppLabels() {
 
       {/* ── Thống kê tóm tắt tinh tế chuẩn Admin ── */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <span className="badge badge-neutral" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
-          🏷️ Tổng tem đã nhận: <strong style={{ color: 'var(--color-text-primary)', marginLeft: 4 }}>{stats.totalLabels.toLocaleString('vi-VN')}</strong>
+        <span className="badge badge-neutral" style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <Tag size={13} style={{ color: 'var(--color-accent)' }} /> Tổng tem đã nhận: <strong style={{ color: 'var(--color-text-primary)' }}>{stats.totalLabels.toLocaleString('vi-VN')}</strong>
         </span>
-        <span className="badge badge-success" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
-          🟢 Đang hoạt động: <strong style={{ marginLeft: 4 }}>{stats.activeLabels.toLocaleString('vi-VN')}</strong>
+        <span className="badge badge-success" style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <CheckCircle size={13} /> Đang hoạt động: <strong>{stats.activeLabels.toLocaleString('vi-VN')}</strong>
         </span>
-        <span className="badge badge-info" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
-          🔵 Đã quét tra cứu: <strong style={{ marginLeft: 4 }}>{stats.scannedLabels.toLocaleString('vi-VN')}</strong>
+        <span className="badge badge-info" style={{ fontSize: '0.82rem', padding: '6px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+          <Eye size={13} /> Đã quét tra cứu: <strong>{stats.scannedLabels.toLocaleString('vi-VN')}</strong>
         </span>
       </div>
 
       {/* ── Filter Toolbar chuẩn Admin (Labels.css) ── */}
       <div className="filter-toolbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Ô tìm kiếm */}
-          <div style={{ flex: '1 1 280px', position: 'relative' }}>
+          {/* Ô tìm kiếm đồng bộ */}
+          <div className="search-box" style={{ flex: '1 1 280px' }}>
+            <Search size={16} className="search-icon" />
             <input
               className="input"
-              placeholder="🔍 Tìm nhanh: Mã Serial, Mã kích hoạt, Mã SMS..."
+              placeholder="Tìm nhanh: Mã Serial, Mã kích hoạt, Mã SMS..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             {search && (
               <button
                 type="button"
+                className="search-clear-btn"
                 onClick={() => setSearch('')}
                 title="Xóa tìm kiếm"
-                style={{
-                  position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)',
-                  display: 'flex', alignItems: 'center'
-                }}
               >
                 <X size={15} />
               </button>
@@ -200,48 +197,55 @@ export default function NppLabels() {
           </div>
 
           {/* Lọc theo Sản phẩm */}
-          <select
-            className="filter-select select"
-            value={selectedProduct}
-            onChange={e => setSelectedProduct(e.target.value)}
-            title="Lọc theo sản phẩm"
-            style={{ minWidth: '220px' }}
-          >
-            <option value="">📦 Tất cả sản phẩm ({products.length})</option>
-            {products.map(p => (
-              <option key={p._id} value={p._id}>
-                {p.name} {p.totalLabelsReceived ? `(${p.totalLabelsReceived} tem)` : ''}
-              </option>
-            ))}
-          </select>
+          <div className={`filter-select-wrapper ${selectedProduct ? 'is-active' : ''}`} style={{ minWidth: '220px', flex: '0 1 auto' }}>
+            <Package size={16} className="filter-icon" />
+            <select
+              className="filter-select"
+              value={selectedProduct}
+              onChange={e => setSelectedProduct(e.target.value)}
+              title="Lọc theo sản phẩm"
+            >
+              <option value="">Tất cả sản phẩm {products.length > 0 ? `(${products.length})` : ''}</option>
+              {products.map(p => (
+                <option key={p._id} value={p._id}>
+                  {p.name} {p.totalLabelsReceived ? `(${p.totalLabelsReceived} tem)` : ''}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="filter-arrow" />
+          </div>
 
           {/* Lọc theo Trạng thái */}
-          <select
-            className="filter-select select"
-            value={selectedStatus}
-            onChange={e => setSelectedStatus(e.target.value)}
-            title="Lọc theo trạng thái"
-            style={{ minWidth: '180px' }}
-          >
-            <option value="">🔘 Tất cả trạng thái</option>
-            <option value="ACTIVE">🟢 Đang hoạt động</option>
-            <option value="SCANNED">🔵 Đã quét tra cứu</option>
-            <option value="INACTIVE">⚪ Chưa kích hoạt</option>
-          </select>
+          <div className={`filter-select-wrapper ${selectedStatus ? 'is-active' : ''}`} style={{ minWidth: '180px', flex: '0 1 auto' }}>
+            <Filter size={15} className="filter-icon" />
+            <select
+              className="filter-select"
+              value={selectedStatus}
+              onChange={e => setSelectedStatus(e.target.value)}
+              title="Lọc theo trạng thái"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="ACTIVE">Đang hoạt động</option>
+              <option value="SCANNED">Đã quét tra cứu</option>
+              <option value="INACTIVE">Chưa kích hoạt</option>
+            </select>
+            <ChevronDown size={14} className="filter-arrow" />
+          </div>
 
           {/* Nút Xóa lọc nếu có filter */}
           {(selectedProduct || selectedStatus || search) && (
             <button
               type="button"
-              className="btn btn-sm btn-ghost"
+              className="filter-reset-btn"
               onClick={() => {
                 setSelectedProduct('');
                 setSelectedStatus('');
                 setSearch('');
               }}
-              style={{ border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '4px' }}
+              title="Đặt lại bộ lọc"
             >
-              <X size={14} /> Xóa bộ lọc
+              <RotateCcw size={13} />
+              <span>Đặt lại</span>
             </button>
           )}
         </div>

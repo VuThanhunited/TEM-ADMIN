@@ -1,4 +1,6 @@
 /* NppProducts.css - Kế thừa từ Products.css và Design System Admin */
+@import '../Labels/Labels.css';
+
 .npp-products-page {
   display: flex;
   flex-direction: column;
