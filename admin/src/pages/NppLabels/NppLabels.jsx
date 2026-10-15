@@ -3,8 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Search, Filter, RefreshCw, Download, ExternalLink,
-  CheckCircle, Clock, Eye, Package, X, QrCode, ShieldCheck, Activity
+  Tag, Download, RefreshCw, X, CheckCircle, Clock, Eye, Package, ExternalLink, QrCode
 } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import Pagination from '../../components/Pagination';
@@ -129,153 +128,118 @@ export default function NppLabels() {
     }
   };
 
-  const activePercent = stats.totalLabels > 0 ? Math.round((stats.activeLabels / stats.totalLabels) * 100) : 0;
-  const scannedPercent = stats.totalLabels > 0 ? Math.round((stats.scannedLabels / stats.totalLabels) * 100) : 0;
-
   return (
-    <div className="npp-labels-container">
-      {/* Page Header */}
-      <div className="page-header npp-header-row">
+    <div className="labels-page npp-labels-page">
+      {/* ── Page Header chuẩn Admin ── */}
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 className="npp-title">
-            <Tag size={26} className="title-icon" />
-            Tem Đã Nhận Phân Phối
-          </h1>
-          <p className="page-subtitle">
-            Quản lý và tra cứu toàn bộ tem nhãn sản phẩm bạn đã nhận từ Nhà Sản Xuất
-          </p>
+          <h1>Tem Đã Nhận Phân Phối</h1>
+          <p>Quản lý và tra cứu toàn bộ tem nhãn sản phẩm bạn đã nhận từ Nhà Sản Xuất</p>
         </div>
 
-        <div className="npp-actions-group">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
             className="btn btn-primary"
             onClick={handleExportExcel}
             disabled={exporting || labels.length === 0}
-            title="Xuất toàn bộ danh sách tem ra file Excel"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="Xuất danh sách tem ra file Excel"
           >
             <Download size={16} />
             <span>{exporting ? 'Đang xuất Excel...' : 'Xuất Excel'}</span>
           </button>
-          <button className="btn btn-secondary" onClick={loadLabels} title="Làm mới dữ liệu">
+          <button
+            className="btn btn-ghost"
+            onClick={loadLabels}
+            style={{ border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="Làm mới dữ liệu"
+          >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
           </button>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="stat-grid npp-stats-row">
-        <div className="stat-card">
-          <div className="stat-card-top">
-            <div className="stat-info">
-              <span className="stat-label">Tổng tem đã nhận</span>
-              <span className="stat-value">{stats.totalLabels.toLocaleString('vi-VN')}</span>
-            </div>
-            <div className="stat-icon" style={{ background: 'var(--gradient-primary)' }}>
-              <Tag size={22} />
-            </div>
-          </div>
-          <div className="stat-card-bottom">
-            <span className="stat-change up">
-              <ShieldCheck size={14} /> Phân phối chính hãng
-            </span>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-card-top">
-            <div className="stat-info">
-              <span className="stat-label">Tem đang hoạt động</span>
-              <span className="stat-value">{stats.activeLabels.toLocaleString('vi-VN')}</span>
-            </div>
-            <div className="stat-icon" style={{ background: 'var(--gradient-success)' }}>
-              <CheckCircle size={22} />
-            </div>
-          </div>
-          <div className="stat-card-bottom">
-            <span className="stat-change up">
-              <Activity size={14} /> {activePercent}% trên tổng số tem
-            </span>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-card-top">
-            <div className="stat-info">
-              <span className="stat-label">Tem đã được quét tra cứu</span>
-              <span className="stat-value">{stats.scannedLabels.toLocaleString('vi-VN')}</span>
-            </div>
-            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #0284c7, #38bdf8)' }}>
-              <Eye size={22} />
-            </div>
-          </div>
-          <div className="stat-card-bottom">
-            <span className="stat-change" style={{ color: 'var(--color-info)' }}>
-              <Eye size={14} /> {scannedPercent}% người dùng đã quét
-            </span>
-          </div>
-        </div>
+      {/* ── Thống kê tóm tắt tinh tế chuẩn Admin ── */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <span className="badge badge-neutral" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
+          🏷️ Tổng tem đã nhận: <strong style={{ color: 'var(--color-text-primary)', marginLeft: 4 }}>{stats.totalLabels.toLocaleString('vi-VN')}</strong>
+        </span>
+        <span className="badge badge-success" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
+          🟢 Đang hoạt động: <strong style={{ marginLeft: 4 }}>{stats.activeLabels.toLocaleString('vi-VN')}</strong>
+        </span>
+        <span className="badge badge-info" style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
+          🔵 Đã quét tra cứu: <strong style={{ marginLeft: 4 }}>{stats.scannedLabels.toLocaleString('vi-VN')}</strong>
+        </span>
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="card npp-filter-card">
-        <div className="npp-filter-controls">
-          {/* Search box */}
-          <div className="npp-search-wrapper">
-            <Search size={17} className="npp-search-icon" />
+      {/* ── Filter Toolbar chuẩn Admin (Labels.css) ── */}
+      <div className="filter-toolbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Ô tìm kiếm */}
+          <div style={{ flex: '1 1 280px', position: 'relative' }}>
             <input
-              type="text"
-              className="input npp-search-input"
-              placeholder="Tìm theo Serial, mã kích hoạt, mã SMS..."
+              className="input"
+              placeholder="🔍 Tìm nhanh: Mã Serial, Mã kích hoạt, Mã SMS..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             {search && (
-              <button className="npp-clear-btn" onClick={() => setSearch('')}>
-                <X size={14} />
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                title="Xóa tìm kiếm"
+                style={{
+                  position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)',
+                  display: 'flex', alignItems: 'center'
+                }}
+              >
+                <X size={15} />
               </button>
             )}
           </div>
 
-          {/* Filter Product dropdown */}
-          <div className="npp-select-wrapper">
-            <Package size={16} className="npp-select-icon" />
-            <select
-              className="select npp-custom-select"
-              value={selectedProduct}
-              onChange={e => setSelectedProduct(e.target.value)}
-            >
-              <option value="">Tất cả sản phẩm ({products.length})</option>
-              {products.map(p => (
-                <option key={p._id} value={p._id}>
-                  {p.name} {p.totalLabelsReceived ? `(${p.totalLabelsReceived} tem)` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Lọc theo Sản phẩm */}
+          <select
+            className="filter-select select"
+            value={selectedProduct}
+            onChange={e => setSelectedProduct(e.target.value)}
+            title="Lọc theo sản phẩm"
+            style={{ minWidth: '220px' }}
+          >
+            <option value="">📦 Tất cả sản phẩm ({products.length})</option>
+            {products.map(p => (
+              <option key={p._id} value={p._id}>
+                {p.name} {p.totalLabelsReceived ? `(${p.totalLabelsReceived} tem)` : ''}
+              </option>
+            ))}
+          </select>
 
-          {/* Filter Status dropdown */}
-          <div className="npp-select-wrapper">
-            <Filter size={16} className="npp-select-icon" />
-            <select
-              className="select npp-custom-select"
-              value={selectedStatus}
-              onChange={e => setSelectedStatus(e.target.value)}
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="ACTIVE">Đang hoạt động</option>
-              <option value="SCANNED">Đã quét tra cứu</option>
-              <option value="INACTIVE">Chưa kích hoạt</option>
-            </select>
-          </div>
+          {/* Lọc theo Trạng thái */}
+          <select
+            className="filter-select select"
+            value={selectedStatus}
+            onChange={e => setSelectedStatus(e.target.value)}
+            title="Lọc theo trạng thái"
+            style={{ minWidth: '180px' }}
+          >
+            <option value="">🔘 Tất cả trạng thái</option>
+            <option value="ACTIVE">🟢 Đang hoạt động</option>
+            <option value="SCANNED">🔵 Đã quét tra cứu</option>
+            <option value="INACTIVE">⚪ Chưa kích hoạt</option>
+          </select>
 
+          {/* Nút Xóa lọc nếu có filter */}
           {(selectedProduct || selectedStatus || search) && (
             <button
-              className="btn btn-outline btn-sm npp-reset-btn"
+              type="button"
+              className="btn btn-sm btn-ghost"
               onClick={() => {
                 setSelectedProduct('');
                 setSelectedStatus('');
                 setSearch('');
               }}
+              style={{ border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <X size={14} /> Xóa bộ lọc
             </button>
@@ -283,18 +247,18 @@ export default function NppLabels() {
         </div>
       </div>
 
-      {/* Table Card */}
-      <div className="card npp-table-card">
+      {/* ── Bảng dữ liệu Tem nhãn chuẩn Admin (card + table) ── */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
-          <div className="npp-loading-box">
-            <div className="loading-spinner" style={{ width: 36, height: 36 }} />
-            <p>Đang tải dữ liệu tem nhãn phân phối...</p>
+          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <div className="loading-spinner" style={{ width: 36, height: 36, margin: '0 auto 12px' }} />
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>Đang tải dữ liệu tem nhãn phân phối...</p>
           </div>
         ) : labels.length === 0 ? (
-          <div className="npp-empty-box">
-            <Tag size={44} className="npp-empty-icon" />
-            <h3>Không tìm thấy tem nhãn nào</h3>
-            <p>
+          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <Tag size={44} style={{ color: 'var(--color-text-muted)', opacity: 0.6, marginBottom: 12 }} />
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-primary)', margin: '0 0 6px 0' }}>Không tìm thấy tem nhãn nào</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', margin: 0 }}>
               {search || selectedProduct || selectedStatus
                 ? 'Không có tem nào khớp với điều kiện tìm kiếm/bộ lọc.'
                 : 'Bạn chưa có con tem nào trong kho. Hãy quét tem để nhập hàng.'}
@@ -302,18 +266,18 @@ export default function NppLabels() {
           </div>
         ) : (
           <>
-            <div className="table-container">
-              <table className="table npp-data-table">
+            <div className="table-responsive">
+              <table className="table">
                 <thead>
                   <tr>
-                    <th style={{ width: 55, textAlign: 'center' }}>STT</th>
+                    <th style={{ width: 50, textAlign: 'center' }}>STT</th>
                     <th style={{ width: 140 }}>Mã Serial</th>
                     <th>Sản phẩm</th>
                     <th style={{ width: 130 }}>Lô tem</th>
                     <th style={{ width: 160 }}>Trạng thái</th>
                     <th style={{ width: 150 }}>Mã xác thực</th>
                     <th style={{ width: 90, textAlign: 'center' }}>Lượt quét</th>
-                    <th style={{ width: 120 }}>Ngày nhận</th>
+                    <th style={{ width: 110 }}>Ngày nhận</th>
                     <th style={{ width: 80, textAlign: 'center' }}>Tra cứu</th>
                   </tr>
                 </thead>
@@ -324,51 +288,62 @@ export default function NppLabels() {
 
                     return (
                       <tr key={item._id}>
-                        <td style={{ textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        <td style={{ textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
                           {serialIndex}
                         </td>
                         <td>
-                          <span className="npp-serial-tag">{item.serialNumber}</span>
+                          <span className="batch-code">{item.serialNumber}</span>
                         </td>
                         <td>
-                          <div className="npp-prod-cell">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             {item.productId?.images?.[0] ? (
                               <img
                                 src={item.productId.images[0]}
                                 alt=""
-                                className="npp-prod-thumb"
+                                style={{ width: 34, height: 34, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--color-border)', flexShrink: 0 }}
                                 onError={e => { e.target.style.display = 'none'; }}
                               />
                             ) : (
-                              <div className="npp-prod-thumb-empty">
-                                <Package size={16} />
+                              <div style={{ width: 34, height: 34, borderRadius: 6, background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                                <Package size={15} />
                               </div>
                             )}
                             <div>
-                              <strong className="npp-prod-name">
+                              <strong style={{ color: 'var(--color-text-primary)', fontSize: '0.88rem', display: 'block' }}>
                                 {item.productId?.name || 'Sản phẩm chưa gán'}
                               </strong>
                               {item.productId?.sku && (
-                                <span className="npp-prod-sku">SKU: {item.productId.sku}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>
+                                  SKU: {item.productId.sku}
+                                </span>
                               )}
                             </div>
                           </div>
                         </td>
                         <td>
-                          <span className="npp-batch-pill">
+                          <span style={{ background: 'var(--color-bg-tertiary)', padding: '3px 8px', borderRadius: 4, fontSize: '0.78rem', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)', fontWeight: 500 }}>
                             {item.batchId?.batchCode || 'N/A'}
                           </span>
                         </td>
                         <td>{getStatusBadge(item.status, item.scanCount)}</td>
                         <td>
-                          <div className="npp-auth-codes">
-                            {item.activeCode && <span>Active: <code>{item.activeCode}</code></span>}
-                            {item.smsCode && <span>SMS: <code>{item.smsCode}</code></span>}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: '0.76rem', color: 'var(--color-text-muted)' }}>
+                            {item.activeCode && <span>Active: <code style={{ background: 'var(--color-bg-tertiary)', padding: '1px 5px', borderRadius: 3, border: '1px solid var(--color-border)' }}>{item.activeCode}</code></span>}
+                            {item.smsCode && <span>SMS: <code style={{ background: 'var(--color-bg-tertiary)', padding: '1px 5px', borderRadius: 3, border: '1px solid var(--color-border)' }}>{item.smsCode}</code></span>}
                             {!item.activeCode && !item.smsCode && <span className="text-muted">—</span>}
                           </div>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <span className={`npp-scan-pill ${item.scanCount > 0 ? 'scanned' : ''}`}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            background: item.scanCount > 0 ? 'var(--color-info-bg)' : 'var(--color-bg-tertiary)',
+                            color: item.scanCount > 0 ? 'var(--color-info)' : 'var(--color-text-muted)',
+                            border: item.scanCount > 0 ? '1px solid rgba(2, 132, 199, 0.2)' : '1px solid var(--color-border)'
+                          }}>
                             {item.scanCount || 0}
                           </span>
                         </td>
@@ -380,11 +355,11 @@ export default function NppLabels() {
                             href={scanUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="npp-qr-btn"
+                            className="btn btn-icon"
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 6, border: '1px solid var(--color-border)', color: 'var(--color-accent)' }}
                             title="Mở trang tra cứu tem này"
                           >
                             <QrCode size={15} />
-                            <ExternalLink size={11} />
                           </a>
                         </td>
                       </tr>
@@ -394,10 +369,10 @@ export default function NppLabels() {
               </table>
             </div>
 
-            {/* Pagination */}
+            {/* Phân trang */}
             {pagination.totalPages > 1 && (
-              <div className="npp-pagination-bar">
-                <span className="npp-page-info">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-card)', flexWrap: 'wrap', gap: 12 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                   Hiển thị {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} / <strong>{pagination.total}</strong> tem
                 </span>
                 <Pagination
