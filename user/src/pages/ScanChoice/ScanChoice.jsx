@@ -132,7 +132,7 @@ export default function ScanChoice() {
                   {product?.name || 'Sản phẩm'}
                 </div>
                 <div className="scan-choice-product-serial">
-                  Mã: {label?.serialNumber || code}
+                  SERIAL chống làm giả: {label?.serialNumber || code}
                 </div>
                 {enterprise?.name && (
                   <div className="scan-choice-product-enterprise">

@@ -981,6 +981,50 @@ router.put('/:id/map', auth, async (req, res) => {
   }
 });
 
+// PUT /api/labels/:id/owner - Admin/NSX chỉnh sửa thông số sở hữu của tem
+router.put('/:id/owner', auth, async (req, res) => {
+  try {
+    const { ownerName, ownerAddress, ownerPhone, activatedSerial, ownerCode, clearOwnerInfo } = req.body;
+    const label = await Label.findById(req.params.id);
+    if (!label) return res.status(404).json({ error: 'Không tìm thấy tem' });
+
+    if (clearOwnerInfo) {
+      label.ownerInfo = {
+        name: null,
+        address: null,
+        phone: null,
+        activatedSerial: null,
+        activatedAt: null,
+        activatedBy: null
+      };
+      label.ownerCode = null;
+    } else {
+      if (!label.ownerInfo) label.ownerInfo = {};
+      if (ownerName !== undefined) label.ownerInfo.name = (ownerName && typeof ownerName === 'string') ? ownerName.trim() : null;
+      if (ownerAddress !== undefined) label.ownerInfo.address = (ownerAddress && typeof ownerAddress === 'string') ? ownerAddress.trim() : null;
+      if (ownerPhone !== undefined) label.ownerInfo.phone = (ownerPhone && typeof ownerPhone === 'string') ? ownerPhone.trim() : null;
+      if (activatedSerial !== undefined) label.ownerInfo.activatedSerial = (activatedSerial && typeof activatedSerial === 'string') ? activatedSerial.trim() : null;
+      if (ownerCode !== undefined) label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+
+      // Nếu có tên hoặc mã sở hữu, đánh dấu thời gian kích hoạt nếu chưa có
+      if (label.ownerInfo.name || label.ownerCode) {
+        if (!label.ownerInfo.activatedAt) label.ownerInfo.activatedAt = new Date();
+        label.ownerInfo.activatedBy = req.user?.id || req.user?._id;
+      }
+    }
+
+    await label.save();
+    const updated = await Label.findById(label._id)
+      .populate('productId', 'name')
+      .populate('batchId', 'batchCode');
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update label owner error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật thông số sở hữu' });
+  }
+});
+
 // PUT /api/labels/:id/status
 router.put('/:id/status', auth, async (req, res) => {
   try {

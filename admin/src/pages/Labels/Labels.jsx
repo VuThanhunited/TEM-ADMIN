@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer, ChevronDown, Building2
+  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer, ChevronDown, Building2, UserCheck
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';
@@ -50,6 +50,13 @@ export default function Labels() {
   const [showBulkMapModal, setShowBulkMapModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '', ownerCode: '' });
   const [createSuccessToast, setCreateSuccessToast] = useState(null); // { batchCode, totalLabels }
+
+  // States quản lý Chỉnh sửa thông số sở hữu tem (Quyền Admin)
+  const [showOwnerModal, setShowOwnerModal] = useState(false);
+  const [ownerTargetLabel, setOwnerTargetLabel] = useState(null);
+  const [ownerForm, setOwnerForm] = useState({ ownerName: '', ownerAddress: '', ownerPhone: '', activatedSerial: '', ownerCode: '' });
+  const [savingOwner, setSavingOwner] = useState(false);
+  const [ownerModalError, setOwnerModalError] = useState('');
 
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [nextSerialInfo, setNextSerialInfo] = useState(null);
@@ -828,6 +835,50 @@ export default function Labels() {
     } catch (err) { alert(err.message); }
   };
 
+  // Mở modal Edit thông số sở hữu bằng quyền Admin
+  const handleOpenEditOwner = (label) => {
+    setOwnerTargetLabel(label);
+    setOwnerModalError('');
+    setOwnerForm({
+      ownerName: label.ownerInfo?.name || '',
+      ownerAddress: label.ownerInfo?.address || '',
+      ownerPhone: label.ownerInfo?.phone || '',
+      activatedSerial: label.ownerInfo?.activatedSerial || label.serialNumber || '',
+      ownerCode: label.ownerCode || ''
+    });
+    setShowOwnerModal(true);
+  };
+
+  // Lưu thông số sở hữu tem (Admin)
+  const handleSaveOwner = async (clear = false) => {
+    if (!ownerTargetLabel) return;
+    setSavingOwner(true);
+    setOwnerModalError('');
+    try {
+      if (clear) {
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ thông tin sở hữu của tem ${ownerTargetLabel.serialNumber} không?`)) {
+          setSavingOwner(false);
+          return;
+        }
+        await api.updateLabelOwner(ownerTargetLabel._id, { clearOwnerInfo: true });
+      } else {
+        await api.updateLabelOwner(ownerTargetLabel._id, {
+          ownerName: ownerForm.ownerName,
+          ownerAddress: ownerForm.ownerAddress,
+          ownerPhone: ownerForm.ownerPhone,
+          activatedSerial: ownerForm.activatedSerial,
+          ownerCode: ownerForm.ownerCode
+        });
+      }
+      setShowOwnerModal(false);
+      loadLabels();
+    } catch (err) {
+      setOwnerModalError(err.message || 'Lỗi cập nhật thông số sở hữu');
+    } finally {
+      setSavingOwner(false);
+    }
+  };
+
   const handleLabelStatusToggle = async (label) => {
     const newStatus = label.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try { await api.updateLabelStatus(label._id, { status: newStatus }); loadLabels(); }
@@ -1388,13 +1439,35 @@ export default function Labels() {
                     <td>{label.batchId?.batchCode || '—'}</td>
                     <td>{label.productId?.name || <span className="text-muted">Chưa gắn</span>}</td>
                     <td>{label.distributorName || <span className="text-muted">—</span>}</td>
-                    <td>{label.ownerCode ? <strong style={{ color: '#059669', fontSize: '0.86rem' }}>{label.ownerCode}</strong> : <span className="text-muted">—</span>}</td>
+                    <td>
+                      {label.ownerCode ? (
+                        <strong style={{ color: '#059669', fontSize: '0.86rem' }}>{label.ownerCode}</strong>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                      {label.ownerInfo?.name && (
+                        <div style={{ fontSize: '0.74rem', color: 'var(--color-text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <span style={{ color: 'var(--color-accent)' }}>👤</span>
+                          <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${label.ownerInfo.name} - ${label.ownerInfo.phone || ''}`}>
+                            {label.ownerInfo.name}
+                          </span>
+                        </div>
+                      )}
+                    </td>
                     <td><span className={`badge badge-dot ${getStatusBadge(label.status)}`}>{getStatusLabel(label.status)}</span></td>
                     <td>{label.scanCount || 0}</td>
                     <td>
                       <div className="action-buttons">
                         <button className="btn btn-sm btn-ghost" onClick={() => handleLabelStatusToggle(label)} title="Bật/Tắt">
                           {label.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-ghost"
+                          onClick={() => handleOpenEditOwner(label)}
+                          title="Edit thông số sở hữu (Quyền Admin)"
+                          style={{ color: label.ownerInfo?.name || label.ownerCode ? '#059669' : 'inherit' }}
+                        >
+                          <UserCheck size={16} />
                         </button>
                         <button className="btn btn-sm btn-ghost" onClick={() => {
                           setModalError(null);
@@ -2108,6 +2181,118 @@ export default function Labels() {
                 <button type="submit" className="btn btn-primary"><Link2 size={16}/> Thực hiện Gắn kết</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Chỉnh sửa thông số sở hữu (Quyền Admin) */}
+      {showOwnerModal && ownerTargetLabel && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !savingOwner && setShowOwnerModal(false)}>
+          <div className="modal" style={{ maxWidth: 520 }}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-primary)' }}>
+                  <ShieldCheck size={20} color="var(--color-accent)" />
+                  Chỉnh sửa thông số sở hữu
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  Serial tem: <strong style={{ color: 'var(--color-accent)' }}>{ownerTargetLabel.serialNumber}</strong> | Lô: {ownerTargetLabel.batchId?.batchCode || '—'}
+                </p>
+              </div>
+              <button className="btn-icon" onClick={() => !savingOwner && setShowOwnerModal(false)}><X size={20} /></button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {ownerModalError && (
+                <div className="modal-error animate-fade-in" style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: 12,
+                  borderRadius: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)'
+                }}>
+                  <XCircle size={18} style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.88rem' }}>{ownerModalError}</span>
+                </div>
+              )}
+
+              <div className="input-group">
+                <label>1. Tên NPP hoặc cá nhân đã mua sản phẩm *</label>
+                <input
+                  className="input"
+                  placeholder="VD: Nhà pum / Đại lý Tuấn Hưng / Nguyễn Văn A"
+                  value={ownerForm.ownerName}
+                  onChange={e => setOwnerForm({ ...ownerForm, ownerName: e.target.value })}
+                />
+              </div>
+
+              <div className="input-group">
+                <label>2. Địa chỉ NPP hoặc cá nhân mua *</label>
+                <input
+                  className="input"
+                  placeholder="VD: 123 Giải Phóng, Phương Mai, Hà Nội"
+                  value={ownerForm.ownerAddress}
+                  onChange={e => setOwnerForm({ ...ownerForm, ownerAddress: e.target.value })}
+                />
+              </div>
+
+              <div className="input-group">
+                <label>3. Số điện thoại liên hệ *</label>
+                <input
+                  className="input"
+                  placeholder="VD: 0984848894"
+                  value={ownerForm.ownerPhone}
+                  onChange={e => setOwnerForm({ ...ownerForm, ownerPhone: e.target.value })}
+                />
+              </div>
+
+              <div className="input-group">
+                <label>4. Serial chống giả</label>
+                <input
+                  className="input"
+                  placeholder="VD: 307362"
+                  value={ownerForm.activatedSerial}
+                  onChange={e => setOwnerForm({ ...ownerForm, activatedSerial: e.target.value })}
+                />
+                <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                  Serial chống giả trích xuất từ con tem đã quét.
+                </p>
+              </div>
+
+              <div className="input-group" style={{ background: 'rgba(16, 185, 129, 0.06)', padding: '12px', borderRadius: 8, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
+                <label style={{ color: '#047857', fontWeight: 700 }}>5. Mã sở hữu sản phẩm (Serial con tem)</label>
+                <input
+                  className="input"
+                  placeholder="VD: 00000007"
+                  value={ownerForm.ownerCode}
+                  onChange={e => setOwnerForm({ ...ownerForm, ownerCode: e.target.value })}
+                  style={{ fontWeight: 700, color: '#065f46', borderColor: '#86efac' }}
+                />
+                <p style={{ fontSize: '0.75rem', color: '#059669', margin: '4px 0 0' }}>
+                  Giá trị này sẽ hiển thị ở dòng "Serial đã được kích hoạt" trên trang tra cứu sản phẩm của người dùng.
+                </p>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {(ownerTargetLabel.ownerInfo?.name || ownerTargetLabel.ownerCode) && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => handleSaveOwner(true)}
+                    disabled={savingOwner}
+                    style={{ color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                    title="Xóa thông tin sở hữu để tem về trạng thái chưa kích hoạt"
+                  >
+                    <Trash2 size={14} /> Xóa thông số sở hữu
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowOwnerModal(false)} disabled={savingOwner}>Hủy</button>
+                <button type="button" className="btn btn-primary" onClick={() => handleSaveOwner(false)} disabled={savingOwner}>
+                  <CheckCircle size={16} /> {savingOwner ? 'Đang lưu...' : 'Lưu thông số sở hữu'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

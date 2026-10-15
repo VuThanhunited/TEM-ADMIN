@@ -742,14 +742,18 @@ router.post('/distributor-entry-single', async (req, res) => {
         return res.status(409).json({ error: 'Tem này đã được kích hoạt thông tin khách hàng sở hữu trước đó. Liên hệ Nhà sản xuất nếu cần chỉnh sửa.' });
       }
 
+      const finalOwnerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
       label.ownerInfo = {
         name,
         address,
         phone,
-        activatedSerial: inputSerial,
+        activatedSerial: finalOwnerCode || inputSerial,
         activatedAt: new Date(),
         activatedBy: user._id
       };
+      if (finalOwnerCode) {
+        label.ownerCode = finalOwnerCode;
+      }
     }
 
     // Update the label

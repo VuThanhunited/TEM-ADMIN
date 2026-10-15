@@ -210,7 +210,7 @@ export default function SelectStore() {
               <div className="store-product-name">{product?.name || 'Sản phẩm'}</div>
               <div className="store-product-serial">
                 <QrCode size={12} />
-                Mã tem: <strong>{label?.serialNumber || serial}</strong>
+                SERIAL chống làm giả: <strong>{label?.serialNumber || serial}</strong>
               </div>
               {user && (
                 <div className="store-product-serial">
@@ -238,7 +238,7 @@ export default function SelectStore() {
               <div className="owner-activated-row"><span>Tên:</span> <strong>{ownerInfo.name}</strong></div>
               {ownerInfo.address && <div className="owner-activated-row"><span>Địa chỉ:</span> {ownerInfo.address}</div>}
               {ownerInfo.phone && <div className="owner-activated-row"><span>SĐT:</span> {ownerInfo.phone}</div>}
-              <div className="owner-activated-row"><span>Serial chống giả:</span> <strong>{ownerInfo.activatedSerial || label?.serialNumber}</strong></div>
+              <div className="owner-activated-row"><span>Serial đã được kích hoạt:</span> <strong>{label?.ownerCode || ownerInfo.activatedSerial || label?.serialNumber}</strong></div>
               {isLocked && (
                 <>
                   <p className="owner-activated-note">

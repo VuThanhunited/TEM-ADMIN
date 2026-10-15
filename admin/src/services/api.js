@@ -192,6 +192,7 @@ class ApiService {
   migrateLabels(data) { return this.request('POST', '/labels/migrate', data); }
   getLabels(params) { return this.request('GET', '/labels', null, params); }
   mapLabel(id, data) { return this.request('PUT', `/labels/${id}/map`, data); }
+  updateLabelOwner(id, data) { return this.request('PUT', `/labels/${id}/owner`, data); }
   updateLabelStatus(id, data) { return this.request('PUT', `/labels/${id}/status`, data); }
   bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data, {}, 0, 300000); } // 5 min timeout for large serial ranges
   fixEncryption(data) { return this.request('POST', '/labels/fix-encryption', data); }

@@ -1265,7 +1265,7 @@ export default function ProductInfo() {
         <div className="owner-card-serial">
           <ShieldCheck size={18} />
           <span>Serial đã được kích hoạt:</span>
-          <strong>{ownerInfo.activatedSerial || label?.serialNumber}</strong>
+          <strong>{label?.ownerCode || ownerInfo.ownerCode || ownerInfo.activatedSerial || label?.serialNumber}</strong>
         </div>
       </div>
     );
