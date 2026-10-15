@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import {
   Package, Search, Building2, Tag, Eye, X, ShieldCheck,
-  FileText, ExternalLink, RefreshCw, Layers, CheckCircle2, AlertCircle
+  RefreshCw, CheckCircle, ExternalLink, Layers, Info
 } from 'lucide-react';
 import { useDebounce } from '../../hooks/useDebounce';
 import './NppProducts.css';
@@ -44,17 +44,18 @@ export default function NppProducts() {
   });
 
   const totalLabels = products.reduce((sum, p) => sum + (p.totalLabelsReceived || 0), 0);
+  const uniqueEnterprises = new Set(products.map(p => p.enterpriseId?.name || p.manufacturerId?.name).filter(Boolean)).size || 1;
 
   return (
-    <div className="npp-products-page">
-      {/* Header */}
-      <div className="npp-page-header">
+    <div className="npp-products-container">
+      {/* Page Header */}
+      <div className="page-header npp-header-row">
         <div>
-          <h1 className="npp-page-title">
-            <Package className="text-primary" size={26} />
-            Sản Phẩm Phân Phối
+          <h1 className="npp-title">
+            <Package size={26} className="title-icon" />
+            Sản Phẩm Đã Nhận Phân Phối
           </h1>
-          <p className="npp-page-subtitle">
+          <p className="page-subtitle">
             Danh mục các sản phẩm bạn đã nhận và phân phối từ Nhà Sản Xuất
           </p>
         </div>
@@ -64,72 +65,93 @@ export default function NppProducts() {
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="npp-stats-grid">
-        <div className="npp-stat-card">
-          <div className="npp-stat-icon bg-indigo">
-            <Package size={22} />
+      {/* Stat Cards */}
+      <div className="stat-grid npp-stats-row">
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-info">
+              <span className="stat-label">Tổng loại sản phẩm</span>
+              <span className="stat-value">{products.length}</span>
+            </div>
+            <div className="stat-icon" style={{ background: 'var(--gradient-primary)' }}>
+              <Package size={22} />
+            </div>
           </div>
-          <div className="npp-stat-info">
-            <span className="npp-stat-label">Tổng loại sản phẩm</span>
-            <span className="npp-stat-value">{products.length}</span>
-          </div>
-        </div>
-
-        <div className="npp-stat-card">
-          <div className="npp-stat-icon bg-emerald">
-            <Tag size={22} />
-          </div>
-          <div className="npp-stat-info">
-            <span className="npp-stat-label">Tổng tem đã nhận</span>
-            <span className="npp-stat-value">{totalLabels.toLocaleString()}</span>
+          <div className="stat-card-bottom">
+            <span className="stat-change up">
+              <CheckCircle size={14} /> Danh mục ủy quyền
+            </span>
           </div>
         </div>
 
-        <div className="npp-stat-card">
-          <div className="npp-stat-icon bg-amber">
-            <Building2 size={22} />
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-info">
+              <span className="stat-label">Tổng tem đã nhận</span>
+              <span className="stat-value">{totalLabels.toLocaleString('vi-VN')}</span>
+            </div>
+            <div className="stat-icon" style={{ background: 'var(--gradient-success)' }}>
+              <Tag size={22} />
+            </div>
           </div>
-          <div className="npp-stat-info">
-            <span className="npp-stat-label">Nhà sản xuất đối tác</span>
-            <span className="npp-stat-value">
-              {new Set(products.map(p => p.enterpriseId?.name || p.manufacturerId?.name).filter(Boolean)).size || 1}
+          <div className="stat-card-bottom">
+            <span className="stat-change up">
+              <ShieldCheck size={14} /> Tem QR chính hãng
+            </span>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-top">
+            <div className="stat-info">
+              <span className="stat-label">Nhà sản xuất đối tác</span>
+              <span className="stat-value">{uniqueEnterprises}</span>
+            </div>
+            <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+              <Building2 size={22} />
+            </div>
+          </div>
+          <div className="stat-card-bottom">
+            <span className="stat-change" style={{ color: 'var(--color-warning)' }}>
+              <Building2 size={14} /> Đơn vị bảo trợ nguồn gốc
             </span>
           </div>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="npp-toolbar">
-        <div className="npp-search-box">
-          <Search size={18} className="search-icon" />
-          <input
-            type="text"
-            className="input search-input"
-            placeholder="Tìm theo tên sản phẩm, mã SKU, danh mục, NSX..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          {search && (
-            <button className="clear-search" onClick={() => setSearch('')}>
-              <X size={15} />
-            </button>
-          )}
+      {/* Filter Card */}
+      <div className="card npp-filter-card">
+        <div className="npp-filter-controls">
+          <div className="npp-search-wrapper" style={{ maxWidth: 450 }}>
+            <Search size={17} className="npp-search-icon" />
+            <input
+              type="text"
+              className="input npp-search-input"
+              placeholder="Tìm theo tên sản phẩm, mã SKU, danh mục, NSX..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button className="npp-clear-btn" onClick={() => setSearch('')}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <span className="npp-filter-note">
+            Hiển thị <strong>{filteredProducts.length}</strong> / {products.length} sản phẩm
+          </span>
         </div>
-        <span className="npp-results-count">
-          Hiển thị <strong>{filteredProducts.length}</strong> / {products.length} sản phẩm
-        </span>
       </div>
 
       {/* Products Grid */}
       {loading ? (
-        <div className="npp-loading-state">
+        <div className="card npp-loading-box">
           <div className="loading-spinner" style={{ width: 36, height: 36 }} />
           <p>Đang tải danh sách sản phẩm phân phối...</p>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="npp-empty-state">
-          <Package size={56} className="empty-icon" />
+        <div className="card npp-empty-box">
+          <Package size={48} className="npp-empty-icon" />
           <h3>Chưa có sản phẩm nào</h3>
           <p>
             {search
@@ -138,57 +160,65 @@ export default function NppProducts() {
           </p>
         </div>
       ) : (
-        <div className="npp-cards-grid">
+        <div className="npp-prod-grid">
           {filteredProducts.map(product => {
             const mfgName = product.enterpriseId?.name || product.manufacturerId?.name || 'Nhà sản xuất';
-            const imgUrl = (product.images && product.images.length > 0 && product.images[0]) || '/placeholder-product.png';
+            const imgUrl = (product.images && product.images.length > 0 && product.images[0]) || '';
 
             return (
-              <div key={product._id} className="npp-product-card">
-                <div className="npp-card-thumb">
-                  <img
-                    src={imgUrl}
-                    alt={product.name}
-                    onError={e => { e.target.src = 'https://placehold.co/400x300/1e293b/94a3b8?text=TEM+QR'; }}
-                  />
+              <div key={product._id} className="npp-prod-card card">
+                <div className="npp-card-media">
+                  {imgUrl ? (
+                    <img
+                      src={imgUrl}
+                      alt={product.name}
+                      onError={e => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className="npp-media-fallback" style={{ display: imgUrl ? 'none' : 'flex' }}>
+                    <Package size={40} />
+                  </div>
+
                   {product.category && (
-                    <span className="npp-card-category">{product.category}</span>
+                    <span className="npp-badge-cat">{product.category}</span>
                   )}
                   {product.totalLabelsReceived > 0 && (
-                    <span className="npp-card-label-badge">
-                      <Tag size={12} /> {product.totalLabelsReceived.toLocaleString()} tem
+                    <span className="npp-badge-count">
+                      <Tag size={12} /> {product.totalLabelsReceived.toLocaleString('vi-VN')} tem
                     </span>
                   )}
                 </div>
 
-                <div className="npp-card-body">
-                  <h3 className="npp-card-name" title={product.name}>
+                <div className="npp-card-content">
+                  <h3 className="npp-card-title" title={product.name}>
                     {product.name}
                   </h3>
 
-                  <div className="npp-card-meta">
+                  <div className="npp-card-meta-list">
                     {product.sku && (
-                      <div className="npp-meta-item">
-                        <span className="meta-label">SKU:</span>
-                        <code className="meta-code">{product.sku}</code>
+                      <div className="npp-meta-row">
+                        <span className="npp-meta-tag">SKU: {product.sku}</span>
                       </div>
                     )}
-                    <div className="npp-meta-item">
-                      <Building2 size={13} className="meta-icon" />
-                      <span className="meta-mfg" title={mfgName}>{mfgName}</span>
+                    <div className="npp-meta-row">
+                      <Building2 size={13} className="text-muted" />
+                      <span className="npp-meta-mfg" title={mfgName}>{mfgName}</span>
                     </div>
                   </div>
 
                   {product.description && (
-                    <p className="npp-card-desc">
+                    <p className="npp-card-summary">
                       {product.description}
                     </p>
                   )}
                 </div>
 
-                <div className="npp-card-actions">
+                <div className="npp-card-footer">
                   <button
-                    className="btn btn-secondary btn-sm"
+                    className="btn btn-outline btn-sm"
                     onClick={() => setSelectedProduct(product)}
                   >
                     <Eye size={14} /> Chi tiết
@@ -210,30 +240,32 @@ export default function NppProducts() {
       {/* Product Details Modal */}
       {selectedProduct && (
         <div className="modal-overlay" onClick={() => setSelectedProduct(null)}>
-          <div className="modal-content npp-detail-modal" onClick={e => e.stopPropagation()}>
+          <div className="modal-content npp-modal-box" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <div className="modal-title-with-icon">
-                <Package size={22} className="text-primary" />
+              <div className="npp-modal-title">
+                <Package size={22} className="title-icon" />
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>{selectedProduct.name}</h3>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--color-text-primary)' }}>
+                    {selectedProduct.name}
+                  </h3>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                     NSX: {selectedProduct.enterpriseId?.name || selectedProduct.manufacturerId?.name || 'Doanh nghiệp'}
                   </span>
                 </div>
               </div>
-              <button className="btn-close" onClick={() => setSelectedProduct(null)}>
+              <button className="btn-icon" onClick={() => setSelectedProduct(null)}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="modal-body npp-detail-body">
+            <div className="modal-body npp-modal-body">
               {/* Product Gallery */}
               {selectedProduct.images && selectedProduct.images.length > 0 && (
-                <div className="npp-gallery-section">
-                  <label className="section-label">Hình ảnh sản phẩm:</label>
-                  <div className="npp-gallery-row">
+                <div className="npp-detail-block">
+                  <label className="npp-block-label">Hình ảnh sản phẩm:</label>
+                  <div className="npp-modal-gallery">
                     {selectedProduct.images.filter(Boolean).map((img, i) => (
-                      <a key={i} href={img} target="_blank" rel="noreferrer" className="gallery-thumb">
+                      <a key={i} href={img} target="_blank" rel="noreferrer" className="npp-thumb-link">
                         <img src={img} alt={`Ảnh ${i + 1}`} onError={e => { e.target.style.display = 'none'; }} />
                       </a>
                     ))}
@@ -242,46 +274,48 @@ export default function NppProducts() {
               )}
 
               {/* Quick Specs */}
-              <div className="npp-specs-grid">
-                <div className="spec-card">
-                  <span className="spec-label">Mã SKU:</span>
-                  <span className="spec-value">{selectedProduct.sku || 'Chưa cập nhật'}</span>
+              <div className="npp-detail-specs-grid">
+                <div className="npp-spec-item">
+                  <span className="spec-k">Mã SKU:</span>
+                  <span className="spec-v font-mono">{selectedProduct.sku || 'Chưa cập nhật'}</span>
                 </div>
-                <div className="spec-card">
-                  <span className="spec-label">Mã Vạch / Barcode:</span>
-                  <span className="spec-value">{selectedProduct.barcode || 'Chưa cập nhật'}</span>
+                <div className="npp-spec-item">
+                  <span className="spec-k">Mã Vạch:</span>
+                  <span className="spec-v font-mono">{selectedProduct.barcode || 'Chưa cập nhật'}</span>
                 </div>
-                <div className="spec-card">
-                  <span className="spec-label">Danh mục:</span>
-                  <span className="spec-value">{selectedProduct.category || 'Mặc định'}</span>
+                <div className="npp-spec-item">
+                  <span className="spec-k">Danh mục:</span>
+                  <span className="spec-v">{selectedProduct.category || 'Mặc định'}</span>
                 </div>
-                <div className="spec-card">
-                  <span className="spec-label">Số tem đã nhận:</span>
-                  <span className="spec-value highlight text-primary">
-                    {selectedProduct.totalLabelsReceived?.toLocaleString() || 0} tem
+                <div className="npp-spec-item">
+                  <span className="spec-k">Số tem đã nhận:</span>
+                  <span className="spec-v highlight">
+                    {selectedProduct.totalLabelsReceived?.toLocaleString('vi-VN') || 0} tem
                   </span>
                 </div>
               </div>
 
               {/* Description */}
               {selectedProduct.description && (
-                <div className="npp-detail-section">
-                  <label className="section-label">Mô tả sản phẩm:</label>
-                  <p className="detail-text">{selectedProduct.description}</p>
+                <div className="npp-detail-block">
+                  <label className="npp-block-label">Mô tả sản phẩm:</label>
+                  <p className="npp-desc-text">{selectedProduct.description}</p>
                 </div>
               )}
 
               {/* Specifications map */}
               {selectedProduct.specifications && Object.keys(selectedProduct.specifications).length > 0 && (
-                <div className="npp-detail-section">
-                  <label className="section-label">Thông số kỹ thuật:</label>
-                  <div className="specs-table-wrapper">
-                    <table className="specs-table">
+                <div className="npp-detail-block">
+                  <label className="npp-block-label">Thông số kỹ thuật:</label>
+                  <div className="table-container" style={{ border: '1px solid var(--color-border)' }}>
+                    <table className="table">
                       <tbody>
                         {Object.entries(selectedProduct.specifications).map(([k, v]) => (
                           <tr key={k}>
-                            <td className="spec-k">{k}</td>
-                            <td className="spec-v">{v}</td>
+                            <td style={{ width: '35%', fontWeight: 600, color: 'var(--color-text-secondary)', background: 'var(--color-bg-tertiary)' }}>
+                              {k}
+                            </td>
+                            <td>{v}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -292,11 +326,11 @@ export default function NppProducts() {
 
               {/* Verification Message */}
               {selectedProduct.verificationText && (
-                <div className="npp-verification-box">
-                  <ShieldCheck size={20} className="text-emerald" />
+                <div className="npp-verify-alert">
+                  <ShieldCheck size={20} className="text-success" />
                   <div>
-                    <strong>Nội dung xác thực khi người dùng quét QR:</strong>
-                    <p style={{ margin: '4px 0 0', whiteSpace: 'pre-line', color: 'var(--text-muted)' }}>
+                    <strong>Thông điệp xác thực QR:</strong>
+                    <p style={{ margin: '4px 0 0', whiteSpace: 'pre-line', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
                       {selectedProduct.verificationText}
                     </p>
                   </div>
@@ -313,7 +347,7 @@ export default function NppProducts() {
                   navigate(`/npp/labels?productId=${pid}`);
                 }}
               >
-                <Tag size={15} /> Xem danh sách tem của sản phẩm
+                <Tag size={15} /> Xem danh sách tem
               </button>
               <button className="btn btn-secondary" onClick={() => setSelectedProduct(null)}>
                 Đóng
