@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, ZapOff, CheckCircle, Camera, AlertCircle } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import './NppScan.css';
+
+const SCAN_FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.DATA_MATRIX,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.CODE_128
+];
 
 export default function NppScan() {
   const navigate = useNavigate();
@@ -34,60 +41,88 @@ export default function NppScan() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Start camera
+  // Áp dụng lấy nét liên tục (autofocus) cho điện thoại
+  const applyMobileOptimizations = async () => {
+    try {
+      const track = html5QrcodeRef.current?.getRunningTrack?.();
+      if (!track || typeof track.getCapabilities !== 'function') return;
+      const caps = track.getCapabilities();
+      const advanced = {};
+      if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+        advanced.focusMode = 'continuous';
+      }
+      if (Object.keys(advanced).length > 0) {
+        await track.applyConstraints({ advanced: [advanced] });
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  // Start camera – tối ưu điện thoại
   const startCamera = useCallback(async () => {
     setCameraStatus('loading');
     try {
       if (!html5QrcodeRef.current) {
-        html5QrcodeRef.current = new Html5Qrcode('npp-reader');
+        html5QrcodeRef.current = new Html5Qrcode('npp-reader', {
+          formatsToSupport: SCAN_FORMATS,
+          useBarCodeDetectorIfSupported: true,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          verbose: false
+        });
       }
 
-      let cameras = [];
-      try {
-        cameras = await Html5Qrcode.getCameras();
-      } catch (e) {
-        console.warn('Failed to get cameras list, using constraints fallback', e);
-      }
-
-      const scanConfig = {
-        fps: 10
+      const mobileScanConfig = {
+        fps: 12,
+        disableFlip: true
       };
 
-      if (cameras && cameras.length > 0) {
-        // Prefer back/rear camera on mobile
-        const backCamera = cameras.find(c => 
-          c.label.toLowerCase().includes('back') || 
-          c.label.toLowerCase().includes('rear') || 
-          c.label.toLowerCase().includes('sau') ||
-          c.label.toLowerCase().includes('environment')
-        );
-        const cameraId = backCamera ? backCamera.id : cameras[0].id;
+      const onSuccess = (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult);
+      const onFailure = () => {};
+
+      try {
         await html5QrcodeRef.current.start(
-          cameraId,
-          scanConfig,
-          (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
-          () => { /* ignore scan failures */ }
+          { facingMode: 'environment' },
+          mobileScanConfig,
+          onSuccess,
+          onFailure
         );
-      } else {
-        // Fallback to constraints
+      } catch (envErr) {
+        const envErrStr = String(envErr);
+        if (envErrStr.includes('NotAllowedError') || envErrStr.includes('PermissionDeniedError')) {
+          throw envErr;
+        }
+
         try {
-          await html5QrcodeRef.current.start(
-            { facingMode: 'environment' },
-            scanConfig,
-            (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
-            () => { /* ignore scan failures */ }
-          );
+          const cameras = await Html5Qrcode.getCameras();
+          if (cameras && cameras.length > 0) {
+            const backCam = cameras.find(c => {
+              const label = (c.label || '').toLowerCase();
+              return (label.includes('back') || label.includes('rear') || label.includes('sau') || label.includes('environment')) &&
+                !label.includes('ultra') && !label.includes('macro');
+            }) || cameras[0];
+
+            await html5QrcodeRef.current.start(
+              backCam.id,
+              mobileScanConfig,
+              onSuccess,
+              onFailure
+            );
+          } else {
+            throw envErr;
+          }
         } catch {
-          // If environment camera fails (e.g. on laptop), try front camera
           await html5QrcodeRef.current.start(
             { facingMode: 'user' },
-            scanConfig,
-            (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
-            () => { /* ignore scan failures */ }
+            mobileScanConfig,
+            onSuccess,
+            onFailure
           );
         }
       }
+
       setCameraStatus('active');
+      applyMobileOptimizations();
     } catch (err) {
       console.error('Camera start error:', err);
       const errStr = String(err);
