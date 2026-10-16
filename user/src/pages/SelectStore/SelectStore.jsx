@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Package, QrCode, CheckCircle, ShieldCheck, MapPin,
-  User, Phone, Hash, AlertCircle, UserCheck, Store
+  User, Phone, AlertCircle, UserCheck, Store
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import userApi from '../../services/api';
@@ -317,33 +317,7 @@ export default function SelectStore() {
                     />
                   </div>
 
-                  <div className="store-field-group">
-                    <label className="store-field-label" htmlFor="owner-serial">
-                      <span className="owner-field-index">4</span>
-                      <Hash size={15} />
-                      <span>Serial chống giả <strong className="text-danger">*</strong></span>
-                    </label>
-                    <input
-                      id="owner-serial"
-                      type="text"
-                      className="store-field-input owner-serial-input"
-                      placeholder="Tự động lấy từ tem quét"
-                      value={form.serial || detectedSerial}
-                      onChange={handleChange('serial')}
-                      readOnly={Boolean(detectedSerial)}
-                      style={detectedSerial ? {
-                        backgroundColor: '#F8FAFC',
-                        color: '#0D1B2A',
-                        fontWeight: 700,
-                        cursor: 'default',
-                        border: '1.5px solid #CBD5E1'
-                      } : {}}
-                      maxLength={50}
-                      autoComplete="off"
-                      autoCapitalize="characters"
-                    />
-                    <p className="owner-field-help">Serial chống giả được tự động trích xuất từ con tem đã quét.</p>
-                  </div>
+                  {/* Đã bỏ ô số 4 (Serial chống giả) theo yêu cầu – serial vẫn được gửi tự động từ tem đã quét */}
                 </div>
               </div>
 
