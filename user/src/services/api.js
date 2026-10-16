@@ -134,6 +134,11 @@ class UserApiService {
     return this.request('GET', `/public/barcode/${barcode}`, null, {}, false);
   }
 
+  // Kích hoạt tem bảo hành công khai cho người dùng / khách mua
+  activateLabel(data) {
+    return this.request('POST', '/public/activate-label', data, {}, false);
+  }
+
   sendScanLocation(serial, data) {
     return this.request('POST', `/public/scan/${serial}/location`, data, {}, false);
   }

@@ -430,6 +430,8 @@ router.get('/scan/:serial', async (req, res) => {
       labelOut.ownerInfo.phone = maskPhone(labelOut.ownerInfo.phone);
     }
 
+    const isActivated = Boolean(label.ownerCode || label.ownerInfo?.activatedAt);
+
     res.json({
       label: labelOut,
       product: label.productId,
@@ -439,12 +441,80 @@ router.get('/scan/:serial', async (req, res) => {
       showRelated,
       isFirstScan,
       firstScanTime,
-      theme: responseTheme
+      theme: responseTheme,
+      isActivated
     });
 
   } catch (error) {
     console.error('Scan API error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi xử lý thông tin quét tem' });
+  }
+});
+
+// POST /api/public/activate-label - Kích hoạt tem bảo hành cho người dùng / khách mua
+router.post('/activate-label', async (req, res) => {
+  try {
+    const { serial, activationCode, customerName, customerPhone } = req.body;
+    const cleanSerial = String(serial || '').trim();
+    const cleanCode = String(activationCode || '').trim();
+
+    if (!cleanSerial) {
+      return res.status(400).json({ error: 'Thiếu thông tin số serial tem cần kích hoạt.' });
+    }
+    if (!cleanCode) {
+      return res.status(400).json({ error: 'Vui lòng nhập mã kích hoạt.' });
+    }
+
+    const label = await Label.findOne({
+      $or: [
+        { serialNumber: cleanSerial },
+        { qrCode: cleanSerial },
+        { activeCode: cleanSerial }
+      ]
+    });
+
+    if (!label) {
+      return res.status(404).json({ error: 'Không tìm thấy tem nhãn trên hệ thống.' });
+    }
+
+    // Nếu tem có activeCode quy định sẵn thì mã nhập phải khớp
+    if (label.activeCode) {
+      const match = isSerialMatch(cleanCode, label.activeCode) || cleanCode.toUpperCase() === label.activeCode.toUpperCase();
+      if (!match) {
+        return res.status(400).json({ error: 'Mã kích hoạt không chính xác. Vui lòng kiểm tra lại mã cào trên tem.' });
+      }
+    }
+
+    const activatedAt = new Date();
+
+    // Cập nhật trạng thái kích hoạt tem
+    label.ownerCode = cleanCode;
+    label.ownerInfo = {
+      name: (customerName || '').trim() || label.ownerInfo?.name || 'Khách hàng cá nhân',
+      phone: (customerPhone || '').trim() || label.ownerInfo?.phone || null,
+      address: label.ownerInfo?.address || null,
+      activatedSerial: label.serialNumber,
+      activatedAt
+    };
+    if (label.status === 'INACTIVE') {
+      label.status = 'ACTIVE';
+    }
+    await label.save();
+
+    res.json({
+      success: true,
+      message: 'Kích hoạt bảo hành thành công!',
+      ownerCode: label.ownerCode,
+      activatedAt,
+      ownerInfo: {
+        name: label.ownerInfo.name,
+        phone: label.ownerInfo.phone ? maskPhone(label.ownerInfo.phone) : null,
+        activatedAt
+      }
+    });
+  } catch (err) {
+    console.error('activate-label error:', err);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xử lý kích hoạt tem.' });
   }
 });
 

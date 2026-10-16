@@ -1346,6 +1346,337 @@
   pointer-events: none;
 }
 
+/* 1b. Header Trust Banner: Trạng thái Chưa Kích Hoạt */
+.appliance-trust-banner--unactivated {
+  background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+  border: 1.5px solid #FECACA;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.08);
+}
+
+.appliance-trust-banner--unactivated .appliance-trust-logo-box {
+  border-color: #DC2626;
+  background: #FFFFFF;
+}
+
+.appliance-title-unactivated {
+  color: #DC2626 !important;
+  font-weight: 800;
+}
+
+/* 1c. Hộp Kích Hoạt Bảo Hành Điện Tử (Chưa Kích Hoạt) */
+.appliance-unactivated-card {
+  background: #FFFFFF;
+  border: 1.5px solid #FCD34D;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 6px 20px rgba(217, 119, 6, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.appliance-unactivated-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.appliance-unactivated-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #FEF3C7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.appliance-unactivated-title {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #92400E;
+  margin: 0 0 4px 0;
+}
+
+.appliance-unactivated-subtitle {
+  font-size: 0.88rem;
+  color: #78350F;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.appliance-activate-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #FFFBEB;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #FDE68A;
+}
+
+.appliance-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.appliance-form-field label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1E293B;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.appliance-code-input {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
+  letter-spacing: 0.8px;
+  border: 2px solid #F59E0B !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+}
+
+.appliance-code-input:focus {
+  border-color: #D97706 !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25) !important;
+}
+
+.appliance-field-hint {
+  font-size: 0.78rem;
+  color: #92400E;
+  margin-top: 2px;
+}
+
+.appliance-form-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .appliance-form-row2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.appliance-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.appliance-alert--error {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+}
+
+.appliance-activate-submit-btn {
+  background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
+  border: none !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  font-size: 0.95rem !important;
+  padding: 14px 20px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35) !important;
+  display: flex !align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.appliance-activate-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.45) !important;
+  filter: brightness(1.05);
+}
+
+.appliance-activate-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.appliance-npp-gateway {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px dashed #E2E8F0;
+  font-size: 0.84rem;
+  color: #64748B;
+}
+
+.appliance-npp-gateway .btn-link {
+  background: transparent;
+  border: none;
+  color: #0284C7;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.appliance-npp-gateway .btn-link:hover {
+  background: #F0F9FF;
+  text-decoration: underline;
+}
+
+/* 1d. Thẻ Xác Thực Bảo Hành Đã Kích Hoạt (Trạng thái Đã Kích Hoạt) */
+.appliance-activated-card {
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  border: 1.5px solid #10B981;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+}
+
+.appliance-activated-header {
+  margin-bottom: 12px;
+}
+
+.appliance-activated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFFFFF;
+  color: #065F46;
+  font-weight: 800;
+  font-size: 0.88rem;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #A7F3D0;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+}
+
+.appliance-activated-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.appliance-activated-item {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.appliance-activated-item.highlight {
+  background: #FFFFFF;
+  border: 1.5px solid #10B981;
+}
+
+.appliance-activated-label {
+  font-size: 0.74rem;
+  color: #047857;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.appliance-activated-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #064E3B;
+}
+
+.appliance-activated-value.serial-code {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #047857;
+  letter-spacing: 1px;
+}
+
+/* Hero Card trạng thái Chưa kích hoạt */
+.appliance-hero-card--unactivated {
+  border-color: #CBD5E1;
+  position: relative;
+}
+
+.appliance-img--blurred {
+  filter: contrast(0.9) brightness(0.95);
+}
+
+.appliance-unactivated-badge-overlay {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(220, 38, 38, 0.92);
+  color: #FFFFFF;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.appliance-btn--locked {
+  background: #E2E8F0 !important;
+  color: #64748B !important;
+  cursor: pointer;
+}
+
+/* 8 thẻ hành động trạng thái Khóa */
+.appliance-grid-actions--locked .appliance-action-card--locked {
+  position: relative;
+  background: #F8FAFC;
+  border: 1px dashed #CBD5E1;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.appliance-grid-actions--locked .appliance-action-card--locked:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+  transform: none;
+}
+
+.appliance-action-lock-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #E2E8F0;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hộp bảo hành trạng thái Chưa kích hoạt */
+.appliance-warranty-box--unactivated {
+  border-color: #FECACA !important;
+}
+
+.appliance-warranty-header-bar--unactivated {
+  background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%) !important;
+  color: #DC2626 !important;
+  border-bottom: 1px solid #FECACA;
+}
+
 /* 2. Hero Appliance Card */
 .appliance-hero-card {
   background: #FFFFFF;
