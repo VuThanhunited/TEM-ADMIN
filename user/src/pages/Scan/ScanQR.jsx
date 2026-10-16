@@ -1,11 +1,33 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Zap, ZapOff, CheckCircle, Camera, Clock } from 'lucide-react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useAuth } from '../../contexts/AuthContext';
 import userApi from '../../services/api';
 import './ScanQR.css';
 
-let Html5QrcodeCtor;
+// Chỉ giải mã các định dạng thực tế dùng trên tem / bao bì → giảm số bộ giải mã phải thử mỗi khung hình
+const SCAN_FORMATS = [
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.DATA_MATRIX,
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E
+];
+
+// Mở thẳng camera theo hướng (không liệt kê thiết bị trước), độ nét HD + lấy nét liên tục
+const buildScanConfig = (facingMode) => ({
+  fps: 15,
+  videoConstraints: {
+    facingMode,
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    advanced: [{ focusMode: 'continuous' }]
+  }
+});
 
 export default function ScanQR() {
   const navigate = useNavigate();
@@ -23,59 +45,39 @@ export default function ScanQR() {
   const startCamera = useCallback(async () => {
     setCameraStatus('loading');
     try {
-      if (!Html5QrcodeCtor) {
-        const module = await import('html5-qrcode');
-        Html5QrcodeCtor = module.Html5Qrcode;
-      }
-
       if (!html5QrcodeRef.current) {
-        html5QrcodeRef.current = new Html5QrcodeCtor('reader');
+        html5QrcodeRef.current = new Html5Qrcode('reader', {
+          formatsToSupport: SCAN_FORMATS,
+          // Dùng BarcodeDetector gốc của trình duyệt (Chrome Android) – nhanh hơn nhiều so với giải mã JS
+          useBarCodeDetectorIfSupported: true,
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          verbose: false
+        });
       }
 
-      let cameras = [];
+      const onSuccess = (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult);
+      const onFailure = () => { /* ignore scan failures */ };
+
       try {
-        cameras = await Html5QrcodeCtor.getCameras();
-      } catch (e) {
-        console.warn('Failed to get cameras list, using constraints fallback', e);
-      }
-
-      const scanConfig = {
-        fps: 10
-      };
-
-      if (cameras && cameras.length > 0) {
-        // Prefer back/rear camera on mobile
-        const backCamera = cameras.find(c => 
-          c.label.toLowerCase().includes('back') || 
-          c.label.toLowerCase().includes('rear') || 
-          c.label.toLowerCase().includes('sau') ||
-          c.label.toLowerCase().includes('environment')
-        );
-        const cameraId = backCamera ? backCamera.id : cameras[0].id;
+        // facingMode dạng chuỗi = "ưu tiên" camera sau, trình duyệt tự dùng camera khác nếu không có
         await html5QrcodeRef.current.start(
-          cameraId,
-          scanConfig,
-          (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
-          () => { /* ignore scan failures */ }
+          { facingMode: 'environment' },
+          buildScanConfig('environment'),
+          onSuccess,
+          onFailure
         );
-      } else {
-        // Fallback to constraints
-        try {
-          await html5QrcodeRef.current.start(
-            { facingMode: 'environment' },
-            scanConfig,
-            (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
-            () => { /* ignore scan failures */ }
-          );
-        } catch {
-          // If environment camera fails (e.g. on laptop), try front camera
-          await html5QrcodeRef.current.start(
-            { facingMode: 'user' },
-            scanConfig,
-            (decodedText, decodedResult) => handleScanSuccess(decodedText, decodedResult),
-            () => { /* ignore scan failures */ }
-          );
+      } catch (envErr) {
+        const envErrStr = String(envErr);
+        if (envErrStr.includes('NotAllowedError') || envErrStr.includes('PermissionDeniedError')) {
+          throw envErr;
         }
+        // If environment camera fails (e.g. on laptop), try front camera
+        await html5QrcodeRef.current.start(
+          { facingMode: 'user' },
+          buildScanConfig('user'),
+          onSuccess,
+          onFailure
+        );
       }
       setCameraStatus('active');
     } catch (err) {

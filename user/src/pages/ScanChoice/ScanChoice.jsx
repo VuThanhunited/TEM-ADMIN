@@ -29,16 +29,12 @@ export default function ScanChoice() {
   const fetchScanData = async () => {
     setLoading(true);
     setError('');
+    // Chỉ hiện "Đang kết nối máy chủ" khi tra cứu chậm (Render cold-start) – không ping tuần tự trước
+    const warmupTimer = setTimeout(() => setIsWarmingUp(true), 4000);
     try {
-      // Warmup server trước (dành cho Render cold-start)
-      setIsWarmingUp(true);
-      await userApi.ping();
-      setIsWarmingUp(false);
-
       const result = await userApi.getPublicScan(code);
       setScanData(result);
     } catch (err) {
-      setIsWarmingUp(false);
       const msg = err.message || '';
       if (msg.includes('kết nối') || msg.includes('timeout') || msg.includes('network')) {
         setError('Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.');
@@ -46,6 +42,8 @@ export default function ScanChoice() {
         setError(msg || 'Không tìm thấy thông tin sản phẩm cho mã này');
       }
     } finally {
+      clearTimeout(warmupTimer);
+      setIsWarmingUp(false);
       setLoading(false);
     }
   };
@@ -92,7 +90,7 @@ export default function ScanChoice() {
           <div className="scan-choice-loading">
             <div className="loading-ring" />
             {isWarmingUp
-              ? <p>Đang kết nối máy chủ<span className="dot-anim">...</span></p>
+              ? <p>Đang tra cứu mã <strong>{code}</strong>, đang kết nối máy chủ<span className="dot-anim">...</span></p>
               : <p>Đang tra cứu mã <strong>{code}</strong>...</p>
             }
           </div>

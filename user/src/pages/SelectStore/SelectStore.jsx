@@ -30,7 +30,6 @@ export default function SelectStore() {
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const detectedSerial = label?.serialNumber || serial || codeParam || '';
   const initialSerial = stateScanData?.label?.serialNumber || stateSerial || codeParam || '';
   const [form, setForm] = useState({ name: '', address: '', phone: '', serial: initialSerial });
 
@@ -39,6 +38,8 @@ export default function SelectStore() {
 
   const product = scanData?.product;
   const label = scanData?.label;
+  // Phải khai báo SAU `label` – truy cập trước khi khai báo sẽ gây ReferenceError (màn hình lỗi)
+  const detectedSerial = label?.serialNumber || serial || codeParam || '';
   const ownerInfo = label?.ownerInfo;
   const isActivated = Boolean(ownerInfo?.activatedAt);
   // NPP không được ghi đè tem đã kích hoạt (backend cũng chặn)

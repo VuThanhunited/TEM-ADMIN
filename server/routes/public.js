@@ -111,22 +111,34 @@ router.get('/scan/:serial', async (req, res) => {
     const skipCount = req.query.noCount === '1';
 
     // Find the label by qrCode, serialNumber, legacy QR, legacy TEMQR suffix, activeCode, or smsCode
-    let label = await Label.findOne({
-      $or: [
-        { qrCode: cleanSerial },
-        { serialNumber: cleanSerial },
-        { serialNumber: { $regex: new RegExp(cleanSerial + '$', 'i') } },
-        { legacyQrCode: { $regex: new RegExp(cleanSerial + '$', 'i') } },
-        { legacyTemQr: { $regex: new RegExp(cleanSerial + '$', 'i') } },
-        { activeCode: cleanSerial },
-        { smsCode: cleanSerial }
-      ]
-    })
+    // Bước 1: khớp chính xác (dùng index – rất nhanh). Bước 2: chỉ khi không thấy mới dùng regex hậu tố
+    // (regex không neo đầu buộc MongoDB quét toàn bộ collection → chậm khi số tem lớn)
+    const populateLabel = (query) => query
       .populate({
         path: 'productId',
         populate: { path: 'manufacturerId', select: 'name address phone email logo partnerDetails' }
       })
       .populate('enterpriseId');
+
+    let label = await populateLabel(Label.findOne({
+      $or: [
+        { qrCode: cleanSerial },
+        { serialNumber: cleanSerial },
+        { activeCode: cleanSerial },
+        { smsCode: cleanSerial }
+      ]
+    }));
+
+    if (!label) {
+      const suffixRegex = new RegExp(escapeRegex(cleanSerial) + '$', 'i');
+      label = await populateLabel(Label.findOne({
+        $or: [
+          { serialNumber: { $regex: suffixRegex } },
+          { legacyQrCode: { $regex: suffixRegex } },
+          { legacyTemQr: { $regex: suffixRegex } }
+        ]
+      }));
+    }
 
     // Auto-repair on the fly if label doesn't exist yet but matching batch exists
     if (!label) {
