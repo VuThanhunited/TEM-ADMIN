@@ -1341,8 +1341,9 @@ export default function ProductInfo() {
             <div className="product-info-rows">
               <div className="product-info-row">
                 <div className="product-info-row-icon"><QrCode size={16} /></div>
-                <span className="product-info-row-label">Mã serial</span>
-                <span className="product-info-row-value">{label?.serialNumber || serial}</span>
+                <span className="product-info-row-label">Mã kích hoạt</span>
+                {/* Lấy theo ô "Mã sở hữu sản phẩm" NPP/KH nhập khi kích hoạt tem */}
+                <span className="product-info-row-value">{ownerCode || 'Chưa kích hoạt'}</span>
               </div>
               {product?.category && (
                 <div className="product-info-row">
