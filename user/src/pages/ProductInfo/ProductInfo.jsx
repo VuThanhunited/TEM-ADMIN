@@ -220,11 +220,9 @@ export default function ProductInfo() {
         : (enterprise?.displayConfig?.showRelatedProducts !== false));
 
 
-  // useEffect cũng phải TRƯỚC early return
+  // Không redirect về /home của giải pháp để luôn giữ người dùng trong giao diện tem
   useEffect(() => {
-    if (!scanData) {
-      navigate('/home', { replace: true });
-    }
+    // Không làm gì nếu đã có scanData fallback
   }, []);
 
   useEffect(() => {

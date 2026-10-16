@@ -89,11 +89,12 @@ export default function SelectStore() {
   };
 
   const validate = () => {
-    if (!form.name.trim()) return 'Vui lòng nhập tên NPP hoặc cá nhân đã mua sản phẩm';
-    if (!form.address.trim()) return 'Vui lòng nhập địa chỉ';
-    if (!PHONE_REGEX.test(form.phone.replace(/[\s.\-]/g, ''))) return 'Số điện thoại không hợp lệ';
-    const activeSerial = (form.serial || detectedSerial || '').trim();
-    if (!activeSerial) return 'Không tìm thấy serial chống giả của tem';
+    // Không bắt buộc trường 1, 2, 3 và mã sở hữu (theo yêu cầu khách hàng)
+    // Chỉ kiểm tra số điện thoại NẾU khách có nhập
+    const cleanPhone = (form.phone || '').trim().replace(/[\s.\-]/g, '');
+    if (cleanPhone && !PHONE_REGEX.test(cleanPhone)) {
+      return 'Số điện thoại không hợp lệ';
+    }
     return '';
   };
 
@@ -108,6 +109,17 @@ export default function SelectStore() {
 
   const goToProductInfo = (data) => {
     navigate('/product-info', { replace: true, state: { scanData: data, serial } });
+  };
+
+  // Nút Back luôn quay lại giao diện tem, KHÔNG back ra trang chủ giải pháp hay màn hình login
+  const handleBack = () => {
+    if (scanData) {
+      goToProductInfo(scanData);
+    } else if (serial || codeParam) {
+      navigate(`/trace/${encodeURIComponent(serial || codeParam)}`, { replace: true });
+    } else {
+      window.history.length > 1 ? navigate(-1) : navigate('/product-info', { replace: true });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -173,7 +185,7 @@ export default function SelectStore() {
     <div className="store-page">
       {/* Header */}
       <div className="store-header">
-        <button className="store-header-back" onClick={() => navigate(-1)} aria-label="Quay lại">
+        <button className="store-header-back" onClick={handleBack} aria-label="Quay lại">
           <ArrowLeft size={22} />
         </button>
         <span className="store-header-title">Bổ sung thông tin KH sở hữu</span>
@@ -266,7 +278,7 @@ export default function SelectStore() {
                     <label className="store-field-label" htmlFor="owner-name">
                       <span className="owner-field-index">1</span>
                       <User size={15} />
-                      <span>Tên NPP hoặc cá nhân đã mua sản phẩm <strong className="text-danger">*</strong></span>
+                      <span>Tên NPP hoặc cá nhân đã mua sản phẩm</span>
                     </label>
                     <input
                       id="owner-name"
@@ -284,7 +296,7 @@ export default function SelectStore() {
                     <label className="store-field-label" htmlFor="owner-address">
                       <span className="owner-field-index">2</span>
                       <MapPin size={15} />
-                      <span>Địa chỉ NPP hoặc cá nhân mua <strong className="text-danger">*</strong></span>
+                      <span>Địa chỉ NPP hoặc cá nhân mua</span>
                     </label>
                     <input
                       id="owner-address"
@@ -302,7 +314,7 @@ export default function SelectStore() {
                     <label className="store-field-label" htmlFor="owner-phone">
                       <span className="owner-field-index">3</span>
                       <Phone size={15} />
-                      <span>Số điện thoại liên hệ <strong className="text-danger">*</strong></span>
+                      <span>Số điện thoại liên hệ</span>
                     </label>
                     <input
                       id="owner-phone"

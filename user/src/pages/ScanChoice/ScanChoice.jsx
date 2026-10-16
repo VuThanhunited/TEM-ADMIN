@@ -70,6 +70,15 @@ export default function ScanChoice() {
     }
   };
 
+  const handleBack = () => {
+    // Khách hàng yêu cầu: nút back luôn về giao diện tem, TUYỆT ĐỐI không về trang chủ giải pháp
+    if (scanData) {
+      handleViewInfo();
+    } else {
+      window.history.length > 1 ? navigate(-1) : window.location.reload();
+    }
+  };
+
   const product = scanData?.product;
   const enterprise = scanData?.enterprise;
   const label = scanData?.label;
@@ -78,7 +87,7 @@ export default function ScanChoice() {
     <div className="scan-choice-page">
       {/* Header */}
       <div className="scan-choice-header">
-        <button className="scan-choice-back" onClick={() => navigate('/home')} aria-label="Quay lại">
+        <button className="scan-choice-back" onClick={handleBack} aria-label="Quay lại">
           <ArrowLeft size={22} />
         </button>
         <span className="scan-choice-header-title">Kết quả quét mã</span>
@@ -104,11 +113,8 @@ export default function ScanChoice() {
             </div>
             <h3>Không tìm thấy</h3>
             <p>{error}</p>
-            <button className="scan-choice-retry-btn" onClick={fetchScanData} style={{ marginBottom: 10 }}>
+            <button className="scan-choice-retry-btn" onClick={fetchScanData}>
               🔄 Thử lại
-            </button>
-            <button className="scan-choice-retry-btn" style={{ background: 'transparent', border: '1px solid #ccc', color: '#666' }} onClick={() => navigate('/home')}>
-              Quay lại trang chủ
             </button>
           </div>
         )}

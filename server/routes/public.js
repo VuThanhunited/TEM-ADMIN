@@ -730,22 +730,20 @@ router.post('/distributor-entry-single', async (req, res) => {
     }
 
     // Bổ sung thông tin khách hàng sở hữu (chỉ khi form gửi các trường này)
-    const isOwnerUpdate = ownerName !== undefined || ownerPhone !== undefined || activatedSerial !== undefined;
+    const isOwnerUpdate = ownerName !== undefined || ownerPhone !== undefined || activatedSerial !== undefined || ownerCode !== undefined;
     if (isOwnerUpdate) {
       const name = typeof ownerName === 'string' ? ownerName.trim() : '';
       const address = typeof ownerAddress === 'string' ? ownerAddress.trim() : '';
       const phone = typeof ownerPhone === 'string' ? ownerPhone.replace(/[\s.\-]/g, '') : '';
       const inputSerial = typeof activatedSerial === 'string' ? activatedSerial.trim() : '';
 
-      if (!name) return res.status(400).json({ error: 'Vui lòng nhập tên NPP hoặc cá nhân đã mua sản phẩm' });
-      if (name.length > 200) return res.status(400).json({ error: 'Tên quá dài (tối đa 200 ký tự)' });
-      if (!address) return res.status(400).json({ error: 'Vui lòng nhập địa chỉ' });
-      if (address.length > 500) return res.status(400).json({ error: 'Địa chỉ quá dài (tối đa 500 ký tự)' });
-      if (!/^(\+84|84|0)\d{9,10}$/.test(phone)) {
+      // Các trường 1, 2, 3 không bắt buộc theo yêu cầu khách hàng
+      if (name && name.length > 200) return res.status(400).json({ error: 'Tên quá dài (tối đa 200 ký tự)' });
+      if (address && address.length > 500) return res.status(400).json({ error: 'Địa chỉ quá dài (tối đa 500 ký tự)' });
+      if (phone && !/^(\+84|84|0)\d{9,10}$/.test(phone)) {
         return res.status(400).json({ error: 'Số điện thoại không hợp lệ' });
       }
-      if (!inputSerial) return res.status(400).json({ error: 'Vui lòng nhập số serial có trên tem' });
-      if (!isSerialMatch(inputSerial, label.serialNumber)) {
+      if (inputSerial && !isSerialMatch(inputSerial, label.serialNumber)) {
         return res.status(400).json({ error: 'Số serial không khớp với tem vừa quét. Vui lòng kiểm tra lại số in trên tem.' });
       }
 
@@ -756,10 +754,10 @@ router.post('/distributor-entry-single', async (req, res) => {
 
       const finalOwnerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
       label.ownerInfo = {
-        name,
-        address,
-        phone,
-        activatedSerial: finalOwnerCode || inputSerial,
+        name: name || null,
+        address: address || null,
+        phone: phone || null,
+        activatedSerial: finalOwnerCode || inputSerial || label.serialNumber,
         activatedAt: new Date(),
         activatedBy: user._id
       };
