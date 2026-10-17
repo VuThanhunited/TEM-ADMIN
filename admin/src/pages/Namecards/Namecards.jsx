@@ -29,8 +29,21 @@ function ImageInput({ value, onChange, placeholder = 'URL hình ảnh...' }) {
     setUploadError('');
     setUploading(true);
     try {
-      const result = await api.uploadImage(file);
-      onChange(result.url);
+      let uploadedUrl = null;
+      try {
+        const result = await api.uploadImage(file);
+        if (result && result.url) uploadedUrl = result.url;
+      } catch (uploadErr) {
+        console.warn('Upload API không thành công, dùng dataUrl trực tiếp:', uploadErr);
+      }
+
+      if (uploadedUrl) {
+        onChange(uploadedUrl);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => onChange(reader.result);
+        reader.readAsDataURL(file);
+      }
     } catch (err) {
       setUploadError(err.message || 'Lỗi tải ảnh');
     } finally {

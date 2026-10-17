@@ -3,56 +3,99 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Package, Plus, Search, Edit, Trash2, X, Eye, Image, XCircle, Upload, Link, Building2, ExternalLink
+  Package, Plus, Search, Edit, Trash2, X, Eye, XCircle, Upload, Link, Building2, ExternalLink, CheckCircle2
 } from 'lucide-react';
 import './Products.css';
 import Pagination from '../../components/Pagination';
 import { useDebounce } from '../../hooks/useDebounce';
 
-// Nén ảnh tự động phía trình duyệt nếu ảnh > 800KB (tối đa 1600px, quality 0.85)
+// Đọc file thành Data URL (Base64)
+const readFileAsDataUrl = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Không thể đọc file ảnh'));
+    reader.readAsDataURL(file);
+  });
+};
+
+// Nén ảnh tự động phía trình duyệt bằng HTML Canvas (tối đa 1280px, quality 0.82)
+// Giúp giảm dung lượng từ 3-5MB xuống còn ~150-250KB, tải lên và lưu trữ siêu nhanh
 const compressImageIfNeeded = (file) => {
   return new Promise((resolve) => {
-    if (!file || !file.type.startsWith('image/') || file.size <= 800 * 1024) {
+    if (!file || !file.type.startsWith('image/')) {
       return resolve(file);
     }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX_DIM = 1600;
-        let width = img.width;
-        let height = img.height;
-        if (width > MAX_DIM || height > MAX_DIM) {
-          if (width > height) {
-            height = Math.round((height * MAX_DIM) / width);
-            width = MAX_DIM;
-          } else {
-            width = Math.round((width * MAX_DIM) / height);
-            height = MAX_DIM;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob && blob.size < file.size) {
-            const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(compressedFile);
-          } else {
+    // Nếu ảnh đã nhỏ hơn 400KB thì không cần nén thêm
+    if (file.size <= 400 * 1024) {
+      return resolve(file);
+    }
+
+    // Cơ chế an toàn: nếu sau 4 giây không nén xong thì trả về file gốc, không để bị treo
+    const timeoutId = setTimeout(() => {
+      resolve(file);
+    }, 4000);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const img = new window.Image();
+          img.onload = () => {
+            clearTimeout(timeoutId);
+            try {
+              const MAX_DIM = 1280;
+              let width = img.width;
+              let height = img.height;
+              if (width > MAX_DIM || height > MAX_DIM) {
+                if (width > height) {
+                  height = Math.round((height * MAX_DIM) / width);
+                  width = MAX_DIM;
+                } else {
+                  width = Math.round((width * MAX_DIM) / height);
+                  height = MAX_DIM;
+                }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              canvas.toBlob((blob) => {
+                if (blob && blob.size < file.size) {
+                  const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                  });
+                  resolve(compressedFile);
+                } else {
+                  resolve(file);
+                }
+              }, 'image/jpeg', 0.82);
+            } catch (canvasErr) {
+              clearTimeout(timeoutId);
+              resolve(file);
+            }
+          };
+          img.onerror = () => {
+            clearTimeout(timeoutId);
             resolve(file);
-          }
-        }, 'image/jpeg', 0.85);
+          };
+          img.src = e.target.result;
+        } catch (imgErr) {
+          clearTimeout(timeoutId);
+          resolve(file);
+        }
       };
-      img.onerror = () => resolve(file);
-      img.src = e.target.result;
-    };
-    reader.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
+      reader.onerror = () => {
+        clearTimeout(timeoutId);
+        resolve(file);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      resolve(file);
+    }
   });
 };
 
@@ -70,13 +113,39 @@ function ImageInput({ value, onChange, placeholder, index }) {
     if (!rawFile) return;
     setUploadError('');
     setUploading(true);
+
     try {
+      // Bước 1: Nén ảnh nếu ảnh nặng
       const file = await compressImageIfNeeded(rawFile);
-      const result = await api.uploadImage(file);
-      onChange(result.url);
+
+      // Bước 2: Thử tải lên qua API backend
+      let uploadedUrl = null;
+      try {
+        const result = await api.uploadImage(file);
+        if (result && result.url) {
+          uploadedUrl = result.url;
+        }
+      } catch (uploadErr) {
+        console.warn('API upload qua server gặp sự cố, tự động dùng ảnh nén trực tiếp:', uploadErr);
+      }
+
+      // Bước 3: Nếu API trả về URL thì dùng, nếu không thì fallback chuyển thẳng sang Data URL
+      if (uploadedUrl) {
+        onChange(uploadedUrl);
+      } else {
+        const dataUrl = await readFileAsDataUrl(file);
+        onChange(dataUrl);
+      }
       setMode('upload');
     } catch (err) {
-      setUploadError(err.message || 'Lỗi tải ảnh');
+      // Trường hợp hiếm hoi cả nén và đọc file đều lỗi thì thử đọc file gốc
+      try {
+        const dataUrl = await readFileAsDataUrl(rawFile);
+        onChange(dataUrl);
+        setMode('upload');
+      } catch (fallbackErr) {
+        setUploadError(err.message || 'Lỗi tải ảnh');
+      }
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -457,8 +526,8 @@ export default function Products() {
       }, {});
 
       // Chỉ lấy ảnh hợp lệ: URL thực (http/https) hoặc data URL
-      // Cảnh báo và từ chối ảnh base64 quá lớn (>500KB) để tránh MongoDB document overflow
-      const MAX_BASE64_SIZE = 500 * 1024; // 500KB encoded ~375KB file
+      // Cảnh báo và từ chối ảnh base64 quá lớn (>5MB) để tránh vượt quá giới hạn tài nguyên
+      const MAX_BASE64_SIZE = 5 * 1024 * 1024; // 5MB
       const cleanedImages = form.images.filter(img => {
         if (!img || !img.trim()) return false;
         if (img.startsWith('data:')) {
@@ -473,7 +542,7 @@ export default function Products() {
       // Kiểm tra xem có ảnh base64 quá lớn bị loại bỏ không
       const oversizedImages = form.images.filter(img => img?.startsWith('data:') && img.length > MAX_BASE64_SIZE);
       if (oversizedImages.length > 0) {
-        setModalError(`⚠️ ${oversizedImages.length} ảnh bị loại do kích thước vượt quá 500KB. Vui lòng chọn ảnh nhỏ hơn hoặc dùng URL ảnh.`);
+        setModalError(`⚠️ ${oversizedImages.length} ảnh bị loại do kích thước vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn hoặc dùng URL ảnh.`);
         return;
       }
 
