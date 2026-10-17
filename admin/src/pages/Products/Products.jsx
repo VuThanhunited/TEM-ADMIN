@@ -9,6 +9,53 @@ import './Products.css';
 import Pagination from '../../components/Pagination';
 import { useDebounce } from '../../hooks/useDebounce';
 
+// Nén ảnh tự động phía trình duyệt nếu ảnh > 800KB (tối đa 1600px, quality 0.85)
+const compressImageIfNeeded = (file) => {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith('image/') || file.size <= 800 * 1024) {
+      return resolve(file);
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1600;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob && blob.size < file.size) {
+            const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+};
+
 // ── ImageInput: slot ảnh hỗ trợ cả URL lẫn upload từ thiết bị ──────────────
 function ImageInput({ value, onChange, placeholder, index }) {
   const [mode, setMode] = useState('upload');
@@ -19,11 +66,12 @@ function ImageInput({ value, onChange, placeholder, index }) {
   const hasValue = Boolean(value && typeof value === 'string' && value.trim());
 
   const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
     setUploadError('');
     setUploading(true);
     try {
+      const file = await compressImageIfNeeded(rawFile);
       const result = await api.uploadImage(file);
       onChange(result.url);
       setMode('upload');

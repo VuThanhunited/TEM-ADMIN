@@ -109,10 +109,10 @@ router.post('/', auth, requireOwnership, async (req, res) => {
     const product = new Product({
       enterpriseId,
       name,
-      // Lọc bỏ base64 quá lớn (>500KB) để tránh MongoDB 16MB document limit
+      // Lọc bỏ base64 quá lớn (>5MB) để đảm bảo an toàn tài nguyên
       images: (images || []).filter(img => {
         if (!img || !img.trim()) return false;
-        if (img.startsWith('data:') && img.length > 500 * 1024) return false;
+        if (img.startsWith('data:') && img.length > 5 * 1024 * 1024) return false;
         return true;
       }),
       description,
@@ -175,11 +175,11 @@ router.put('/:id', auth, async (req, res) => {
     };
 
     // Chỉ cập nhật images nếu client gửi mảng có nội dung (>0 URL hợp lệ)
-    // Đồng thời lọc bỏ base64 quá lớn để tránh MongoDB overflow
+    // Đồng thời lọc bỏ base64 quá lớn (>5MB) để đảm bảo an toàn tài nguyên
     const filteredImages = Array.isArray(images)
       ? images.filter(img => {
           if (!img || !img.trim()) return false;
-          if (img.startsWith('data:') && img.length > 500 * 1024) return false;
+          if (img.startsWith('data:') && img.length > 5 * 1024 * 1024) return false;
           return true;
         })
       : [];
