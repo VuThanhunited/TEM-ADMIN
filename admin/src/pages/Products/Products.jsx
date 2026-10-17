@@ -11,17 +11,12 @@ import { useDebounce } from '../../hooks/useDebounce';
 
 // ── ImageInput: slot ảnh hỗ trợ cả URL lẫn upload từ thiết bị ──────────────
 function ImageInput({ value, onChange, placeholder, index }) {
-  // mode = 'upload' chỉ khi value là base64 data URL thực sự
-  // Nếu value là URL thông thường hoặc rỗng → luôn dùng mode 'url'
-  const isBase64 = value?.startsWith('data:');
-  const [mode, setMode] = useState(isBase64 ? 'upload' : 'url');
+  const [mode, setMode] = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileRef = useRef();
 
-  // Sync mode nếu value thay đổi từ bên ngoài (VD: clear ảnh)
-  // Đảm bảo không hiển thị slot trống khi value là URL bình thường
-  const effectiveMode = value?.startsWith('data:') ? 'upload' : (value ? 'url' : mode);
+  const hasValue = Boolean(value && typeof value === 'string' && value.trim());
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -43,12 +38,25 @@ function ImageInput({ value, onChange, placeholder, index }) {
   const handleClear = () => {
     onChange('');
     setUploadError('');
-    setMode('url');
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => setMode('upload')}
+          style={{
+            padding: '3px 10px', borderRadius: 6, fontSize: '0.78rem', cursor: 'pointer',
+            border: '1px solid',
+            borderColor: mode === 'upload' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
+            background: mode === 'upload' ? 'rgba(99,102,241,0.15)' : 'transparent',
+            color: mode === 'upload' ? 'var(--primary-color)' : 'var(--text-muted)',
+            display: 'flex', alignItems: 'center', gap: 4
+          }}
+        >
+          <Upload size={11} /> Tải từ thiết bị
+        </button>
         <button
           type="button"
           onClick={() => setMode('url')}
@@ -61,21 +69,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
             display: 'flex', alignItems: 'center', gap: 4
           }}
         >
-          <Link size={11} /> Nhập URL
-        </button>
-        <button
-          type="button"
-          onClick={() => { setMode('upload'); fileRef.current?.click(); }}
-          style={{
-            padding: '3px 10px', borderRadius: 6, fontSize: '0.78rem', cursor: 'pointer',
-            border: '1px solid',
-            borderColor: mode === 'upload' ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-            background: mode === 'upload' ? 'rgba(99,102,241,0.15)' : 'transparent',
-            color: mode === 'upload' ? 'var(--primary-color)' : 'var(--text-muted)',
-            display: 'flex', alignItems: 'center', gap: 4
-          }}
-        >
-          <Upload size={11} /> Tải từ thiết bị
+          <Link size={11} /> Nhập URL trực tiếp
         </button>
         <input
           type="file"
@@ -86,38 +80,72 @@ function ImageInput({ value, onChange, placeholder, index }) {
         />
       </div>
 
-      {effectiveMode === 'url' ? (
-        <input
-          className="input"
-          placeholder={placeholder}
-          value={value || ''}
-          onChange={e => onChange(e.target.value)}
-        />
+      {mode === 'url' ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            className="input"
+            style={{ flex: 1 }}
+            placeholder={placeholder}
+            value={value || ''}
+            onChange={e => onChange(e.target.value)}
+          />
+          {hasValue && (
+            <img
+              src={value}
+              alt={'Ảnh ' + (index + 1)}
+              style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: '#fff' }}
+              onError={e => { e.target.style.display = 'none'; }}
+            />
+          )}
+        </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {value?.startsWith('data:') ? (
-            <>
+          {hasValue ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flex: 1,
+              padding: '6px 10px',
+              borderRadius: 8,
+              background: 'rgba(99,102,241,0.06)',
+              border: '1px solid rgba(99,102,241,0.2)'
+            }}>
               <img
                 src={value}
                 alt={'Ảnh ' + (index + 1)}
-                style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)' }}
+                style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 6, background: '#fff', border: '1px solid rgba(0,0,0,0.1)' }}
+                onError={e => { e.target.style.display = 'none'; }}
               />
-              <div style={{ flex: 1, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ảnh đã chọn</div>
-              <button type="button" onClick={handleClear} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                <X size={14} />
-              </button>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main, #e2e8f0)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <CheckCircle2 size={13} color="#22c55e" /> Ảnh đã tải lên
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {value.startsWith('data:') ? 'Ảnh từ thiết bị' : value}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
+                disabled={uploading}
                 style={{
                   padding: '4px 10px', borderRadius: 6, fontSize: '0.78rem', cursor: 'pointer',
-                  border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)',
-                  color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4
+                  border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)',
+                  color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: 4
                 }}
               >
-                <Upload size={11} /> Đổi ảnh
+                <Upload size={12} /> {uploading ? 'Đang tải...' : 'Đổi ảnh'}
               </button>
-            </>
+              <button
+                type="button"
+                onClick={handleClear}
+                title="Xóa ảnh này"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}
+              >
+                <X size={16} />
+              </button>
+            </div>
           ) : (
             <button
               type="button"
@@ -133,7 +161,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
               {uploading ? (
                 <><div className="loading-spinner" style={{ width: 14, height: 14 }} /> Đang tải...</>
               ) : (
-                <><Upload size={14} /> Chọn ảnh từ thiết bị (tối đa 2MB)</>
+                <><Upload size={14} /> Chọn ảnh từ thiết bị (JPG, PNG, WebP tối đa 5MB)</>
               )}
             </button>
           )}
@@ -308,44 +336,63 @@ export default function Products() {
     ensureModalData(); // Lazy-load: chỉ gọi API khi mở modal
   };
 
-  const openEdit = (product) => {
+  const openEdit = async (product) => {
     setEditing(product);
     setModalError(null);
     ensureModalData(); // Lazy-load: chỉ gọi API khi mở modal
-    const specList = product.specifications
-      ? Object.entries(product.specifications).map(([key, value]) => ({ key, value }))
-      : [];
 
-    let imgList = [...(product.images || [])];
-    while (imgList.length < MAX_IMAGES) imgList.push('');
+    const populateForm = (p) => {
+      const specList = p.specifications
+        ? (p.specifications instanceof Map
+            ? Array.from(p.specifications.entries()).map(([key, value]) => ({ key, value }))
+            : typeof p.specifications === 'object'
+              ? Object.entries(p.specifications).map(([key, value]) => ({ key, value }))
+              : [])
+        : [];
 
+      let imgList = [...(p.images || [])];
+      while (imgList.length < MAX_IMAGES) imgList.push('');
 
-    setForm({
-      name: product.name || '',
-      description: product.description || '',
-      category: product.category || '',
-      sku: product.sku || '',
-      barcode: product.barcode || '',
-      images: imgList,
-      distributors: product.distributors || [],
-      specifications: specList,
-      enterpriseId: product.enterpriseId?._id || product.enterpriseId || '',
-      verificationText: product.verificationText || 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
-      productionProcess: product.productionProcess || [],
-      congBoImages: (() => {
-        const imgs = [...(product.congBoImages || [])];
-        while (imgs.length < 3) imgs.push('');
-        return imgs;
-      })(),
-      congBoNumber: product.congBoNumber || '',
-      producerInfo: product.producerInfo || '',
-      distributorInfo: product.distributorInfo || '',
-      chatbotQA: product.chatbotQA || [],
-      manufacturerId: product.manufacturerId?._id || product.manufacturerId || '',
-      manufacturerInfo: product.manufacturerInfo || '',
-      distributionBannerText: product.distributionBannerText || ''
-    });
+      let congBoImgs = [...(p.congBoImages || [])];
+      while (congBoImgs.length < 3) congBoImgs.push('');
+
+      setForm({
+        name: p.name || '',
+        description: p.description || '',
+        category: p.category || '',
+        sku: p.sku || '',
+        barcode: p.barcode || '',
+        images: imgList,
+        distributors: p.distributors || [],
+        specifications: specList,
+        enterpriseId: p.enterpriseId?._id || p.enterpriseId || '',
+        verificationText: p.verificationText || 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
+        productionProcess: p.productionProcess || [],
+        congBoImages: congBoImgs,
+        congBoNumber: p.congBoNumber || '',
+        producerInfo: p.producerInfo || '',
+        distributorInfo: p.distributorInfo || '',
+        chatbotQA: p.chatbotQA || [],
+        manufacturerId: p.manufacturerId?._id || p.manufacturerId || '',
+        manufacturerInfo: p.manufacturerInfo || '',
+        distributionBannerText: p.distributionBannerText || ''
+      });
+    };
+
+    populateForm(product);
     setShowModal(true);
+
+    // Fetch full chi tiết sản phẩm để đảm bảo nạp đủ 100% dữ liệu gốc (congBoImages, productionProcess...)
+    if (product._id) {
+      try {
+        const fullProd = await api.getProduct(product._id);
+        if (fullProd && (fullProd._id === product._id || fullProd.id === product._id)) {
+          populateForm(fullProd);
+        }
+      } catch (err) {
+        // Giữ dữ liệu hiện tại nếu fetch lỗi
+      }
+    }
   };
 
   const handleSubmit = async (e) => {

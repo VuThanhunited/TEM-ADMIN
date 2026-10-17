@@ -1264,6 +1264,119 @@ export default function ProductInfo() {
           </div>
         </div>
 
+        {/* Khối Hồ sơ & Giấy công bố sản phẩm (Hiển thị trực tiếp khi có dữ liệu) */}
+        {(product?.congBoNumber || (product?.congBoImages && product.congBoImages.filter(img => img && img.trim()).length > 0)) && (
+          <div className="exact-ocop-cert-section" style={{
+            background: '#ffffff',
+            borderRadius: 14,
+            padding: '16px',
+            margin: '14px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+            border: '1.5px solid #bbf7d0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: '#dcfce7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#15803d',
+                flexShrink: 0
+              }}>
+                <FileCheck size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#15803d' }}>
+                  HỒ SƠ CÔNG BỐ SẢN PHẨM
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                  Giấy tiếp nhận bản công bố đã được cơ quan có thẩm quyền thẩm định
+                </span>
+              </div>
+            </div>
+
+            {/* Số công bố */}
+            {product?.congBoNumber && (
+              <div style={{
+                marginBottom: 12,
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: '#f0fdf4',
+                border: '1.5px solid #86efac',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#166534', fontWeight: 700, textTransform: 'uppercase' }}>
+                    Số tiếp nhận bản công bố
+                  </div>
+                  <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#14532d', marginTop: 2 }}>
+                    {product.congBoNumber}
+                  </div>
+                </div>
+                <Award size={24} color="#16a34a" />
+              </div>
+            )}
+
+            {/* Danh sách ảnh công bố */}
+            {product?.congBoImages && product.congBoImages.filter(img => img && img.trim()).length > 0 && (
+              <div>
+                <p style={{ fontSize: '0.82rem', color: '#475569', marginBottom: 10, lineHeight: 1.4 }}>
+                  Văn bản công bố sản phẩm hợp quy (chạm vào ảnh để xem phóng to):
+                </p>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: product.congBoImages.filter(img => img && img.trim()).length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                  gap: 10
+                }}>
+                  {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setPreviewImage(img)}
+                      style={{
+                        cursor: 'pointer',
+                        borderRadius: 10,
+                        overflow: 'hidden',
+                        border: '1.5px solid #bbf7d0',
+                        background: '#f8fafc',
+                        position: 'relative'
+                      }}
+                    >
+                      <img
+                        src={img}
+                        alt={`Giấy công bố ${idx + 1}`}
+                        style={{ width: '100%', height: 160, objectFit: 'contain', background: '#fff', display: 'block' }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        padding: '5px 8px',
+                        background: 'rgba(21, 128, 61, 0.88)',
+                        color: '#fff',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4
+                      }}>
+                        <Eye size={13} />
+                        <span>Xem phóng to</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 6. Sản Phẩm Liên Quan OCOP - dùng data thật từ API */}
         {showRelated && filteredRelated.length > 0 && (
           <div className="exact-ocop-related-card">
@@ -2470,16 +2583,40 @@ export default function ProductInfo() {
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
-                          <a key={idx} href={img} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+                          <div
+                            key={idx}
+                            onClick={() => setPreviewImage(img)}
+                            style={{
+                              cursor: 'pointer',
+                              borderRadius: 10,
+                              overflow: 'hidden',
+                              border: '1.5px solid #d1fae5',
+                              background: '#f9fafb',
+                              position: 'relative'
+                            }}
+                          >
                             <img
                               src={img}
                               alt={'Giấy công bố ' + (idx + 1)}
-                              style={{ width: '100%', borderRadius: 10, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 340, background: '#f9fafb' }}
+                              style={{ width: '100%', objectFit: 'contain', maxHeight: 340, display: 'block', background: '#fff' }}
                             />
-                            <p style={{ textAlign: 'center', fontSize: '0.78rem', color: '#6b7280', marginTop: 4 }}>
-                              Nhấn để xem đầy đủ ↗
-                            </p>
-                          </a>
+                            <div style={{
+                              padding: '6px 10px',
+                              background: '#f0fdf4',
+                              textAlign: 'center',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              color: '#059669',
+                              borderTop: '1px solid #d1fae5',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 5
+                            }}>
+                              <Eye size={13} />
+                              <span>Nhấn để xem phóng to</span>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -2608,9 +2745,16 @@ export default function ProductInfo() {
                         {product?.congBoImages?.filter(img => img && img.trim()).length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
-                              <a key={idx} href={img} target="_blank" rel="noopener noreferrer">
-                                <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', borderRadius: 8, border: '1px solid #d1fae5', objectFit: 'contain', maxHeight: 300 }} />
-                              </a>
+                              <div
+                                key={idx}
+                                onClick={() => setPreviewImage(img)}
+                                style={{ cursor: 'pointer', borderRadius: 8, overflow: 'hidden', border: '1px solid #d1fae5' }}
+                              >
+                                <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', objectFit: 'contain', maxHeight: 300, display: 'block', background: '#fff' }} />
+                                <div style={{ padding: '4px', textAlign: 'center', background: '#f0fdf4', fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
+                                  Nhấn để xem phóng to
+                                </div>
+                              </div>
                             ))}
                           </div>
                         )}

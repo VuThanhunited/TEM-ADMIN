@@ -24,7 +24,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
       Product.find(query)
         .populate('enterpriseId', 'name')
         .populate('manufacturerId', 'name address phone email')
-        .select('-congBoImages -productionProcess -chatbotQA -specifications') // Bỏ qua field nặng khi list
+        .select('-chatbotQA') // Chỉ bỏ qua chatbotQA khi list
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(parseInt(limit))
