@@ -105,6 +105,14 @@ router.get('/namecard/:slug', async (req, res) => {
 // GET /api/public/scan/:serial
 router.get('/scan/:serial', async (req, res) => {
   try {
+    // Chống cache triệt để để khi sửa sản phẩm / ảnh ở admin thì khách quét nhận dữ liệu mới ngay
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+
     const { serial } = req.params;
     const cleanSerial = String(serial).trim();
     // noCount=1: chỉ lấy dữ liệu (form NPP / sau khi lưu), không tính thêm lượt quét
@@ -1394,6 +1402,13 @@ router.post('/guest-login', async (req, res) => {
 // GET /api/public/barcode/:barcode
 router.get('/barcode/:barcode', async (req, res) => {
   try {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    });
+
     const { barcode } = req.params;
     let product = await Product.findOne({ barcode }).populate('enterpriseId');
     if (!product) {

@@ -66,6 +66,11 @@ class UserApiService {
       headers: this.getHeaders(useNppToken),
     };
 
+    // Chống cache triệt để ở browser cho các request GET
+    if (method === 'GET') {
+      options.cache = 'no-store';
+    }
+
     if (data && (method === 'POST' || method === 'PUT')) {
       options.body = JSON.stringify(data);
     }
@@ -127,11 +132,11 @@ class UserApiService {
 
   // Public scan data – params.noCount = '1' để chỉ lấy dữ liệu, không tăng lượt quét
   getPublicScan(serial, params = {}) {
-    return this.request('GET', `/public/scan/${serial}`, null, params, false);
+    return this.request('GET', `/public/scan/${serial}`, null, { ...params, _t: Date.now() }, false);
   }
 
   getPublicBarcode(barcode) {
-    return this.request('GET', `/public/barcode/${barcode}`, null, {}, false);
+    return this.request('GET', `/public/barcode/${barcode}`, null, { _t: Date.now() }, false);
   }
 
   // Kích hoạt tem bảo hành công khai cho người dùng / khách mua

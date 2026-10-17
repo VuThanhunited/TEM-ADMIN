@@ -288,10 +288,21 @@ export default function ProductInfo() {
   };
 
 
-  // Không redirect về /home của giải pháp để luôn giữ người dùng trong giao diện tem
+  // Tự động làm mới dữ liệu mới nhất từ server khi vào trang hoặc reload để luôn cập nhật ảnh/thông tin sản phẩm
   useEffect(() => {
-    // Không làm gì nếu đã có scanData fallback
-  }, []);
+    const serialToFetch = serial || scanData?.label?.serialNumber || scanData?.label?.qrCode;
+    if (serialToFetch && serialToFetch !== 'VSM-88392100') {
+      userApi.getPublicScan(serialToFetch, { noCount: '1' })
+        .then(freshData => {
+          if (freshData && freshData.product) {
+            setScanData(freshData);
+          }
+        })
+        .catch(() => {
+          // Bỏ qua lỗi ngầm, vẫn giữ scanData hiện tại
+        });
+    }
+  }, [serial]);
 
   useEffect(() => {
     if (chatOpen && chatMessages.length === 0 && scanData) {
@@ -1125,9 +1136,14 @@ export default function ProductInfo() {
     const isMock = !product?.name || product?.name === 'VINSUMI';
     const productName = isMock ? 'LONG NHÃN LỤC SƠN' : product.name;
     const ownerName = isMock ? 'Hợp tác xã Nông nghiệp Lục Sơn' : (enterprise?.name || 'Hợp tác xã Nông nghiệp Lục Sơn');
-    const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
-      ? product.images[0]
-      : '/images/ocop_hero_product.png';
+    
+    // Tìm ảnh hợp lệ đầu tiên từ images mảng hoặc trường image
+    const firstValidImage = (product?.images && Array.isArray(product.images))
+      ? product.images.find(img => img && typeof img === 'string' && img.trim() && !img.includes('hero_banner') && !img.includes('vinsumi'))
+      : (product?.image || null);
+
+    const heroImage = firstValidImage || (isMock ? '/images/ocop_hero_product.png' : '');
+
     // Ưu tiên đọc từ distributionBannerText (field "Tiêu Đề Banner" trong admin),
     // fallback về verificationText nếu có OCOP keyword, cuối cùng default 'CHỨNG NHẬN OCOP'
     const rawBanner = product?.distributionBannerText?.trim() || '';
@@ -1141,20 +1157,25 @@ export default function ProductInfo() {
 
     return (
       <div className="exact-ocop-container">
-        {/* 1. Top Nature Landscape Banner từ mẫu gốc 100% */}
-        <div className="exact-ocop-top-landscape">
-          <img src="/images/ocop_top_landscape.png" alt="SẢN PHẨM OCOP - SẢN PHẨM ĐÃ ĐƯỢC CẤP CHỨNG NHẬN OCOP" className="exact-ocop-top-img" />
-        </div>
+        {/* 1. Khách yêu cầu bỏ banner OCOP đầu tiên */}
 
-        {/* 2. Hero Banner Hình ảnh Long Nhãn Lục Sơn hũ nhãn sấy khô thật */}
-        <div className="exact-ocop-hero-card">
-          <img
-            src={heroImage}
-            alt={productName}
-            className="exact-ocop-hero-img"
-            onError={(e) => { e.target.src = '/images/ocop_hero_product.png'; }}
-          />
-        </div>
+        {/* 2. Hero Banner Hình ảnh sản phẩm thật */}
+        {heroImage ? (
+          <div className="exact-ocop-hero-card">
+            <img
+              src={heroImage}
+              alt={productName}
+              className="exact-ocop-hero-img"
+              onError={(e) => {
+                if (isMock) {
+                  e.target.src = '/images/ocop_hero_product.png';
+                } else {
+                  e.target.style.display = 'none';
+                }
+              }}
+            />
+          </div>
+        ) : null}
 
         {/* 3. Khối Thông Tin Sản Phẩm & Chứng Nhận OCOP 4 Sao */}
         <div className="exact-ocop-cert-card">
@@ -1183,16 +1204,24 @@ export default function ProductInfo() {
           </div>
         </div>
 
-        {/* 4. Khối Thông Tin Chủ Thể với logo HTX Lục Sơn */}
+        {/* 4. Khối Thông Tin Chủ Thể */}
         <div className="exact-ocop-owner-box" onClick={() => setActiveModal('mfg')}>
           <div className="exact-ocop-owner-left-icon">
-            <img src="/images/ocop_owner_logo.png" alt={ownerName} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+            {enterprise?.logo ? (
+              <img src={enterprise.logo} alt={ownerName} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+            ) : isMock ? (
+              <img src="/images/ocop_owner_logo.png" alt={ownerName} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+            ) : (
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Building2 size={24} color="#15803d" />
+              </div>
+            )}
           </div>
           <div className="exact-ocop-owner-details">
             <h3>THÔNG TIN CHỦ THỂ</h3>
             <p className="exact-ocop-owner-name-bold">{ownerName}</p>
-            <p className="exact-ocop-owner-addr">Địa chỉ: {enterprise?.address && !isMock ? enterprise.address : 'Thôn Lục Sơn, Xã Minh Hòa, Huyện Lục Ngạn, Tỉnh Bắc Giang'}</p>
-            <p className="exact-ocop-owner-phone">Điện thoại: {enterprise?.phone && !isMock ? enterprise.phone : '0987 854 321'}</p>
+            <p className="exact-ocop-owner-addr">Địa chỉ: {enterprise?.address?.trim() ? enterprise.address : (isMock ? 'Thôn Lục Sơn, Xã Minh Hòa, Huyện Lục Ngạn, Tỉnh Bắc Giang' : 'Đang cập nhật')}</p>
+            <p className="exact-ocop-owner-phone">Điện thoại: {enterprise?.phone?.trim() ? enterprise.phone : (isMock ? '0987 854 321' : 'Đang cập nhật')}</p>
           </div>
           <div className="exact-ocop-owner-arrow">&gt;</div>
         </div>
