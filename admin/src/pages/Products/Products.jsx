@@ -294,7 +294,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
 }
 
 // ── Session Cache Helper (SWR - Stale-While-Revalidate) ────────────────────────
-const CACHE_PREFIX = 'tem_products_cache_';
+const CACHE_PREFIX = 'tem_products_cache_v3_';
 const getSessionCache = (page, search) => {
   if (search) return null; // Không dùng cache khi đang tìm kiếm
   try {
@@ -319,7 +319,7 @@ const setSessionCache = (page, search, data, pagination) => {
 const clearSessionCache = () => {
   try {
     Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith(CACHE_PREFIX)) sessionStorage.removeItem(key);
+      if (key.startsWith('tem_products_cache_')) sessionStorage.removeItem(key);
     });
   } catch (e) {}
 };
@@ -608,7 +608,9 @@ export default function Products() {
         manufacturerId: form.manufacturerId || null,
         manufacturerInfo: form.manufacturerInfo || '',
         congBoImages: (form.congBoImages || []).filter(img => img && img.trim()),
-        congBoNumber: form.congBoNumber || ''
+        congBoNumber: form.congBoNumber || '',
+        clearImages: cleanedImages.length === 0,
+        clearCongBoImages: (form.congBoImages || []).every(img => !img || !img.trim())
       };
       if (editing) {
         await api.updateProduct(editing._id, data);
@@ -1090,7 +1092,9 @@ export default function Products() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Hủy</button>
-                <button type="submit" className="btn btn-primary">{editing ? 'Cập nhật' : 'Thêm mới'}</button>
+                <button type="submit" className="btn btn-primary" disabled={modalDataLoading}>
+                  {modalDataLoading ? 'Đang nạp dữ liệu...' : (editing ? 'Cập nhật' : 'Thêm mới')}
+                </button>
               </div>
             </form>
           </div>

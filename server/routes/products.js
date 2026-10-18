@@ -47,13 +47,10 @@ router.get('/', auth, requireOwnership, async (req, res) => {
       .limit(parsedLimit)
       .lean();
 
-    // Tối ưu hóa: Khi lấy danh sách sản phẩm, loại trừ các trường Base64 nặng (ảnh công bố, quy trình SX, chứng nhận, chatbotQA, specs...)
-    // và chỉ lấy 1 ảnh đại diện để tránh payload hàng chục MB làm đơ/treo server và timeout trình duyệt.
-    // Khi người dùng bấm Sửa, hệ thống sẽ gọi GET /api/products/:id để lấy đầy đủ 100% dữ liệu của riêng sản phẩm đó.
+    // Không strip dữ liệu quan trọng (images, congBoImages, certifications...) để frontend luôn có đủ 100% dữ liệu
+    // Chỉ loại trừ chatbotQA nếu không yêu cầu full
     if (full !== 'true') {
-      findQuery = findQuery
-        .select('-chatbotQA -congBoImages -productionProcess -certifications -specifications -producerInfo -distributorInfo')
-        .slice('images', 1);
+      findQuery = findQuery.select('-chatbotQA');
     }
 
     const [total, products] = await Promise.all([
@@ -201,29 +198,39 @@ router.put('/:id', auth, async (req, res) => {
       if (isUser) manufacturerModel = 'User';
     }
 
-    // Xây dựng updateData — chỉ set images nếu client gửi mảng không rỗng
-    // Tránh bug xóa ảnh cũ khi admin submit form mà không chủ ý thay ảnh
+    // Xây dựng updateData cơ bản
     const updateData = {
       name, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
       chatbotQA, manufacturerId: manufacturerId || null, manufacturerModel, manufacturerInfo,
       distributionBannerText: distributionBannerText !== undefined ? distributionBannerText : undefined,
-      congBoImages: Array.isArray(congBoImages) ? congBoImages.filter(img => img && img.trim()) : undefined,
       congBoNumber: congBoNumber !== undefined ? congBoNumber : undefined
     };
 
-    // Chỉ cập nhật images nếu client gửi mảng có nội dung (>0 URL hợp lệ)
-    // Đồng thời lọc bỏ base64 quá lớn (>5MB) để đảm bảo an toàn tài nguyên
-    const filteredImages = Array.isArray(images)
-      ? images.filter(img => {
-          if (!img || !img.trim()) return false;
-          if (img.startsWith('data:') && img.length > 5 * 1024 * 1024) return false;
-          return true;
-        })
-      : [];
+    // BẢO VỆ DỮ LIỆU CÔNG BỐ: Chỉ cập nhật nếu client gửi mảng có nội dung (>0 URL hợp lệ)
+    // Hoặc có cờ clearCongBoImages: true. Không bao giờ xóa sạch do lỗi nạp form rỗng từ client
+    if (Array.isArray(congBoImages)) {
+      const validCongBo = congBoImages.filter(img => img && typeof img === 'string' && img.trim());
+      if (validCongBo.length > 0) {
+        updateData.congBoImages = validCongBo;
+      } else if (req.body.clearCongBoImages === true) {
+        updateData.congBoImages = [];
+      }
+    }
 
-    if (filteredImages.length > 0) {
-      updateData.images = filteredImages;
+    // BẢO VỆ ẢNH SẢN PHẨM: Chỉ cập nhật nếu client gửi mảng có nội dung (>0 URL hợp lệ)
+    // Đồng thời lọc bỏ base64 quá lớn (>5MB) để đảm bảo an toàn tài nguyên
+    if (Array.isArray(images)) {
+      const filteredImages = images.filter(img => {
+        if (!img || typeof img !== 'string' || !img.trim()) return false;
+        if (img.startsWith('data:') && img.length > 5 * 1024 * 1024) return false;
+        return true;
+      });
+      if (filteredImages.length > 0) {
+        updateData.images = filteredImages;
+      } else if (req.body.clearImages === true) {
+        updateData.images = [];
+      }
     }
 
     const product = await Product.findByIdAndUpdate(
