@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Package, Plus, Search, Edit, Trash2, X, Eye, XCircle, Upload, Link, Building2, ExternalLink, CheckCircle2
+  Package, Plus, Search, Edit, Trash2, X, Eye, XCircle, Upload, Link, Building2, ExternalLink, CheckCircle2,
+  Image as ImageIcon
 } from 'lucide-react';
 import './Products.css';
 import Pagination from '../../components/Pagination';
@@ -696,7 +697,7 @@ export default function Products() {
                 {product.images?.[0] ? (
                   <img src={product.images[0]} alt={product.name} />
                 ) : (
-                  <div className="product-image-placeholder"><Image size={32} /></div>
+                  <div className="product-image-placeholder"><ImageIcon size={32} /></div>
                 )}
                 <div className="product-overlay">
                   <button className="btn btn-sm btn-ghost" onClick={() => openEdit(product)} title="Sửa"><Edit size={14} /></button>
