@@ -26,6 +26,7 @@ export default function Labels() {
   const [batches, setBatches] = useState([]);
   const [labels, setLabels] = useState([]);
   const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
   const [enterprises, setEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -149,7 +150,15 @@ export default function Labels() {
 
   // ── Helper / utility functions ─────────────────────────────────────────
   const loadProducts = async () => {
-    try { const r = await api.getProducts({ limit: 1000 }); setProducts(r.data || []); } catch (e) {}
+    try {
+      setProductsLoading(true);
+      const r = await api.getProducts({ limit: 1000, simple: 'true' });
+      setProducts(r?.data || []);
+    } catch (e) {
+      console.error('[loadProducts] Lỗi tải sản phẩm:', e);
+    } finally {
+      setProductsLoading(false);
+    }
   };
 
   const loadBatchOptions = async () => {
@@ -196,15 +205,13 @@ export default function Labels() {
   const getFilteredProducts = (targetEntId) => {
     if (!targetEntId) return products;
     const entIdStr = getEntIdStr(targetEntId);
-    const filtered = products.filter(p => getEntIdStr(p.enterpriseId) === entIdStr);
-    return filtered.length > 0 ? filtered : products;
+    return products.filter(p => getEntIdStr(p.enterpriseId) === entIdStr);
   };
 
   const getFilteredTemplates = (targetEntId) => {
     if (!targetEntId) return templates;
     const entIdStr = getEntIdStr(targetEntId);
-    const filtered = templates.filter(t => getEntIdStr(t.enterpriseId) === entIdStr);
-    return filtered.length > 0 ? filtered : templates;
+    return templates.filter(t => getEntIdStr(t.enterpriseId) === entIdStr);
   };
 
   // ── Load functions: nhận tường minh page + searchTerm + filters ─────────────────
@@ -324,6 +331,8 @@ export default function Labels() {
   const openCreateBatchModal = async () => {
     setModalError(null);
     setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
+    loadProducts();
+    loadTemplates();
     try {
       const res = await api.getNextSerial();
       setNextSerialInfo(res);
@@ -1606,20 +1615,57 @@ export default function Labels() {
                 </div>
                 <div className="form-row">
                   <div className="input-group">
-                    <label>Gắn với Sản phẩm</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <label style={{ margin: 0 }}>Gắn với Sản phẩm</label>
+                      <button
+                        type="button"
+                        onClick={loadProducts}
+                        disabled={productsLoading}
+                        style={{
+                          background: 'none', border: 'none', color: 'var(--primary-color, #6366f1)',
+                          cursor: 'pointer', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4, padding: 0
+                        }}
+                        title="Tải lại danh sách sản phẩm mới nhất"
+                      >
+                        <RefreshCw size={12} className={productsLoading ? 'animate-spin' : ''} />
+                        {productsLoading ? 'Đang tải...' : 'Làm mới'}
+                      </button>
+                    </div>
                     <select className="input select" value={batchForm.productId} onChange={e => setBatchForm({...batchForm, productId: e.target.value})}>
                       <option value="">-- Chọn sản phẩm --</option>
-                      {(isAdmin && batchForm.enterpriseId
-                        ? products.filter(p => (p.enterpriseId?._id || p.enterpriseId) === batchForm.enterpriseId)
-                        : products).map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                      {(() => {
+                        const availableProducts = isAdmin && batchForm.enterpriseId
+                          ? getFilteredProducts(batchForm.enterpriseId)
+                          : products;
+                        
+                        if (availableProducts.length === 0 && batchForm.enterpriseId) {
+                          return <option value="" disabled>⚠️ Doanh nghiệp này chưa có sản phẩm nào</option>;
+                        }
+
+                        return availableProducts.map(p => (
+                          <option key={p._id} value={p._id}>
+                            {p.name}{p.sku ? ` (${p.sku})` : ''}
+                          </option>
+                        ));
+                      })()}
                     </select>
+                    {isAdmin && batchForm.enterpriseId && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        {(() => {
+                          const count = getFilteredProducts(batchForm.enterpriseId).length;
+                          return count > 0 
+                            ? `✓ Có ${count} sản phẩm sẵn sàng`
+                            : '⚠️ Doanh nghiệp này chưa có sản phẩm. Bạn có thể tạo lô tem trước và gán sản phẩm sau (ở nút Quản lý lô tem), hoặc thêm sản phẩm trong menu "Sản phẩm".';
+                        })()}
+                      </div>
+                    )}
                   </div>
                   <div className="input-group">
                     <label>Giao diện hiển thị (Template)</label>
                     <select className="input select" value={batchForm.templateId} onChange={e => setBatchForm({...batchForm, templateId: e.target.value})}>
                       <option value="">-- Mặc định doanh nghiệp --</option>
                       {(isAdmin && batchForm.enterpriseId
-                        ? templates.filter(t => (t.enterpriseId?._id || t.enterpriseId) === batchForm.enterpriseId)
+                        ? getFilteredTemplates(batchForm.enterpriseId)
                         : templates).map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                     </select>
                   </div>
@@ -1987,8 +2033,8 @@ export default function Labels() {
                     <select className="input select" value={migrateForm.productId} onChange={e => setMigrateForm({...migrateForm, productId: e.target.value})}>
                       <option value="">-- Không gắn --</option>
                       {(isAdmin && migrateForm.enterpriseId
-                        ? products.filter(p => (p.enterpriseId?._id || p.enterpriseId) === migrateForm.enterpriseId)
-                        : products).map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                        ? getFilteredProducts(migrateForm.enterpriseId)
+                        : products).map(p => <option key={p._id} value={p._id}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>)}
                     </select>
                   </div>
                   <div className="input-group">
@@ -1996,7 +2042,7 @@ export default function Labels() {
                     <select className="input select" value={migrateForm.templateId} onChange={e => setMigrateForm({...migrateForm, templateId: e.target.value})}>
                       <option value="">-- Mặc định doanh nghiệp --</option>
                       {(isAdmin && migrateForm.enterpriseId
-                        ? templates.filter(t => (t.enterpriseId?._id || t.enterpriseId) === migrateForm.enterpriseId)
+                        ? getFilteredTemplates(migrateForm.enterpriseId)
                         : templates).map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                     </select>
                   </div>

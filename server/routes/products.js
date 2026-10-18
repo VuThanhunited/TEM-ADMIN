@@ -16,9 +16,14 @@ const invalidateProductsCache = () => {
 // GET /api/products
 router.get('/', auth, requireOwnership, async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', category = '', full = 'false' } = req.query;
+    const { page = 1, limit = 20, search = '', category = '', full = 'false', simple = 'false' } = req.query;
     const query = req.enterpriseFilter || {};
     
+    // Nếu là Admin và truyền enterpriseId trong query string -> lọc theo enterpriseId đó
+    if (req.user.role === 'ADMIN' && req.query.enterpriseId) {
+      query.enterpriseId = req.query.enterpriseId;
+    }
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -31,7 +36,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
     const parsedPage = Math.max(parseInt(page) || 1, 1);
 
     const entKey = req.user.role === 'ADMIN' ? (req.query.enterpriseId || 'ADMIN_ALL') : (req.user.enterpriseId || 'NONE');
-    const cacheKey = `${entKey}_${parsedPage}_${parsedLimit}_${search}_${category}_${full}`;
+    const cacheKey = `${entKey}_${parsedPage}_${parsedLimit}_${search}_${category}_${full}_${simple}`;
 
     // Kiểm tra cache RAM — nếu có sẵn thì trả về tức thì (0ms truy vấn database)
     const cached = productsCache.get(cacheKey);
@@ -41,16 +46,21 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 
     let findQuery = Product.find(query)
       .populate('enterpriseId', 'name')
-      .populate('manufacturerId', 'name address phone email')
       .sort({ createdAt: -1 })
       .skip((parsedPage - 1) * parsedLimit)
       .limit(parsedLimit)
       .lean();
 
-    // Không strip dữ liệu quan trọng (images, congBoImages, certifications...) để frontend luôn có đủ 100% dữ liệu
-    // Chỉ loại trừ chatbotQA nếu không yêu cầu full
-    if (full !== 'true') {
-      findQuery = findQuery.select('-chatbotQA');
+    if (simple === 'true') {
+      // Chế độ gọn nhẹ phục vụ dropdown / select: siêu nhanh (<100ms), không populate manufacturerId nặng
+      findQuery = findQuery.select('name sku category enterpriseId distributors');
+    } else {
+      findQuery = findQuery.populate('manufacturerId', 'name address phone email');
+      // Không strip dữ liệu quan trọng (images, congBoImages, certifications...) để frontend luôn có đủ 100% dữ liệu
+      // Chỉ loại trừ chatbotQA nếu không yêu cầu full
+      if (full !== 'true') {
+        findQuery = findQuery.select('-chatbotQA');
+      }
     }
 
     const [total, products] = await Promise.all([
