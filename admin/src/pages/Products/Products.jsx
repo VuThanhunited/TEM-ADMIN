@@ -293,13 +293,45 @@ function ImageInput({ value, onChange, placeholder, index }) {
   );
 }
 
+// ── Session Cache Helper (SWR - Stale-While-Revalidate) ────────────────────────
+const CACHE_PREFIX = 'tem_products_cache_';
+const getSessionCache = (page, search) => {
+  if (search) return null; // Không dùng cache khi đang tìm kiếm
+  try {
+    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${page}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0 && Date.now() - parsed.ts < 10 * 60 * 1000) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return null;
+};
+
+const setSessionCache = (page, search, data, pagination) => {
+  if (search) return;
+  try {
+    sessionStorage.setItem(`${CACHE_PREFIX}${page}`, JSON.stringify({ data, pagination, ts: Date.now() }));
+  } catch (e) {}
+};
+
+const clearSessionCache = () => {
+  try {
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith(CACHE_PREFIX)) sessionStorage.removeItem(key);
+    });
+  } catch (e) {}
+};
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Products() {
   const { isAdmin, enterpriseId } = useAuth();
-  const [products, setProducts] = useState([]);
+  const initialCached = useRef(getSessionCache(1, '')).current;
+  const [products, setProducts] = useState(initialCached ? initialCached.data : []);
   const [enterprises, setEnterprises] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCached);
   const [error, setError] = useState(null);
   const [modalDataLoading, setModalDataLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -307,7 +339,7 @@ export default function Products() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [modalError, setModalError] = useState(null);
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [pagination, setPagination] = useState(initialCached ? initialCached.pagination : { page: 1, totalPages: 1, total: 0 });
 
   // Cache flag — chỉ gọi API 1 lần trong suốt session
   const modalDataLoadedRef = useRef(false);
@@ -344,15 +376,30 @@ export default function Products() {
   }, [pagination.page, debouncedSearch]);
 
   const loadProducts = async () => {
-    try {
+    const cached = getSessionCache(pagination.page, debouncedSearch);
+    // Nếu có cache, cập nhật ngay để người dùng thấy sản phẩm tức thì (0ms)
+    if (cached && products.length === 0) {
+      setProducts(cached.data);
+      setPagination(prev => ({ ...prev, ...(cached.pagination || {}) }));
+      setLoading(false);
+    } else if (!cached && products.length === 0) {
       setLoading(true);
-      setError(null);
+    }
+    setError(null);
+
+    try {
       const result = await api.getProducts({ page: pagination.page, search: debouncedSearch, limit: 12 });
-      setProducts(result.data || []);
-      setPagination(prev => ({ ...prev, ...(result.pagination || {}) }));
+      if (result && Array.isArray(result.data)) {
+        setProducts(result.data);
+        setPagination(prev => ({ ...prev, ...(result.pagination || {}) }));
+        setSessionCache(pagination.page, debouncedSearch, result.data, result.pagination);
+      }
     } catch (err) {
       console.error('Lỗi khi tải sản phẩm:', err);
-      setError(err.message || 'Không thể tải danh sách sản phẩm');
+      // Nếu đã có dữ liệu cache trên màn hình thì không báo lỗi đơ trang
+      if (products.length === 0 && (!cached || !cached.data?.length)) {
+        setError(err.message || 'Không thể tải danh sách sản phẩm');
+      }
     } finally {
       setLoading(false);
     }
@@ -568,6 +615,7 @@ export default function Products() {
       } else {
         await api.createProduct(data);
       }
+      clearSessionCache();
       setShowModal(false);
       loadProducts();
     } catch (err) {
@@ -579,6 +627,7 @@ export default function Products() {
     if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return;
     try {
       await api.deleteProduct(id);
+      clearSessionCache();
       loadProducts();
     } catch (err) {
       alert(err.message);

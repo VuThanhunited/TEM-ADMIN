@@ -5,6 +5,14 @@ const { requireOwnership } = require('../middleware/rbac');
 
 const router = express.Router();
 
+// ── In-Memory Cache cho danh sách sản phẩm (TTL 60s) ─────────────────────────
+const productsCache = new Map();
+const CACHE_TTL_MS = 60 * 1000; // 60 giây
+
+const invalidateProductsCache = () => {
+  productsCache.clear();
+};
+
 // GET /api/products
 router.get('/', auth, requireOwnership, async (req, res) => {
   try {
@@ -21,6 +29,15 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 
     const parsedLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 1000);
     const parsedPage = Math.max(parseInt(page) || 1, 1);
+
+    const entKey = req.user.role === 'ADMIN' ? (req.query.enterpriseId || 'ADMIN_ALL') : (req.user.enterpriseId || 'NONE');
+    const cacheKey = `${entKey}_${parsedPage}_${parsedLimit}_${search}_${category}_${full}`;
+
+    // Kiểm tra cache RAM — nếu có sẵn thì trả về tức thì (0ms truy vấn database)
+    const cached = productsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+      return res.json(cached.payload);
+    }
 
     let findQuery = Product.find(query)
       .populate('enterpriseId', 'name')
@@ -44,10 +61,16 @@ router.get('/', auth, requireOwnership, async (req, res) => {
       findQuery
     ]);
 
-    res.json({
+    const payload = {
       data: products,
       pagination: { total, page: parsedPage, limit: parsedLimit, totalPages: Math.ceil(total / parsedLimit) }
-    });
+    };
+
+    // Giới hạn kích thước cache RAM an toàn (<200 mục)
+    if (productsCache.size > 200) productsCache.clear();
+    productsCache.set(cacheKey, { payload, timestamp: Date.now() });
+
+    res.json(payload);
   } catch (error) {
     console.error('[GET /api/products] Lỗi truy vấn sản phẩm:', error);
     res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
@@ -149,6 +172,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       congBoNumber: congBoNumber || ''
     });
     await product.save();
+    invalidateProductsCache();
     
     const populated = await Product.findById(product._id)
       .populate('enterpriseId', 'name')
@@ -209,6 +233,7 @@ router.put('/:id', auth, async (req, res) => {
     ).populate('enterpriseId', 'name').populate('manufacturerId');
 
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+    invalidateProductsCache();
     const result = await normalizeManufacturer(product);
     res.json(result);
   } catch (error) {
@@ -223,6 +248,7 @@ router.delete('/:id', auth, async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+    invalidateProductsCache();
     res.json({ message: 'Xóa sản phẩm thành công' });
   } catch (error) {
     res.status(500).json({ error: 'Lỗi máy chủ' });

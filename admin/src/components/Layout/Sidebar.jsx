@@ -268,6 +268,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
                   className={({ isActive: a }) => `nav-item ${a ? 'active' : ''}`}
                   title={collapsed ? item.label : undefined}
                   onClick={onCloseMobile}
+                  onMouseEnter={() => {
+                    if (item.path === '/products') {
+                      api.getProducts({ page: 1, limit: 12 }).catch(() => {});
+                    }
+                  }}
                 >
                   <div className="nav-item-left">
                     <Icon size={20} />
