@@ -131,6 +131,8 @@ const productSchema = new mongoose.Schema({
 });
 
 productSchema.index({ enterpriseId: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ enterpriseId: 1, createdAt: -1 });
 productSchema.index({ name: 'text' });
 
 module.exports = mongoose.model('Product', productSchema);

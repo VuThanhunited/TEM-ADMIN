@@ -299,6 +299,7 @@ export default function Products() {
   const [enterprises, setEnterprises] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [modalDataLoading, setModalDataLoading] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 400);
@@ -344,11 +345,13 @@ export default function Products() {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const result = await api.getProducts({ page: pagination.page, search: debouncedSearch });
-      setProducts(result.data);
-      setPagination(prev => ({ ...prev, ...result.pagination }));
+      setError(null);
+      const result = await api.getProducts({ page: pagination.page, search: debouncedSearch, limit: 12 });
+      setProducts(result.data || []);
+      setPagination(prev => ({ ...prev, ...(result.pagination || {}) }));
     } catch (err) {
-      console.error(err);
+      console.error('Lỗi khi tải sản phẩm:', err);
+      setError(err.message || 'Không thể tải danh sách sản phẩm');
     } finally {
       setLoading(false);
     }
@@ -501,13 +504,16 @@ export default function Products() {
 
     // Fetch full chi tiết sản phẩm để đảm bảo nạp đủ 100% dữ liệu gốc (congBoImages, productionProcess...)
     if (product._id) {
+      setModalDataLoading(true);
       try {
         const fullProd = await api.getProduct(product._id);
         if (fullProd && (fullProd._id === product._id || fullProd.id === product._id)) {
           populateForm(fullProd);
         }
       } catch (err) {
-        // Giữ dữ liệu hiện tại nếu fetch lỗi
+        console.error('Lỗi lấy chi tiết sản phẩm:', err);
+      } finally {
+        setModalDataLoading(false);
       }
     }
   };
@@ -672,6 +678,15 @@ export default function Products() {
       <div className="products-grid">
         {loading ? (
           <div className="loading-overlay"><div className="loading-spinner" style={{ width: 40, height: 40 }}></div></div>
+        ) : error ? (
+          <div className="empty-state">
+            <XCircle size={48} color="#ef4444" style={{ marginBottom: 12 }} />
+            <h3>Không thể tải danh sách sản phẩm</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>{error}</p>
+            <button className="btn btn-primary" onClick={loadProducts}>
+              Thử lại
+            </button>
+          </div>
         ) : products.length === 0 ? (
           <div className="empty-state"><Package size={60} /><h3>Chưa có sản phẩm nào</h3><p>Bấm "Thêm sản phẩm" để tạo mới</p></div>
         ) : (

@@ -8,7 +8,7 @@ const router = express.Router();
 // GET /api/products
 router.get('/', auth, requireOwnership, async (req, res) => {
   try {
-    const { page = 1, limit = 20, search = '', category = '' } = req.query;
+    const { page = 1, limit = 20, search = '', category = '', full = 'false' } = req.query;
     const query = req.enterpriseFilter || {};
     
     if (search) {
@@ -19,24 +19,38 @@ router.get('/', auth, requireOwnership, async (req, res) => {
     }
     if (category) query.category = category;
 
+    const parsedLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 1000);
+    const parsedPage = Math.max(parseInt(page) || 1, 1);
+
+    let findQuery = Product.find(query)
+      .populate('enterpriseId', 'name')
+      .populate('manufacturerId', 'name address phone email')
+      .sort({ createdAt: -1 })
+      .skip((parsedPage - 1) * parsedLimit)
+      .limit(parsedLimit)
+      .lean();
+
+    // Tối ưu hóa: Khi lấy danh sách sản phẩm, loại trừ các trường Base64 nặng (ảnh công bố, quy trình SX, chứng nhận, chatbotQA, specs...)
+    // và chỉ lấy 1 ảnh đại diện để tránh payload hàng chục MB làm đơ/treo server và timeout trình duyệt.
+    // Khi người dùng bấm Sửa, hệ thống sẽ gọi GET /api/products/:id để lấy đầy đủ 100% dữ liệu của riêng sản phẩm đó.
+    if (full !== 'true') {
+      findQuery = findQuery
+        .select('-chatbotQA -congBoImages -productionProcess -certifications -specifications -producerInfo -distributorInfo')
+        .slice('images', 1);
+    }
+
     const [total, products] = await Promise.all([
       Product.countDocuments(query),
-      Product.find(query)
-        .populate('enterpriseId', 'name')
-        .populate('manufacturerId', 'name address phone email')
-        .select('-chatbotQA') // Chỉ bỏ qua chatbotQA khi list
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit))
-        .lean()
+      findQuery
     ]);
 
     res.json({
       data: products,
-      pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / limit) }
+      pagination: { total, page: parsedPage, limit: parsedLimit, totalPages: Math.ceil(total / parsedLimit) }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Lỗi máy chủ' });
+    console.error('[GET /api/products] Lỗi truy vấn sản phẩm:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });
   }
 });
 
