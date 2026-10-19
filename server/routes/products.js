@@ -20,8 +20,8 @@ router.get('/', auth, requireOwnership, async (req, res) => {
     const query = req.enterpriseFilter || {};
     
     // Nếu là Admin và truyền enterpriseId trong query string -> lọc theo enterpriseId đó
-    if (req.user.role === 'ADMIN' && req.query.enterpriseId) {
-      query.enterpriseId = req.query.enterpriseId;
+    if (req.user.role === 'ADMIN' && req.query.enterpriseId && req.query.enterpriseId.trim() !== '') {
+      query.enterpriseId = req.query.enterpriseId.trim();
     }
 
     if (search) {

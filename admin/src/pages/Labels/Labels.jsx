@@ -149,11 +149,24 @@ export default function Labels() {
   }, [labelPagination.page]);
 
   // ── Helper / utility functions ─────────────────────────────────────────
-  const loadProducts = async () => {
+  const loadProducts = async (targetEntId = null) => {
     try {
       setProductsLoading(true);
-      const r = await api.getProducts({ limit: 1000, simple: 'true' });
-      setProducts(r?.data || []);
+      const params = { limit: 1000, simple: 'true' };
+      if (targetEntId) {
+        params.enterpriseId = targetEntId;
+      }
+      const r = await api.getProducts(params);
+      if (r && Array.isArray(r.data)) {
+        if (targetEntId) {
+          setProducts(prev => {
+            const others = prev.filter(p => getEntIdStr(p.enterpriseId) !== getEntIdStr(targetEntId));
+            return [...others, ...r.data];
+          });
+        } else {
+          setProducts(r.data);
+        }
+      }
     } catch (e) {
       console.error('[loadProducts] Lỗi tải sản phẩm:', e);
     } finally {
@@ -330,8 +343,9 @@ export default function Labels() {
 
   const openCreateBatchModal = async () => {
     setModalError(null);
-    setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
-    loadProducts();
+    const initialEntId = isAdmin ? '' : (enterpriseId || '');
+    setBatchForm({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: initialEntId });
+    loadProducts(initialEntId);
     loadTemplates();
     try {
       const res = await api.getNextSerial();
@@ -1343,6 +1357,8 @@ export default function Labels() {
                               <Printer size={15} />
                             </button>
                             <button className="btn btn-sm btn-ghost" onClick={() => {
+                              const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
+                              if (targetEntId) loadProducts(targetEntId);
                               setSelectedBatch(batch);
                               setMapForm({
                                 productId: batch.productId?._id || batch.productId || '',
@@ -1360,6 +1376,8 @@ export default function Labels() {
                             </button>
                             <button className="btn btn-sm btn-ghost" onClick={() => {
                               setModalError(null);
+                              const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
+                              if (targetEntId) loadProducts(targetEntId);
                               setBulkForm({
                                 batchId: batch._id,
                                 serialStart: batch.serialStart,
@@ -1565,7 +1583,13 @@ export default function Labels() {
                     <select
                       className="input select"
                       value={batchForm.enterpriseId}
-                      onChange={e => setBatchForm({...batchForm, enterpriseId: e.target.value, productId: '', templateId: ''})}
+                      onChange={e => {
+                        const newEntId = e.target.value;
+                        setBatchForm({...batchForm, enterpriseId: newEntId, productId: '', templateId: ''});
+                        if (newEntId) {
+                          loadProducts(newEntId);
+                        }
+                      }}
                       required
                     >
                       <option value="">-- Chọn doanh nghiệp --</option>
@@ -1619,7 +1643,10 @@ export default function Labels() {
                       <label style={{ margin: 0 }}>Gắn với Sản phẩm</label>
                       <button
                         type="button"
-                        onClick={loadProducts}
+                        onClick={() => {
+                          const entId = isAdmin ? batchForm.enterpriseId : enterpriseId;
+                          loadProducts(entId);
+                        }}
                         disabled={productsLoading}
                         style={{
                           background: 'none', border: 'none', color: 'var(--primary-color, #6366f1)',
@@ -1631,14 +1658,26 @@ export default function Labels() {
                         {productsLoading ? 'Đang tải...' : 'Làm mới'}
                       </button>
                     </div>
-                    <select className="input select" value={batchForm.productId} onChange={e => setBatchForm({...batchForm, productId: e.target.value})}>
-                      <option value="">-- Chọn sản phẩm --</option>
+                    <select 
+                      className="input select" 
+                      value={batchForm.productId} 
+                      onChange={e => setBatchForm({...batchForm, productId: e.target.value})}
+                      disabled={productsLoading || (isAdmin && !batchForm.enterpriseId)}
+                    >
+                      <option value="">
+                        {productsLoading 
+                          ? '🔄 Đang tải sản phẩm...' 
+                          : (!batchForm.enterpriseId && isAdmin 
+                              ? '-- Vui lòng chọn doanh nghiệp trước --' 
+                              : '-- Chọn sản phẩm --')}
+                      </option>
                       {(() => {
+                        if (productsLoading) return null;
                         const availableProducts = isAdmin && batchForm.enterpriseId
                           ? getFilteredProducts(batchForm.enterpriseId)
-                          : products;
+                          : (!isAdmin ? products : []);
                         
-                        if (availableProducts.length === 0 && batchForm.enterpriseId) {
+                        if (availableProducts.length === 0 && (isAdmin ? batchForm.enterpriseId : true)) {
                           return <option value="" disabled>⚠️ Doanh nghiệp này chưa có sản phẩm nào</option>;
                         }
 
@@ -1649,7 +1688,7 @@ export default function Labels() {
                         ));
                       })()}
                     </select>
-                    {isAdmin && batchForm.enterpriseId && (
+                    {isAdmin && batchForm.enterpriseId && !productsLoading && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
                         {(() => {
                           const count = getFilteredProducts(batchForm.enterpriseId).length;
@@ -2013,7 +2052,13 @@ export default function Labels() {
                     <select
                       className="input select"
                       value={migrateForm.enterpriseId}
-                      onChange={e => setMigrateForm({...migrateForm, enterpriseId: e.target.value, productId: '', templateId: ''})}
+                      onChange={e => {
+                        const newEntId = e.target.value;
+                        setMigrateForm({...migrateForm, enterpriseId: newEntId, productId: '', templateId: ''});
+                        if (newEntId) {
+                          loadProducts(newEntId);
+                        }
+                      }}
                       required
                     >
                       <option value="">-- Chọn doanh nghiệp --</option>
