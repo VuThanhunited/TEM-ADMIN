@@ -50,65 +50,48 @@ router.get('/next-serial', auth, async (req, res) => {
   }
 });
 
-// GET /api/labels/export - Stream export all labels for a batch (optimized for large datasets)
+// GET /api/labels/export - Paginated export all labels for a batch
+// Dùng pagination thay vì streaming để tương thích với proxy (Vercel/cPanel)
+// Query params: batchId (bắt buộc), page (default 1), limit (default 5000)
 router.get('/export', auth, requireOwnership, async (req, res) => {
   try {
-    const { batchId } = req.query;
+    const { batchId, page = 1, limit = 5000 } = req.query;
     if (!batchId) {
       return res.status(400).json({ error: 'Thiếu tham số batchId' });
     }
 
-    // Extend timeout for large exports (5 minutes)
-    req.setTimeout(300000);
-    res.setTimeout(300000);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(10000, Math.max(1, parseInt(limit, 10) || 5000));
+    const skip = (pageNum - 1) * limitNum;
 
     const query = { batchId, ...(req.enterpriseFilter || {}) };
 
-    // Use lean cursor for memory-efficient streaming
-    const cursor = Label.find(query)
-      .select('serialNumber qrUrl smsCode activeCode legacyQrCode legacyTemQr status scanCount')
-      .sort({ serialNumber: 1 })
-      .lean()
-      .cursor({ batchSize: 2000 });
+    const [data, total] = await Promise.all([
+      Label.find(query)
+        .select('serialNumber qrUrl smsCode activeCode legacyQrCode legacyTemQr status scanCount')
+        .sort({ serialNumber: 1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Label.countDocuments(query)
+    ]);
 
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Transfer-Encoding', 'chunked');
-    res.write('[');
+    const pages = Math.ceil(total / limitNum);
 
-    let first = true;
-    let count = 0;
-
-    cursor.on('data', (doc) => {
-      const chunk = (first ? '' : ',') + JSON.stringify(doc);
-      first = false;
-      count++;
-      res.write(chunk);
-    });
-
-    cursor.on('end', async () => {
-      res.write(']');
-      res.end();
-      // Tự động ghi nhận số lượng tem đã in khi tải/xuất file Excel in tem
+    // Khi tải trang cuối (hoặc trang đầu nếu chỉ có 1 trang), cập nhật trạng thái đã in
+    if (pageNum >= pages && total > 0) {
       try {
         await LabelBatch.findByIdAndUpdate(batchId, {
           isPrinted: true,
-          printedCount: count,
+          printedCount: total,
           printedAt: new Date()
         });
       } catch (err) {
         console.warn('Update batch printed status error:', err.message);
       }
-    });
+    }
 
-    cursor.on('error', (err) => {
-      console.error('Export cursor error:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Lỗi xuất dữ liệu: ' + err.message });
-      } else {
-        res.end();
-      }
-    });
-
+    res.json({ data, total, page: pageNum, pages });
   } catch (error) {
     console.error('Export labels error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ: ' + error.message });

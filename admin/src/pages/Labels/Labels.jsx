@@ -488,7 +488,7 @@ export default function Labels() {
   const handleDownloadBatch = async (batch) => {
     try {
       setExportingBatchId(batch._id);
-      // Use dedicated streaming export API (single request, no pagination overhead)
+      // Tải toàn bộ tem qua pagination (mỗi page 5000 records) để tránh timeout / JSON parse lỗi
       const labels = await api.exportBatchLabels(batch._id);
 
       if (!labels || labels.length === 0) {

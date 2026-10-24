@@ -197,7 +197,20 @@ class ApiService {
   bulkMapLabels(data) { return this.request('POST', '/labels/bulk-map', data, {}, 0, 300000); } // 5 min timeout for large serial ranges
   fixEncryption(data) { return this.request('POST', '/labels/fix-encryption', data); }
   markBatchPrinted(id, data) { return this.request('PUT', `/labels/batches/${id}/mark-printed`, data); }
-  exportBatchLabels(batchId) { return this.request('GET', '/labels/export', null, { batchId }, 0, 300000); } // 5 min timeout for large batches
+  // Tải toàn bộ tem của một lô qua pagination (tránh timeout / parse lỗi với lô lớn)
+  async exportBatchLabels(batchId, pageSize = 5000) {
+    const allLabels = [];
+    let page = 1;
+    let pages = 1;
+    do {
+      const res = await this.request('GET', '/labels/export', null, { batchId, page, limit: pageSize }, 0, 120000);
+      if (!res || !res.data) break;
+      allLabels.push(...res.data);
+      pages = res.pages || 1;
+      page++;
+    } while (page <= pages);
+    return allLabels;
+  }
   exportFilteredLabels(params) { return this.request('GET', '/labels/export-all', null, params, 0, 300000); } // 5 min timeout for large datasets
 
   // ── Analytics ─────────────────────────────────────────────────────────────
