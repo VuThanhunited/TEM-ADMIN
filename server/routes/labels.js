@@ -205,6 +205,130 @@ router.get('/export-all', auth, requireOwnership, async (req, res) => {
   }
 });
 
+// POST /api/labels/batches/:id/repair - Re-generate labels for a batch that lost its labels
+// Xảy ra khi server restart giữa chừng sau khi tạo batch nhưng trước khi background insert hoàn tất
+router.post('/batches/:id/repair', auth, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const batch = await LabelBatch.findById(req.params.id)
+      .populate('enterpriseId', 'name')
+      .populate('productId', 'name')
+      .lean();
+
+    if (!batch) {
+      return res.status(404).json({ error: 'Không tìm thấy lô tem' });
+    }
+
+    // Kiểm tra số labels hiện có
+    const existingCount = await Label.countDocuments({ batchId: batch._id });
+    if (existingCount >= batch.totalLabels) {
+      return res.status(400).json({
+        error: `Lô tem đã có đủ ${existingCount}/${batch.totalLabels} tem nhãn, không cần sửa chữa.`,
+        existingCount
+      });
+    }
+
+    // Xóa orphan labels (nếu có một phần)
+    if (existingCount > 0) {
+      await Label.deleteMany({ batchId: batch._id });
+      console.info(`[repairBatch] Deleted ${existingCount} partial labels for batch ${batch.batchCode}`);
+    }
+
+    // Xác định domain URL
+    const cleanCustomDomain = batch.customDomain ? batch.customDomain.trim().replace(/\/+$/, '') : '';
+    const domainUrl = cleanCustomDomain
+      ? (cleanCustomDomain.startsWith('http') ? cleanCustomDomain : `https://${cleanCustomDomain}`)
+      : ADMIN_URL;
+
+    // Re-generate labels dựa theo serialStart và serialEnd đã lưu trong batch
+    const labelsToInsert = [];
+
+    if (batch.serialType === 'RANDOM_ALPHANUMERIC') {
+      // Không thể tái tạo random — phải sinh mới
+      const generatedSet = new Set();
+      while (labelsToInsert.length < batch.totalLabels) {
+        const rCode = generateRandomCode(8);
+        const prefix = batch.prefix || '';
+        const candidate = prefix ? `${prefix}-${rCode}` : rCode;
+        if (!generatedSet.has(candidate)) {
+          generatedSet.add(candidate);
+          const secretCode = generateRandomCode(8).toLowerCase();
+          labelsToInsert.push({
+            batchId:      batch._id,
+            enterpriseId: batch.enterpriseId._id || batch.enterpriseId,
+            productId:    batch.productId?._id || batch.productId || null,
+            serialNumber: candidate,
+            qrCode:       secretCode,
+            qrUrl:        `${domainUrl}/scan/${secretCode}`,
+            status:       batch.productId ? 'ACTIVE' : 'INACTIVE',
+            isActive:     !!batch.productId
+          });
+        }
+      }
+    } else {
+      // GLOBAL_SEQUENTIAL — tái tạo từ serialStart đến serialEnd
+      const startMatch = String(batch.serialStart).match(/(\d+)$/);
+      const endMatch = String(batch.serialEnd).match(/(\d+)$/);
+      if (!startMatch || !endMatch) {
+        return res.status(400).json({ error: 'Không thể xác định dải serial từ batch. Vui lòng tạo lô mới.' });
+      }
+
+      const startNum = parseInt(startMatch[1], 10);
+      const endNum   = parseInt(endMatch[1], 10);
+      const padLen   = String(batch.serialStart).replace(/\d+$/, '').length > 0
+        ? String(batch.serialStart).length
+        : Math.max(8, String(endNum).length);
+      const prefix = batch.prefix || '';
+
+      // Kiểm tra xem serial đã được dùng bởi batch khác không
+      const conflictCheck = await Label.findOne({
+        serialNumber: { $regex: `^${prefix}`, $options: '' },
+        batchId: { $ne: batch._id }
+      }).lean();
+
+      for (let i = startNum; i <= endNum; i++) {
+        const num = String(i).padStart(padLen, '0');
+        const serial = prefix ? `${prefix}${num}` : num;
+        const secretCode = generateRandomCode(8).toLowerCase();
+        labelsToInsert.push({
+          batchId:      batch._id,
+          enterpriseId: batch.enterpriseId._id || batch.enterpriseId,
+          productId:    batch.productId?._id || batch.productId || null,
+          serialNumber: serial,
+          qrCode:       secretCode,
+          qrUrl:        `${domainUrl}/scan/${secretCode}`,
+          status:       batch.productId ? 'ACTIVE' : 'INACTIVE',
+          isActive:     !!batch.productId
+        });
+      }
+    }
+
+    // Insert theo chunk
+    const CHUNK_SIZE = 5000;
+    let insertedCount = 0;
+    for (let i = 0; i < labelsToInsert.length; i += CHUNK_SIZE) {
+      await Label.insertMany(labelsToInsert.slice(i, i + CHUNK_SIZE), { ordered: false });
+      insertedCount += Math.min(CHUNK_SIZE, labelsToInsert.length - i);
+    }
+
+    // Cập nhật batch
+    await LabelBatch.findByIdAndUpdate(batch._id, {
+      totalLabels: labelsToInsert.length
+    });
+
+    console.info(`[repairBatch] Repaired batch ${batch.batchCode}: inserted ${insertedCount} labels`);
+
+    res.json({
+      success: true,
+      message: `Đã khôi phục thành công ${insertedCount} tem nhãn cho lô "${batch.batchCode}"!`,
+      insertedCount,
+      batchCode: batch.batchCode
+    });
+  } catch (error) {
+    console.error('[repairBatch] error:', error);
+    res.status(500).json({ error: 'Lỗi khôi phục lô tem: ' + error.message });
+  }
+});
+
 // DELETE /api/labels/clear-all - Clear all label batches, labels, and scan logs (ADMIN ONLY)
 router.delete('/clear-all', auth, requireRole('ADMIN'), async (req, res) => {
   try {

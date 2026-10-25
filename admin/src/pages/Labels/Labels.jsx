@@ -492,7 +492,19 @@ export default function Labels() {
       const labels = await api.exportBatchLabels(batch._id);
 
       if (!labels || labels.length === 0) {
-        alert('Lô tem này không có dữ liệu tem nhãn nào để tải về!');
+        if (isAdmin) {
+          const doRepair = window.confirm(
+            `Lô tem "${batch.batchCode}" không có dữ liệu tem nhãn nào!\n\n` +
+            `Nguyên nhân có thể do server bị restart trong lúc tạo lô.\n\n` +
+            `Bạn có muốn KHÔI PHỤC lại ${batch.totalLabels} tem cho lô này không?\n` +
+            `(Quá trình này có thể mất vài phút với lô lớn)`
+          );
+          if (doRepair) {
+            await handleRepairBatch(batch);
+          }
+        } else {
+          alert('Lô tem này không có dữ liệu tem nhãn nào để tải về!\nVui lòng liên hệ Admin để được hỗ trợ.');
+        }
         return;
       }
 
@@ -538,8 +550,24 @@ export default function Labels() {
     }
   };
 
+  // Khôi phục labels bị mất cho batch (do server restart trong lúc background insert)
+  const handleRepairBatch = async (batch) => {
+    try {
+      setExportingBatchId(batch._id);
+      const result = await api.repairBatch(batch._id);
+      alert(`✅ ${result.message}\n\nBạn có thể tải lô tem ngay bây giờ.`);
+      // Sau khi repair xong, tự động tải luôn
+      await handleDownloadBatch(batch);
+    } catch (err) {
+      alert('Lỗi khôi phục lô tem: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setExportingBatchId(null);
+    }
+  };
+
   const handleTogglePrinted = async (batch) => {
     try {
+
       const nextStatus = !batch.isPrinted;
       const updated = await api.markBatchPrinted(batch._id, { isPrinted: nextStatus, printedCount: nextStatus ? batch.totalLabels : 0 });
       setBatches(prev => prev.map(b => b._id === batch._id ? { ...b, isPrinted: updated.isPrinted, printedCount: updated.printedCount, printedAt: updated.printedAt } : b));
