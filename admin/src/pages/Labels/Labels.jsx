@@ -492,18 +492,14 @@ export default function Labels() {
       const labels = await api.exportBatchLabels(batch._id);
 
       if (!labels || labels.length === 0) {
-        if (isAdmin) {
-          const doRepair = window.confirm(
-            `Lô tem "${batch.batchCode}" không có dữ liệu tem nhãn nào!\n\n` +
-            `Nguyên nhân có thể do server bị restart trong lúc tạo lô.\n\n` +
-            `Bạn có muốn KHÔI PHỤC lại ${batch.totalLabels} tem cho lô này không?\n` +
-            `(Quá trình này có thể mất vài phút với lô lớn)`
-          );
-          if (doRepair) {
-            await handleRepairBatch(batch);
-          }
-        } else {
-          alert('Lô tem này không có dữ liệu tem nhãn nào để tải về!\nVui lòng liên hệ Admin để được hỗ trợ.');
+        const doRepair = window.confirm(
+          `Lô tem "${batch.batchCode}" chưa có dữ liệu tem nhãn!\n\n` +
+          `Nguyên nhân có thể do server bị ngắt kết nối trong lúc tạo lô.\n\n` +
+          `Bạn có muốn KHÔI PHỤC lại ${batch.totalLabels} tem cho lô này không?\n` +
+          `(Hệ thống sẽ tự động khôi phục và tải về ngay sau khi hoàn tất)`
+        );
+        if (doRepair) {
+          await handleRepairBatch(batch);
         }
         return;
       }
