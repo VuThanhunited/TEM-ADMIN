@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://tem-admin.onrender.com/api/:path*"
+      "destination": "http://45.119.214.68/api/:path*"
     },
     {
       "source": "/((?!user-assets/|.*\\.).*)",
