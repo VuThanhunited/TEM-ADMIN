@@ -40,7 +40,7 @@ Pop-Location
 Write-Host "=== 2. Packaging Artifacts ===" -ForegroundColor Cyan
 $SrvTmp = Join-Path $TempDir "srv_tmp"
 New-Item -ItemType Directory -Path $SrvTmp | Out-Null
-foreach ($item in @("app.js","server.js","seed.js","package.json",".env",".htaccess","ecosystem.config.json","middleware","models","routes","services","scripts")) {
+foreach ($item in @("app.js","server.js","seed.js","package.json",".htaccess","ecosystem.config.json","middleware","models","routes","services","scripts")) {
     $src = Join-Path "$RootDir\server" $item
     if (Test-Path $src) {
         Copy-Item $src (Join-Path $SrvTmp $item) -Recurse -Force

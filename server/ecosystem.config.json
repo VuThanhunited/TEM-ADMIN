@@ -7,13 +7,14 @@
       "instances": 1,
       "exec_mode": "fork",
       "watch": false,
-      "max_memory_restart": "512M",
+      "max_memory_restart": "1024M",
       "restart_delay": 3000,
       "max_restarts": 10,
       "min_uptime": "10s",
       "env": {
         "NODE_ENV": "production",
-        "PORT": "5000"
+        "PORT": "5000",
+        "MONGO_URI": "mongodb://127.0.0.1:27017/tem_db"
       },
       "log_date_format": "YYYY-MM-DD HH:mm:ss",
       "error_file": "./logs/pm2-error.log",
