@@ -105,7 +105,7 @@ export default function Login() {
       // Dùng đúng origin hiện tại (www / không www) để giữ chung localStorage với admin app
       const adminAppUrl = hostname === 'localhost' || hostname === '127.0.0.1'
         ? 'http://localhost:5173'
-        : hostname.includes('giaiphapqrcode.vn') ? origin : ADMIN_DOMAIN;
+        : (hostname.includes('giaiphapqrcode') || hostname === '45.119.214.68') ? origin : ADMIN_DOMAIN;
 
       // Đến từ màn quét tem (mục 2) → quay lại form bổ sung thông tin KH, không bắt quét lại
       const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');

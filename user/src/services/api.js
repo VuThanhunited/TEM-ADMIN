@@ -210,7 +210,7 @@ class UserApiService {
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
     const isVercel = hostname.endsWith('.vercel.app');
-    const isSystemDomain = hostname.includes('giaiphapqrcode.vn');
+    const isSystemDomain = hostname.includes('giaiphapqrcode.vn') || hostname.includes('giaiphapqrcode.com') || hostname === '45.119.214.68';
     if (isLocal || isVercel || isSystemDomain) return null; // Domain hệ thống portal chính, không phải custom domain của doanh nghiệp
     return hostname.replace(/^www\./, '');
   }

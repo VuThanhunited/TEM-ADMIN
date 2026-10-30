@@ -1,4 +1,4 @@
-name: 🚀 Deploy to C2 Hosting
+name: 🚀 Deploy to C4 Cloud (45.119.214.68)
 
 on:
   push:
@@ -6,9 +6,8 @@ on:
   workflow_dispatch:  # Cho phép chạy thủ công từ GitHub UI
 
 jobs:
-  # ─── JOB 1: Build & Deploy Frontend qua FTP ──────────────────────────────────
-  deploy-frontend:
-    name: 📦 Build & Deploy Frontend (FTP)
+  deploy:
+    name: 📦 Build & Deploy to C4 Cloud via SSH
     runs-on: ubuntu-latest
     steps:
       - name: ⬇️ Checkout code
@@ -31,8 +30,6 @@ jobs:
       - name: 🔨 Build User App
         run: npm run build
         working-directory: user
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       # ── Build Admin App ──────────────────────────────────────────────────────
       - name: 📦 Install Admin dependencies
@@ -42,108 +39,63 @@ jobs:
       - name: 🔨 Build Admin App
         run: npm run build
         working-directory: admin
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
-      # ── Upload User dist → public_html/ ─────────────────────────────────────
-      - name: 🌐 Upload User App (FTP)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASS }}
-          port: 21
-          local-dir: ./user/dist/
-          server-dir: /public_html/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-
-      # ── Upload Admin dist → public_html/admin-panel/ ────────────────────────
-      - name: 🔧 Upload Admin App (FTP)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USER }}
-          password: ${{ secrets.FTP_PASS }}
-          port: 21
-          local-dir: ./admin/dist/
-          server-dir: /public_html/admin-panel/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-
-  # ─── JOB 2: Deploy Server qua SSH ────────────────────────────────────────────
-  deploy-server:
-    name: 🖥️ Deploy Server (SSH)
-    runs-on: ubuntu-latest
-    needs: deploy-frontend  # Chạy sau khi frontend deploy xong
-    steps:
-      - name: ⬇️ Checkout code
-        uses: actions/checkout@v4
-
-      # ── Tạo ZIP server (bỏ node_modules) ────────────────────────────────────
-      - name: 📦 Package server files
+      # ── Package Frontend & Server ────────────────────────────────────────────
+      - name: 📦 Package deployment artifacts
         run: |
-          cd server
-          zip -r ../server-deploy.zip \
+          cd user/dist && zip -r ../../user-dist-deploy.zip . && cd ../..
+          cd admin/dist && zip -r ../../admin-dist-deploy.zip . && cd ../..
+          cd server && zip -r ../server-deploy.zip \
             app.js server.js seed.js package.json .htaccess ecosystem.config.json \
             middleware/ models/ routes/ services/ scripts/ \
-            --exclude "*/node_modules/*" --exclude "*/.env"
+            --exclude "*/node_modules/*" --exclude "*/.env" && cd ..
 
-      # ── Upload ZIP lên server qua SSH/SCP ────────────────────────────────────
-      - name: 📤 Upload server via SCP
+      # ── Upload lên C4 Cloud qua SCP ──────────────────────────────────────────
+      - name: 📤 Upload packages via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
+          host: ${{ secrets.SSH_HOST || '45.119.214.68' }}
+          username: ${{ secrets.SSH_USER || 'root' }}
           password: ${{ secrets.SSH_PASS }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          source: "server-deploy.zip"
-          target: "/home/giaiphapqrcode/nodeapp_tmp/"
+          source: "user-dist-deploy.zip,admin-dist-deploy.zip,server-deploy.zip"
+          target: "/root/deploy_tmp/"
 
-      # ── SSH vào server: extract, npm install, restart ────────────────────────
-      - name: 🔄 Restart Node.js App via SSH
+      # ── SSH vào C4 Cloud: extract, npm install, restart PM2 & Nginx ─────────
+      - name: 🔄 Deploy & Restart PM2 on C4 Cloud
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
+          host: ${{ secrets.SSH_HOST || '45.119.214.68' }}
+          username: ${{ secrets.SSH_USER || 'root' }}
           password: ${{ secrets.SSH_PASS }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -e
-            echo "=== Deploying server ==="
+            echo "=== Deploying to C4 Cloud (45.119.214.68) ==="
+            mkdir -p /var/www/tem/user/dist /var/www/tem/admin/dist /var/www/tem/server
 
-            # Extract ZIP vào thư mục tạm
-            cd /home/giaiphapqrcode/nodeapp_tmp
-            unzip -o server-deploy.zip -d extracted
+            # 1. Extract User & Admin Frontend
+            unzip -o /root/deploy_tmp/user-dist-deploy.zip -d /var/www/tem/user/dist/ || [ $? -le 2 ]
+            unzip -o /root/deploy_tmp/admin-dist-deploy.zip -d /var/www/tem/admin/dist/ || [ $? -le 2 ]
 
-            # Backup app hiện tại
-            cp -rf /home/giaiphapqrcode/nodeapp /home/giaiphapqrcode/nodeapp_backup_$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+            # 2. Extract Server Backend (giữ nguyên .env & backups)
+            unzip -o /root/deploy_tmp/server-deploy.zip -d /var/www/tem/server/ || [ $? -le 2 ]
 
-            # Copy files mới (giữ nguyên .env và node_modules cũ)
-            cp -rf extracted/* /home/giaiphapqrcode/nodeapp/
-
-            # Cài dependencies mới (nếu package.json thay đổi)
-            cd /home/giaiphapqrcode/nodeapp
+            # 3. Install dependencies & reload PM2
+            cd /var/www/tem/server
             npm install --production 2>&1 | tail -5
+            pm2 reload tem-qr-server || pm2 start ecosystem.config.json
+            pm2 save
 
-            # Restart app (cPanel Phusion Passenger)
-            touch tmp/restart.txt 2>/dev/null || true
-
-            # Cleanup
-            rm -rf /home/giaiphapqrcode/nodeapp_tmp/extracted
-            rm -f /home/giaiphapqrcode/nodeapp_tmp/server-deploy.zip
-
-            echo "=== Deploy completed! ==="
+            # 4. Cleanup temp files
+            rm -f /root/deploy_tmp/user-dist-deploy.zip /root/deploy_tmp/admin-dist-deploy.zip /root/deploy_tmp/server-deploy.zip
+            echo "=== C4 Cloud Deploy Completed! ==="
 
       # ── Health check ─────────────────────────────────────────────────────────
       - name: 🏥 Health check
         run: |
-          sleep 10
-          curl -f https://www.giaiphapqrcode.com/api/health || \
-          curl -f https://api.giaiphapqrcode.com/api/health || \
-          echo "⚠️ Health check skipped (URL not configured)"
+          sleep 5
+          curl -f http://45.119.214.68/api/health || \
+          curl -f https://www.giaiphapqrcode.vn/api/health || \
+          echo "⚠️ Health check warning"
         continue-on-error: true

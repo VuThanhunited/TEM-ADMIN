@@ -1,75 +1,66 @@
-# Hướng dẫn Setup GitHub Actions Deploy
+# Hướng dẫn Deploy lên Máy Chủ C4 Cloud (`45.119.214.68`)
 
-## 🔑 Cần cấu hình GitHub Secrets
+## 🖥️ Thông tin Máy Chủ C4 Cloud
+
+| Thành phần | Giá trị |
+|------------|---------|
+| **IP Server** | `45.119.214.68` |
+| **SSH User** | `root` |
+| **SSH Port** | `22` |
+| **Hệ điều hành** | Ubuntu 22.04.5 LTS (8GB RAM, 97GB SSD) |
+| **Web Server** | Nginx (Port 80 & 443) |
+| **Process Manager** | PM2 (`tem-qr-server` chạy trên port `5000`) |
+| **Thư mục gốc** | `/var/www/tem` (`user/dist`, `admin/dist`, `server`) |
+
+---
+
+## 🔑 Cấu hình GitHub Secrets (Tự động Deploy khi `git push`)
 
 Vào: **GitHub repo → Settings → Secrets and variables → Actions → New repository secret**
 
-### Secrets bắt buộc:
-
 | Secret Name | Giá trị | Mô tả |
 |-------------|---------|-------|
-| `FTP_HOST` | `giaiphapqrcode.com` | FTP hostname (cPanel) |
-| `FTP_USER` | `giaiphapqrcode` | FTP username |
-| `FTP_PASS` | `***` | Mật khẩu cPanel |
-| `SSH_HOST` | IP hoặc hostname server | SSH host (lấy từ cPanel) |
-| `SSH_USER` | `giaiphapqrcode` | SSH username |
-| `SSH_PASS` | `***` | Mật khẩu SSH |
-| `SSH_PORT` | `22` hoặc port khác | SSH port (mặc định 22) |
-| `VITE_API_URL` | `https://www.giaiphapqrcode.com/api` | API URL cho frontend |
-
-### Optional Secrets:
-| Secret Name | Giá trị |
-|-------------|---------|
-| `SSH_PORT` | Port SSH của C2 (thường là 22) |
+| `SSH_HOST` | `45.119.214.68` | IP máy chủ C4 Cloud |
+| `SSH_USER` | `root` | Tài khoản SSH |
+| `SSH_PASS` | `***` | Mật khẩu SSH C4 Cloud |
+| `SSH_PORT` | `22` | Cổng SSH mặc định |
 
 ---
 
-## 🚀 Cách hoạt động
+## ⚡ Deploy trực tiếp từ máy local (Windows PowerShell)
 
-```
-git push origin main
-        ↓
-GitHub Actions tự động chạy:
-  1. Build user/dist (React)
-  2. Build admin/dist (React)
-  3. FTP upload user/dist  → public_html/
-  4. FTP upload admin/dist → public_html/admin-panel/
-  5. SCP upload server ZIP → server qua SSH
-  6. SSH: unzip + npm install + restart Node.js app
-  7. Health check
-```
-
----
-
-## 📋 Cách lấy thông tin SSH từ cPanel C2
-
-1. Đăng nhập cPanel → **SSH Access**
-2. Bật SSH access nếu chưa có
-3. Hostname: thường là IP server (lấy ở **Server Information**)
-4. Port: 22 (hoặc custom port)
-
----
-
-## 🔧 Lần đầu setup (chỉ cần làm 1 lần)
-
-Nếu server chưa có thư mục nodeapp:
-```bash
-# SSH vào server và tạo cấu trúc
-mkdir -p /home/giaiphapqrcode/nodeapp/tmp
-```
-
-Sau đó upload `.env` thủ công 1 lần qua cPanel File Manager:
-```
-/home/giaiphapqrcode/nodeapp/.env
-```
-
----
-
-## ⚡ Deploy thủ công ngay (FTP)
-
-Nếu chưa setup GitHub Actions, chạy lệnh này:
+Chạy script tự động build và đẩy code lên C4 Cloud:
 ```powershell
-# Windows PowerShell
-$env:C2_FTP_PASS = "matkhau_cpanel"
-node deploy_to_c2_full.js
+powershell -ExecutionPolicy Bypass -File .\deploy_to_c4.ps1
+```
+
+---
+
+## 🌐 Cấu hình DNS Domain trỏ về C4 Cloud
+
+Khi chuyển DNS tên miền `giaiphapqrcode.vn` (hoặc `giaiphapqrcode.com`) về C4 Cloud:
+1. Tạo bản ghi **A** cho `@` trỏ về `45.119.214.68`
+2. Tạo bản ghi **A** (hoặc **CNAME**) cho `www` trỏ về `45.119.214.68`
+3. Sau khi DNS cập nhật, chạy lệnh sau trên server để cấp chứng chỉ SSL Let's Encrypt miễn phí:
+   ```bash
+   certbot --nginx -d giaiphapqrcode.vn -d www.giaiphapqrcode.vn --non-interactive --agree-tos -m admin@giaiphapqrcode.vn
+   ```
+
+---
+
+## 🛠️ Các lệnh quản trị nhanh trên C4 Cloud
+
+```bash
+# Kiểm tra trạng thái Node.js server
+pm2 status
+pm2 logs tem-qr-server --lines 50
+
+# Khởi động lại Node.js server
+pm2 restart tem-qr-server
+
+# Kiểm tra & tải lại Nginx
+nginx -t && systemctl reload nginx
+
+# Kiểm tra Health Check API
+curl http://45.119.214.68/api/health
 ```
