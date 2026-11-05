@@ -253,7 +253,7 @@ export default function ProductInfo() {
   // Kiểm tra trạng thái kích hoạt cho Thực phẩm chức năng (Bước 6):
   // Active mã (qua Điểm bán quét hoặc nhập mã kích hoạt) mới xem được full thông tin & Giấy công bố;
   // nếu chưa active thì người dùng quét chỉ xem được thông tin sản phẩm, không xem được Giấy công bố.
-  const isFoodTheme = activeTheme === 'functional_food' || activeTheme === 'food';
+  const isFoodTheme = activeTheme === 'functional_food' || activeTheme === 'food' || activeTheme === 'staycool' || activeTheme === 'vyphyto';
   const isFoodActivated = Boolean(
     (label?.ownerCode && String(label.ownerCode).trim()) ||
     label?.storeId ||
@@ -1047,75 +1047,72 @@ export default function ProductInfo() {
           </div>
         )}
 
-        {/* 4. Grid 8 Icon Chức Năng (Khi chưa active chỉ mở Thông tin sản phẩm; Công Bố và các mục khác khóa lại) */}
+        {/* 4. Grid Chức Năng (Bước 6: Khi chưa active chỉ hiển thị Thông tin sản phẩm, ẩn Giấy công bố và các mục khác) */}
         <div className="exact-tpcn-grid-card">
-          <div className="exact-tpcn-grid-8">
+          <div className="exact-tpcn-grid-8" style={!isFoodActivated ? { gridTemplateColumns: '1fr' } : {}}>
             <div
               className="exact-tpcn-grid-item"
               onClick={() => setActiveModal('product_detail')}
-              style={{ border: '1.5px solid #86efac', background: '#f0fdf4', borderRadius: '12px' }}
+              style={{ border: '1.5px solid #86efac', background: '#f0fdf4', borderRadius: '12px', padding: !isFoodActivated ? '14px' : undefined }}
             >
               <div className="exact-tpcn-icon-circle"><FileText size={22} color="#16a34a" /></div>
               <span style={{ fontWeight: 700, color: '#15803d' }}>Thông tin sản phẩm</span>
             </div>
-            <div
-              className="exact-tpcn-grid-item"
-              onClick={() => setActiveModal('cert')}
-              style={!isFoodActivated ? { opacity: 0.65 } : {}}
-            >
-              <div className="exact-tpcn-icon-circle"><FileCheck size={22} color="#16a34a" /></div>
-              <span>{isFoodActivated ? 'Công Bố' : '🔒 Công Bố'}</span>
-            </div>
-            <div
-              className="exact-tpcn-grid-item"
-              onClick={() => setActiveModal('mfg')}
-              style={!isFoodActivated ? { opacity: 0.65 } : {}}
-            >
-              <div className="exact-tpcn-icon-circle"><Building2 size={22} color="#16a34a" /></div>
-              <span>{isFoodActivated ? 'Nhà Sản Xuất' : '🔒 Nhà Sản Xuất'}</span>
-            </div>
-            <div
-              className="exact-tpcn-grid-item"
-              onClick={() => setActiveModal('distributor')}
-              style={!isFoodActivated ? { opacity: 0.65 } : {}}
-            >
-              <div className="exact-tpcn-icon-circle"><Truck size={22} color="#16a34a" /></div>
-              <span>{isFoodActivated ? 'Nhà Phân Phối' : '🔒 Nhà Phân Phối'}</span>
-            </div>
-            <div
-              className="exact-tpcn-grid-item"
-              onClick={() => setActiveModal('tem')}
-              style={!isFoodActivated ? { opacity: 0.65 } : {}}
-            >
-              <div className="exact-tpcn-icon-circle"><ShieldCheck size={22} color="#16a34a" /></div>
-              <span>{isFoodActivated ? 'Thông tin tem' : '🔒 Thông tin tem'}</span>
-            </div>
-            {showRelated && (
-              <div
-                className="exact-tpcn-grid-item"
-                onClick={() => setActiveModal('all_products')}
-                style={!isFoodActivated ? { opacity: 0.65 } : {}}
-              >
-                <div className="exact-tpcn-icon-circle"><BookOpen size={22} color="#16a34a" /></div>
-                <span>{isFoodActivated ? 'Thư Viện SP' : '🔒 Thư Viện SP'}</span>
-              </div>
+            {isFoodActivated && (
+              <>
+                <div
+                  className="exact-tpcn-grid-item"
+                  onClick={() => setActiveModal('cert')}
+                >
+                  <div className="exact-tpcn-icon-circle"><FileCheck size={22} color="#16a34a" /></div>
+                  <span>Công Bố</span>
+                </div>
+                <div
+                  className="exact-tpcn-grid-item"
+                  onClick={() => setActiveModal('mfg')}
+                >
+                  <div className="exact-tpcn-icon-circle"><Building2 size={22} color="#16a34a" /></div>
+                  <span>Nhà Sản Xuất</span>
+                </div>
+                <div
+                  className="exact-tpcn-grid-item"
+                  onClick={() => setActiveModal('distributor')}
+                >
+                  <div className="exact-tpcn-icon-circle"><Truck size={22} color="#16a34a" /></div>
+                  <span>Nhà Phân Phối</span>
+                </div>
+                <div
+                  className="exact-tpcn-grid-item"
+                  onClick={() => setActiveModal('tem')}
+                >
+                  <div className="exact-tpcn-icon-circle"><ShieldCheck size={22} color="#16a34a" /></div>
+                  <span>Thông tin tem</span>
+                </div>
+                {showRelated && (
+                  <div
+                    className="exact-tpcn-grid-item"
+                    onClick={() => setActiveModal('all_products')}
+                  >
+                    <div className="exact-tpcn-icon-circle"><BookOpen size={22} color="#16a34a" /></div>
+                    <span>Thư Viện SP</span>
+                  </div>
+                )}
+                <div
+                  className="exact-tpcn-grid-item"
+                  onClick={() => setActiveModal('brand')}
+                >
+                  <div className="exact-tpcn-icon-circle"><Package size={22} color="#16a34a" /></div>
+                  <span>Bao bì</span>
+                </div>
+                <div
+                  className="exact-tpcn-grid-item"
+                  onClick={() => setActiveModal('reward')}
+                >
+                  <div className="exact-tpcn-icon-circle"><Gift size={22} color="#16a34a" /></div>
+                  <span>Tích điểm</span>
+                </div>
+              </>
             )}
-            <div
-              className="exact-tpcn-grid-item"
-              onClick={() => setActiveModal('brand')}
-              style={!isFoodActivated ? { opacity: 0.65 } : {}}
-            >
-              <div className="exact-tpcn-icon-circle"><Package size={22} color="#16a34a" /></div>
-              <span>{isFoodActivated ? 'Bao bì' : '🔒 Bao bì'}</span>
-            </div>
-            <div
-              className="exact-tpcn-grid-item"
-              onClick={() => setActiveModal('reward')}
-              style={!isFoodActivated ? { opacity: 0.65 } : {}}
-            >
-              <div className="exact-tpcn-icon-circle"><Gift size={22} color="#16a34a" /></div>
-              <span>{isFoodActivated ? 'Tích điểm' : '🔒 Tích điểm'}</span>
-            </div>
           </div>
         </div>
 
@@ -1517,6 +1514,12 @@ export default function ProductInfo() {
       || enterprise?.displayConfig?.distributionBannerText?.trim()
       || defaultBanner;
 
+    const storeDisplayName = label?.ownerInfo?.name || label?.distributorName || '';
+    const storeDisplayAddress = label?.ownerInfo?.address || label?.distributorAddress || '';
+    const storeDisplayPhone = label?.ownerInfo?.phone || '';
+    const storeSoldTime = label?.distributedAt || label?.ownerInfo?.activatedAt || null;
+    const congBoImagesList = (product?.congBoImages || []).filter(img => img && img.trim());
+
     return (
       <div className="exact-vyphyto-container">
         {/* 1. Header trên cùng: Quốc kỳ Pháp + Logo Vyphyto + Slogan Tinh Hoa Pháp hoặc Banner Tùy chỉnh */}
@@ -1528,12 +1531,16 @@ export default function ProductInfo() {
           />
         </div>
 
-        {/* 2. Banner Cam Capsule 1: SẢN PHẨM CHÍNH HÃNG - TRUY XUẤT MINH BẠCH */}
+        {/* 2. Banner Cam Capsule 1 */}
         <div className="vyphyto-pill-banner">
-          <span>SẢN PHẨM CHÍNH HÃNG - TRUY XUẤT MINH BẠCH</span>
+          <span>
+            {isFoodActivated
+              ? 'SẢN PHẨM CHÍNH HÃNG - ĐÃ KÍCH HOẠT MÃ'
+              : 'THÔNG TIN SẢN PHẨM (CHƯA KÍCH HOẠT MÃ)'}
+          </span>
         </div>
 
-        {/* 3. Khối Ảnh Sản Phẩm với khung viền cam đôi & bóng đổ */}
+        {/* 3. Khối Ảnh & Thông tin Sản Phẩm (Người dùng quét luôn xem được Thông tin sản phẩm) */}
         <div className="vyphyto-hero-card">
           <div className="vyphyto-hero-img-box">
             <img
@@ -1550,61 +1557,148 @@ export default function ProductInfo() {
               <span>Mã serial: <strong>{label?.serialNumber || serial}</strong></span>
               {product?.sku && <span>SKU: <strong>{product.sku}</strong></span>}
             </div>
+            {product?.description && (
+              <p style={{ fontSize: '0.84rem', color: '#334155', marginTop: '8px', lineHeight: 1.5 }}>
+                {product.description}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* 4. 3 Nút Hành Động Trắng Bo Tròn: Kích hoạt | Kiểm tra | Tích điểm */}
-        <div className="vyphyto-actions-3">
-          <div className="vyphyto-action-pill" onClick={() => setActiveModal('activate')}>
-            <div className="vyphyto-action-icon">
-              <img src="/images/vyphyto_icon_activate.png" alt="Kích hoạt" />
+        {/* 3B. BƯỚC 6: Nếu CHƯA kích hoạt mã -> Chỉ hiện nút Thông tin sản phẩm + khung nhập mã kích hoạt */}
+        {!isFoodActivated && (
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '14px',
+              padding: '16px',
+              margin: '0 14px 14px',
+              border: '1.5px solid #f59e0b',
+              boxShadow: '0 4px 14px rgba(245, 158, 11, 0.12)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <ShieldAlert size={20} color="#d97706" />
+              <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#92400e' }}>
+                TEM CHƯA KÍCH HOẠT MÃ
+              </h4>
             </div>
-            <span>Kích hoạt</span>
+            <p style={{ fontSize: '0.82rem', color: '#475569', margin: '0 0 12px', lineHeight: 1.45 }}>
+              Hiện tại bạn chỉ xem được <strong>Thông tin sản phẩm</strong>. Vui lòng kích hoạt mã (hoặc để Điểm bán quét xuất hàng) để xem <strong>Giấy công bố sản phẩm</strong> và đầy đủ thông tin truy xuất.
+            </p>
+            <form onSubmit={handleApplianceActivate} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Nhập mã kích hoạt (Serial trên tem)..."
+                  value={applianceActiveCode}
+                  onChange={(e) => {
+                    setApplianceActiveCode(e.target.value);
+                    setApplianceActivationError('');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    outline: 'none'
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={isActivatingAppliance}
+                  style={{
+                    background: '#ea580c',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '10px 16px',
+                    fontWeight: 700,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {isActivatingAppliance ? 'Đang xử lý...' : 'Kích hoạt'}
+                </button>
+              </div>
+              {applianceActivationError && (
+                <div style={{ fontSize: '0.8rem', color: '#dc2626', fontWeight: 600 }}>
+                  ⚠️ {applianceActivationError}
+                </div>
+              )}
+            </form>
           </div>
+        )}
 
-          <div className="vyphyto-action-pill" onClick={() => setActiveModal('scan')}>
-            <div className="vyphyto-action-icon">
-              <img src="/images/vyphyto_icon_verify.png" alt="Kiểm tra" />
+        {/* 3C. BƯỚC 5 & 6: Nếu ĐÃ kích hoạt mã -> Hiển thị Điểm bán đã xuất bán Serial này + Thời gian */}
+        {isFoodActivated && storeDisplayName && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+              borderRadius: '14px',
+              padding: '14px 16px',
+              margin: '0 14px 14px',
+              border: '1.5px solid #fdba74'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#c2410c', fontWeight: 800, fontSize: '0.9rem' }}>
+              <Truck size={18} color="#ea580c" />
+              <span>THÔNG TIN ĐIỂM BÁN / PHÂN PHỐI CHÍNH HÃNG</span>
             </div>
-            <span>Kiểm tra</span>
-          </div>
-
-          <div className="vyphyto-action-pill" onClick={() => setActiveModal('reward')}>
-            <div className="vyphyto-action-icon">
-              <img src="/images/vyphyto_icon_reward.png" alt="Tích điểm" />
+            <div style={{ fontSize: '0.85rem', color: '#1e293b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div><span>Điểm bán:</span> <strong style={{ color: '#ea580c' }}>{storeDisplayName}</strong></div>
+              {storeDisplayAddress && <div><span>Địa chỉ:</span> <span>{storeDisplayAddress}</span></div>}
+              {storeDisplayPhone && <div><span>Điện thoại:</span> <strong>{storeDisplayPhone}</strong></div>}
+              <div>
+                <span>Mã Serial đã kích hoạt:</span>{' '}
+                <strong style={{ fontFamily: 'monospace', color: '#059669' }}>
+                  {label?.ownerCode || label?.serialNumber || serial}
+                </strong>
+              </div>
+              {storeSoldTime && (
+                <div><span>Thời gian xuất bán:</span> <span>{formatDate(storeSoldTime)}</span></div>
+              )}
             </div>
-            <span>Tích điểm</span>
           </div>
-        </div>
+        )}
 
-        {/* 5. Banner Cam Capsule 2: SẢN PHẨM CỦA ... NHẬP KHẨU VÀ PHÂN PHỐI */}
-        <div className="vyphyto-pill-banner vyphyto-pill-banner-2">
-          <span>{bannerText}</span>
-        </div>
-
-        {/* 6. Lưới 4 Nút 2x2: Nhà sản xuất | Độc quyền P.Phối | Thông tin tem | Thông tin sản phẩm */}
-        <div className="vyphyto-grid-4">
-          <div className="vyphyto-grid-item" onClick={() => setActiveModal('mfg')}>
-            <div className="vyphyto-grid-icon">
-              <img src="/images/vyphyto_icon_mfg.png" alt="Nhà sản xuất" />
+        {/* 4. 3 Nút Hành Động Trắng Bo Tròn: Chỉ hiện khi ĐÃ kích hoạt mã */}
+        {isFoodActivated && (
+          <div className="vyphyto-actions-3">
+            <div className="vyphyto-action-pill" onClick={() => setActiveModal('activate')}>
+              <div className="vyphyto-action-icon">
+                <img src="/images/vyphyto_icon_activate.png" alt="Kích hoạt" />
+              </div>
+              <span>Kích hoạt</span>
             </div>
-            <span className="vyphyto-grid-label">Nhà sản xuất</span>
-          </div>
 
-          <div className="vyphyto-grid-item" onClick={() => setActiveModal('distributor')}>
-            <div className="vyphyto-grid-icon">
-              <img src="/images/vyphyto_icon_dist.png" alt="Độc quyền P.Phối" />
+            <div className="vyphyto-action-pill" onClick={() => setActiveModal('scan')}>
+              <div className="vyphyto-action-icon">
+                <img src="/images/vyphyto_icon_verify.png" alt="Kiểm tra" />
+              </div>
+              <span>Kiểm tra</span>
             </div>
-            <span className="vyphyto-grid-label">Độc quyền P.Phối</span>
-          </div>
 
-          <div className="vyphyto-grid-item" onClick={() => setActiveModal('tem')}>
-            <div className="vyphyto-grid-icon">
-              <img src="/images/vyphyto_icon_tem.png" alt="Thông tin tem" />
+            <div className="vyphyto-action-pill" onClick={() => setActiveModal('reward')}>
+              <div className="vyphyto-action-icon">
+                <img src="/images/vyphyto_icon_reward.png" alt="Tích điểm" />
+              </div>
+              <span>Tích điểm</span>
             </div>
-            <span className="vyphyto-grid-label">Thông tin tem</span>
           </div>
+        )}
 
+        {/* 5. Banner Cam Capsule 2: Chỉ hiện khi ĐÃ kích hoạt mã */}
+        {isFoodActivated && (
+          <div className="vyphyto-pill-banner vyphyto-pill-banner-2">
+            <span>{bannerText}</span>
+          </div>
+        )}
+
+        {/* 6. Lưới Nút Chức Năng (Bước 6: Khi chưa active chỉ hiện Thông tin sản phẩm; khi đã active mới hiện Công Bố & đầy đủ thông tin) */}
+        <div className="vyphyto-grid-4" style={!isFoodActivated ? { gridTemplateColumns: '1fr' } : {}}>
           <div className="vyphyto-grid-item" onClick={() => setActiveModal('product_detail')}>
             <div className="vyphyto-grid-icon">
               <img src="/images/vyphyto_icon_product.png" alt="Thông tin sản phẩm" />
@@ -1612,19 +1706,83 @@ export default function ProductInfo() {
             <span className="vyphyto-grid-label">Thông tin sản phẩm</span>
           </div>
 
-          {/* Nút NHẬN DIỆN THƯƠNG HIỆU - theo yêu cầu khách hàng */}
-          <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('brand')}>
-            <span className="vyphyto-grid-label-bold">NHẬN DIỆN<br />THƯƠNG HIỆU</span>
-          </div>
+          {isFoodActivated && (
+            <>
+              <div className="vyphyto-grid-item" onClick={() => setActiveModal('mfg')}>
+                <div className="vyphyto-grid-icon">
+                  <img src="/images/vyphyto_icon_mfg.png" alt="Nhà sản xuất" />
+                </div>
+                <span className="vyphyto-grid-label">Nhà sản xuất</span>
+              </div>
 
-          {/* Nút CÔNG BỐ - theo yêu cầu khách hàng */}
-          <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('cert')}>
-            <span className="vyphyto-grid-label-bold">CÔNG BỐ</span>
-          </div>
+              <div className="vyphyto-grid-item" onClick={() => setActiveModal('distributor')}>
+                <div className="vyphyto-grid-icon">
+                  <img src="/images/vyphyto_icon_dist.png" alt="Độc quyền P.Phối" />
+                </div>
+                <span className="vyphyto-grid-label">Độc quyền P.Phối</span>
+              </div>
+
+              <div className="vyphyto-grid-item" onClick={() => setActiveModal('tem')}>
+                <div className="vyphyto-grid-icon">
+                  <img src="/images/vyphyto_icon_tem.png" alt="Thông tin tem" />
+                </div>
+                <span className="vyphyto-grid-label">Thông tin tem</span>
+              </div>
+
+              {/* Nút NHẬN DIỆN THƯƠNG HIỆU */}
+              <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('brand')}>
+                <span className="vyphyto-grid-label-bold">NHẬN DIỆN<br />THƯƠNG HIỆU</span>
+              </div>
+
+              {/* Nút CÔNG BỐ - chỉ hiển thị khi đã active mã */}
+              <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('cert')}>
+                <span className="vyphyto-grid-label-bold">CÔNG BỐ</span>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* 7. Sản Phẩm Cùng Doanh Nghiệp (nếu có) */}
-        {showRelated && filteredRelated.length > 0 && (
+        {/* 6B. Hiển thị trực tiếp Giấy công bố sản phẩm khi ĐÃ ACTIVE MÃ (Bước 6) */}
+        {isFoodActivated && (product?.congBoNumber || congBoImagesList.length > 0) && (
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '14px',
+              padding: '16px',
+              margin: '0 14px 14px',
+              border: '1.5px solid #fdba74',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.04)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <FileCheck size={20} color="#ea580c" />
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
+                GIẤY CÔNG BỐ SẢN PHẨM
+              </h3>
+            </div>
+            {product?.congBoNumber && (
+              <div style={{ marginBottom: 10, padding: '8px 12px', borderRadius: 8, background: '#fff7ed', border: '1px solid #fed7aa', fontSize: '0.86rem' }}>
+                Số công bố: <strong style={{ color: '#9a3412' }}>{product.congBoNumber}</strong>
+              </div>
+            )}
+            {congBoImagesList.length > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: congBoImagesList.length === 1 ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
+                {congBoImagesList.map((img, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => setPreviewImage(img)}
+                    style={{ cursor: 'pointer', borderRadius: 10, overflow: 'hidden', border: '1px solid #fed7aa', background: '#f8fafc' }}
+                  >
+                    <img src={img} alt={`Giấy công bố ${idx + 1}`} style={{ width: '100%', height: 160, objectFit: 'contain', background: '#fff', display: 'block' }} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 7. Sản Phẩm Cùng Doanh Nghiệp (chỉ hiện khi đã active mã) */}
+        {isFoodActivated && showRelated && filteredRelated.length > 0 && (
           <div className="vyphyto-related-card">
             <div className="vyphyto-related-header">
               <h3>SẢN PHẨM {(distributorName || entName).toUpperCase()} PHÂN PHỐI</h3>

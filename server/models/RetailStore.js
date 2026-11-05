@@ -42,3 +42,4 @@ retailStoreSchema.index({ enterpriseId: 1, createdAt: -1 });
 retailStoreSchema.index({ name: 1 });
 
 module.exports = mongoose.model('RetailStore', retailStoreSchema);
+

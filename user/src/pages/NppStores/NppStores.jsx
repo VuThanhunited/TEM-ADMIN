@@ -1,0 +1,520 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import userApi from '../../services/api';
+import {
+  Store,
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Phone,
+  MapPin,
+  QrCode,
+  Clock,
+  Tag,
+  Eye,
+  X,
+  CheckCircle,
+  Package,
+  ArrowLeft
+} from 'lucide-react';
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
+
+export default function NppStores() {
+  const navigate = useNavigate();
+  const [stores, setStores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  const [showModal, setShowModal] = useState(false);
+  const [editingStore, setEditingStore] = useState(null);
+  const [form, setForm] = useState({ name: '', address: '', phone: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const [serialModalStore, setSerialModalStore] = useState(null);
+  const [storeSerials, setStoreSerials] = useState([]);
+  const [loadingSerials, setLoadingSerials] = useState(false);
+
+  const loadStores = useCallback(async (searchQuery = search) => {
+    setLoading(true);
+    try {
+      const res = await userApi.getRetailStores(searchQuery ? { search: searchQuery } : {});
+      setStores(res.stores || res.data || []);
+    } catch (err) {
+      console.error('Lỗi tải danh sách điểm bán:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadStores(search);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [search, loadStores]);
+
+  const handleOpenAdd = () => {
+    setEditingStore(null);
+    setForm({ name: '', address: '', phone: '' });
+    setError('');
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (store) => {
+    setEditingStore(store);
+    setForm({
+      name: store.name || '',
+      address: store.address || '',
+      phone: store.phone || ''
+    });
+    setError('');
+    setShowModal(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      setError('Vui lòng nhập tên điểm bán');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      if (editingStore) {
+        await userApi.updateRetailStore(editingStore._id, {
+          name: form.name.trim(),
+          address: form.address.trim(),
+          phone: form.phone.trim()
+        });
+      } else {
+        await userApi.createRetailStore({
+          name: form.name.trim(),
+          address: form.address.trim(),
+          phone: form.phone.trim()
+        });
+      }
+      setShowModal(false);
+      loadStores(search);
+    } catch (err) {
+      setError(err.message || 'Có lỗi xảy ra khi lưu điểm bán');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (store) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa điểm bán "${store.name}"?`)) return;
+    try {
+      await userApi.deleteRetailStore(store._id);
+      loadStores(search);
+    } catch (err) {
+      alert(err.message || 'Lỗi khi xóa điểm bán');
+    }
+  };
+
+  const handleViewSerials = async (store) => {
+    setSerialModalStore(store);
+    setLoadingSerials(true);
+    setStoreSerials([]);
+    try {
+      const res = await userApi.getRetailStoreSerials(store._id);
+      setStoreSerials(res.serials || res.data || []);
+    } catch (err) {
+      console.error('Lỗi tải danh sách serial của điểm bán:', err);
+    } finally {
+      setLoadingSerials(false);
+    }
+  };
+
+  const handleScanForStore = (store) => {
+    localStorage.setItem('npp_active_store_session', JSON.stringify({
+      _id: store._id,
+      name: store.name,
+      address: store.address || '',
+      phone: store.phone || ''
+    }));
+    navigate('/scan?continueStore=1');
+  };
+
+  const totalSerialsAllStores = stores.reduce((sum, s) => sum + (s.totalSerials || 0), 0);
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#0f172a', color: '#f8fafc', padding: '16px', fontFamily: 'sans-serif' }}>
+      <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              style={{
+                background: '#1e293b',
+                border: '1px solid #334155',
+                color: '#e2e8f0',
+                borderRadius: '10px',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Store size={24} color="#818cf8" />
+                Bảng Quản lý Điểm bán
+              </h1>
+              <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: '#94a3b8' }}>
+                Quản lý danh sách Điểm bán và theo dõi Serial + thời gian vừa bán
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/scan')}
+              style={{
+                background: '#1e293b',
+                border: '1px solid #475569',
+                color: '#f8fafc',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <QrCode size={18} />
+              Quét tem
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenAdd}
+              style={{
+                background: '#4f46e5',
+                border: 'none',
+                color: '#ffffff',
+                borderRadius: '10px',
+                padding: '10px 16px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Plus size={18} />
+              Thêm Điểm bán
+            </button>
+          </div>
+        </div>
+
+        {/* Thống kê */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(99,102,241,0.18)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Store size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tổng số Điểm bán</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800 }}>{stores.length}</div>
+            </div>
+          </div>
+
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(16,185,129,0.18)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Tag size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tổng Serial đã xuất</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34d399' }}>{totalSerialsAllStores}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tìm kiếm */}
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Search size={18} color="#94a3b8" />
+          <input
+            type="text"
+            placeholder="Tìm điểm bán (VD: gõ 'thanh' sẽ ra Thành, Thánh, Thạnh...)"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, background: 'transparent', border: 'none', color: '#f8fafc', fontSize: '0.92rem', outline: 'none' }}
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Bảng Điểm bán */}
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '14px', overflowX: 'auto' }}>
+          {loading ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Đang tải danh sách điểm bán...</div>
+          ) : stores.length === 0 ? (
+            <div style={{ padding: '44px 20px', textAlign: 'center' }}>
+              <Store size={42} style={{ opacity: 0.4, marginBottom: '10px' }} />
+              <h3 style={{ margin: '0 0 8px' }}>Chưa có Điểm bán nào</h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.88rem', marginBottom: '16px' }}>
+                Bấm &ldquo;Thêm Điểm bán&rdquo; để thêm Tên điểm bán, Địa chỉ và Điện thoại liên hệ.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenAdd}
+                style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
+              >
+                + Thêm Điểm bán đầu tiên
+              </button>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+              <thead>
+                <tr style={{ background: '#0f172a', color: '#94a3b8', textAlign: 'left' }}>
+                  <th style={{ padding: '12px 14px' }}>STT</th>
+                  <th style={{ padding: '12px 14px' }}>Tên Điểm bán</th>
+                  <th style={{ padding: '12px 14px' }}>Địa chỉ</th>
+                  <th style={{ padding: '12px 14px' }}>Điện thoại</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>Số lượng</th>
+                  <th style={{ padding: '12px 14px' }}>Serial vừa bán + Thời gian</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'right' }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stores.map((store, idx) => {
+                  const recent = store.recentSales || [];
+                  return (
+                    <tr key={store._id} style={{ borderTop: '1px solid #334155' }}>
+                      <td style={{ padding: '12px 14px', fontWeight: 700, color: '#818cf8' }}>#{idx + 1}</td>
+                      <td style={{ padding: '12px 14px', fontWeight: 700 }}>{store.name}</td>
+                      <td style={{ padding: '12px 14px', color: '#cbd5e1' }}>{store.address || '—'}</td>
+                      <td style={{ padding: '12px 14px', color: '#34d399' }}>{store.phone || '—'}</td>
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <span
+                          onClick={() => (store.totalSerials || 0) > 0 && handleViewSerials(store)}
+                          style={{
+                            background: (store.totalSerials || 0) > 0 ? 'rgba(16,185,129,0.18)' : '#334155',
+                            color: (store.totalSerials || 0) > 0 ? '#34d399' : '#94a3b8',
+                            padding: '4px 10px',
+                            borderRadius: '999px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: (store.totalSerials || 0) > 0 ? 'pointer' : 'default'
+                          }}
+                        >
+                          {store.totalSerials || 0} serial
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        {recent.length === 0 ? (
+                          <span style={{ color: '#64748b', fontStyle: 'italic' }}>Chưa có serial</span>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            {recent.slice(0, 3).map((item, rIdx) => (
+                              <div key={item.serialNumber + rIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#34d399' }}>{item.serialNumber}</span>
+                                <span style={{ color: '#64748b' }}>•</span>
+                                <span style={{ color: '#cbd5e1' }}>{formatDateTime(item.soldAt)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            title="Quét tem cho điểm bán này"
+                            onClick={() => handleScanForStore(store)}
+                            style={{ background: 'rgba(16,185,129,0.18)', color: '#34d399', border: 'none', borderRadius: '8px', padding: '7px', cursor: 'pointer' }}
+                          >
+                            <QrCode size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Xem lịch sử Serial"
+                            onClick={() => handleViewSerials(store)}
+                            style={{ background: 'rgba(59,130,246,0.18)', color: '#60a5fa', border: 'none', borderRadius: '8px', padding: '7px', cursor: 'pointer' }}
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Sửa điểm bán"
+                            onClick={() => handleOpenEdit(store)}
+                            style={{ background: '#334155', color: '#e2e8f0', border: 'none', borderRadius: '8px', padding: '7px', cursor: 'pointer' }}
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Xóa điểm bán"
+                            onClick={() => handleDelete(store)}
+                            style={{ background: 'rgba(239,68,68,0.18)', color: '#f87171', border: 'none', borderRadius: '8px', padding: '7px', cursor: 'pointer' }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Modal Thêm / Sửa Điểm bán */}
+      {showModal && (
+        <div
+          onClick={() => setShowModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '460px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>{editingStore ? 'Cập nhật Điểm bán' : 'Thêm Điểm bán mới'}</h3>
+              <button type="button" onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {error && (
+                <div style={{ background: 'rgba(239,68,68,0.18)', color: '#f87171', padding: '10px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  {error}
+                </div>
+              )}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Tên điểm bán *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="VD: Nhà thuốc Thành Công"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Địa chỉ</label>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  placeholder="VD: 120 Nguyễn Trãi, Thanh Xuân, Hà Nội"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Điện thoại liên hệ</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="VD: 0912345678"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{ background: '#334155', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer' }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {saving ? 'Đang lưu...' : 'Lưu Điểm bán'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Xem danh sách Serial của Điểm bán */}
+      {serialModalStore && (
+        <div
+          onClick={() => setSerialModalStore(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '640px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle size={18} color="#34d399" />
+                  Serial đã bán — {serialModalStore.name}
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
+                  Địa chỉ: {serialModalStore.address || '—'} | SĐT: {serialModalStore.phone || '—'}
+                </div>
+              </div>
+              <button type="button" onClick={() => setSerialModalStore(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {loadingSerials ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>Đang tải danh sách serial...</div>
+              ) : storeSerials.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>Chưa có serial nào được quét.</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                  <thead>
+                    <tr style={{ background: '#0f172a', color: '#94a3b8', textAlign: 'left' }}>
+                      <th style={{ padding: '10px' }}>STT</th>
+                      <th style={{ padding: '10px' }}>Mã Serial</th>
+                      <th style={{ padding: '10px' }}>Sản phẩm</th>
+                      <th style={{ padding: '10px' }}>Thời gian bán</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {storeSerials.map((item, i) => (
+                      <tr key={item.serialNumber + i} style={{ borderTop: '1px solid #334155' }}>
+                        <td style={{ padding: '10px' }}>{i + 1}</td>
+                        <td style={{ padding: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#34d399' }}>{item.serialNumber}</td>
+                        <td style={{ padding: '10px' }}>{item.productName || 'Sản phẩm'}</td>
+                        <td style={{ padding: '10px', color: '#cbd5e1' }}>{formatDateTime(item.soldAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

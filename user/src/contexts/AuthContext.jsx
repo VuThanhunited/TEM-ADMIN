@@ -8,9 +8,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Restore session from localStorage
-    const savedToken = localStorage.getItem('npp_scan_token');
-    const savedUser = localStorage.getItem('npp_scan_user');
+    // Restore session from localStorage (supports both npp_scan_* and tem_* keys)
+    const savedToken = localStorage.getItem('npp_scan_token') || localStorage.getItem('tem_token');
+    const savedUser = localStorage.getItem('npp_scan_user') || localStorage.getItem('tem_user');
     if (savedToken && savedUser) {
       try {
         // Bỏ qua token đã hết hạn (đọc payload JWT dạng base64url, không verify)
@@ -38,6 +38,8 @@ export function AuthProvider({ children }) {
   const login = (userData, userToken) => {
     localStorage.setItem('npp_scan_token', userToken);
     localStorage.setItem('npp_scan_user', JSON.stringify(userData));
+    localStorage.setItem('tem_token', userToken);
+    localStorage.setItem('tem_user', JSON.stringify(userData));
     setToken(userToken);
     setUser(userData);
   };
@@ -45,6 +47,8 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem('npp_scan_token');
     localStorage.removeItem('npp_scan_user');
+    localStorage.removeItem('tem_token');
+    localStorage.removeItem('tem_user');
     setToken(null);
     setUser(null);
   };

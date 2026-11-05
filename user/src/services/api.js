@@ -163,6 +163,10 @@ class UserApiService {
     return this.request('GET', '/public/retail-stores', null, params);
   }
 
+  getRetailStoreSerials(id) {
+    return this.request('GET', `/public/retail-stores/${id}/serials`);
+  }
+
   createRetailStore(data) {
     return this.request('POST', '/public/retail-stores', data);
   }

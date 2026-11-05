@@ -107,7 +107,7 @@ function ProtectedRoute({ children, adminOnly = false }) {
   if (isNPP) {
     if (window.location.pathname.startsWith('/products')) return <Navigate to="/npp/products" replace />;
     if (window.location.pathname.startsWith('/labels')) return <Navigate to="/npp/labels" replace />;
-    return <Navigate to="/npp/scan" replace />;
+    return <Navigate to="/npp/stores" replace />;
   }
   if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
   return children;
@@ -127,7 +127,7 @@ function PublicRoute({ children }) {
   const { user, loading, isNPP } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
   if (user) {
-    if (isNPP) return <Navigate to="/npp/scan" replace />;
+    if (isNPP) return <Navigate to="/npp/stores" replace />;
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -135,7 +135,7 @@ function PublicRoute({ children }) {
 
 function CatchAllRoute() {
   const { user, isNPP } = useAuth();
-  if (user && isNPP) return <Navigate to="/npp/scan" replace />;
+  if (user && isNPP) return <Navigate to="/npp/stores" replace />;
   if (user) return <Navigate to="/dashboard" replace />;
   window.location.href = USER_LOGIN_URL;
   return null;
@@ -152,6 +152,19 @@ function PublicNamecardRedirect() {
   );
 }
 
+function PublicScanRedirect() {
+  const currentPath = window.location.pathname;
+  const search = window.location.search || '';
+  const code = currentPath.split('/').filter(Boolean).pop();
+  window.location.replace(`/trace/${code}${search}`);
+  return (
+    <div className="app-loading">
+      <div className="loading-spinner" style={{ width: 48, height: 48 }}></div>
+      <p>Đang mở trang xác thực tem...</p>
+    </div>
+  );
+}
+
 function AppRoutes() {
   return (
     <Suspense fallback={<AppLoader />}>
@@ -159,9 +172,9 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/namecard/:slug" element={<PublicNamecardRedirect />} />
         <Route path="/nc/:slug" element={<PublicNamecardRedirect />} />
-        <Route path="/scan/:serial" element={<Scan />} />
-        <Route path="/qrcode/:serial" element={<Scan />} />
-        <Route path="/temqr/:serial" element={<Scan />} />
+        <Route path="/scan/:serial" element={<PublicScanRedirect />} />
+        <Route path="/qrcode/:serial" element={<PublicScanRedirect />} />
+        <Route path="/temqr/:serial" element={<PublicScanRedirect />} />
         <Route path="/npp/stores" element={<NppRoute><MainLayout /></NppRoute>}>
           <Route index element={<NppStores />} />
         </Route>

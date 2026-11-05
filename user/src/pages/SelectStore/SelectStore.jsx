@@ -91,9 +91,8 @@ export default function SelectStore() {
       setLoadingStores(true);
       try {
         const res = await userApi.getRetailStores();
-        if (res?.stores) {
-          setStores(res.stores);
-        }
+        const storeList = res?.stores || res?.data || [];
+        setStores(storeList);
       } catch (err) {
         console.error('Lỗi tải danh sách điểm bán:', err);
       } finally {
@@ -130,7 +129,10 @@ export default function SelectStore() {
   useEffect(() => {
     const autoSerial = label?.serialNumber || serial || codeParam || '';
     if (autoSerial) {
-      setForm(prev => (prev.serial === autoSerial ? prev : { ...prev, serial: autoSerial }));
+      setForm(prev => ({
+        ...prev,
+        serial: label?.serialNumber ? label.serialNumber : (prev.serial || autoSerial)
+      }));
     }
   }, [label?.serialNumber, serial, codeParam]);
 
@@ -263,7 +265,7 @@ export default function SelectStore() {
     setSubmitting(true);
     setFormError('');
     try {
-      const serialNumber = label?.serialNumber || serial;
+      const serialNumber = label?.serialNumber || serial || codeParam;
       const cleanOwnerCode = ownerCode.trim() || serialNumber;
 
       const res = await userApi.submitSingleEntry({
@@ -274,7 +276,7 @@ export default function SelectStore() {
         ownerName: storeName,
         ownerAddress: storeAddress,
         ownerPhone: storePhone,
-        activatedSerial: form.serial.trim() || detectedSerial,
+        activatedSerial: label?.serialNumber || form.serial.trim() || detectedSerial,
         ownerCode: cleanOwnerCode
       });
 
@@ -683,7 +685,7 @@ export default function SelectStore() {
               className="owner-secondary-btn"
               style={{ flex: 1, marginTop: 0, borderColor: '#6366f1', color: '#4f46e5' }}
               onClick={() => {
-                window.location.href = '/npp/stores';
+                navigate('/npp/stores');
               }}
             >
               Bảng Quản lý Điểm bán
@@ -823,12 +825,13 @@ export default function SelectStore() {
                       <Store size={18} color="#059669" />
                       <span>Chọn Điểm bán (đã thêm ở Bảng Điểm bán)</span>
                     </div>
-                    <a
-                      href="/npp/stores"
-                      style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/npp/stores')}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.78rem', color: '#2563eb', fontWeight: 700, cursor: 'pointer' }}
                     >
                       + Quản lý Điểm bán
-                    </a>
+                    </button>
                   </div>
 
                   <div className="store-field-group" style={{ position: 'relative' }}>

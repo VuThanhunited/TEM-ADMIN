@@ -815,14 +815,25 @@ async function verifyNppOrAdminRequest(req, res) {
 }
 
 // Helper: Tạo filter lấy danh sách Điểm bán theo quyền tài khoản
-function buildRetailStoreFilter(user, decoded, queryEnterpriseId) {
-  if (decoded.role === 'ADMIN' && !decoded.isAdminImpersonating) {
+async function buildRetailStoreFilter(user, decoded, queryEnterpriseId) {
+  if (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) {
     return queryEnterpriseId ? { enterpriseId: queryEnterpriseId } : {};
   }
   const conditions = [{ ownerUserId: user._id }];
   const entId = user.enterpriseId?._id || user.enterpriseId;
   if (entId) {
     conditions.push({ enterpriseId: entId });
+  }
+  if (queryEnterpriseId) {
+    conditions.push({ enterpriseId: queryEnterpriseId });
+  }
+  // Cho phép NPP/NSX nhìn thấy các Điểm bán chung do Admin tạo
+  const adminUsers = await User.find({ role: 'ADMIN' }).select('_id enterpriseId').lean();
+  for (const adm of adminUsers) {
+    conditions.push({ ownerUserId: adm._id });
+    if (adm.enterpriseId) {
+      conditions.push({ enterpriseId: adm.enterpriseId });
+    }
   }
   return { $or: conditions };
 }
@@ -835,7 +846,7 @@ router.get('/retail-stores', async (req, res) => {
     const { user, decoded } = authCtx;
 
     const { search = '', enterpriseId = '', includeStats = '1' } = req.query;
-    const filter = buildRetailStoreFilter(user, decoded, enterpriseId);
+    const filter = await buildRetailStoreFilter(user, decoded, enterpriseId);
 
     let stores = await RetailStore.find(filter).sort({ createdAt: -1 }).lean();
 
@@ -918,6 +929,7 @@ router.get('/retail-stores', async (req, res) => {
 
     res.json({
       success: true,
+      stores,
       data: stores,
       total: stores.length
     });
@@ -965,6 +977,7 @@ router.get('/retail-stores/:id/serials', async (req, res) => {
     res.json({
       success: true,
       store,
+      serials,
       data: serials,
       total: serials.length
     });
@@ -999,13 +1012,16 @@ router.post('/retail-stores', async (req, res) => {
     });
     await store.save();
 
+    const createdStore = {
+      ...store.toObject(),
+      totalSerials: 0,
+      recentSales: []
+    };
+
     res.status(201).json({
       success: true,
-      data: {
-        ...store.toObject(),
-        totalSerials: 0,
-        recentSales: []
-      },
+      store: createdStore,
+      data: createdStore,
       message: 'Thêm điểm bán thành công'
     });
   } catch (error) {
@@ -1051,6 +1067,7 @@ router.put('/retail-stores/:id', async (req, res) => {
 
     res.json({
       success: true,
+      store,
       data: store,
       message: 'Cập nhật điểm bán thành công'
     });
@@ -1088,7 +1105,7 @@ router.get('/npp-stores', async (req, res) => {
     if (!authCtx) return;
     const { user, decoded } = authCtx;
 
-    const filter = buildRetailStoreFilter(user, decoded);
+    const filter = await buildRetailStoreFilter(user, decoded);
     const retailStores = await RetailStore.find({ ...filter, isActive: true }).sort({ createdAt: -1 }).lean();
 
     const mappedStores = retailStores.map(s => ({
@@ -1186,12 +1203,12 @@ router.post('/distributor-entry-single', async (req, res) => {
         ? distributorAddress.trim()
         : (linkedStore ? linkedStore.address : '');
     const inputStorePhone = (typeof ownerPhone === 'string' && ownerPhone.trim())
-      ? ownerPhone.trim().replace(/[\s.\-]/g, '')
+      ? ownerPhone.trim()
       : (linkedStore ? linkedStore.phone : '');
 
     // Nếu chưa có linkedStore nhưng người dùng có nhập tên Điểm bán -> tìm hoặc tự động thêm vào bảng Điểm bán
     if (!linkedStore && inputStoreName) {
-      const storeFilter = buildRetailStoreFilter(user, decoded);
+      const storeFilter = await buildRetailStoreFilter(user, decoded);
       linkedStore = await RetailStore.findOne({
         ...storeFilter,
         name: { $regex: new RegExp(`^${escapeRegex(inputStoreName)}$`, 'i') }
@@ -1227,22 +1244,27 @@ router.post('/distributor-entry-single', async (req, res) => {
 
       if (name && name.length > 200) return res.status(400).json({ error: 'Tên quá dài (tối đa 200 ký tự)' });
       if (address && address.length > 500) return res.status(400).json({ error: 'Địa chỉ quá dài (tối đa 500 ký tự)' });
-      if (phone && !/^(\+84|84|0)\d{9,10}$/.test(phone)) {
-        return res.status(400).json({ error: 'Số điện thoại không hợp lệ' });
+      if (phone && phone.length > 50) {
+        return res.status(400).json({ error: 'Số điện thoại quá dài' });
       }
-      if (inputSerial && !isSerialMatch(inputSerial, label.serialNumber)) {
+      if (
+        inputSerial &&
+        !isSerialMatch(inputSerial, label.serialNumber) &&
+        inputSerial.toLowerCase() !== String(label.qrCode || '').toLowerCase() &&
+        inputSerial.toLowerCase() !== String(label.activeCode || '').toLowerCase()
+      ) {
         return res.status(400).json({ error: 'Số serial không khớp với tem vừa quét. Vui lòng kiểm tra lại số in trên tem.' });
       }
 
       const finalOwnerCode = (ownerCode && typeof ownerCode === 'string' && ownerCode.trim())
         ? ownerCode.trim()
-        : (linkedStore ? label.serialNumber : null);
+        : ((linkedStore || name) ? label.serialNumber : null);
 
       label.ownerInfo = {
         name: name || null,
         address: address || null,
         phone: phone || null,
-        activatedSerial: finalOwnerCode || inputSerial || label.serialNumber,
+        activatedSerial: finalOwnerCode || label.serialNumber,
         activatedAt: (finalOwnerCode || name) ? now : null,
         activatedBy: user._id
       };
@@ -1261,11 +1283,12 @@ router.post('/distributor-entry-single', async (req, res) => {
       : (inputStoreAddr || label.distributorAddress || user.enterpriseId?.address || '');
     label.distributedAt = now;
 
-    if (ownerCode !== undefined && !linkedStore) {
+    if (ownerCode !== undefined && !linkedStore && !inputStoreName) {
       label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
     }
-    if (label.ownerCode && label.status === 'INACTIVE') {
+    if (label.ownerCode || label.storeId || label.distributorName) {
       label.status = 'ACTIVE';
+      label.isActive = true;
     }
     await label.save();
 

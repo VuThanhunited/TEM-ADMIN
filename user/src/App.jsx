@@ -13,6 +13,7 @@ const History = lazy(() => import('./pages/History/History'));
 const ScanChoice = lazy(() => import('./pages/ScanChoice/ScanChoice'));
 const ProductInfo = lazy(() => import('./pages/ProductInfo/ProductInfo'));
 const Namecard = lazy(() => import('./pages/Namecard/Namecard'));
+const NppStores = lazy(() => import('./pages/NppStores/NppStores'));
 
 const AppLoader = () => (
   <div className="app-loading">
@@ -170,6 +171,14 @@ function AppRoutes() {
         <Route path="/npp/login" element={<Navigate to="/login?tab=npp" replace />} />
         <Route path="/npp/register" element={<Navigate to="/register?tab=npp" replace />} />
         <Route
+          path="/npp/stores"
+          element={
+            <NppProtectedRoute>
+              <NppStores />
+            </NppProtectedRoute>
+          }
+        />
+        <Route
           path="/scan"
           element={
             <NppProtectedRoute>
@@ -226,7 +235,8 @@ function AppShell() {
     location.pathname.startsWith('/qrcode') || 
     location.pathname.startsWith('/temqr') ||
     location.pathname.startsWith('/namecard') ||
-    location.pathname.startsWith('/nc');
+    location.pathname.startsWith('/nc') ||
+    location.pathname.startsWith('/npp/stores');
 
   return (
     <div className={isFullWidth ? 'app-shell app-shell--fullwidth' : 'app-shell'}>

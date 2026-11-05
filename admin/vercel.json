@@ -56,6 +56,10 @@
       "destination": "https://tem-user-page.vercel.app/trace/:code"
     },
     {
+      "source": "/scan",
+      "destination": "https://tem-user-page.vercel.app/scan"
+    },
+    {
       "source": "/scan/:code",
       "destination": "https://tem-user-page.vercel.app/scan/:code"
     },

@@ -58,7 +58,7 @@ export default function NppStores() {
     setLoading(true);
     try {
       const res = await api.getRetailStores(searchQuery ? { search: searchQuery } : {});
-      setStores(res.stores || []);
+      setStores(res.stores || res.data || []);
     } catch (err) {
       console.error('Lỗi tải danh sách điểm bán:', err);
     } finally {
@@ -138,7 +138,7 @@ export default function NppStores() {
     setStoreSerials([]);
     try {
       const res = await api.getRetailStoreSerials(store._id);
-      setStoreSerials(res.serials || []);
+      setStoreSerials(res.serials || res.data || []);
     } catch (err) {
       console.error('Lỗi tải danh sách serial của điểm bán:', err);
     } finally {
@@ -563,3 +563,4 @@ export default function NppStores() {
     </div>
   );
 }
+
