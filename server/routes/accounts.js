@@ -236,7 +236,7 @@ router.get('/', auth, requireRole('ADMIN'), async (req, res) => {
 // POST /api/accounts - Create new account with enterprise
 router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
   try {
-    const { username, email, password, fullName, role, enterpriseName, enterpriseType, subscriptionMonths = 12 } = req.body;
+    const { username, email, password, fullName, role, enterpriseId, enterpriseName, enterpriseType, subscriptionMonths = 12 } = req.body;
 
     // Check existing
     const existing = await User.findOne({
@@ -249,13 +249,24 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
       return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
     }
 
-    // Create enterprise
-    const enterprise = new Enterprise({
-      name: enterpriseName || `${fullName} Enterprise`,
-      type: enterpriseType || role,
-      email
-    });
-    await enterprise.save();
+    // Link existing enterprise or create new one
+    let enterprise = null;
+    if (enterpriseId) {
+      enterprise = await Enterprise.findById(enterpriseId);
+    }
+    if (!enterprise && enterpriseName && enterpriseName.trim()) {
+      enterprise = await Enterprise.findOne({
+        name: { $regex: new RegExp(`^${enterpriseName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+    }
+    if (!enterprise) {
+      enterprise = new Enterprise({
+        name: enterpriseName || `${fullName} Enterprise`,
+        type: enterpriseType || role,
+        email
+      });
+      await enterprise.save();
+    }
 
     // Create user
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -263,8 +274,8 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
     expiry.setMonth(expiry.getMonth() + parseInt(subscriptionMonths));
 
     const user = new User({
-      username,
-      email,
+      username: username.trim(),
+      email: email.trim(),
       password: hashedPassword,
       fullName,
       role,
@@ -287,32 +298,33 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
 // PUT /api/accounts/:id - Update account (Admin only)
 router.put('/:id', auth, requireRole('ADMIN'), async (req, res) => {
   try {
-    const { username, email, password, fullName, role, isActive } = req.body;
+    const { username, email, password, fullName, role, isActive, enterpriseId } = req.body;
     const user = await User.findById(req.params.id);
 
     if (!user) {
       return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
     }
 
-    if (username && username !== user.username) {
-      const existing = await User.findOne({ username });
+    if (username && username.trim() !== user.username) {
+      const existing = await User.findOne({ _id: { $ne: user._id }, username: username.trim() });
       if (existing) return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại' });
-      user.username = username;
+      user.username = username.trim();
     }
 
-    if (email && email !== user.email) {
-      const existing = await User.findOne({ email });
+    if (email && email.trim() !== user.email) {
+      const existing = await User.findOne({ _id: { $ne: user._id }, email: email.trim() });
       if (existing) return res.status(400).json({ error: 'Email đã tồn tại' });
-      user.email = email;
+      user.email = email.trim();
     }
 
     if (fullName !== undefined) user.fullName = fullName;
     if (role !== undefined) user.role = role;
     if (isActive !== undefined) user.isActive = isActive;
+    if (enterpriseId !== undefined && enterpriseId) user.enterpriseId = enterpriseId;
 
     if (password) {
-      if (password.length < 6) {
-        return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
+      if (password.length < 4) {
+        return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 4 ký tự' });
       }
       user.password = await bcrypt.hash(password, 10);
     }

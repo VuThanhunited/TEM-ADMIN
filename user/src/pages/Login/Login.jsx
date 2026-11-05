@@ -58,11 +58,9 @@ export default function Login() {
     }
   }, []);
 
-  // Clear inputs and error when switching tabs
+  // Clear error when switching tabs (giữ nguyên username/password đã nhập)
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    setUsername('');
-    setPassword('');
     setError('');
     setSearchParams({ tab });
   };

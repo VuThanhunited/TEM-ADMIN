@@ -19,10 +19,18 @@ export default function Accounts() {
   const [renewAccount, setRenewAccount] = useState(null);
   const [renewMonths, setRenewMonths] = useState(12);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
+  const [enterprises, setEnterprises] = useState([]);
   const [form, setForm] = useState({
     username: '', email: '', password: '', fullName: '',
-    role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true
+    role: 'NSX', enterpriseId: '', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true
   });
+
+  useEffect(() => {
+    api.getEnterprises().then(res => {
+      const list = Array.isArray(res) ? res : (res?.data || []);
+      setEnterprises(list);
+    }).catch(() => {});
+  }, []);
 
   // Khi debouncedSearch thay đổi: reset về page 1
   useEffect(() => { setPagination(prev => ({ ...prev, page: 1 })); }, [debouncedSearch]);
@@ -52,17 +60,18 @@ export default function Accounts() {
           email: form.email,
           fullName: form.fullName,
           role: form.role,
+          enterpriseId: form.enterpriseId || undefined,
           isActive: form.isActive,
           password: form.password || undefined
         });
         setShowModal(false);
         setEditingAccount(null);
-        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseId: '', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
         loadAccounts();
       } else {
         await api.createAccount(form);
         setShowModal(false);
-        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseId: '', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
         loadAccounts();
       }
     } catch (err) {
@@ -78,6 +87,7 @@ export default function Accounts() {
       password: '',
       fullName: account.fullName,
       role: account.role,
+      enterpriseId: account.enterpriseId?._id || account.enterpriseId || '',
       enterpriseName: account.enterpriseId?.name || '',
       enterpriseType: account.role,
       subscriptionMonths: 12,
@@ -189,7 +199,7 @@ export default function Accounts() {
                     <div className="account-info">
                       <div className="account-avatar">{account.fullName?.charAt(0)}</div>
                       <div>
-                        <div className="account-name">{account.fullName}</div>
+                        <div className="account-name">{account.fullName} <span style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 600 }}>({account.username})</span></div>
                         <div className="account-email">{account.email}</div>
                       </div>
                     </div>
@@ -270,7 +280,7 @@ export default function Accounts() {
                 <div className="form-row">
                   <div className="input-group">
                     <label>Tên đăng nhập *</label>
-                    <input className="input" value={form.username} onChange={e => setForm({...form, username: e.target.value})} required disabled={!!editingAccount} />
+                    <input className="input" value={form.username} onChange={e => setForm({...form, username: e.target.value})} required />
                   </div>
                   <div className="input-group">
                     <label>Email *</label>
@@ -302,9 +312,18 @@ export default function Accounts() {
                     </div>
                   )}
                 </div>
-                {!editingAccount && (
+                <div className="input-group">
+                  <label>Doanh nghiệp liên kết</label>
+                  <select className="input select" value={form.enterpriseId || ''} onChange={e => setForm({...form, enterpriseId: e.target.value})}>
+                    <option value="">-- Tạo mới hoặc chọn doanh nghiệp --</option>
+                    {enterprises.map(ent => (
+                      <option key={ent._id} value={ent._id}>{ent.name} ({ent.type})</option>
+                    ))}
+                  </select>
+                </div>
+                {!editingAccount && !form.enterpriseId && (
                   <div className="input-group">
-                    <label>Tên doanh nghiệp</label>
+                    <label>Tên doanh nghiệp mới</label>
                     <input className="input" value={form.enterpriseName} onChange={e => setForm({...form, enterpriseName: e.target.value})} placeholder="Để trống sẽ tự động tạo" />
                   </div>
                 )}
