@@ -109,7 +109,7 @@ export default function Login() {
 
       // Đến từ màn quét tem (mục 2) → quay lại form bổ sung thông tin KH, không bắt quét lại
       const savedRedirect = sessionStorage.getItem('npp_redirect_after_login');
-      if (savedRedirect && (role === 'NPP' || role === 'NSX')) {
+      if (savedRedirect && (role === 'NPP' || role === 'NSX' || role === 'ADMIN')) {
         sessionStorage.removeItem('npp_redirect_after_login');
         try {
           const { path, state } = JSON.parse(savedRedirect);
@@ -129,11 +129,11 @@ export default function Login() {
         window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(result.token)}`;
         return;
       } else if (role === 'NPP') {
-        // NPP → trang quét của admin app
+        // NPP → trang Quản lý Điểm bán & Quét tem của NPP
         localStorage.setItem('tem_token', result.token);
         localStorage.setItem('tem_user', JSON.stringify(result.user));
         login(result.user, result.token);
-        window.location.href = `${adminAppUrl}/npp/scan?adminToken=${encodeURIComponent(result.token)}`;
+        window.location.href = `${adminAppUrl}/npp/stores?adminToken=${encodeURIComponent(result.token)}`;
         return;
       } else {
         // Khách / user thường → ở lại user app

@@ -25,9 +25,9 @@ export default function Distributors() {
   const [editingDistributor, setEditingDistributor] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
 
-  // Form state: name, address, details, role + enterpriseId (for ADMIN)
+  // Form state: name, address, phone, details, role, username, password + enterpriseId (for ADMIN)
   const [form, setForm] = useState({
-    fullName: '', address: '', details: '', role: 'NPP', enterpriseId: ''
+    fullName: '', address: '', phone: '', details: '', role: 'NPP', username: '', password: '', enterpriseId: ''
   });
 
   // Rich Text Editor
@@ -81,7 +81,7 @@ export default function Distributors() {
 
   const handleOpenCreate = () => {
     setEditingDistributor(null);
-    setForm({ fullName: '', address: '', details: '', role: 'NPP', enterpriseId: '' });
+    setForm({ fullName: '', address: '', phone: '', details: '', role: 'NPP', username: '', password: '', enterpriseId: '' });
     setEditorMode('visual');
     setShowModal(true);
     setTimeout(() => {
@@ -94,8 +94,11 @@ export default function Distributors() {
     setForm({
       fullName: dist.fullName || '',
       address: dist.address || '',
+      phone: dist.phone || '',
       details: dist.details || '',
-      role: dist.role || 'NPP'
+      role: dist.role || 'NPP',
+      username: dist.username || '',
+      password: ''
     });
     setEditorMode('visual');
     setShowModal(true);
@@ -110,8 +113,11 @@ export default function Distributors() {
       const payload = {
         fullName: form.fullName,
         address: form.address,
+        phone: form.phone,
         details: form.details,
         role: form.role,
+        ...(form.username?.trim() ? { username: form.username.trim() } : {}),
+        ...(form.password?.trim() ? { password: form.password.trim() } : {}),
         isActive: editingDistributor ? editingDistributor.isActive : true,
         ...(isAdmin && form.enterpriseId ? { enterpriseId: form.enterpriseId } : {})
       };
@@ -306,6 +312,9 @@ export default function Distributors() {
                       </div>
                       <div>
                         <div className="dist-name">{dist.fullName}</div>
+                        <div style={{ fontSize: '0.75rem', opacity: 0.65, marginTop: 2 }}>
+                          TK: <strong>{dist.username}</strong> {dist.phone ? `| SĐT: ${dist.phone}` : ''}
+                        </div>
                         {dist.details && (
                           <div style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: 2 }}>
                             <FileText size={11} style={{ display: 'inline', marginRight: 3 }} />
@@ -344,18 +353,12 @@ export default function Distributors() {
                   </td>
                   <td>
                     <div className="action-buttons">
-                      {isAdmin ? (
-                        <>
-                          <button className="btn btn-sm btn-ghost" onClick={() => handleOpenEdit(dist)} title="Chỉnh sửa">
-                            <Edit size={14} />
-                          </button>
-                          <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(dist._id)} title="Xóa">
-                            <Trash2 size={14} />
-                          </button>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Chỉ xem</span>
-                      )}
+                      <button className="btn btn-sm btn-ghost" onClick={() => handleOpenEdit(dist)} title="Chỉnh sửa">
+                        <Edit size={14} />
+                      </button>
+                      <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(dist._id)} title="Xóa">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -428,15 +431,49 @@ export default function Distributors() {
                   />
                 </div>
 
-                {/* Địa chỉ */}
-                <div className="input-group" style={{ marginBottom: 0 }}>
-                  <label>Địa chỉ</label>
-                  <input
-                    className="input"
-                    value={form.address}
-                    onChange={e => setForm({ ...form, address: e.target.value })}
-                    placeholder={form.role === 'NSX' ? 'Ví dụ: KCN Thăng Long, Đông Anh, Hà Nội' : 'Ví dụ: 12 Đường số 5, P. Hiệp Bình, TP. Thủ Đức'}
-                  />
+                {/* Địa chỉ & Điện thoại */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label>Địa chỉ</label>
+                    <input
+                      className="input"
+                      value={form.address}
+                      onChange={e => setForm({ ...form, address: e.target.value })}
+                      placeholder={form.role === 'NSX' ? 'Ví dụ: KCN Thăng Long, Đông Anh, Hà Nội' : 'Ví dụ: 12 Đường số 5, P. Hiệp Bình, TP. Thủ Đức'}
+                    />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label>Điện thoại liên hệ</label>
+                    <input
+                      className="input"
+                      value={form.phone}
+                      onChange={e => setForm({ ...form, phone: e.target.value })}
+                      placeholder="Ví dụ: 0912 345 678"
+                    />
+                  </div>
+                </div>
+
+                {/* Tài khoản đăng nhập cho Nhà phân phối */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 12, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label>Tên đăng nhập (Tài khoản vào giải pháp)</label>
+                    <input
+                      className="input"
+                      value={form.username}
+                      onChange={e => setForm({ ...form, username: e.target.value })}
+                      placeholder="VD: npp_thanhcong (để trống sẽ tự tạo)"
+                    />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label>{editingDistributor ? 'Mật khẩu mới (để trống nếu giữ nguyên)' : 'Mật khẩu đăng nhập'}</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={form.password}
+                      onChange={e => setForm({ ...form, password: e.target.value })}
+                      placeholder={editingDistributor ? 'Nhập mật khẩu mới (>= 6 ký tự)...' : 'VD: 123456 (tối thiểu 6 ký tự)'}
+                    />
+                  </div>
                 </div>
 
                 {/* Thông tin chi tiết — Rich Text Editor */}

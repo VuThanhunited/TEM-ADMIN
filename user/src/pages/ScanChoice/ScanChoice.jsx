@@ -34,6 +34,17 @@ export default function ScanChoice() {
     try {
       const result = await userApi.getPublicScan(code);
       setScanData(result);
+
+      // Nếu NPP đang trong phiên "Quét tiếp" cho 1 Điểm bán đã chọn (chưa bấm Dừng),
+      // tự động chuyển sang gán mã kế tiếp cho điểm bán đó luôn (Bước 4)
+      const activeSessionRaw = localStorage.getItem('npp_active_store_session');
+      if (activeSessionRaw && isLoggedIn && ['NPP', 'NSX', 'ADMIN'].includes(user?.role)) {
+        navigate(`/select-store?code=${encodeURIComponent(code)}&autoAssign=1`, {
+          replace: true,
+          state: { scanData: result, serial: code }
+        });
+        return;
+      }
     } catch (err) {
       const msg = err.message || '';
       if (msg.includes('kết nối') || msg.includes('timeout') || msg.includes('network')) {
@@ -56,9 +67,10 @@ export default function ScanChoice() {
   };
 
   const handleNppEntry = () => {
-    // Form bổ sung thông tin KH sở hữu – luôn mang theo mã tem trên URL để không phải quét lại
-    const target = `/select-store?code=${encodeURIComponent(code)}`;
-    if (!isLoggedIn || !['NPP', 'NSX'].includes(user?.role)) {
+    // Form bổ sung thông tin KH sở hữu / Chọn Điểm bán – luôn mang theo mã tem trên URL để không phải quét lại
+    const hasActiveStore = Boolean(localStorage.getItem('npp_active_store_session'));
+    const target = `/select-store?code=${encodeURIComponent(code)}${hasActiveStore ? '&autoAssign=1' : ''}`;
+    if (!isLoggedIn || !['NPP', 'NSX', 'ADMIN'].includes(user?.role)) {
       // Save intended destination and redirect to login
       sessionStorage.setItem('npp_redirect_after_login', JSON.stringify({ path: target }));
       navigate('/login?tab=npp');

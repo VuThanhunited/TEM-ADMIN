@@ -24,6 +24,14 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  bannerImage: {
+    type: String,
+    default: ''
+  },
+  theme: {
+    type: String,
+    default: ''
+  },
   name: {
     type: String,
     required: true,

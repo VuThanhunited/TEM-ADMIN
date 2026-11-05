@@ -6,6 +6,214 @@ import {
 } from 'lucide-react';
 import './Enterprise.css';
 
+// Helper upload ảnh cho Doanh nghiệp
+function EnterpriseImageField({ label, value, onChange, placeholder, helpText, isBanner = false }) {
+  const [mode, setMode] = useState('upload'); // 'upload' | 'url'
+  const [uploading, setUploading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const fileInputRef = useRef(null);
+
+  const hasValue = Boolean(value && typeof value === 'string' && value.trim());
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErrorMsg('');
+    setUploading(true);
+
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Dung lượng ảnh tối đa 5MB');
+      }
+
+      // Thử upload qua API backend trước
+      let uploadedUrl = null;
+      try {
+        const res = await api.uploadImage(file);
+        if (res && res.url) {
+          uploadedUrl = res.url;
+        }
+      } catch (err) {
+        console.warn('Upload API không khả dụng, sử dụng bộ đọc ảnh trực tiếp:', err);
+      }
+
+      if (uploadedUrl) {
+        onChange(uploadedUrl);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          onChange(ev.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Lỗi tải ảnh');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <label className="label" style={{ marginBottom: 0, fontWeight: 600 }}>{label}</label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.76rem',
+              color: mode === 'upload' ? 'var(--color-primary-light, #818cf8)' : 'var(--color-text-muted)',
+              fontWeight: mode === 'upload' ? 700 : 400, textDecoration: mode === 'upload' ? 'underline' : 'none'
+            }}
+          >
+            Tải từ máy
+          </button>
+          <span style={{ fontSize: '0.75rem', opacity: 0.4 }}>|</span>
+          <button
+            type="button"
+            onClick={() => setMode('url')}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.76rem',
+              color: mode === 'url' ? 'var(--color-primary-light, #818cf8)' : 'var(--color-text-muted)',
+              fontWeight: mode === 'url' ? 700 : 400, textDecoration: mode === 'url' ? 'underline' : 'none'
+            }}
+          >
+            Nhập URL
+          </button>
+        </div>
+      </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      {mode === 'url' ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="text"
+            className="input"
+            style={{ flex: 1 }}
+            placeholder={placeholder || 'https://...'}
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {hasValue && (
+            <img
+              src={value}
+              alt={label}
+              style={{
+                width: isBanner ? 80 : 44,
+                height: 44,
+                objectFit: isBanner ? 'cover' : 'contain',
+                borderRadius: 6,
+                border: '1px solid rgba(255,255,255,0.2)',
+                background: '#fff'
+              }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          )}
+          {hasValue && (
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+              title="Xóa ảnh"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      ) : (
+        <div>
+          {hasValue ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: 'rgba(99,102,241,0.08)',
+              border: '1px solid rgba(99,102,241,0.25)'
+            }}>
+              <img
+                src={value}
+                alt={label}
+                style={{
+                  width: isBanner ? 100 : 48,
+                  height: isBanner ? 46 : 48,
+                  objectFit: isBanner ? 'cover' : 'contain',
+                  borderRadius: 6,
+                  background: '#ffffff',
+                  border: '1px solid rgba(0,0,0,0.1)'
+                }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <CheckCircle size={13} color="#22c55e" /> Ảnh đã lưu
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {value.startsWith('data:') ? 'Ảnh đã mã hóa từ thiết bị' : value}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="btn btn-outline btn-sm"
+                style={{ height: 28, fontSize: '0.75rem', padding: '0 8px', gap: 4 }}
+              >
+                <Upload size={12} /> {uploading ? 'Đang tải...' : 'Đổi ảnh'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+                title="Xóa ảnh"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={{
+                width: '100%',
+                padding: isBanner ? '14px 12px' : '10px 12px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                border: '1px dashed rgba(99,102,241,0.4)',
+                background: 'rgba(99,102,241,0.04)',
+                color: 'var(--color-primary-light, #818cf8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                fontSize: '0.84rem',
+                fontWeight: 500
+              }}
+            >
+              <Upload size={15} />
+              {uploading ? 'Đang xử lý ảnh...' : (isBanner ? 'Tải ảnh Banner đầu trang (Khuyên dùng tỉ lệ 16:9 hoặc 3:1)' : 'Tải Logo Doanh Nghiệp (PNG trong suốt hoặc JPG)')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {helpText && <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{helpText}</span>}
+      {errorMsg && <span style={{ fontSize: '0.76rem', color: '#ef4444' }}>{errorMsg}</span>}
+    </div>
+  );
+}
+
 export default function Enterprise() {
   const { user, isAdmin, enterpriseId } = useAuth();
 
@@ -28,7 +236,7 @@ export default function Enterprise() {
   const [togglingId, setTogglingId] = useState(null);
 
   // Modal Form Data
-  const [formData, setFormData] = useState({
+  const defaultFormData = {
     name: '',
     type: 'NSX',
     taxCode: '',
@@ -36,12 +244,17 @@ export default function Enterprise() {
     email: '',
     address: '',
     website: '',
+    logo: '',
+    bannerImage: '',
     partnerDetails: '',
     domain: '',
     subdomain: '',
+    brandConfig: { primaryColor: '#6366f1', secondaryColor: '#4f46e5' },
     chatbotConfig: { enabled: false, script: '', welcomeMessage: '' },
-    displayConfig: { showRelatedProducts: true, defaultTheme: 'default' }
-  });
+    displayConfig: { showRelatedProducts: true, defaultTheme: 'default', distributionBannerText: '', bannerImage: '' }
+  };
+
+  const [formData, setFormData] = useState({ ...defaultFormData });
 
   // Rich Text Editor State inside Modal
   const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
@@ -96,20 +309,7 @@ export default function Enterprise() {
     setModalMode('CREATE');
     setEditingId(null);
     setActiveModalTab('info');
-    setFormData({
-      name: '',
-      type: 'NSX',
-      taxCode: '',
-      phone: '',
-      email: '',
-      address: '',
-      website: '',
-      partnerDetails: '',
-      domain: '',
-      subdomain: '',
-      chatbotConfig: { enabled: false, script: '', welcomeMessage: '' },
-      displayConfig: { showRelatedProducts: true, defaultTheme: 'default' }
-    });
+    setFormData({ ...defaultFormData });
     setEditorMode('visual');
     setIsModalOpen(true);
 
@@ -133,11 +333,22 @@ export default function Enterprise() {
       email: ent.email || '',
       address: ent.address || '',
       website: ent.website || '',
+      logo: ent.logo || '',
+      bannerImage: ent.bannerImage || ent.displayConfig?.bannerImage || '',
       partnerDetails: ent.partnerDetails || '',
       domain: ent.domain || '',
       subdomain: ent.subdomain || '',
+      brandConfig: {
+        primaryColor: ent.brandConfig?.primaryColor || '#6366f1',
+        secondaryColor: ent.brandConfig?.secondaryColor || '#4f46e5'
+      },
       chatbotConfig: ent.chatbotConfig || { enabled: false, script: '', welcomeMessage: '' },
-      displayConfig: ent.displayConfig || { showRelatedProducts: true, defaultTheme: 'default' }
+      displayConfig: {
+        showRelatedProducts: ent.displayConfig?.showRelatedProducts !== false,
+        defaultTheme: ent.displayConfig?.defaultTheme || 'default',
+        distributionBannerText: ent.displayConfig?.distributionBannerText || '',
+        bannerImage: ent.displayConfig?.bannerImage || ent.bannerImage || ''
+      }
     });
     setEditorMode('visual');
     setIsModalOpen(true);
@@ -288,13 +499,21 @@ export default function Enterprise() {
 
     setSaving(true);
     try {
+      const payload = {
+        ...formData,
+        displayConfig: {
+          ...formData.displayConfig,
+          bannerImage: formData.bannerImage || formData.displayConfig?.bannerImage || ''
+        }
+      };
+
       if (modalMode === 'CREATE') {
-        const created = await api.createEnterprise(formData);
+        const created = await api.createEnterprise(payload);
         alert('Tạo doanh nghiệp mới thành công!');
         setIsModalOpen(false);
         setEnterprises(prev => [...prev, created]);
       } else {
-        const updated = await api.updateEnterprise(editingId, formData);
+        const updated = await api.updateEnterprise(editingId, payload);
         alert('Cập nhật thông tin doanh nghiệp thành công!');
         setIsModalOpen(false);
         setEnterprises(prev => prev.map(item => item._id === updated._id ? updated : item));
@@ -661,7 +880,7 @@ export default function Enterprise() {
                 className={`modal-tab-btn ${activeModalTab === 'domainChatbot' ? 'active' : ''}`}
                 onClick={() => setActiveModalTab('domainChatbot')}
               >
-                <Globe size={16} /> Cấu hình Domain & Chatbot
+                <Globe size={16} /> Domain, Chatbot & Giao diện
               </button>
             </div>
 
@@ -748,6 +967,37 @@ export default function Enterprise() {
                         value={formData.website}
                         onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
                       />
+                    </div>
+
+                    {/* Khối Hình ảnh Thương hiệu & Nhận diện trên Client */}
+                    <div style={{ gridColumn: 'span 2', marginTop: 10, padding: '16px 18px', background: 'rgba(99, 102, 241, 0.04)', borderRadius: 12, border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', color: 'var(--color-primary-light, #818cf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ImageIcon size={16} /> Hình Ảnh Nhận Diện Thương Hiệu trên Trang Quét Tem (Client)
+                      </h4>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                        <EnterpriseImageField
+                          label="Logo Doanh Nghiệp"
+                          value={formData.logo}
+                          onChange={(url) => setFormData(prev => ({ ...prev, logo: url }))}
+                          placeholder="https://.../logo.png"
+                          helpText="Hiển thị trên Header của trang quét mã tem, namecard và giấy chứng nhận."
+                          isBanner={false}
+                        />
+
+                        <EnterpriseImageField
+                          label="Banner Mặc Định của Doanh Nghiệp"
+                          value={formData.bannerImage}
+                          onChange={(url) => setFormData(prev => ({
+                            ...prev,
+                            bannerImage: url,
+                            displayConfig: { ...prev.displayConfig, bannerImage: url }
+                          }))}
+                          placeholder="https://.../banner-hero.jpg"
+                          helpText="Hero Banner lớn hiển thị đầu trang khi quét tem (nếu sản phẩm chưa cài banner riêng)."
+                          isBanner={true}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -854,7 +1104,7 @@ export default function Enterprise() {
                   </div>
                 )}
 
-                {/* TAB 3: CẤU HÌNH DOMAIN & CHATBOT */}
+                {/* TAB 3: CẤU HÌNH DOMAIN, CHATBOT & GIAO DIỆN CLIENT */}
                 {activeModalTab === 'domainChatbot' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     {/* Domain Box */}
@@ -942,14 +1192,15 @@ export default function Enterprise() {
                       )}
                     </div>
 
-                    {/* Display Config Box */}
+                    {/* Display & Theme Config Box */}
                     <div style={{ background: 'var(--color-bg-primary)', padding: 18, borderRadius: 12, border: '1px solid var(--color-border)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                         <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-primary-light)' }}>
-                          <Eye size={18} /> Cài đặt Hiển thị Giao diện Tem
+                          <Eye size={18} /> Cài đặt Hiển thị & Giao diện Tem Client
                         </h4>
                       </div>
 
+                      {/* On/Off Related Products */}
                       <label className="toggle-label" style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                         <input
                           type="checkbox"
@@ -978,7 +1229,7 @@ export default function Enterprise() {
                       {/* Default Theme Selector */}
                       <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
                         <label className="label" style={{ marginBottom: 6, fontWeight: 700 }}>
-                          🎨 Giao diện Tem Mặc định (Default Theme)
+                          🎨 Giao diện Tem Mặc định (Default Theme Cho Toàn Bộ Sản Phẩm)
                         </label>
                         <select
                           className="input"
@@ -989,17 +1240,95 @@ export default function Enterprise() {
                           }))}
                         >
                           <option value="default">🔲 Tự động nhận diện theo danh mục sản phẩm</option>
+                          <option value="appliance">🔧 Điện gia dụng & Bảo hành điện tử (Navy & Vàng)</option>
+                          <option value="medical">⚕️ Dược phẩm & Y tế chuẩn GMP-WHO (Xanh Teal)</option>
+                          <option value="functional_food">🌿 Thực phẩm chức năng & Dinh dưỡng (Xanh lá thiên nhiên)</option>
+                          <option value="ocop">🏅 OCOP & Nông đặc sản vùng miền (Vàng đồng & Nâu xanh)</option>
                           <option value="staycool">🇫🇷 StayCool / VYPHYTO France (Giao diện Cam chuyên biệt)</option>
-                          <option value="functional_food">🌿 Thực phẩm chức năng / TPCN (Xanh lá)</option>
-                          <option value="cosmetics">💄 Mỹ phẩm & Làm đẹp (Hồng/Đỏ)</option>
-                          <option value="medical">⚕️ Dược phẩm & Y tế (Xanh teal)</option>
-                          <option value="appliance">🔧 Điện gia dụng & Bảo hành (Xanh navy)</option>
-                          <option value="agriculture">🌾 Nông sản & Hợp tác xã (Xanh đậm)</option>
-                          <option value="ocop">🏅 OCOP & Đặc sản vùng miền (Vàng/Nâu)</option>
+                          <option value="agriculture">🌾 Nông sản & Hợp tác xã VietGAP (Xanh đậm)</option>
+                          <option value="cosmetics">💄 Mỹ phẩm & Chăm sóc sắc đẹp (Hồng tím & Gold)</option>
                         </select>
                         <p style={{ marginTop: 6, fontSize: '0.78rem', opacity: 0.55, lineHeight: 1.5 }}>
-                          Khi chọn, tất cả mã tem của doanh nghiệp này sẽ hiển thị giao diện đã chọn, bất kể danh mục sản phẩm.
+                          Khi chọn một theme cụ thể, tất cả mã tem của doanh nghiệp này sẽ mặc định hiển thị giao diện này (trừ khi sản phẩm được gán theme riêng).
                         </p>
+                      </div>
+
+                      {/* Default Distribution Banner Slogan */}
+                      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
+                        <label className="label" style={{ marginBottom: 6, fontWeight: 700 }}>
+                          🏷️ Tiêu Đề Banner Slogan Mặc Định (Thanh thông báo trên tem)
+                        </label>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="VD: SẢN PHẨM CỦA VINSUMI NHẬP KHẨU VÀ PHÂN PHỐI CHÍNH HÃNG"
+                          value={formData.displayConfig?.distributionBannerText || ''}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            displayConfig: { ...prev.displayConfig, distributionBannerText: e.target.value }
+                          }))}
+                        />
+                        <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                          Nếu để trống, hệ thống sẽ tự động ghép tên công ty: <em>SẢN PHẨM CỦA [TÊN DOANH NGHIỆP] NHẬP KHẨU VÀ PHÂN PHỐI</em>.
+                        </span>
+                      </div>
+
+                      {/* Brand Colors */}
+                      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
+                        <label className="label" style={{ marginBottom: 10, fontWeight: 700 }}>
+                          🎨 Màu Sắc Nhận Diện Thương Hiệu (Brand Colors)
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                          <div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: 4 }}>Màu chủ đạo (Primary Color)</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input
+                                type="color"
+                                value={formData.brandConfig?.primaryColor || '#6366f1'}
+                                onChange={(e) => setFormData(prev => ({
+                                  ...prev,
+                                  brandConfig: { ...prev.brandConfig, primaryColor: e.target.value }
+                                }))}
+                                style={{ width: 44, height: 38, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'transparent' }}
+                              />
+                              <input
+                                type="text"
+                                className="input"
+                                value={formData.brandConfig?.primaryColor || '#6366f1'}
+                                onChange={(e) => setFormData(prev => ({
+                                  ...prev,
+                                  brandConfig: { ...prev.brandConfig, primaryColor: e.target.value }
+                                }))}
+                                style={{ fontFamily: 'monospace', width: 110, fontSize: '0.85rem' }}
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: 4 }}>Màu phụ (Secondary Color)</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input
+                                type="color"
+                                value={formData.brandConfig?.secondaryColor || '#4f46e5'}
+                                onChange={(e) => setFormData(prev => ({
+                                  ...prev,
+                                  brandConfig: { ...prev.brandConfig, secondaryColor: e.target.value }
+                                }))}
+                                style={{ width: 44, height: 38, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'transparent' }}
+                              />
+                              <input
+                                type="text"
+                                className="input"
+                                value={formData.brandConfig?.secondaryColor || '#4f46e5'}
+                                onChange={(e) => setFormData(prev => ({
+                                  ...prev,
+                                  brandConfig: { ...prev.brandConfig, secondaryColor: e.target.value }
+                                }))}
+                                style={{ fontFamily: 'monospace', width: 110, fontSize: '0.85rem' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

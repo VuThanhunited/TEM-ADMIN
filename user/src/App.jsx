@@ -116,8 +116,8 @@ function NppProtectedRoute({ children }) {
     );
   }
 
-  // Cho phép NPP, NSX và ADMIN (khi impersonating với role NPP)
-  const allowedRoles = ['NPP', 'NSX'];
+  // Cho phép NPP, NSX và ADMIN
+  const allowedRoles = ['NPP', 'NSX', 'ADMIN'];
   if (!isLoggedIn || !allowedRoles.includes(user?.role)) {
     return <Navigate to="/login?tab=npp" replace />;
   }

@@ -10,9 +10,20 @@ const Template = require('../models/Template');
 const ScanLog = require('../models/ScanLog');
 const User = require('../models/User');
 const Namecard = require('../models/Namecard');
+const RetailStore = require('../models/RetailStore');
 
 // URL hệ thống chính – dùng làm fallback khi batch không có customDomain
 const ADMIN_URL = process.env.USER_PAGE_URL || 'https://www.giaiphapqrcode.vn';
+
+// Helper: bỏ dấu tiếng Việt để tìm kiếm gần đúng (VD: gõ "thanh" ra "Thành", "Thánh", "Thạnh")
+const removeVietnameseTones = (str = '') =>
+  String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
 
 // Helper: escape ký tự đặc biệt trước khi đưa input vào RegExp
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -561,18 +572,72 @@ router.post('/scan/:serial/location', async (req, res) => {
   }
 });
 
-// GET /api/public/distributors/:enterpriseId - Get list of NPP accounts for an enterprise
+// GET /api/public/distributors/:enterpriseId - Get list of NPP accounts & saved distributors for an enterprise
 router.get('/distributors/:enterpriseId', async (req, res) => {
   try {
     const { enterpriseId } = req.params;
-    const distributors = await User.find({
-      enterpriseId,
-      role: 'NPP',
-      isActive: true
-    }).select('fullName username _id');
+    const [nppUsers, enterprise, productsWithDist, assignedLabels] = await Promise.all([
+      User.find({
+        enterpriseId,
+        role: 'NPP',
+        isActive: true
+      }).select('fullName username address phone _id').lean(),
+      Enterprise.findById(enterpriseId).select('name address phone').lean(),
+      Product.find({ enterpriseId }).select('distributors').lean(),
+      Label.find({
+        enterpriseId,
+        $or: [
+          { distributorName: { $nin: [null, ''] } },
+          { 'ownerInfo.name': { $nin: [null, ''] } }
+        ]
+      }).select('distributorName distributorAddress ownerInfo').limit(200).lean()
+    ]);
 
-    // Also include enterprise name as option
-    const enterprise = await Enterprise.findById(enterpriseId).select('name');
+    const seenNames = new Set();
+    const distributors = [];
+
+    const addDistributorOption = (item) => {
+      const cleanName = (item.fullName || item.name || item.username || '').trim();
+      if (!cleanName) return;
+      const key = cleanName.toLowerCase();
+      if (seenNames.has(key)) return;
+      seenNames.add(key);
+      distributors.push({
+        _id: item._id || `dist_${distributors.length + 1}`,
+        fullName: cleanName,
+        username: item.username || cleanName,
+        address: (item.address || '').trim(),
+        phone: (item.phone || '').trim()
+      });
+    };
+
+    (nppUsers || []).forEach(addDistributorOption);
+
+    (productsWithDist || []).forEach(prod => {
+      (prod.distributors || []).forEach(d => {
+        addDistributorOption({
+          fullName: d.name,
+          address: d.address,
+          phone: d.phone
+        });
+      });
+    });
+
+    (assignedLabels || []).forEach(lbl => {
+      if (lbl.ownerInfo?.name) {
+        addDistributorOption({
+          fullName: lbl.ownerInfo.name,
+          address: lbl.ownerInfo.address || lbl.distributorAddress || '',
+          phone: lbl.ownerInfo.phone || ''
+        });
+      }
+      if (lbl.distributorName) {
+        addDistributorOption({
+          fullName: lbl.distributorName,
+          address: lbl.distributorAddress || ''
+        });
+      }
+    });
 
     res.json({
       distributors,
@@ -593,9 +658,13 @@ router.post('/npp-login', async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu' });
     }
 
-    // Tìm tài khoản NSX, NPP hoặc ADMIN
+    const cleanUser = String(username).trim();
+    // Tìm tài khoản NSX, NPP hoặc ADMIN (hỗ trợ không phân biệt hoa thường trên điện thoại)
     const user = await User.findOne({
-      $or: [{ username }, { email: username }],
+      $or: [
+        { username: { $regex: new RegExp(`^${escapeRegex(cleanUser)}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${escapeRegex(cleanUser)}$`, 'i') } }
+      ],
       role: { $in: ['NPP', 'NSX', 'ADMIN'] }
     }).populate('enterpriseId');
 
@@ -718,41 +787,330 @@ router.post('/distributor-entry', async (req, res) => {
   }
 });
 
+// Helper: Xác thực token cho các API Điểm bán & Phân phối (NPP / NSX / ADMIN)
+async function verifyNppOrAdminRequest(req, res) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Yêu cầu đăng nhập' });
+    return null;
+  }
+  const token = authHeader.split(' ')[1];
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
+  } catch {
+    res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
+    return null;
+  }
+  if (!['NPP', 'NSX', 'ADMIN'].includes(decoded.role)) {
+    res.status(403).json({ error: 'Không có quyền truy cập' });
+    return null;
+  }
+  const user = await User.findById(decoded.userId).populate('enterpriseId');
+  if (!user) {
+    res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    return null;
+  }
+  return { user, decoded };
+}
+
+// Helper: Tạo filter lấy danh sách Điểm bán theo quyền tài khoản
+function buildRetailStoreFilter(user, decoded, queryEnterpriseId) {
+  if (decoded.role === 'ADMIN' && !decoded.isAdminImpersonating) {
+    return queryEnterpriseId ? { enterpriseId: queryEnterpriseId } : {};
+  }
+  const conditions = [{ ownerUserId: user._id }];
+  const entId = user.enterpriseId?._id || user.enterpriseId;
+  if (entId) {
+    conditions.push({ enterpriseId: entId });
+  }
+  return { $or: conditions };
+}
+
+// GET /api/public/retail-stores - Danh sách Điểm bán + tìm kiếm gần đúng tiếng Việt + lịch sử serial vừa bán
+router.get('/retail-stores', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const { search = '', enterpriseId = '', includeStats = '1' } = req.query;
+    const filter = buildRetailStoreFilter(user, decoded, enterpriseId);
+
+    let stores = await RetailStore.find(filter).sort({ createdAt: -1 }).lean();
+
+    // Lọc & sắp xếp gần đúng nhất theo từ khóa (hỗ trợ cả có dấu và không dấu: gõ "thanh" ra "Thành", "Thánh", "Thạnh"...)
+    const rawSearch = String(search || '').trim();
+    if (rawSearch) {
+      const qLower = rawSearch.toLowerCase();
+      const qNoTone = removeVietnameseTones(rawSearch);
+
+      const scored = [];
+      for (const s of stores) {
+        const nameLower = String(s.name || '').toLowerCase();
+        const nameNoTone = removeVietnameseTones(s.name || '');
+        const addrNoTone = removeVietnameseTones(s.address || '');
+        const phoneStr = String(s.phone || '').toLowerCase();
+
+        let score = 0;
+        if (nameLower.startsWith(qLower) || nameNoTone.startsWith(qNoTone)) {
+          score = 100;
+        } else if (
+          nameLower.split(/\s+/).some(w => w.startsWith(qLower)) ||
+          nameNoTone.split(/\s+/).some(w => w.startsWith(qNoTone))
+        ) {
+          score = 80;
+        } else if (nameLower.includes(qLower) || nameNoTone.includes(qNoTone)) {
+          score = 60;
+        } else if (addrNoTone.includes(qNoTone) || phoneStr.includes(qLower)) {
+          score = 40;
+        }
+
+        if (score > 0) {
+          scored.push({ store: s, score });
+        }
+      }
+
+      scored.sort((a, b) => b.score - a.score);
+      stores = scored.map(item => item.store);
+    }
+
+    // Bổ sung dữ liệu serial vừa bán + thời gian cho từng Điểm bán (Bước 5)
+    if (includeStats !== '0' && stores.length > 0) {
+      const enrichedStores = await Promise.all(
+        stores.map(async (store) => {
+          const labelQuery = {
+            $or: [
+              { storeId: store._id },
+              { distributorName: store.name },
+              { 'ownerInfo.name': store.name }
+            ]
+          };
+          const [totalSerials, recentLabels] = await Promise.all([
+            Label.countDocuments(labelQuery),
+            Label.find(labelQuery)
+              .populate('productId', 'name')
+              .sort({ distributedAt: -1, updatedAt: -1 })
+              .limit(10)
+              .select('serialNumber productId ownerCode distributedAt ownerInfo updatedAt')
+              .lean()
+          ]);
+
+          const recentSales = recentLabels.map((lbl) => ({
+            _id: lbl._id,
+            serialNumber: lbl.serialNumber,
+            productName: lbl.productId?.name || 'Sản phẩm',
+            ownerCode: lbl.ownerCode || lbl.serialNumber,
+            soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
+          }));
+
+          return {
+            ...store,
+            totalSerials,
+            recentSales,
+            lastSoldSerial: recentSales[0]?.serialNumber || null,
+            lastSoldAt: recentSales[0]?.soldAt || null
+          };
+        })
+      );
+      stores = enrichedStores;
+    }
+
+    res.json({
+      success: true,
+      data: stores,
+      total: stores.length
+    });
+  } catch (error) {
+    console.error('Get retail stores error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách điểm bán' });
+  }
+});
+
+// GET /api/public/retail-stores/:id/serials - Xem toàn bộ serial + thời gian đã bán của 1 Điểm bán
+router.get('/retail-stores/:id/serials', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+
+    const store = await RetailStore.findById(req.params.id).lean();
+    if (!store) {
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán' });
+    }
+
+    const labelQuery = {
+      $or: [
+        { storeId: store._id },
+        { distributorName: store.name },
+        { 'ownerInfo.name': store.name }
+      ]
+    };
+
+    const labels = await Label.find(labelQuery)
+      .populate('productId', 'name sku category')
+      .populate('batchId', 'batchCode')
+      .sort({ distributedAt: -1, updatedAt: -1 })
+      .limit(500)
+      .lean();
+
+    const serials = labels.map((lbl) => ({
+      _id: lbl._id,
+      serialNumber: lbl.serialNumber,
+      productName: lbl.productId?.name || 'Sản phẩm',
+      batchCode: lbl.batchId?.batchCode || '—',
+      ownerCode: lbl.ownerCode || lbl.serialNumber,
+      soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
+    }));
+
+    res.json({
+      success: true,
+      store,
+      data: serials,
+      total: serials.length
+    });
+  } catch (error) {
+    console.error('Get retail store serials error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách serial của điểm bán' });
+  }
+});
+
+// POST /api/public/retail-stores - Tạo mới Điểm bán (Tên điểm bán / Địa chỉ / Điện thoại liên hệ)
+router.post('/retail-stores', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user } = authCtx;
+
+    const { name, address = '', phone = '', enterpriseId } = req.body;
+    const cleanName = String(name || '').trim();
+    if (!cleanName) {
+      return res.status(400).json({ error: 'Vui lòng nhập tên điểm bán' });
+    }
+
+    const targetEntId = enterpriseId || user.enterpriseId?._id || user.enterpriseId || null;
+
+    const store = new RetailStore({
+      name: cleanName,
+      address: String(address || '').trim(),
+      phone: String(phone || '').trim(),
+      ownerUserId: user._id,
+      enterpriseId: targetEntId,
+      isActive: true
+    });
+    await store.save();
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...store.toObject(),
+        totalSerials: 0,
+        recentSales: []
+      },
+      message: 'Thêm điểm bán thành công'
+    });
+  } catch (error) {
+    console.error('Create retail store error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi thêm điểm bán' });
+  }
+});
+
+// PUT /api/public/retail-stores/:id - Cập nhật thông tin Điểm bán
+router.put('/retail-stores/:id', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+
+    const { name, address, phone, isActive } = req.body;
+    const store = await RetailStore.findById(req.params.id);
+    if (!store) {
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán' });
+    }
+
+    const oldName = store.name;
+    if (name !== undefined && String(name).trim()) store.name = String(name).trim();
+    if (address !== undefined) store.address = String(address).trim();
+    if (phone !== undefined) store.phone = String(phone).trim();
+    if (isActive !== undefined) store.isActive = Boolean(isActive);
+
+    await store.save();
+
+    // Đồng bộ tên/địa chỉ/SĐT trên các tem đã gắn với điểm bán này
+    await Label.updateMany(
+      { $or: [{ storeId: store._id }, { distributorName: oldName }] },
+      {
+        $set: {
+          storeId: store._id,
+          distributorName: store.name,
+          distributorAddress: store.address,
+          'ownerInfo.name': store.name,
+          'ownerInfo.address': store.address,
+          'ownerInfo.phone': store.phone
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      data: store,
+      message: 'Cập nhật điểm bán thành công'
+    });
+  } catch (error) {
+    console.error('Update retail store error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật điểm bán' });
+  }
+});
+
+// DELETE /api/public/retail-stores/:id - Xóa Điểm bán
+router.delete('/retail-stores/:id', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+
+    const store = await RetailStore.findByIdAndDelete(req.params.id);
+    if (!store) {
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Đã xóa điểm bán thành công'
+    });
+  } catch (error) {
+    console.error('Delete retail store error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xóa điểm bán' });
+  }
+});
+
 // GET /api/public/npp-stores - Get list of distributor stores for the logged-in NPP
 router.get('/npp-stores', async (req, res) => {
   try {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Yêu cầu đăng nhập' });
-    }
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
 
-    const token = authHeader.split(' ')[1];
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure');
-    } catch {
-      return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn' });
-    }
+    const filter = buildRetailStoreFilter(user, decoded);
+    const retailStores = await RetailStore.find({ ...filter, isActive: true }).sort({ createdAt: -1 }).lean();
 
-    // Cho phép NPP, NSX hoặc Admin đang impersonate
-    if (!['NPP', 'NSX'].includes(decoded.role)) {
-      return res.status(403).json({ error: 'Chỉ tài khoản NSX/NPP mới được truy cập' });
-    }
+    const mappedStores = retailStores.map(s => ({
+      id: s._id,
+      _id: s._id,
+      name: s.name,
+      address: s.address || '',
+      phone: s.phone || ''
+    }));
 
-    const user = await User.findById(decoded.userId).populate('enterpriseId');
-    if (!user) {
-      return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+    if (mappedStores.length === 0) {
+      mappedStores.push({
+        id: user._id,
+        _id: user._id,
+        name: (decoded.isAdminImpersonating ? 'Admin - ' : '') + (user.fullName || user.username),
+        address: user.address || '',
+        phone: user.phone || ''
+      });
     }
-
-    // Admin impersonating: trả về thông tin admin như một NPP store
-    const stores = [user];
 
     res.json({
-      stores: stores.map(s => ({
-        id: s._id,
-        name: (decoded.isAdminImpersonating ? 'Admin - ' : '') + (s.fullName || s.username),
-        address: s.address || ''
-      })),
+      stores: mappedStores,
       enterpriseName: decoded.isAdminImpersonating ? 'Quản trị viên' : (user.enterpriseId?.name || '')
     });
   } catch (error) {
@@ -777,8 +1135,8 @@ router.post('/distributor-entry-single', async (req, res) => {
       return res.status(401).json({ error: 'Token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
     }
 
-    // Cho phép NPP, NSX hoặc Admin đang impersonate
-    if (!['NPP', 'NSX'].includes(decoded.role)) {
+    // Cho phép NPP, NSX hoặc Admin
+    if (!['NPP', 'NSX', 'ADMIN'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Chỉ tài khoản NSX/NPP mới được nhập dữ liệu phân phối' });
     }
 
@@ -788,7 +1146,7 @@ router.post('/distributor-entry-single', async (req, res) => {
     }
 
     const {
-      serialNumber, distributorName, distributorAddress, ownerCode,
+      serialNumber, storeId, distributorName, distributorAddress, ownerCode,
       ownerName, ownerAddress, ownerPhone, activatedSerial
     } = req.body;
 
@@ -805,21 +1163,68 @@ router.post('/distributor-entry-single', async (req, res) => {
         { legacyQrCode: { $regex: new RegExp(escapeRegex(cleanCode) + '$', 'i') } },
         { activeCode: cleanCode }
       ]
-    });
+    }).populate('productId', 'name');
 
     if (!label) {
       return res.status(404).json({ error: 'Không tìm thấy tem nhãn với serial này' });
     }
 
-    // Bổ sung thông tin khách hàng sở hữu (chỉ khi form gửi các trường này)
-    const isOwnerUpdate = ownerName !== undefined || ownerPhone !== undefined || activatedSerial !== undefined || ownerCode !== undefined;
+    // Nếu người quét chọn 1 Điểm bán từ danh sách (storeId) hoặc nhập tên Điểm bán
+    let linkedStore = null;
+    if (storeId) {
+      linkedStore = await RetailStore.findById(storeId).catch(() => null);
+    }
+
+    const inputStoreName = (typeof ownerName === 'string' && ownerName.trim())
+      ? ownerName.trim()
+      : (typeof distributorName === 'string' && distributorName.trim())
+        ? distributorName.trim()
+        : (linkedStore ? linkedStore.name : '');
+    const inputStoreAddr = (typeof ownerAddress === 'string' && ownerAddress.trim())
+      ? ownerAddress.trim()
+      : (typeof distributorAddress === 'string' && distributorAddress.trim())
+        ? distributorAddress.trim()
+        : (linkedStore ? linkedStore.address : '');
+    const inputStorePhone = (typeof ownerPhone === 'string' && ownerPhone.trim())
+      ? ownerPhone.trim().replace(/[\s.\-]/g, '')
+      : (linkedStore ? linkedStore.phone : '');
+
+    // Nếu chưa có linkedStore nhưng người dùng có nhập tên Điểm bán -> tìm hoặc tự động thêm vào bảng Điểm bán
+    if (!linkedStore && inputStoreName) {
+      const storeFilter = buildRetailStoreFilter(user, decoded);
+      linkedStore = await RetailStore.findOne({
+        ...storeFilter,
+        name: { $regex: new RegExp(`^${escapeRegex(inputStoreName)}$`, 'i') }
+      });
+      if (!linkedStore) {
+        linkedStore = await RetailStore.create({
+          name: inputStoreName,
+          address: inputStoreAddr || '',
+          phone: inputStorePhone || '',
+          ownerUserId: user._id,
+          enterpriseId: label.enterpriseId || user.enterpriseId?._id || user.enterpriseId || null,
+          isActive: true
+        });
+      }
+    }
+
+    const now = new Date();
+
+    // Bổ sung thông tin khách hàng / điểm bán sở hữu
+    const isOwnerUpdate = Boolean(
+      linkedStore ||
+      ownerName !== undefined ||
+      ownerPhone !== undefined ||
+      activatedSerial !== undefined ||
+      ownerCode !== undefined
+    );
+
     if (isOwnerUpdate) {
-      const name = typeof ownerName === 'string' ? ownerName.trim() : '';
-      const address = typeof ownerAddress === 'string' ? ownerAddress.trim() : '';
-      const phone = typeof ownerPhone === 'string' ? ownerPhone.replace(/[\s.\-]/g, '') : '';
+      const name = linkedStore ? linkedStore.name : inputStoreName;
+      const address = linkedStore ? (inputStoreAddr || linkedStore.address) : inputStoreAddr;
+      const phone = linkedStore ? (inputStorePhone || linkedStore.phone) : inputStorePhone;
       const inputSerial = typeof activatedSerial === 'string' ? activatedSerial.trim() : '';
 
-      // Các trường 1, 2, 3 không bắt buộc theo yêu cầu khách hàng
       if (name && name.length > 200) return res.status(400).json({ error: 'Tên quá dài (tối đa 200 ký tự)' });
       if (address && address.length > 500) return res.status(400).json({ error: 'Địa chỉ quá dài (tối đa 500 ký tự)' });
       if (phone && !/^(\+84|84|0)\d{9,10}$/.test(phone)) {
@@ -829,46 +1234,61 @@ router.post('/distributor-entry-single', async (req, res) => {
         return res.status(400).json({ error: 'Số serial không khớp với tem vừa quét. Vui lòng kiểm tra lại số in trên tem.' });
       }
 
-      const existingOwnerCode = Boolean(label.ownerCode && String(label.ownerCode).trim());
-      // Tem đã kích hoạt (đã có mã kích hoạt): NPP không được ghi đè (chỉ NSX được sửa)
-      if (existingOwnerCode && decoded.role === 'NPP') {
-        return res.status(409).json({ error: 'Tem này đã được kích hoạt thông tin khách hàng sở hữu trước đó. Liên hệ Nhà sản xuất nếu cần chỉnh sửa.' });
-      }
+      const finalOwnerCode = (ownerCode && typeof ownerCode === 'string' && ownerCode.trim())
+        ? ownerCode.trim()
+        : (linkedStore ? label.serialNumber : null);
 
-      const finalOwnerCode = (ownerCode && typeof ownerCode === 'string' && ownerCode.trim()) ? ownerCode.trim() : null;
       label.ownerInfo = {
         name: name || null,
         address: address || null,
         phone: phone || null,
         activatedSerial: finalOwnerCode || inputSerial || label.serialNumber,
-        activatedAt: finalOwnerCode ? new Date() : null,
+        activatedAt: (finalOwnerCode || name) ? now : null,
         activatedBy: user._id
       };
       label.ownerCode = finalOwnerCode;
     }
 
-    // Update the label
-    label.distributorName = distributorName || user.fullName || user.username;
-    label.distributorAddress = distributorAddress || user.enterpriseId?.address || '';
-    if (ownerCode !== undefined) {
+    // Update the label distributor & store fields
+    if (linkedStore) {
+      label.storeId = linkedStore._id;
+    }
+    label.distributorName = linkedStore
+      ? linkedStore.name
+      : (inputStoreName || label.distributorName || user.fullName || user.username);
+    label.distributorAddress = linkedStore
+      ? (inputStoreAddr || linkedStore.address || '')
+      : (inputStoreAddr || label.distributorAddress || user.enterpriseId?.address || '');
+    label.distributedAt = now;
+
+    if (ownerCode !== undefined && !linkedStore) {
       label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+    }
+    if (label.ownerCode && label.status === 'INACTIVE') {
+      label.status = 'ACTIVE';
     }
     await label.save();
 
     // Get total count for this store
     const totalForStore = await Label.countDocuments({
-      enterpriseId: label.enterpriseId,
-      distributorName: label.distributorName
+      $or: [
+        ...(label.storeId ? [{ storeId: label.storeId }] : []),
+        { enterpriseId: label.enterpriseId, distributorName: label.distributorName }
+      ]
     });
 
     res.json({
       success: true,
-      message: isOwnerUpdate ? 'Đã kích hoạt thông tin khách hàng sở hữu.' : 'Đã nhập hàng thành công.',
+      message: `Đã gán mã Serial ${label.serialNumber} cho điểm bán ${label.distributorName}.`,
       serialNumber: label.serialNumber,
+      productName: label.productId?.name || 'Sản phẩm',
       qrCode: label.qrCode,
+      storeId: label.storeId,
       distributorName: label.distributorName,
       distributorAddress: label.distributorAddress,
+      ownerPhone: label.ownerInfo?.phone || '',
       ownerCode: label.ownerCode,
+      distributedAt: label.distributedAt,
       totalForStore
     });
   } catch (error) {
@@ -882,7 +1302,8 @@ function buildNppLabelFilter(user) {
   const nppNames = [user.fullName, user.username, user.enterpriseId?.name].filter(Boolean);
   const conditions = [
     { distributorName: { $in: nppNames } },
-    { ownerCode: user.username }
+    { ownerCode: user.username },
+    { 'ownerInfo.activatedBy': user._id }
   ];
   if (user.enterpriseId) {
     const entId = user.enterpriseId._id || user.enterpriseId;
@@ -1357,11 +1778,15 @@ router.post('/guest-login', async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu' });
     }
 
-    // Tìm tài khoản GUEST hoặc ADMIN
+    const cleanUser = String(username).trim();
+    // Tìm tài khoản ADMIN, NSX, NPP hoặc GUEST
     const user = await User.findOne({
-      $or: [{ username }, { email: username }],
-      role: { $in: ['GUEST', 'ADMIN'] }
-    });
+      $or: [
+        { username: { $regex: new RegExp(`^${escapeRegex(cleanUser)}$`, 'i') } },
+        { email: { $regex: new RegExp(`^${escapeRegex(cleanUser)}$`, 'i') } }
+      ],
+      role: { $in: ['GUEST', 'ADMIN', 'NSX', 'NPP'] }
+    }).populate('enterpriseId');
 
     if (!user) {
       return res.status(401).json({ error: 'Tài khoản người dùng không tồn tại' });

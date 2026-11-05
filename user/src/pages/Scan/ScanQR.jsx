@@ -27,6 +27,19 @@ export default function ScanQR() {
   const [hasTorch, setHasTorch] = useState(false);
   const [detected, setDetected] = useState(false);
   const [detectedSerial, setDetectedSerial] = useState('');
+  const [activeStoreSession, setActiveStoreSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem('npp_active_store_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleStopStoreSession = () => {
+    localStorage.removeItem('npp_active_store_session');
+    setActiveStoreSession(null);
+  };
 
   // Áp dụng lấy nét liên tục (autofocus) và kiểm tra đèn flash trên điện thoại sau khi stream đã chạy
   const applyMobileCameraOptimizations = async () => {
@@ -213,9 +226,11 @@ export default function ScanQR() {
 
       try {
         const scanData = await userApi.getPublicScan(serial);
-        navigate(`/select-store?code=${encodeURIComponent(serial)}`, {
-          state: { scanData, serial }
-        });
+        const hasActiveStore = Boolean(localStorage.getItem('npp_active_store_session'));
+        navigate(
+          `/select-store?code=${encodeURIComponent(serial)}${hasActiveStore ? '&autoAssign=1' : ''}`,
+          { state: { scanData, serial } }
+        );
       } catch (err) {
         alert(`Không tìm thấy tem: ${serial}\n${err.message}`);
         setDetected(false);
@@ -257,6 +272,47 @@ export default function ScanQR() {
           {flashOn ? <ZapOff size={20} /> : <Zap size={20} />}
         </button>
       </div>
+
+      {/* Thanh báo hiệu đang quét liên tiếp cho Điểm bán đã chọn (Bước 4) */}
+      {activeStoreSession?.name && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, #065f46, #047857)',
+            color: '#ffffff',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            fontSize: '0.85rem',
+            zIndex: 20
+          }}
+        >
+          <div>
+            <div><strong>🏪 Quét tiếp cho:</strong> {activeStoreSession.name}</div>
+            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+              Mã quét tiếp theo sẽ tự động gán cho điểm bán này
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleStopStoreSession}
+            style={{
+              background: '#ef4444',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            🛑 Dừng
+          </button>
+        </div>
+      )}
 
       {/* Camera area */}
       <div className="scan-camera-area" style={{ position: 'relative' }} onClick={applyMobileCameraOptimizations}>

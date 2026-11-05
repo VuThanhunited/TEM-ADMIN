@@ -13,7 +13,7 @@ class UserApiService {
   }
 
   getNppToken() {
-    return localStorage.getItem('npp_scan_token');
+    return localStorage.getItem('npp_scan_token') || localStorage.getItem('tem_token');
   }
 
   getHeaders(useNppToken = true) {
@@ -156,6 +156,23 @@ class UserApiService {
   // NPP stores list (per account / enterprise)
   getNppStores() {
     return this.request('GET', '/public/npp-stores');
+  }
+
+  // Retail stores (Bảng quản lý Điểm bán cho NPP)
+  getRetailStores(params = {}) {
+    return this.request('GET', '/public/retail-stores', null, params);
+  }
+
+  createRetailStore(data) {
+    return this.request('POST', '/public/retail-stores', data);
+  }
+
+  updateRetailStore(id, data) {
+    return this.request('PUT', `/public/retail-stores/${id}`, data);
+  }
+
+  deleteRetailStore(id) {
+    return this.request('DELETE', `/public/retail-stores/${id}`);
   }
 
   // Submit distributor entry (one label = +1 product)

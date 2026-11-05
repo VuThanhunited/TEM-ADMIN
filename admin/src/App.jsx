@@ -79,6 +79,7 @@ const Analytics = lazy(() => import('./pages/Analytics/Analytics'));
 const Scan = lazy(() => import('./pages/Scan/Scan'));
 const Distributors = lazy(() => import('./pages/Distributors/Distributors'));
 const NppScan = lazy(() => import('./pages/NppScan/NppScan'));
+const NppStores = lazy(() => import('./pages/NppStores/NppStores'));
 const NppHistory = lazy(() => import('./pages/NppHistory/NppHistory'));
 const NppProducts = lazy(() => import('./pages/NppProducts/NppProducts'));
 const NppLabels = lazy(() => import('./pages/NppLabels/NppLabels'));
@@ -161,6 +162,9 @@ function AppRoutes() {
         <Route path="/scan/:serial" element={<Scan />} />
         <Route path="/qrcode/:serial" element={<Scan />} />
         <Route path="/temqr/:serial" element={<Scan />} />
+        <Route path="/npp/stores" element={<NppRoute><MainLayout /></NppRoute>}>
+          <Route index element={<NppStores />} />
+        </Route>
         <Route path="/npp/scan" element={<NppRoute><MainLayout /></NppRoute>}>
           <Route index element={<NppScan />} />
         </Route>

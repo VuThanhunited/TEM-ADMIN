@@ -243,6 +243,13 @@ class ApiService {
   getPublicDistributors(enterpriseId) { return this.request('GET', `/public/distributors/${enterpriseId}`); }
   submitDistributorEntry(data) { return this.request('POST', '/public/distributor-entry', data); }
 
+  // ── Retail Stores (Điểm bán nhỏ của NPP) ──────────────────────────────────
+  getRetailStores(params) { return this.request('GET', '/public/retail-stores', null, params); }
+  getRetailStoreSerials(id) { return this.request('GET', `/public/retail-stores/${id}/serials`); }
+  createRetailStore(data) { return this.request('POST', '/public/retail-stores', data); }
+  updateRetailStore(id, data) { return this.request('PUT', `/public/retail-stores/${id}`, data); }
+  deleteRetailStore(id) { return this.request('DELETE', `/public/retail-stores/${id}`); }
+
   // ── Admin impersonation ───────────────────────────────────────────────────
   adminLoginAs() { return this.request('POST', '/public/admin-login-as'); }
 
@@ -260,6 +267,25 @@ class ApiService {
   updateNamecard(id, data) { return this.request('PUT', `/namecards/${id}`, data); }
   deleteNamecard(id) { return this.request('DELETE', `/namecards/${id}`); }
   toggleNamecard(id) { return this.request('PATCH', `/namecards/${id}/toggle`); }
+
+  // ── Upload ───────────────────────────────────────────────────────────────
+  async uploadImage(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    const token = this.getToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${this.baseUrl}/upload/image`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Lỗi tải ảnh lên');
+    }
+    return res.json();
+  }
 }
 
 const api = new ApiService();

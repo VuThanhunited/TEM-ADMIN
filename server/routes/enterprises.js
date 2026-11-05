@@ -92,7 +92,7 @@ router.get('/:id', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     if (req.user.role === 'ADMIN') {
-      const enterprises = await Enterprise.find().select('name type address logo domain').sort({ createdAt: -1 }).lean();
+      const enterprises = await Enterprise.find().select('name type address logo bannerImage domain subdomain displayConfig brandConfig phone email website taxCode partnerDetails isActive').sort({ createdAt: -1 }).lean();
       return res.json(enterprises);
     }
     if (req.user.enterpriseId) {
@@ -112,7 +112,7 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ error: 'Không có quyền chỉnh sửa' });
     }
 
-    const { name, type, address, phone, email, website, taxCode, logo, partnerDetails, domain, subdomain, chatbotConfig, displayConfig } = req.body;
+    const { name, type, address, phone, email, website, taxCode, logo, bannerImage, brandConfig, partnerDetails, domain, subdomain, chatbotConfig, displayConfig } = req.body;
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
@@ -122,6 +122,8 @@ router.put('/:id', auth, async (req, res) => {
     if (website !== undefined) updateData.website = website;
     if (taxCode !== undefined) updateData.taxCode = taxCode;
     if (logo !== undefined) updateData.logo = logo;
+    if (bannerImage !== undefined) updateData.bannerImage = bannerImage;
+    if (brandConfig !== undefined) updateData.brandConfig = brandConfig;
     if (partnerDetails !== undefined) updateData.partnerDetails = partnerDetails;
     if (domain !== undefined) updateData.domain = domain;
     if (subdomain !== undefined) updateData.subdomain = subdomain;

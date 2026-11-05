@@ -15,6 +15,10 @@ const enterpriseSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  bannerImage: {
+    type: String,
+    default: null
+  },
   address: {
     type: String,
     default: ''
@@ -67,7 +71,9 @@ const enterpriseSchema = new mongoose.Schema({
       type: String,
       enum: ['default', 'medical', 'appliance', 'functional_food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
       default: 'default'
-    }
+    },
+    distributionBannerText: { type: String, default: '' },
+    bannerImage: { type: String, default: '' }
   },
   subscriptionPlan: {
     type: String,

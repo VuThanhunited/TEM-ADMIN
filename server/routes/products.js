@@ -136,7 +136,8 @@ router.post('/', auth, requireOwnership, async (req, res) => {
     const {
       name, images, description, category, sku, barcode, distributors, specifications,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText,
+      bannerImage, theme
     } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
     if (!enterpriseId) {
@@ -159,6 +160,8 @@ router.post('/', auth, requireOwnership, async (req, res) => {
         if (img.startsWith('data:') && img.length > 5 * 1024 * 1024) return false;
         return true;
       }),
+      bannerImage: bannerImage || '',
+      theme: theme || '',
       description,
       category,
       sku,
@@ -198,7 +201,8 @@ router.put('/:id', auth, async (req, res) => {
     const {
       name, images, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText
+      chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText,
+      bannerImage, theme
     } = req.body;
 
     let manufacturerModel = 'Enterprise';
@@ -216,6 +220,9 @@ router.put('/:id', auth, async (req, res) => {
       distributionBannerText: distributionBannerText !== undefined ? distributionBannerText : undefined,
       congBoNumber: congBoNumber !== undefined ? congBoNumber : undefined
     };
+
+    if (bannerImage !== undefined) updateData.bannerImage = bannerImage;
+    if (theme !== undefined) updateData.theme = theme;
 
     // BẢO VỆ DỮ LIỆU CÔNG BỐ: Chỉ cập nhật nếu client gửi mảng có nội dung (>0 URL hợp lệ)
     // Hoặc có cờ clearCongBoImages: true. Không bao giờ xóa sạch do lỗi nạp form rỗng từ client

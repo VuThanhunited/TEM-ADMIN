@@ -984,6 +984,8 @@ router.get('/', auth, requireOwnership, async (req, res) => {
         { serialNumber: { $regex: cleanSearch, $options: 'i' } },
         { distributorName: { $regex: cleanSearch, $options: 'i' } },
         { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
+        { 'ownerInfo.name': { $regex: cleanSearch, $options: 'i' } },
+        { 'ownerInfo.phone': { $regex: cleanSearch, $options: 'i' } },
         { ownerCode: { $regex: cleanSearch, $options: 'i' } },
         { activeCode: { $regex: cleanSearch, $options: 'i' } },
         { smsCode: { $regex: cleanSearch, $options: 'i' } }
@@ -1108,10 +1110,20 @@ router.put('/:id/owner', auth, async (req, res) => {
         activatedBy: null
       };
       label.ownerCode = null;
+      label.distributorName = null;
+      label.distributorAddress = null;
     } else {
       if (!label.ownerInfo) label.ownerInfo = {};
-      if (ownerName !== undefined) label.ownerInfo.name = (ownerName && typeof ownerName === 'string') ? ownerName.trim() : null;
-      if (ownerAddress !== undefined) label.ownerInfo.address = (ownerAddress && typeof ownerAddress === 'string') ? ownerAddress.trim() : null;
+      if (ownerName !== undefined) {
+        const cleanName = (ownerName && typeof ownerName === 'string') ? ownerName.trim() : null;
+        label.ownerInfo.name = cleanName;
+        if (cleanName) label.distributorName = cleanName;
+      }
+      if (ownerAddress !== undefined) {
+        const cleanAddr = (ownerAddress && typeof ownerAddress === 'string') ? ownerAddress.trim() : null;
+        label.ownerInfo.address = cleanAddr;
+        if (cleanAddr) label.distributorAddress = cleanAddr;
+      }
       if (ownerPhone !== undefined) label.ownerInfo.phone = (ownerPhone && typeof ownerPhone === 'string') ? ownerPhone.trim() : null;
       if (activatedSerial !== undefined) label.ownerInfo.activatedSerial = (activatedSerial && typeof activatedSerial === 'string') ? activatedSerial.trim() : null;
       if (ownerCode !== undefined) label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;

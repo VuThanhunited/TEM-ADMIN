@@ -35,14 +35,18 @@ const templateSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  bannerImage: {
+    type: String,
+    default: null
+  },
   layout: {
     type: String,
-    enum: ['default', 'minimal', 'premium', 'modern', 'warranty_solution'],
+    enum: ['default', 'minimal', 'premium', 'modern', 'warranty_solution', 'medical', 'appliance', 'functional_food', 'food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
     default: 'default'
   },
   templateType: {
     type: String,
-    enum: ['default', 'minimal', 'premium', 'modern', 'food-agriculture', 'warranty_solution'],
+    enum: ['default', 'minimal', 'premium', 'modern', 'food-agriculture', 'warranty_solution', 'medical', 'appliance', 'functional_food', 'food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
     default: 'default'
   },
   extendedConfig: {

@@ -57,10 +57,9 @@ router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) 
 });
 
 // POST /api/accounts/distributors - Create a new NPP / NSX account (distributor/manufacturer)
-// username, email, password are auto-generated — frontend only needs: fullName, address, details, role
 router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
   try {
-    const { fullName, address, details, role = 'NPP' } = req.body;
+    const { fullName, address, phone, details, role = 'NPP', username, password } = req.body;
     const allowedRole = ['NPP', 'NSX'].includes(role) ? role : 'NPP';
 
     if (!fullName || !fullName.trim()) {
@@ -78,19 +77,32 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
       return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
     }
 
-    // Auto-generate unique username & email
     const timestamp = Date.now();
     const slug = fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 16) || 'user';
-    const autoUsername = `${slug}_${timestamp}`;
-    const autoEmail = `${autoUsername}@internal.local`;
-    const autoPassword = Math.random().toString(36).slice(2, 10); // random, not used for login
-    const hashedPassword = await bcrypt.hash(autoPassword, 10);
+    const finalUsername = (username && String(username).trim()) ? String(username).trim() : `${slug}_${timestamp}`;
+
+    if (username && String(username).trim()) {
+      const existing = await User.findOne({
+        username: { $regex: new RegExp(`^${finalUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Tên đăng nhập này đã tồn tại, vui lòng chọn tên khác' });
+      }
+    }
+
+    const autoEmail = `${finalUsername}_${timestamp}@internal.local`;
+    const rawPassword = (password && String(password).trim()) ? String(password).trim() : Math.random().toString(36).slice(2, 10);
+    if (password && rawPassword.length < 6) {
+      return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
+    }
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     const user = new User({
-      username: autoUsername,
+      username: finalUsername,
       email: autoEmail,
       password: hashedPassword,
-      fullName,
+      fullName: fullName.trim(),
+      phone: phone ? String(phone).trim() : '',
       address: address || '',
       details: details || '',
       role: allowedRole,
@@ -109,10 +121,10 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
   }
 });
 
-// PUT /api/accounts/distributors/:id - Update NPP / NSX account (ADMIN ONLY)
-router.put('/distributors/:id', auth, requireRole('ADMIN'), async (req, res) => {
+// PUT /api/accounts/distributors/:id - Update NPP / NSX account
+router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
   try {
-    const { fullName, address, details, isActive, role } = req.body;
+    const { fullName, address, phone, details, isActive, role, username, password } = req.body;
 
     const distributor = await User.findById(req.params.id);
     if (!distributor) {
@@ -124,8 +136,29 @@ router.put('/distributors/:id', auth, requireRole('ADMIN'), async (req, res) => 
       return res.status(403).json({ error: 'Không có quyền truy cập tài khoản này' });
     }
 
+    if (username && String(username).trim() && String(username).trim() !== distributor.username) {
+      const cleanU = String(username).trim();
+      const existing = await User.findOne({
+        _id: { $ne: distributor._id },
+        username: { $regex: new RegExp(`^${cleanU.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+      if (existing) {
+        return res.status(400).json({ error: 'Tên đăng nhập này đã tồn tại' });
+      }
+      distributor.username = cleanU;
+    }
+
+    if (password && String(password).trim()) {
+      const cleanP = String(password).trim();
+      if (cleanP.length < 6) {
+        return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
+      }
+      distributor.password = await bcrypt.hash(cleanP, 10);
+    }
+
     distributor.fullName = fullName !== undefined ? fullName : distributor.fullName;
     distributor.address = address !== undefined ? address : distributor.address;
+    distributor.phone = phone !== undefined ? phone : distributor.phone;
     distributor.details = details !== undefined ? details : distributor.details;
     distributor.isActive = isActive !== undefined ? isActive : distributor.isActive;
     if (role !== undefined && ['NPP', 'NSX'].includes(role)) {

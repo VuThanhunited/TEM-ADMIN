@@ -47,6 +47,12 @@ const adminMenuItems = [
     roles: ['ADMIN', 'NSX'],
   },
   {
+    label: 'Quản lý Điểm bán',
+    icon: Store,
+    path: '/npp/stores',
+    roles: ['ADMIN', 'NSX'],
+  },
+  {
     label: 'Quản lý Tem nhãn',
     icon: Tag,
     path: '/labels',
@@ -98,7 +104,13 @@ const adminMenuItems = [
 // Menu riêng cho NPP
 const nppMenuItems = [
   {
-    label: 'QL Kho (Scan)',
+    label: 'Quản lý Điểm bán',
+    icon: Store,
+    path: '/npp/stores',
+    roles: ['NPP'],
+  },
+  {
+    label: 'Quét Tem Cho Điểm Bán',
     icon: ScanLine,
     path: '/npp/scan',
     roles: ['NPP'],

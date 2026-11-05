@@ -34,12 +34,21 @@ const labelSchema = new mongoose.Schema({
     enum: ['ACTIVE', 'INACTIVE', 'SCANNED', 'EXPIRED'],
     default: 'INACTIVE'
   },
+  storeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RetailStore',
+    default: null
+  },
   distributorName: {
     type: String,
     default: null
   },
   distributorAddress: {
     type: String,
+    default: null
+  },
+  distributedAt: {
+    type: Date,
     default: null
   },
   ownerCode: {
@@ -103,5 +112,6 @@ labelSchema.index({ legacyTemQr: 1 });
 labelSchema.index({ activeCode: 1 });
 labelSchema.index({ smsCode: 1 });
 labelSchema.index({ ownerCode: 1 });
+labelSchema.index({ storeId: 1 });
 
 module.exports = mongoose.model('Label', labelSchema);

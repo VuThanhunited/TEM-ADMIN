@@ -1489,7 +1489,20 @@ export default function Labels() {
                     <td><span className="serial-number">{label.serialNumber}</span></td>
                     <td>{label.batchId?.batchCode || '—'}</td>
                     <td>{label.productId?.name || <span className="text-muted">Chưa gắn</span>}</td>
-                    <td>{label.distributorName || <span className="text-muted">—</span>}</td>
+                    <td>
+                      {label.ownerInfo?.name || label.distributorName ? (
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{label.ownerInfo?.name || label.distributorName}</div>
+                          {(label.ownerInfo?.address || label.distributorAddress) && (
+                            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>
+                              {label.ownerInfo?.address || label.distributorAddress}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
                     <td>
                       {label.ownerCode ? (
                         <strong style={{ color: '#059669', fontSize: '0.86rem' }}>{label.ownerCode}</strong>
