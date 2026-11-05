@@ -325,6 +325,19 @@ export default function Scan() {
   if (scanMode === 'choice' && data) {
     const { enterprise: ent, product: prod, label: lbl } = data;
     const isNPPLoggedIn = !!nppToken;
+    const isWarrantyTheme =
+      data?.theme === 'appliance' ||
+      data?.theme === 'warranty' ||
+      data?.theme === 'warranty_solution' ||
+      prod?.theme === 'appliance' ||
+      prod?.theme === 'warranty' ||
+      ent?.displayConfig?.defaultTheme === 'appliance' ||
+      ent?.displayConfig?.defaultTheme === 'warranty' ||
+      lbl?.batchId?.theme === 'appliance' ||
+      lbl?.batchId?.theme === 'warranty';
+    const isWarrantyActivated = Boolean(lbl?.ownerCode && String(lbl.ownerCode).trim());
+    const hideChoicePreview = isWarrantyTheme && !isWarrantyActivated;
+
     return (
       <div className="scan-choice-page">
         <div className="scan-choice-bg">
@@ -342,41 +355,45 @@ export default function Scan() {
         )}
 
         <div className="scan-choice-content">
-          <div className="choice-brand-header">
-            {ent?.logo ? (
-              <img src={ent.logo} alt={ent.name} className="choice-brand-logo" />
-            ) : (
-              <div className="choice-brand-avatar">
-                {(ent?.name || 'T')[0].toUpperCase()}
+          {!hideChoicePreview && (
+            <>
+              <div className="choice-brand-header">
+                {ent?.logo ? (
+                  <img src={ent.logo} alt={ent.name} className="choice-brand-logo" />
+                ) : (
+                  <div className="choice-brand-avatar">
+                    {(ent?.name || 'T')[0].toUpperCase()}
+                  </div>
+                )}
+                <div className="choice-brand-info">
+                  <h1 className="choice-brand-name">{ent?.name || 'Thương hiệu'}</h1>
+                  <p className="choice-brand-slogan">Chất lượng tạo niềm tin</p>
+                </div>
               </div>
-            )}
-            <div className="choice-brand-info">
-              <h1 className="choice-brand-name">{ent?.name || 'Thương hiệu'}</h1>
-              <p className="choice-brand-slogan">Chất lượng tạo niềm tin</p>
-            </div>
-          </div>
 
-          <div className="choice-verified-badge">
-            <ShieldCheck size={20} strokeWidth={2.5} />
-            <span>Tem đã được xác thực</span>
-          </div>
-
-          <div className="choice-product-card">
-            {prod?.images?.[0] ? (
-              <img src={prod.images[0]} alt={prod.name} className="choice-product-img" />
-            ) : (
-              <div className="choice-product-img-placeholder">
-                <Package size={36} />
+              <div className="choice-verified-badge">
+                <ShieldCheck size={20} strokeWidth={2.5} />
+                <span>Tem đã được xác thực</span>
               </div>
-            )}
-            <div className="choice-product-details">
-              <h2 className="choice-product-name">{prod?.name || 'Sản phẩm'}</h2>
-              <p className="choice-product-serial">
-                <QrCode size={13} /> Serial: <strong>{lbl?.serialNumber}</strong>
-              </p>
-              <p className="choice-product-cat">{prod?.category || 'Sản phẩm chính hãng'}</p>
-            </div>
-          </div>
+
+              <div className="choice-product-card">
+                {prod?.images?.[0] ? (
+                  <img src={prod.images[0]} alt={prod.name} className="choice-product-img" />
+                ) : (
+                  <div className="choice-product-img-placeholder">
+                    <Package size={36} />
+                  </div>
+                )}
+                <div className="choice-product-details">
+                  <h2 className="choice-product-name">{prod?.name || 'Sản phẩm'}</h2>
+                  <p className="choice-product-serial">
+                    <QrCode size={13} /> Serial: <strong>{lbl?.serialNumber}</strong>
+                  </p>
+                  <p className="choice-product-cat">{prod?.category || 'Sản phẩm chính hãng'}</p>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="choice-prompt">
             <p>Bạn muốn làm gì với tem này?</p>
@@ -453,6 +470,40 @@ export default function Scan() {
 
   const { label, product, enterprise, template, isFirstScan, firstScanTime, theme } = data;
   const effectiveTheme = getEffectiveTheme(theme, product?.category);
+  const isWarrantyInfoTheme =
+    effectiveTheme === 'appliance' ||
+    effectiveTheme === 'warranty' ||
+    effectiveTheme === 'warranty_solution' ||
+    product?.theme === 'appliance' ||
+    enterprise?.displayConfig?.defaultTheme === 'appliance' ||
+    label?.batchId?.theme === 'appliance';
+  const isWarrantyInfoActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
+
+  if (isWarrantyInfoTheme && !isWarrantyInfoActivated) {
+    return (
+      <div className="scan-public-page light-theme" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div className="scan-card" style={{ maxWidth: 420, width: '100%', textAlign: 'center', padding: '40px 24px' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <AlertTriangle size={32} color="#dc2626" />
+          </div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1e293b', margin: '0 0 8px' }}>
+            Chưa có thông tin hiển thị
+          </h2>
+          <p style={{ fontSize: '0.92rem', color: '#64748b', lineHeight: 1.5, margin: '0 0 24px' }}>
+            Tem bảo hành này chưa được nhập mã kích hoạt trên hệ thống.
+          </p>
+          <button
+            type="button"
+            onClick={() => setScanMode('choice')}
+            style={{ padding: '10px 20px', borderRadius: 8, fontSize: '0.88rem', fontWeight: 600, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer' }}
+          >
+            ← Quay lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const lightClass = isLightTheme() ? 'light-theme' : '';
   const layoutClass = `layout-${template.layout || 'default'}`;
   const themeClass = `theme-${effectiveTheme || 'default'}`;

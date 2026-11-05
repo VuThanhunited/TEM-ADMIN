@@ -41,7 +41,7 @@ export default function SelectStore() {
   // Phải khai báo SAU `label` – truy cập trước khi khai báo sẽ gây ReferenceError (màn hình lỗi)
   const detectedSerial = label?.serialNumber || serial || codeParam || '';
   const ownerInfo = label?.ownerInfo;
-  const isActivated = Boolean(ownerInfo?.activatedAt);
+  const isActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
   // NPP không được ghi đè tem đã kích hoạt (backend cũng chặn)
   const isLocked = isActivated && user?.role === 'NPP';
 
@@ -333,23 +333,23 @@ export default function SelectStore() {
                 </div>
               </div>
 
-              {/* Trường "Mã sở hữu" (Yêu cầu quan trọng của khách hàng) */}
+              {/* Trường "Mã sở hữu / Mã kích hoạt" (Yêu cầu quan trọng của khách hàng) */}
               <div className="store-owner-code-card">
                 <div className="store-field-group">
                   <div className="store-owner-code-header">
                     <label className="store-field-label" style={{ marginBottom: 0 }}>
                       <ShieldCheck size={16} color="#059669" />
-                      <span style={{ fontWeight: 800, color: '#065f46' }}>Mã sở hữu sản phẩm</span>
+                      <span style={{ fontWeight: 800, color: '#065f46' }}>Mã kích hoạt / Mã sở hữu sản phẩm</span>
                     </label>
                     <span className="store-owner-badge">Không bắt buộc</span>
                   </div>
                   <p className="store-owner-help">
-                    Nhập serial trên con tem vào đây
+                    Nhập mã kích hoạt (serial trên con tem) vào đây
                   </p>
                   <input
                     type="text"
                     className="store-field-input store-owner-input"
-                    placeholder="Nhập serial trên con tem vào đây"
+                    placeholder="Nhập mã kích hoạt / serial trên con tem vào đây"
                     value={ownerCode}
                     onChange={(e) => setOwnerCode(e.target.value)}
                   />

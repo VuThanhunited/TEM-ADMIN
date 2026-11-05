@@ -83,6 +83,20 @@ export default function ScanChoice() {
   const enterprise = scanData?.enterprise;
   const label = scanData?.label;
 
+  const isWarrantyTheme =
+    scanData?.theme === 'appliance' ||
+    scanData?.theme === 'warranty' ||
+    scanData?.theme === 'warranty_solution' ||
+    product?.theme === 'appliance' ||
+    product?.theme === 'warranty' ||
+    enterprise?.displayConfig?.defaultTheme === 'appliance' ||
+    enterprise?.displayConfig?.defaultTheme === 'warranty' ||
+    label?.batchId?.theme === 'appliance' ||
+    label?.batchId?.theme === 'warranty';
+
+  const isWarrantyActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
+  const hideProductPreview = isWarrantyTheme && !isWarrantyActivated;
+
   return (
     <div className="scan-choice-page">
       {/* Header */}
@@ -122,29 +136,31 @@ export default function ScanChoice() {
         {/* Success – show product + 2 choices */}
         {!loading && !error && scanData && (
           <>
-            {/* Product preview */}
-            <div className="scan-choice-product">
-              {product?.images?.[0] ? (
-                <img src={product.images[0]} alt={product.name} className="scan-choice-product-img" />
-              ) : (
-                <div className="scan-choice-product-placeholder">
-                  <Package size={24} />
-                </div>
-              )}
-              <div className="scan-choice-product-info">
-                <div className="scan-choice-product-name">
-                  {product?.name || 'Sản phẩm'}
-                </div>
-                <div className="scan-choice-product-serial">
-                  SERIAL chống làm giả: {label?.serialNumber || code}
-                </div>
-                {enterprise?.name && (
-                  <div className="scan-choice-product-enterprise">
-                    {enterprise.name}
+            {/* Product preview (ẩn nếu là giao diện bảo hành chưa kích hoạt) */}
+            {!hideProductPreview && (
+              <div className="scan-choice-product">
+                {product?.images?.[0] ? (
+                  <img src={product.images[0]} alt={product.name} className="scan-choice-product-img" />
+                ) : (
+                  <div className="scan-choice-product-placeholder">
+                    <Package size={24} />
                   </div>
                 )}
+                <div className="scan-choice-product-info">
+                  <div className="scan-choice-product-name">
+                    {product?.name || 'Sản phẩm'}
+                  </div>
+                  <div className="scan-choice-product-serial">
+                    SERIAL chống làm giả: {label?.serialNumber || code}
+                  </div>
+                  {enterprise?.name && (
+                    <div className="scan-choice-product-enterprise">
+                      {enterprise.name}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Choice prompt */}
             <div className="scan-choice-prompt">

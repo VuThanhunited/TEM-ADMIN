@@ -1116,10 +1116,12 @@ router.put('/:id/owner', auth, async (req, res) => {
       if (activatedSerial !== undefined) label.ownerInfo.activatedSerial = (activatedSerial && typeof activatedSerial === 'string') ? activatedSerial.trim() : null;
       if (ownerCode !== undefined) label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
 
-      // Nếu có tên hoặc mã sở hữu, đánh dấu thời gian kích hoạt nếu chưa có
-      if (label.ownerInfo.name || label.ownerCode) {
+      // Nếu có mã sở hữu (mã kích hoạt), đánh dấu thời gian kích hoạt; nếu xóa mã thì bỏ trạng thái kích hoạt
+      if (label.ownerCode) {
         if (!label.ownerInfo.activatedAt) label.ownerInfo.activatedAt = new Date();
         label.ownerInfo.activatedBy = req.user?.id || req.user?._id;
+      } else if (ownerCode !== undefined && !label.ownerCode) {
+        label.ownerInfo.activatedAt = null;
       }
     }
 

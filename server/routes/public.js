@@ -364,11 +364,15 @@ router.get('/scan/:serial', async (req, res) => {
       }).select('name category images description').lean();
     }
 
-    let responseTheme = batch.theme || (template && template.layout ? template.layout : 'default');
+    const normalizeTheme = (t) => (t === 'warranty' || t === 'warranty_solution' ? 'appliance' : t);
 
-    // Nếu enterprise đã cấu hình theme mặc định, dùng ngay (override auto-detect)
-    const enterpriseDefaultTheme = enterprise.displayConfig?.defaultTheme;
-    if (enterpriseDefaultTheme && enterpriseDefaultTheme !== 'default') {
+    let responseTheme = (label.productId?.theme && label.productId.theme !== 'auto' && label.productId.theme !== 'default')
+      ? normalizeTheme(label.productId.theme)
+      : normalizeTheme(batch.theme || (template && template.layout ? template.layout : 'default'));
+
+    // Nếu enterprise đã cấu hình theme mặc định và product/batch chưa chọn theme riêng, dùng theme doanh nghiệp
+    const enterpriseDefaultTheme = normalizeTheme(enterprise.displayConfig?.defaultTheme);
+    if ((!responseTheme || responseTheme === 'auto' || responseTheme === 'default') && enterpriseDefaultTheme && enterpriseDefaultTheme !== 'default') {
       responseTheme = enterpriseDefaultTheme;
     } else if (responseTheme === 'default' && (enterprise.name || '').toLowerCase().includes('staycool')) {
       responseTheme = 'staycool';
@@ -438,7 +442,7 @@ router.get('/scan/:serial', async (req, res) => {
       labelOut.ownerInfo.phone = maskPhone(labelOut.ownerInfo.phone);
     }
 
-    const isActivated = Boolean(label.ownerCode || label.ownerInfo?.activatedAt);
+    const isActivated = Boolean(label.ownerCode && String(label.ownerCode).trim());
 
     res.json({
       label: labelOut,
@@ -825,23 +829,22 @@ router.post('/distributor-entry-single', async (req, res) => {
         return res.status(400).json({ error: 'Số serial không khớp với tem vừa quét. Vui lòng kiểm tra lại số in trên tem.' });
       }
 
-      // Tem đã kích hoạt: NPP không được ghi đè (chỉ NSX được sửa)
-      if (label.ownerInfo?.activatedAt && decoded.role === 'NPP') {
+      const existingOwnerCode = Boolean(label.ownerCode && String(label.ownerCode).trim());
+      // Tem đã kích hoạt (đã có mã kích hoạt): NPP không được ghi đè (chỉ NSX được sửa)
+      if (existingOwnerCode && decoded.role === 'NPP') {
         return res.status(409).json({ error: 'Tem này đã được kích hoạt thông tin khách hàng sở hữu trước đó. Liên hệ Nhà sản xuất nếu cần chỉnh sửa.' });
       }
 
-      const finalOwnerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+      const finalOwnerCode = (ownerCode && typeof ownerCode === 'string' && ownerCode.trim()) ? ownerCode.trim() : null;
       label.ownerInfo = {
         name: name || null,
         address: address || null,
         phone: phone || null,
         activatedSerial: finalOwnerCode || inputSerial || label.serialNumber,
-        activatedAt: new Date(),
+        activatedAt: finalOwnerCode ? new Date() : null,
         activatedBy: user._id
       };
-      if (finalOwnerCode) {
-        label.ownerCode = finalOwnerCode;
-      }
+      label.ownerCode = finalOwnerCode;
     }
 
     // Update the label
