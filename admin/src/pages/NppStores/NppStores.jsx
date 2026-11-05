@@ -15,7 +15,9 @@ import {
   Eye,
   X,
   CheckCircle,
-  Package
+  Package,
+  DollarSign,
+  Calendar
 } from 'lucide-react';
 import '../Distributors/Distributors.css';
 
@@ -32,11 +34,24 @@ const formatDateTime = (dateStr) => {
   });
 };
 
+const formatCurrency = (val) => {
+  const num = Number(val) || 0;
+  return `${num.toLocaleString('vi-VN')} đ`;
+};
+
 export default function NppStores() {
   const navigate = useNavigate();
+  const now = new Date();
   const [stores, setStores] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  // Bộ lọc thống kê doanh số theo Tháng / Quý / Năm
+  const [periodType, setPeriodType] = useState('all'); // 'all' | 'month' | 'quarter' | 'year'
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+  const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(now.getMonth() / 3) + 1);
 
   // Modal Thêm / Sửa Điểm bán
   const [showModal, setShowModal] = useState(false);
@@ -49,22 +64,32 @@ export default function NppStores() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Modal Xem danh sách Serial đã bán của Điểm bán (Bước 5)
+  // Modal Xem danh sách Serial & Doanh số đã bán của Điểm bán
   const [serialModalStore, setSerialModalStore] = useState(null);
   const [storeSerials, setStoreSerials] = useState([]);
+  const [storeBreakdown, setStoreBreakdown] = useState([]);
+  const [storeModalRevenue, setStoreModalRevenue] = useState(0);
   const [loadingSerials, setLoadingSerials] = useState(false);
 
   const loadStores = useCallback(async (searchQuery = search) => {
     setLoading(true);
     try {
-      const res = await api.getRetailStores(searchQuery ? { search: searchQuery } : {});
+      const params = {
+        periodType,
+        year: selectedYear,
+        month: selectedMonth,
+        quarter: selectedQuarter
+      };
+      if (searchQuery) params.search = searchQuery;
+      const res = await api.getRetailStores(params);
       setStores(res.stores || res.data || []);
+      setSummary(res.summary || null);
     } catch (err) {
       console.error('Lỗi tải danh sách điểm bán:', err);
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, periodType, selectedYear, selectedMonth, selectedQuarter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -136,9 +161,18 @@ export default function NppStores() {
     setSerialModalStore(store);
     setLoadingSerials(true);
     setStoreSerials([]);
+    setStoreBreakdown([]);
+    setStoreModalRevenue(0);
     try {
-      const res = await api.getRetailStoreSerials(store._id);
+      const res = await api.getRetailStoreSerials(store._id, {
+        periodType,
+        year: selectedYear,
+        month: selectedMonth,
+        quarter: selectedQuarter
+      });
       setStoreSerials(res.serials || res.data || []);
+      setStoreBreakdown(res.productBreakdown || []);
+      setStoreModalRevenue(res.totalRevenue || 0);
     } catch (err) {
       console.error('Lỗi tải danh sách serial của điểm bán:', err);
     } finally {
@@ -147,7 +181,6 @@ export default function NppStores() {
   };
 
   const handleScanForStore = (store) => {
-    // Lưu sẵn điểm bán đang chọn vào session để trang Quét tự động nhận
     localStorage.setItem('npp_active_store_session', JSON.stringify({
       _id: store._id,
       name: store.name,
@@ -157,7 +190,9 @@ export default function NppStores() {
     navigate(`/npp/scan?storeId=${store._id}`);
   };
 
-  const totalSerialsAllStores = stores.reduce((sum, s) => sum + (s.totalSerials || 0), 0);
+  const totalPeriodSerials = summary?.totalPeriodSerials ?? stores.reduce((sum, s) => sum + (s.periodSerialsCount ?? s.totalSerials ?? 0), 0);
+  const totalPeriodRevenue = summary?.totalPeriodRevenue ?? stores.reduce((sum, s) => sum + (s.periodRevenue ?? s.totalRevenue ?? 0), 0);
+  const periodLabel = summary?.period?.label || 'Tất cả thời gian';
 
   return (
     <div className="distributors-page">
@@ -165,10 +200,10 @@ export default function NppStores() {
         <div>
           <h1 className="page-title">
             <Store size={28} />
-            Quản lý Điểm bán
+            Quản lý Điểm bán &amp; Thống kê Doanh số
           </h1>
           <p className="page-subtitle">
-            Quản lý danh sách các điểm bán trực thuộc Nhà phân phối và theo dõi Serial + thời gian vừa xuất bán
+            Quản lý các điểm bán địa phương của doanh nghiệp, danh sách Serial đã gán và thống kê Doanh số (Số lượng SP đã gán × Giá 1 sản phẩm) theo Tháng / Quý / Năm
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -193,14 +228,102 @@ export default function NppStores() {
         </div>
       </div>
 
+      {/* Bộ lọc Thống kê Doanh số theo Tháng / Quý / Năm */}
+      <div
+        className="glass-card"
+        style={{
+          padding: '14px 18px',
+          marginBottom: '18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          borderLeft: '4px solid #f59e0b'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={17} style={{ color: '#f59e0b' }} />
+            Kỳ thống kê doanh số:
+          </span>
+          {[
+            { id: 'all', label: 'Tất cả' },
+            { id: 'month', label: 'Theo Tháng' },
+            { id: 'quarter', label: 'Theo Quý' },
+            { id: 'year', label: 'Theo Năm' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setPeriodType(tab.id)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: periodType === tab.id ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.12)',
+                background: periodType === tab.id ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.04)',
+                color: periodType === tab.id ? '#fbbf24' : 'var(--text-secondary)'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {periodType !== 'all' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {periodType === 'month' && (
+              <select
+                className="form-control"
+                style={{ width: 'auto', minWidth: '120px', padding: '6px 12px' }}
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>Tháng {m}</option>
+                ))}
+              </select>
+            )}
+
+            {periodType === 'quarter' && (
+              <select
+                className="form-control"
+                style={{ width: 'auto', minWidth: '140px', padding: '6px 12px' }}
+                value={selectedQuarter}
+                onChange={(e) => setSelectedQuarter(Number(e.target.value))}
+              >
+                <option value={1}>Quý 1 (Tháng 1 - 3)</option>
+                <option value={2}>Quý 2 (Tháng 4 - 6)</option>
+                <option value={3}>Quý 3 (Tháng 7 - 9)</option>
+                <option value={4}>Quý 4 (Tháng 10 - 12)</option>
+              </select>
+            )}
+
+            <select
+              className="form-control"
+              style={{ width: 'auto', minWidth: '110px', padding: '6px 12px' }}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+            >
+              {[2024, 2025, 2026, 2027, 2028].map((y) => (
+                <option key={y} value={y}>Năm {y}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
       {/* Thống kê nhanh */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '20px' }}>
         <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Store size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Tổng số Điểm bán</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Tổng số Điểm bán của mình</div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>{stores.length}</div>
           </div>
         </div>
@@ -210,13 +333,23 @@ export default function NppStores() {
             <Tag size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Tổng Serial đã xuất cho Điểm bán</div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: '#34d399' }}>{totalSerialsAllStores}</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Số lượng SP đã gán ({periodLabel})</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: '#34d399' }}>{totalPeriodSerials} SP</div>
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.18)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <DollarSign size={24} />
+          </div>
+          <div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Tổng Doanh số Điểm bán ({periodLabel})</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, color: '#fbbf24' }}>{formatCurrency(totalPeriodRevenue)}</div>
           </div>
         </div>
       </div>
 
-      {/* Thanh tìm kiếm hỗ trợ gõ không dấu (ví dụ gõ "thanh" -> Thành, Thánh, Thạnh) */}
+      {/* Thanh tìm kiếm hỗ trợ gõ không dấu */}
       <div className="filters-bar glass-card" style={{ marginBottom: '20px', padding: '14px 18px' }}>
         <div className="search-box" style={{ flex: 1, maxWidth: '520px' }}>
           <Search size={18} />
@@ -238,7 +371,7 @@ export default function NppStores() {
         </div>
       </div>
 
-      {/* Bảng quản lý Điểm bán (Bước 2 & Bước 5) */}
+      {/* Bảng quản lý Điểm bán & Doanh số */}
       <div className="table-container glass-card">
         {loading ? (
           <div className="table-loading">
@@ -260,11 +393,12 @@ export default function NppStores() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: '60px' }}>STT</th>
+                <th style={{ width: '54px' }}>STT</th>
                 <th>Tên Điểm bán</th>
-                <th>Địa chỉ</th>
-                <th>Điện thoại liên hệ</th>
-                <th style={{ textAlign: 'center' }}>Số lượng tem</th>
+                <th>Địa chỉ khai báo</th>
+                <th>Điện thoại</th>
+                <th style={{ textAlign: 'center' }}>SL đã gán ({periodLabel})</th>
+                <th style={{ textAlign: 'right' }}>Doanh số (SL × Giá SP)</th>
                 <th>Serial vừa bán + Thời gian</th>
                 <th style={{ textAlign: 'right' }}>Thao tác</th>
               </tr>
@@ -272,6 +406,9 @@ export default function NppStores() {
             <tbody>
               {stores.map((store, idx) => {
                 const recent = store.recentSales || [];
+                const qty = store.periodSerialsCount ?? store.totalSerials ?? 0;
+                const rev = store.periodRevenue ?? store.totalRevenue ?? 0;
+                const breakdown = store.productBreakdown || [];
                 return (
                   <tr key={store._id}>
                     <td>
@@ -299,17 +436,31 @@ export default function NppStores() {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <span
-                        className={`badge ${(store.totalSerials || 0) > 0 ? 'badge-success' : 'badge-secondary'}`}
+                        className={`badge ${qty > 0 ? 'badge-success' : 'badge-secondary'}`}
                         style={{ fontSize: '13px', padding: '4px 10px', cursor: (store.totalSerials || 0) > 0 ? 'pointer' : 'default' }}
                         onClick={() => (store.totalSerials || 0) > 0 && handleViewSerials(store)}
                       >
-                        {store.totalSerials || 0} serial
+                        {qty} SP
                       </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: '14.5px' }}>
+                        {formatCurrency(rev)}
+                      </div>
+                      {breakdown.length > 0 && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {breakdown.map((b, bIdx) => (
+                            <div key={bIdx}>
+                              {b.quantity} × {formatCurrency(b.unitPrice)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td>
                       {recent.length === 0 ? (
                         <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic' }}>
-                          Chưa có serial nào được quét
+                          Chưa có serial nào trong kỳ
                         </span>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -337,7 +488,7 @@ export default function NppStores() {
                               </span>
                             </div>
                           ))}
-                          {(store.totalSerials || 0) > 3 && (
+                          {qty > 3 && (
                             <button
                               type="button"
                               onClick={() => handleViewSerials(store)}
@@ -352,7 +503,7 @@ export default function NppStores() {
                                 padding: '2px 0'
                               }}
                             >
-                              + Xem toàn bộ {store.totalSerials} serial đã bán...
+                              + Xem toàn bộ {qty} serial &amp; doanh số...
                             </button>
                           )}
                         </div>
@@ -372,7 +523,7 @@ export default function NppStores() {
                         <button
                           type="button"
                           className="btn-icon"
-                          title="Xem danh sách Serial & Thời gian bán"
+                          title="Xem danh sách Serial & Doanh số"
                           onClick={() => handleViewSerials(store)}
                           style={{ color: '#60a5fa', background: 'rgba(59, 130, 246, 0.12)' }}
                         >
@@ -440,7 +591,7 @@ export default function NppStores() {
                 </div>
 
                 <div className="form-group">
-                  <label>Địa chỉ</label>
+                  <label>Địa chỉ Điểm bán (Dùng để đối chiếu cảnh báo vị trí quét)</label>
                   <input
                     type="text"
                     className="form-control"
@@ -475,15 +626,15 @@ export default function NppStores() {
         </div>
       )}
 
-      {/* Modal Xem chi tiết toàn bộ Serial + Thời gian bán của Điểm bán (Bước 5) */}
+      {/* Modal Xem chi tiết toàn bộ Serial + Doanh số của Điểm bán */}
       {serialModalStore && (
         <div className="modal-overlay" onClick={() => setSerialModalStore(null)}>
-          <div className="modal-content glass-card" style={{ maxWidth: '720px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content glass-card" style={{ maxWidth: '820px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                   <CheckCircle size={20} style={{ color: '#34d399' }} />
-                  Lịch sử Serial đã xuất — {serialModalStore.name}
+                  Chi tiết Serial &amp; Doanh số — {serialModalStore.name} ({periodLabel})
                 </h2>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
                   Địa chỉ: {serialModalStore.address || '—'} | SĐT: {serialModalStore.phone || '—'}
@@ -494,50 +645,82 @@ export default function NppStores() {
               </button>
             </div>
 
-            <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto', marginTop: '12px' }}>
+            <div className="modal-body" style={{ maxHeight: '68vh', overflowY: 'auto', marginTop: '12px' }}>
               {loadingSerials ? (
                 <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  Đang tải danh sách serial...
+                  Đang tải danh sách serial và doanh số...
                 </div>
               ) : storeSerials.length === 0 ? (
                 <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  Điểm bán này chưa có serial nào được quét.
+                  Điểm bán này chưa có serial nào được gán trong kỳ ({periodLabel}).
                 </div>
               ) : (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>STT</th>
-                      <th>Mã Serial</th>
-                      <th>Sản phẩm</th>
-                      <th>Thời gian xuất bán</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {storeSerials.map((item, i) => (
-                      <tr key={item.serialNumber + i}>
-                        <td>{i + 1}</td>
-                        <td>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#34d399', fontSize: '14px' }}>
-                            {item.serialNumber}
-                          </span>
-                        </td>
-                        <td>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <Package size={14} style={{ color: '#818cf8' }} />
-                            {item.productName || 'Sản phẩm'}
-                          </span>
-                        </td>
-                        <td>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
-                            <Clock size={14} />
-                            {formatDateTime(item.soldAt)}
-                          </span>
-                        </td>
-                      </tr>
+                <>
+                  {/* Tổng hợp doanh số theo sản phẩm */}
+                  <div
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      borderRadius: '10px',
+                      padding: '12px 16px',
+                      marginBottom: '16px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ color: '#fbbf24' }}>📊 Thống kê Doanh số ({periodLabel})</strong>
+                      <span style={{ fontSize: '16px', fontWeight: 800, color: '#fbbf24' }}>
+                        Tổng: {storeSerials.length} SP = {formatCurrency(storeModalRevenue)}
+                      </span>
+                    </div>
+                    {storeBreakdown.map((b, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                        <span>{b.productName}</span>
+                        <span>
+                          <strong>{b.quantity} SP</strong> × {formatCurrency(b.unitPrice)} = <strong style={{ color: '#34d399' }}>{formatCurrency(b.revenue)}</strong>
+                        </span>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Mã Serial</th>
+                        <th>Sản phẩm</th>
+                        <th style={{ textAlign: 'right' }}>Giá 1 SP</th>
+                        <th>Thời gian xuất bán</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {storeSerials.map((item, i) => (
+                        <tr key={item.serialNumber + i}>
+                          <td>{i + 1}</td>
+                          <td>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#34d399', fontSize: '14px' }}>
+                              {item.serialNumber}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <Package size={14} style={{ color: '#818cf8' }} />
+                              {item.productName || 'Sản phẩm'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#fbbf24' }}>
+                            {formatCurrency(item.unitPrice)}
+                          </td>
+                          <td>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
+                              <Clock size={14} />
+                              {formatDateTime(item.soldAt)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
               )}
             </div>
 
@@ -563,4 +746,3 @@ export default function NppStores() {
     </div>
   );
 }
-

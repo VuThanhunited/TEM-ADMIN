@@ -76,7 +76,24 @@ export default function SelectStore() {
   });
   const [assignedSuccess, setAssignedSuccess] = useState(null); // { serialNumber, storeName, storeAddress, storePhone, soldAt }
   const [sessionStopped, setSessionStopped] = useState(false);
+  const [warehouseCoords, setWarehouseCoords] = useState(null);
   const autoAssignedRef = useRef(false);
+
+  // Ghi nhận tọa độ vị trí KHO quét khi gán Serial cho điểm bán
+  useEffect(() => {
+    if (navigator?.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setWarehouseCoords({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          });
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   const product = scanData?.product;
   const label = scanData?.label;
@@ -277,7 +294,12 @@ export default function SelectStore() {
         ownerAddress: storeAddress,
         ownerPhone: storePhone,
         activatedSerial: label?.serialNumber || form.serial.trim() || detectedSerial,
-        ownerCode: cleanOwnerCode
+        ownerCode: cleanOwnerCode,
+        warehouseLocation: {
+          address: user?.address || storeAddress || '',
+          lat: warehouseCoords?.lat ?? null,
+          lng: warehouseCoords?.lng ?? null
+        }
       });
 
       const soldAtTime = res?.distributedAt || new Date().toISOString();

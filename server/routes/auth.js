@@ -141,6 +141,12 @@ router.get('/me', auth, async (req, res) => {
 // POST /api/auth/change-password
 router.post('/change-password', auth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        error: 'Tài khoản khách hàng không được phép tự đổi mật khẩu. Chỉ Quản trị viên (Admin) mới có quyền đổi mật khẩu.'
+      });
+    }
+
     const { currentPassword, newPassword } = req.body;
     const user = await User.findById(req.user._id);
 
@@ -167,6 +173,12 @@ router.put('/profile', auth, async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy người dùng' });
     }
 
+    if (password && req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        error: 'Tài khoản khách hàng không được phép tự đổi mật khẩu. Chỉ Quản trị viên (Admin) mới có quyền đổi mật khẩu.'
+      });
+    }
+
     // Check if new username already exists
     if (username && username !== user.username) {
       const existingUser = await User.findOne({ username });
@@ -190,7 +202,7 @@ router.put('/profile', auth, async (req, res) => {
     if (phone !== undefined) user.phone = phone;
     if (details !== undefined) user.details = details;
 
-    if (password) {
+    if (password && req.user.role === 'ADMIN') {
       if (password.length < 6) {
         return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
       }

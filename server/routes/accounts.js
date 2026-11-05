@@ -3,23 +3,30 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Enterprise = require('../models/Enterprise');
 const auth = require('../middleware/auth');
-const { requireRole } = require('../middleware/rbac');
+const { requireRole, getRelatedEnterpriseIds } = require('../middleware/rbac');
 
 const router = express.Router();
 
-// GET /api/accounts/distributors - List all NPP / NSX accounts for the logged-in NSX
-router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
+// GET /api/accounts/distributors - List all NPP / NSX accounts for the logged-in TK khách (NSX/NPP) or ADMIN
+router.get('/distributors', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = '', role } = req.query;
     
-    // Non-admin can only see their own enterprise distributors
+    // Non-admin can only see their own enterprise distributors (ko xem npp của đối tác khác đc)
     // ADMIN: nếu không truyền enterpriseId thì xem tất cả
-    const enterpriseId = req.user.role === 'ADMIN' ? req.query.enterpriseId : req.user.enterpriseId;
-    if (!enterpriseId && req.user.role !== 'ADMIN') {
-      return res.status(400).json({ error: 'Thiếu mã doanh nghiệp' });
+    const query = {};
+    if (req.user.role === 'ADMIN') {
+      if (req.query.enterpriseId) {
+        query.enterpriseId = req.query.enterpriseId;
+      }
+    } else {
+      if (!req.user.enterpriseId) {
+        return res.status(400).json({ error: 'Thiếu mã doanh nghiệp' });
+      }
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      query.enterpriseId = relatedIds.length > 1 ? { $in: relatedIds } : relatedIds[0];
     }
 
-    const query = enterpriseId ? { enterpriseId } : {};
     if (role) {
       query.role = role;
     } else {
@@ -57,7 +64,7 @@ router.get('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) 
 });
 
 // POST /api/accounts/distributors - Create a new NPP / NSX account (distributor/manufacturer)
-router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
+router.post('/distributors', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (req, res) => {
   try {
     const { fullName, address, phone, details, role = 'NPP', username, password } = req.body;
     const allowedRole = ['NPP', 'NSX'].includes(role) ? role : 'NPP';
@@ -122,7 +129,7 @@ router.post('/distributors', auth, requireRole('NSX', 'ADMIN'), async (req, res)
 });
 
 // PUT /api/accounts/distributors/:id - Update NPP / NSX account
-router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
+router.put('/distributors/:id', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (req, res) => {
   try {
     const { fullName, address, phone, details, isActive, role, username, password } = req.body;
 
@@ -132,8 +139,11 @@ router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, r
     }
 
     // Security check: non-admin can only update their own enterprise's distributors
-    if (req.user.role !== 'ADMIN' && distributor.enterpriseId?.toString() !== req.user.enterpriseId?.toString()) {
-      return res.status(403).json({ error: 'Không có quyền truy cập tài khoản này' });
+    if (req.user.role !== 'ADMIN') {
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      if (!relatedIds.some(id => String(id) === String(distributor.enterpriseId))) {
+        return res.status(403).json({ error: 'Không có quyền truy cập tài khoản của đối tác khác' });
+      }
     }
 
     if (username && String(username).trim() && String(username).trim() !== distributor.username) {
@@ -177,7 +187,7 @@ router.put('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, r
 });
 
 // DELETE /api/accounts/distributors/:id - Delete NPP account
-router.delete('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req, res) => {
+router.delete('/distributors/:id', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (req, res) => {
   try {
     const distributor = await User.findById(req.params.id);
     if (!distributor) {
@@ -185,8 +195,11 @@ router.delete('/distributors/:id', auth, requireRole('NSX', 'ADMIN'), async (req
     }
 
     // Security check: non-admin can only delete their own enterprise's distributors
-    if (req.user.role !== 'ADMIN' && distributor.enterpriseId?.toString() !== req.user.enterpriseId?.toString()) {
-      return res.status(403).json({ error: 'Không có quyền xóa tài khoản này' });
+    if (req.user.role !== 'ADMIN') {
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      if (!relatedIds.some(id => String(id) === String(distributor.enterpriseId))) {
+        return res.status(403).json({ error: 'Không có quyền xóa tài khoản của đối tác khác' });
+      }
     }
 
     await User.findByIdAndDelete(req.params.id);

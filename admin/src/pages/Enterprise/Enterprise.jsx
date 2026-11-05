@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
@@ -216,6 +217,7 @@ function EnterpriseImageField({ label, value, onChange, placeholder, helpText, i
 
 export default function Enterprise() {
   const { user, isAdmin, enterpriseId } = useAuth();
+  const location = useLocation();
 
   const [enterprises, setEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -250,7 +252,7 @@ export default function Enterprise() {
     domain: '',
     subdomain: '',
     brandConfig: { primaryColor: '#6366f1', secondaryColor: '#4f46e5' },
-    chatbotConfig: { enabled: false, script: '', welcomeMessage: '' },
+    chatbotConfig: { enabled: false, script: '', welcomeMessage: '', qaList: [] },
     displayConfig: { showRelatedProducts: true, defaultTheme: 'default', distributionBannerText: '', bannerImage: '' }
   };
 
@@ -321,10 +323,10 @@ export default function Enterprise() {
   };
 
   // Open Edit Modal
-  const handleOpenEditModal = (ent) => {
+  const handleOpenEditModal = (ent, initialTab = 'info') => {
     setModalMode('EDIT');
     setEditingId(ent._id);
-    setActiveModalTab('info');
+    setActiveModalTab(initialTab);
     setFormData({
       name: ent.name || '',
       type: ent.type || 'NSX',
@@ -342,7 +344,12 @@ export default function Enterprise() {
         primaryColor: ent.brandConfig?.primaryColor || '#6366f1',
         secondaryColor: ent.brandConfig?.secondaryColor || '#4f46e5'
       },
-      chatbotConfig: ent.chatbotConfig || { enabled: false, script: '', welcomeMessage: '' },
+      chatbotConfig: {
+        enabled: ent.chatbotConfig?.enabled || false,
+        script: ent.chatbotConfig?.script || '',
+        welcomeMessage: ent.chatbotConfig?.welcomeMessage || '',
+        qaList: Array.isArray(ent.chatbotConfig?.qaList) ? ent.chatbotConfig.qaList : []
+      },
       displayConfig: {
         showRelatedProducts: ent.displayConfig?.showRelatedProducts !== false,
         defaultTheme: ent.displayConfig?.defaultTheme || 'default',
@@ -359,6 +366,14 @@ export default function Enterprise() {
       }
     }, 100);
   };
+
+  useEffect(() => {
+    if (!loading && enterprises.length > 0) {
+      if (location.pathname.endsWith('/chatbot') || location.pathname.endsWith('/domain')) {
+        handleOpenEditModal(enterprises[0], 'domainChatbot');
+      }
+    }
+  }, [location.pathname, loading, enterprises.length]);
 
   // Close Modal
   const handleCloseModal = () => {
@@ -609,13 +624,32 @@ export default function Enterprise() {
           <p>Quản lý danh sách đối tác sở hữu tem, chi tiết đối tác, domain tùy chỉnh và cấu hình Chatbot</p>
         </div>
 
-        <button 
-          className="btn btn-primary"
-          onClick={handleOpenCreateModal}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, padding: '10px 20px', borderRadius: '10px' }}
-        >
-          <Plus size={18} /> Thêm Doanh nghiệp Mới
-        </button>
+        {isAdmin ? (
+          <button 
+            className="btn btn-primary"
+            onClick={handleOpenCreateModal}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, padding: '10px 20px', borderRadius: '10px' }}
+          >
+            <Plus size={18} /> Thêm Doanh nghiệp Mới
+          </button>
+        ) : enterprises.length > 0 && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-outline"
+              onClick={() => handleOpenEditModal(enterprises[0], 'domainChatbot')}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, padding: '10px 18px', borderRadius: '10px', borderColor: '#f59e0b', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.08)' }}
+            >
+              <MessageSquare size={17} /> Cài đặt Chatbot (Mục nâng cao)
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => handleOpenEditModal(enterprises[0], 'info')}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, padding: '10px 18px', borderRadius: '10px' }}
+            >
+              <Edit3 size={17} /> Chỉnh sửa Thông tin Doanh nghiệp
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats Summary Bar */}
@@ -805,14 +839,23 @@ export default function Enterprise() {
                     </button>
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                       <button 
                         className="btn btn-outline" 
-                        onClick={() => handleOpenEditModal(ent)}
+                        onClick={() => handleOpenEditModal(ent, 'info')}
                         title="Chỉnh sửa thông tin doanh nghiệp"
                         style={{ height: 34, padding: '0 10px', color: 'var(--color-primary-light)', borderColor: 'rgba(99, 102, 241, 0.4)' }}
                       >
                         <Edit3 size={15} /> Sửa
+                      </button>
+
+                      <button 
+                        className="btn btn-outline" 
+                        onClick={() => handleOpenEditModal(ent, 'domainChatbot')}
+                        title="Cài đặt Chatbot tư vấn (Bộ câu hỏi tự chọn)"
+                        style={{ height: 34, padding: '0 10px', color: '#f59e0b', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                      >
+                        <MessageSquare size={15} /> Chatbot
                       </button>
                       
                       {isAdmin && (
@@ -1139,11 +1182,16 @@ export default function Enterprise() {
                     </div>
 
                     {/* Chatbot Box */}
-                    <div style={{ background: 'var(--color-bg-primary)', padding: 18, borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-primary-light)' }}>
-                          <MessageSquare size={18} /> Cài đặt Chatbot Tư vấn Trực tuyến
-                        </h4>
+                    <div style={{ background: 'var(--color-bg-primary)', padding: 18, borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.35)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+                        <div>
+                          <h4 style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#f59e0b', margin: 0 }}>
+                            <MessageSquare size={18} /> Cài đặt Chatbot Tư vấn (Mục nâng cao — Bộ câu hỏi tự chọn)
+                          </h4>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                            Khi khách hàng quét tem xem thông tin sản phẩm và bấm vào <strong>"Tư vấn"</strong>, bộ câu hỏi tự chọn bên dưới sẽ hiển thị để khách bấm gửi Chatbot nhận câu trả lời ngay lập tức.
+                          </p>
+                        </div>
 
                         <label className="toggle-label">
                           <input
@@ -1155,41 +1203,153 @@ export default function Enterprise() {
                             }))}
                           />
                           <span className="toggle-switch"></span>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Kích hoạt Chatbot</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: formData.chatbotConfig?.enabled ? '#22c55e' : 'inherit' }}>
+                            {formData.chatbotConfig?.enabled ? 'Đang BẬT Chatbot' : 'Kích hoạt Chatbot'}
+                          </span>
                         </label>
                       </div>
 
-                      {formData.chatbotConfig?.enabled && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-                          <div>
-                            <label className="label">Lời chào tự động của Chatbot</label>
-                            <input
-                              type="text"
-                              className="input"
-                              placeholder="VD: Xin chào! Tôi là trợ lý AI của VINSUMI. Bạn cần hỗ trợ gì?"
-                              value={formData.chatbotConfig?.welcomeMessage || ''}
-                              onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                chatbotConfig: { ...prev.chatbotConfig, welcomeMessage: e.target.value }
-                              }))}
-                            />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
+                        <div>
+                          <label className="label">Lời chào tự động của Chatbot khi khách bấm "Tư vấn"</label>
+                          <input
+                            type="text"
+                            className="input"
+                            placeholder="VD: Xin chào! Bạn muốn tìm hiểu thông tin gì về sản phẩm? Hãy chọn câu hỏi bên dưới nhé!"
+                            value={formData.chatbotConfig?.welcomeMessage || ''}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              chatbotConfig: { ...prev.chatbotConfig, enabled: true, welcomeMessage: e.target.value }
+                            }))}
+                          />
+                        </div>
+
+                        {/* Preset Q&A Builder */}
+                        <div style={{ background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 10, padding: 14 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                            <label className="label" style={{ margin: 0, fontWeight: 700, color: '#fbbf24' }}>
+                              💬 Bộ câu hỏi tự chọn gửi Chatbot ({(formData.chatbotConfig?.qaList || []).length} câu hỏi)
+                            </label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-sm"
+                                style={{ fontSize: '0.76rem', height: 30, padding: '0 10px' }}
+                                onClick={() => {
+                                  const sampleQuestions = [
+                                    { question: 'Cách sử dụng và liều dùng sản phẩm như thế nào?', answer: 'Quý khách vui lòng sử dụng theo đúng hướng dẫn in trên bao bì hoặc tham khảo mục Hướng dẫn sử dụng trên trang thông tin sản phẩm. Liên hệ Hotline doanh nghiệp nếu cần tư vấn chuyên sâu.' },
+                                    { question: 'Làm sao để kiểm tra sản phẩm chính hãng?', answer: 'Sản phẩm chính hãng có tem QR xác thực điện tử. Khi quét mã QR hiện thông báo Xác thực chính hãng màu xanh và đầy đủ thông tin nhà sản xuất / phân phối.' },
+                                    { question: 'Chính sách bảo hành / đổi trả sản phẩm ra sao?', answer: 'Chúng tôi hỗ trợ đổi trả nếu sản phẩm có lỗi từ nhà sản xuất và bảo hành đầy đủ theo quy định của công ty. Vui lòng giữ nguyên tem QR trên sản phẩm.' },
+                                    { question: 'Tôi muốn liên hệ đặt mua sỉ / làm đại lý điểm bán?', answer: 'Quý đối tác vui lòng liên hệ trực tiếp số Hotline hoặc Email của doanh nghiệp hiển thị trên trang để được bộ phận kinh doanh tư vấn chiết khấu đại lý.' }
+                                  ];
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    chatbotConfig: {
+                                      ...prev.chatbotConfig,
+                                      enabled: true,
+                                      qaList: [...(prev.chatbotConfig?.qaList || []), ...sampleQuestions]
+                                    }
+                                  }));
+                                }}
+                              >
+                                ⚡ Nạp bộ câu hỏi mẫu
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                style={{ fontSize: '0.76rem', height: 30, padding: '0 12px' }}
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    chatbotConfig: {
+                                      ...prev.chatbotConfig,
+                                      enabled: true,
+                                      qaList: [...(prev.chatbotConfig?.qaList || []), { question: '', answer: '' }]
+                                    }
+                                  }));
+                                }}
+                              >
+                                <Plus size={14} /> Thêm câu hỏi tự chọn
+                              </button>
+                            </div>
                           </div>
 
-                          <div>
-                            <label className="label">Mã nhúng Script Chatbot (Tawkt.to / Tidio / Zalo / Fanpage)</label>
-                            <textarea
-                              className="input"
-                              rows={3}
-                              placeholder="<script src='https://embed.tawk.to/...'></script>"
-                              value={formData.chatbotConfig?.script || ''}
-                              onChange={(e) => setFormData(prev => ({
-                                ...prev,
-                                chatbotConfig: { ...prev.chatbotConfig, script: e.target.value }
-                              }))}
-                            />
-                          </div>
+                          {(!formData.chatbotConfig?.qaList || formData.chatbotConfig.qaList.length === 0) ? (
+                            <div style={{ textAlign: 'center', padding: '16px', fontSize: '0.82rem', color: 'var(--color-text-muted)', border: '1px dashed rgba(255,255,255,0.12)', borderRadius: 8 }}>
+                              Chưa có câu hỏi tự chọn riêng. Bạn có thể bấm <strong>"⚡ Nạp bộ câu hỏi mẫu"</strong> hoặc <strong>"+ Thêm câu hỏi tự chọn"</strong> để thiết lập kịch bản tư vấn tự động cho khách quét tem.
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
+                              {formData.chatbotConfig.qaList.map((qa, idx) => (
+                                <div key={idx} style={{ background: 'var(--color-bg-secondary)', padding: 12, borderRadius: 8, border: '1px solid var(--color-border)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0, marginTop: 4 }}>
+                                    {idx + 1}
+                                  </div>
+                                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <input
+                                      type="text"
+                                      className="input"
+                                      placeholder={`Câu hỏi tự chọn #${idx + 1} (VD: Sản phẩm này dùng cho độ tuổi nào?)`}
+                                      value={qa.question || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFormData(prev => {
+                                          const list = [...(prev.chatbotConfig?.qaList || [])];
+                                          list[idx] = { ...list[idx], question: val };
+                                          return { ...prev, chatbotConfig: { ...prev.chatbotConfig, qaList: list } };
+                                        });
+                                      }}
+                                      style={{ height: 36, fontSize: '0.85rem', fontWeight: 600 }}
+                                    />
+                                    <textarea
+                                      className="input"
+                                      rows={2}
+                                      placeholder="Câu trả lời tự động của Chatbot khi khách chọn câu hỏi này..."
+                                      value={qa.answer || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFormData(prev => {
+                                          const list = [...(prev.chatbotConfig?.qaList || [])];
+                                          list[idx] = { ...list[idx], answer: val };
+                                          return { ...prev, chatbotConfig: { ...prev.chatbotConfig, qaList: list } };
+                                        });
+                                      }}
+                                      style={{ fontSize: '0.83rem' }}
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData(prev => {
+                                        const list = (prev.chatbotConfig?.qaList || []).filter((_, i) => i !== idx);
+                                        return { ...prev, chatbotConfig: { ...prev.chatbotConfig, qaList: list } };
+                                      });
+                                    }}
+                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+                                    title="Xóa câu hỏi này"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+
+                        <div>
+                          <label className="label">Mã nhúng Script Chatbot bên thứ 3 (Tùy chọn: Tawk.to / Tidio / Zalo)</label>
+                          <textarea
+                            className="input"
+                            rows={2}
+                            placeholder="<script src='https://embed.tawk.to/...'></script>"
+                            value={formData.chatbotConfig?.script || ''}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              chatbotConfig: { ...prev.chatbotConfig, script: e.target.value }
+                            }))}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Display & Theme Config Box */}

@@ -495,7 +495,7 @@ async function getNextStartNum(cleanPrefix) {
   return startNum;
 }
 
-router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
+router.post('/batches', auth, requireOwnership, async (req, res) => {
   let createdBatch = null;
   try {
     const {
@@ -505,7 +505,7 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
 
     const enterpriseId = req.user.role === 'ADMIN'
       ? (req.body.enterpriseId || req.user.enterpriseId)
-      : req.user.enterpriseId;
+      : (req.user.enterpriseId?._id || req.user.enterpriseId);
 
     // ── Validate đầu vào ──────────────────────────────────────────────────────
     if (!enterpriseId) {
@@ -660,10 +660,13 @@ router.post('/batches', auth, requireRole('ADMIN'), async (req, res) => {
   }
 });
 
-// POST /api/labels/import-excel - Import/Restore label batch from Excel file data (ADMIN ONLY)
-router.post('/import-excel', auth, requireRole('ADMIN'), async (req, res) => {
+// POST /api/labels/import-excel - Import/Restore label batch from Excel file data
+router.post('/import-excel', auth, requireOwnership, async (req, res) => {
   try {
-    const { batchCode, enterpriseId, productId, labelsData, notes } = req.body;
+    const { batchCode, productId, labelsData, notes } = req.body;
+    const enterpriseId = req.user.role === 'ADMIN'
+      ? (req.body.enterpriseId || req.user.enterpriseId)
+      : (req.user.enterpriseId?._id || req.user.enterpriseId);
     if (!enterpriseId) {
       return res.status(400).json({ error: 'Thiếu thông tin doanh nghiệp sở hữu' });
     }
@@ -867,12 +870,14 @@ router.delete('/batches/:id', auth, requireRole('ADMIN'), async (req, res) => {
   }
 });
 
-// POST /api/labels/migrate - Import old labels (ADMIN ONLY)
-router.post('/migrate', auth, requireRole('ADMIN'), async (req, res) => {
+// POST /api/labels/migrate - Import old labels
+router.post('/migrate', auth, requireOwnership, async (req, res) => {
   let createdBatch = null;
   try {
     const { batchCode, labels: labelData, migrationSource, migrationOldLink, productId, templateId, theme } = req.body;
-    const enterpriseId = req.user.role === 'ADMIN' ? req.body.enterpriseId : req.user.enterpriseId;
+    const enterpriseId = req.user.role === 'ADMIN'
+      ? (req.body.enterpriseId || req.user.enterpriseId)
+      : (req.user.enterpriseId?._id || req.user.enterpriseId);
 
     if (!batchCode || !String(batchCode).trim()) {
       return res.status(400).json({ error: 'Vui lòng nhập Mã lô tem' });

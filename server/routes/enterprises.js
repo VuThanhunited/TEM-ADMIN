@@ -1,7 +1,7 @@
 const express = require('express');
 const Enterprise = require('../models/Enterprise');
 const auth = require('../middleware/auth');
-const { requireOwnership } = require('../middleware/rbac');
+const { requireOwnership, getRelatedEnterpriseIds } = require('../middleware/rbac');
 
 const router = express.Router();
 
@@ -79,8 +79,11 @@ router.get('/:id', auth, async (req, res) => {
     if (!enterprise) return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
 
     // Non-admin users can only view their own enterprise
-    if (req.user.role !== 'ADMIN' && req.user.enterpriseId?.toString() !== enterprise._id.toString()) {
-      return res.status(403).json({ error: 'Không có quyền truy cập' });
+    if (req.user.role !== 'ADMIN') {
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      if (!relatedIds.some(id => String(id) === String(enterprise._id))) {
+        return res.status(403).json({ error: 'Không có quyền truy cập' });
+      }
     }
     res.json(enterprise);
   } catch (error) {
@@ -92,7 +95,7 @@ router.get('/:id', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     if (req.user.role === 'ADMIN') {
-      const enterprises = await Enterprise.find().select('name type address logo bannerImage domain subdomain displayConfig brandConfig phone email website taxCode partnerDetails isActive').sort({ createdAt: -1 }).lean();
+      const enterprises = await Enterprise.find().select('name type address logo bannerImage domain subdomain displayConfig brandConfig phone email website taxCode partnerDetails chatbotConfig isActive').sort({ createdAt: -1 }).lean();
       return res.json(enterprises);
     }
     if (req.user.enterpriseId) {
@@ -108,8 +111,11 @@ router.get('/', auth, async (req, res) => {
 // PUT /api/enterprises/:id - Update enterprise details
 router.put('/:id', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.enterpriseId?.toString() !== req.params.id) {
-      return res.status(403).json({ error: 'Không có quyền chỉnh sửa' });
+    if (req.user.role !== 'ADMIN') {
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      if (!relatedIds.some(id => String(id) === String(req.params.id))) {
+        return res.status(403).json({ error: 'Không có quyền chỉnh sửa' });
+      }
     }
 
     const { name, type, address, phone, email, website, taxCode, logo, bannerImage, brandConfig, partnerDetails, domain, subdomain, chatbotConfig, displayConfig } = req.body;

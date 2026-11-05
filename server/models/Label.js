@@ -51,6 +51,16 @@ const labelSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // Vị trí kho đối tác lúc quét gán tem cho điểm bán
+  warehouseLocation: {
+    address: { type: String, default: null },
+    city: { type: String, default: null },
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
+    ipAddress: { type: String, default: null },
+    recordedAt: { type: Date, default: null },
+    recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+  },
   ownerCode: {
     type: String,
     trim: true,

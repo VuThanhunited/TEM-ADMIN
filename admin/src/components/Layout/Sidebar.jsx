@@ -5,17 +5,17 @@ import api from '../../services/api';
 import {
   LayoutDashboard, Users, Building2, Package, Tag,
   Palette, BarChart3, ChevronLeft, ChevronDown,
-  Shield, LogOut, ScanLine, History, Store, ExternalLink, FileText, CreditCard
+  Shield, LogOut, ScanLine, History, Store, ExternalLink, FileText, CreditCard, ShieldAlert
 } from 'lucide-react';
 import './Sidebar.css';
 
-// Menu cho ADMIN và NSX
+// Menu cho ADMIN và TK khách (NSX / NPP)
 const adminMenuItems = [
   {
     label: 'Dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
   },
   {
     label: 'Quản lý Tài khoản',
@@ -27,7 +27,7 @@ const adminMenuItems = [
     label: 'Cấu hình Doanh nghiệp',
     icon: Building2,
     path: '/enterprise',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
     children: [
       { label: 'Thông tin công ty', path: '/enterprise' },
       { label: 'Cấu hình Domain', path: '/enterprise/domain' },
@@ -38,25 +38,31 @@ const adminMenuItems = [
     label: 'Quản lý Sản phẩm',
     icon: Package,
     path: '/products',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
   },
   {
-    label: 'Quản lý NSX / NPP / Cửa hàng',
+    label: 'Quản lý Nhà phân phối',
     icon: Store,
     path: '/distributors',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
   },
   {
-    label: 'Quản lý Điểm bán',
+    label: 'Quản lý Điểm bán & Doanh số',
     icon: Store,
     path: '/npp/stores',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
+  },
+  {
+    label: 'Cảnh báo Vị trí Quét',
+    icon: ShieldAlert,
+    path: '/location-alerts',
+    roles: ['ADMIN', 'NSX', 'NPP'],
   },
   {
     label: 'Quản lý Tem nhãn',
     icon: Tag,
     path: '/labels',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
     children: [
       { label: 'Quản lý Lô tem', path: '/labels' },
       { label: 'Kích hoạt & Gắn Serial', path: '/labels/activate' },
@@ -65,39 +71,45 @@ const adminMenuItems = [
     ]
   },
   {
+    label: 'Quét Tem Gán Điểm Bán',
+    icon: ScanLine,
+    path: '/npp/scan',
+    roles: ['ADMIN', 'NSX', 'NPP'],
+  },
+  {
+    label: 'Lịch Sử Phân Phối',
+    icon: History,
+    path: '/npp/history',
+    roles: ['ADMIN', 'NSX', 'NPP'],
+  },
+  {
     label: 'Cấu hình Giao diện',
     icon: Palette,
     path: '/templates',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
   },
   {
     label: 'Quản lý Mẫu tem',
     icon: FileText,
     path: '/label-designs',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
   },
   {
     label: 'Quản lý Namecard',
     icon: CreditCard,
     path: '/namecards',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
   },
   {
     label: 'Báo cáo & Thống kê',
     icon: BarChart3,
     path: '/analytics',
-    roles: ['ADMIN', 'NSX'],
+    roles: ['ADMIN', 'NSX', 'NPP'],
     children: [
       { label: 'Lịch sử quét tem', path: '/analytics' },
       { label: 'Bản đồ vị trí quét', path: '/analytics/map' },
       { label: 'Xem Demo hiển thị', path: '/analytics/demo' },
     ]
-  },
-  {
-    label: 'QL Kho (Scan)',
-    icon: ScanLine,
-    path: '/npp/scan',
-    roles: ['ADMIN', 'NSX'],
   },
 ];
 
@@ -176,8 +188,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile
     return location.pathname.startsWith(path);
   };
 
-  // Chọn menu theo role
-  const allItems = isNPP ? nppMenuItems : adminMenuItems;
+  // Chọn menu thống nhất cho ADMIN và TK khách (NSX / NPP)
+  const allItems = adminMenuItems;
   const filteredItems = allItems.filter(item => {
     if (!item.roles) return true;
     return item.roles.includes(user?.role);

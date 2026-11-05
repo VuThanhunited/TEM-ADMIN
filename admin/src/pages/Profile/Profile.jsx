@@ -199,37 +199,54 @@ export default function Profile() {
 
             <hr className="divider" />
             <h3 className="card-subtitle" style={{ marginTop: '20px' }}>Thay đổi mật khẩu</h3>
-            <p className="subtitle-hint">Để trống nếu bạn không muốn thay đổi mật khẩu hiện tại</p>
+            {user?.role === 'ADMIN' ? (
+              <>
+                <p className="subtitle-hint">Để trống nếu bạn không muốn thay đổi mật khẩu hiện tại</p>
+                <div className="form-group-row">
+                  <div className="input-group">
+                    <label>Mật khẩu mới</label>
+                    <div className="input-with-icon">
+                      <Key size={16} className="input-icon" />
+                      <input
+                        className="input"
+                        type="password"
+                        value={form.password}
+                        onChange={e => setForm({ ...form, password: e.target.value })}
+                        placeholder="Mật khẩu mới..."
+                      />
+                    </div>
+                  </div>
 
-            <div className="form-group-row">
-              <div className="input-group">
-                <label>Mật khẩu mới</label>
-                <div className="input-with-icon">
-                  <Key size={16} className="input-icon" />
-                  <input
-                    className="input"
-                    type="password"
-                    value={form.password}
-                    onChange={e => setForm({ ...form, password: e.target.value })}
-                    placeholder="Mật khẩu mới..."
-                  />
+                  <div className="input-group">
+                    <label>Xác nhận mật khẩu</label>
+                    <div className="input-with-icon">
+                      <Key size={16} className="input-icon" />
+                      <input
+                        className="input"
+                        type="password"
+                        value={form.confirmPassword}
+                        onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                        placeholder="Xác nhận mật khẩu mới..."
+                      />
+                    </div>
+                  </div>
                 </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  color: '#fbbf24',
+                  fontSize: '0.85rem',
+                  marginTop: '8px'
+                }}
+              >
+                🔒 <strong>Bảo mật mật khẩu:</strong> Bạn có thể chỉnh sửa đầy đủ thông tin doanh nghiệp và tài khoản của mình, nhưng chức năng đổi mật khẩu chỉ dành riêng cho Quản trị viên (Admin). Vui lòng liên hệ Admin khi cần cấp lại mật khẩu.
               </div>
-
-              <div className="input-group">
-                <label>Xác nhận mật khẩu</label>
-                <div className="input-with-icon">
-                  <Key size={16} className="input-icon" />
-                  <input
-                    className="input"
-                    type="password"
-                    value={form.confirmPassword}
-                    onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
-                    placeholder="Xác nhận mật khẩu mới..."
-                  />
-                </div>
-              </div>
-            </div>
+            )}
 
             <div className="form-actions">
               <button className="btn btn-primary btn-save" type="submit" disabled={loading}>

@@ -86,6 +86,7 @@ const NppLabels = lazy(() => import('./pages/NppLabels/NppLabels'));
 const Profile = lazy(() => import('./pages/Profile/Profile'));
 const LabelDesigns = lazy(() => import('./pages/LabelDesigns/LabelDesigns'));
 const Namecards = lazy(() => import('./pages/Namecards/Namecards'));
+const LocationAlerts = lazy(() => import('./pages/LocationAlerts/LocationAlerts'));
 
 const AppLoader = () => (
   <div className="app-loading">
@@ -97,17 +98,12 @@ const AppLoader = () => (
 const USER_LOGIN_URL = '/login';
 
 function ProtectedRoute({ children, adminOnly = false }) {
-  const { user, loading, isAdmin, isNPP } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div><p>Đang tải...</p></div>;
   // Chưa đăng nhập → chuyển hướng sang trang đăng nhập duy nhất
   if (!user) {
     window.location.href = USER_LOGIN_URL;
     return null;
-  }
-  if (isNPP) {
-    if (window.location.pathname.startsWith('/products')) return <Navigate to="/npp/products" replace />;
-    if (window.location.pathname.startsWith('/labels')) return <Navigate to="/npp/labels" replace />;
-    return <Navigate to="/npp/stores" replace />;
   }
   if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />;
   return children;
@@ -124,18 +120,16 @@ function NppRoute({ children }) {
 }
 
 function PublicRoute({ children }) {
-  const { user, loading, isNPP } = useAuth();
+  const { user, loading } = useAuth();
   if (loading) return <div className="app-loading"><div className="loading-spinner" style={{width: 48, height: 48}}></div></div>;
   if (user) {
-    if (isNPP) return <Navigate to="/npp/stores" replace />;
     return <Navigate to="/dashboard" replace />;
   }
   return children;
 }
 
 function CatchAllRoute() {
-  const { user, isNPP } = useAuth();
-  if (user && isNPP) return <Navigate to="/npp/stores" replace />;
+  const { user } = useAuth();
   if (user) return <Navigate to="/dashboard" replace />;
   window.location.href = USER_LOGIN_URL;
   return null;
@@ -202,6 +196,7 @@ function AppRoutes() {
           <Route path="enterprise/chatbot" element={<Enterprise />} />
           <Route path="products" element={<Products />} />
           <Route path="distributors" element={<Distributors />} />
+          <Route path="location-alerts" element={<LocationAlerts />} />
           <Route path="labels" element={<Labels />} />
           <Route path="labels/activate" element={<Labels />} />
           <Route path="labels/migrate" element={<Labels />} />

@@ -52,6 +52,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  price: {
+    type: Number,
+    default: 0
+  },
   barcode: {
     type: String,
     default: ''

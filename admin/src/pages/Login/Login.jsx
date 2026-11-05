@@ -23,13 +23,9 @@ export default function Login() {
       setStatusText('Đang xác thực tài khoản...');
       localStorage.setItem('tem_token', adminToken);
       loadUser()
-        .then((userData) => {
+        .then(() => {
           setStatusText('Đăng nhập thành công! Đang chuyển hướng...');
-          if (userData?.role === 'NPP') {
-            navigate('/npp/scan', { replace: true });
-          } else {
-            navigate('/dashboard', { replace: true });
-          }
+          navigate('/dashboard', { replace: true });
         })
         .catch(() => {
           setError('Đăng nhập tự động thất bại hoặc phiên làm việc không hợp lệ.');
@@ -52,12 +48,8 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      const result = await login(username.trim(), password);
-      if (result?.user?.role === 'NPP') {
-        navigate('/npp/scan', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      await login(username.trim(), password);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       // Error handled by AuthContext
     } finally {

@@ -75,7 +75,23 @@ export default function NppScan() {
   const [assigning, setAssigning] = useState(false);
   const [lastAssigned, setLastAssigned] = useState(null); // { serialNumber, storeName, storeAddress, soldAt }
   const [sessionSerials, setSessionSerials] = useState([]);
+  const [warehouseCoords, setWarehouseCoords] = useState(null);
   const selectedStoreRef = useRef(selectedStore);
+
+  useEffect(() => {
+    if (navigator?.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setWarehouseCoords({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          });
+        },
+        () => {},
+        { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     selectedStoreRef.current = selectedStore;
@@ -186,7 +202,12 @@ export default function NppScan() {
         ownerAddress: storeObj.address || '',
         ownerPhone: storeObj.phone || '',
         activatedSerial: serialNumber,
-        ownerCode: serialNumber
+        ownerCode: serialNumber,
+        warehouseLocation: {
+          address: user?.address || storeObj.address || '',
+          lat: warehouseCoords?.lat ?? null,
+          lng: warehouseCoords?.lng ?? null
+        }
       });
 
       const soldAt = res.distributedAt || new Date().toISOString();

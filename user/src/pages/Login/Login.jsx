@@ -121,17 +121,12 @@ export default function Login() {
         }
       }
 
-      if (role === 'ADMIN' || role === 'NSX') {
-        // Redirect thẳng đến admin dashboard (không qua /login nữa)
-        localStorage.setItem('tem_token', result.token);
-        window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(result.token)}`;
-        return;
-      } else if (role === 'NPP') {
-        // NPP → trang Quản lý Điểm bán & Quét tem của NPP
+      if (role === 'ADMIN' || role === 'NSX' || role === 'NPP') {
+        // Redirect thẳng đến cổng quản lý (Admin Portal) cho cả ADMIN và TK khách (NSX / NPP)
         localStorage.setItem('tem_token', result.token);
         localStorage.setItem('tem_user', JSON.stringify(result.user));
         login(result.user, result.token);
-        window.location.href = `${adminAppUrl}/npp/stores?adminToken=${encodeURIComponent(result.token)}`;
+        window.location.href = `${adminAppUrl}/dashboard?adminToken=${encodeURIComponent(result.token)}`;
         return;
       } else {
         // Khách / user thường → ở lại user app

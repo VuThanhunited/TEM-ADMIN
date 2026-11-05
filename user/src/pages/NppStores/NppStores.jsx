@@ -46,19 +46,36 @@ export default function NppStores() {
 
   const [serialModalStore, setSerialModalStore] = useState(null);
   const [storeSerials, setStoreSerials] = useState([]);
+  const [storeSerialStats, setStoreSerialStats] = useState(null);
   const [loadingSerials, setLoadingSerials] = useState(false);
+
+  // Bộ lọc thống kê doanh số Điểm bán theo Tháng / Quý / Năm
+  const nowDate = new Date();
+  const [periodType, setPeriodType] = useState('all'); // 'all' | 'month' | 'quarter' | 'year'
+  const [selectedYear, setSelectedYear] = useState(nowDate.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(nowDate.getMonth() + 1);
+  const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(nowDate.getMonth() / 3) + 1);
+  const [summaryData, setSummaryData] = useState(null);
 
   const loadStores = useCallback(async (searchQuery = search) => {
     setLoading(true);
     try {
-      const res = await userApi.getRetailStores(searchQuery ? { search: searchQuery } : {});
+      const params = {
+        ...(searchQuery ? { search: searchQuery } : {}),
+        periodType,
+        year: selectedYear,
+        month: selectedMonth,
+        quarter: selectedQuarter
+      };
+      const res = await userApi.getRetailStores(params);
       setStores(res.stores || res.data || []);
+      setSummaryData(res.summary || null);
     } catch (err) {
       console.error('Lỗi tải danh sách điểm bán:', err);
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, periodType, selectedYear, selectedMonth, selectedQuarter]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -130,9 +147,16 @@ export default function NppStores() {
     setSerialModalStore(store);
     setLoadingSerials(true);
     setStoreSerials([]);
+    setStoreSerialStats(null);
     try {
-      const res = await userApi.getRetailStoreSerials(store._id);
+      const res = await userApi.getRetailStoreSerials(store._id, {
+        periodType,
+        year: selectedYear,
+        month: selectedMonth,
+        quarter: selectedQuarter
+      });
       setStoreSerials(res.serials || res.data || []);
+      setStoreSerialStats(res);
     } catch (err) {
       console.error('Lỗi tải danh sách serial của điểm bán:', err);
     } finally {
@@ -150,7 +174,21 @@ export default function NppStores() {
     navigate('/scan?continueStore=1');
   };
 
-  const totalSerialsAllStores = stores.reduce((sum, s) => sum + (s.totalSerials || 0), 0);
+  const totalSerialsAllStores = summaryData?.totalSerialsInPeriod !== undefined
+    ? summaryData.totalSerialsInPeriod
+    : stores.reduce((sum, s) => sum + (s.periodSerials ?? s.totalSerials ?? 0), 0);
+  const totalRevenueAllStores = summaryData?.totalRevenueInPeriod !== undefined
+    ? summaryData.totalRevenueInPeriod
+    : stores.reduce((sum, s) => sum + (s.periodRevenue ?? s.totalRevenue ?? 0), 0);
+
+  const formatCurrency = (val) => `${Number(val || 0).toLocaleString('vi-VN')} đ`;
+  const periodLabel = periodType === 'month'
+    ? `Tháng ${selectedMonth}/${selectedYear}`
+    : periodType === 'quarter'
+      ? `Quý ${selectedQuarter}/${selectedYear}`
+      : periodType === 'year'
+        ? `Năm ${selectedYear}`
+        : 'Tất cả thời gian';
 
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', color: '#f8fafc', padding: '16px', fontFamily: 'sans-serif' }}>
@@ -228,6 +266,75 @@ export default function NppStores() {
           </div>
         </div>
 
+        {/* Bộ lọc Thống kê Doanh số Điểm bán theo Tháng / Quý / Năm */}
+        <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '12px 16px', marginBottom: '14px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#f8fafc' }}>
+            📊 Thống kê Doanh số Điểm bán theo kỳ ({periodLabel}):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+            {[
+              { id: 'all', label: 'Tất cả' },
+              { id: 'month', label: 'Theo Tháng' },
+              { id: 'quarter', label: 'Theo Quý' },
+              { id: 'year', label: 'Theo Năm' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setPeriodType(tab.id)}
+                style={{
+                  background: periodType === tab.id ? '#4f46e5' : '#0f172a',
+                  color: periodType === tab.id ? '#fff' : '#cbd5e1',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+
+            {periodType === 'month' && (
+              <select
+                value={selectedMonth}
+                onChange={e => setSelectedMonth(Number(e.target.value))}
+                style={{ background: '#0f172a', color: '#fff', border: '1px solid #475569', borderRadius: '8px', padding: '6px 10px', fontSize: '0.82rem' }}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <option key={m} value={m}>Tháng {m}</option>
+                ))}
+              </select>
+            )}
+
+            {periodType === 'quarter' && (
+              <select
+                value={selectedQuarter}
+                onChange={e => setSelectedQuarter(Number(e.target.value))}
+                style={{ background: '#0f172a', color: '#fff', border: '1px solid #475569', borderRadius: '8px', padding: '6px 10px', fontSize: '0.82rem' }}
+              >
+                {[1, 2, 3, 4].map(q => (
+                  <option key={q} value={q}>Quý {q}</option>
+                ))}
+              </select>
+            )}
+
+            {periodType !== 'all' && (
+              <select
+                value={selectedYear}
+                onChange={e => setSelectedYear(Number(e.target.value))}
+                style={{ background: '#0f172a', color: '#fff', border: '1px solid #475569', borderRadius: '8px', padding: '6px 10px', fontSize: '0.82rem' }}
+              >
+                {[nowDate.getFullYear() - 2, nowDate.getFullYear() - 1, nowDate.getFullYear(), nowDate.getFullYear() + 1].map(y => (
+                  <option key={y} value={y}>Năm {y}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
         {/* Thống kê */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -245,8 +352,18 @@ export default function NppStores() {
               <Tag size={22} />
             </div>
             <div>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tổng Serial đã xuất</div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>SL sản phẩm đã gán ({periodLabel})</div>
               <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#34d399' }}>{totalSerialsAllStores}</div>
+            </div>
+          </div>
+
+          <div style={{ background: '#1e293b', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(245,158,11,0.18)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+              ₫
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Doanh số ({periodLabel})</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fbbf24' }}>{formatCurrency(totalRevenueAllStores)}</div>
             </div>
           </div>
         </div>
@@ -295,7 +412,8 @@ export default function NppStores() {
                   <th style={{ padding: '12px 14px' }}>Tên Điểm bán</th>
                   <th style={{ padding: '12px 14px' }}>Địa chỉ</th>
                   <th style={{ padding: '12px 14px' }}>Điện thoại</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>Số lượng</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>SL đã gán</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'right' }}>Doanh số (SL × Giá SP)</th>
                   <th style={{ padding: '12px 14px' }}>Serial vừa bán + Thời gian</th>
                   <th style={{ padding: '12px 14px', textAlign: 'right' }}>Thao tác</th>
                 </tr>
@@ -303,6 +421,8 @@ export default function NppStores() {
               <tbody>
                 {stores.map((store, idx) => {
                   const recent = store.recentSales || [];
+                  const qty = store.periodSerials ?? store.totalSerials ?? 0;
+                  const rev = store.periodRevenue ?? store.totalRevenue ?? 0;
                   return (
                     <tr key={store._id} style={{ borderTop: '1px solid #334155' }}>
                       <td style={{ padding: '12px 14px', fontWeight: 700, color: '#818cf8' }}>#{idx + 1}</td>
@@ -313,8 +433,8 @@ export default function NppStores() {
                         <span
                           onClick={() => (store.totalSerials || 0) > 0 && handleViewSerials(store)}
                           style={{
-                            background: (store.totalSerials || 0) > 0 ? 'rgba(16,185,129,0.18)' : '#334155',
-                            color: (store.totalSerials || 0) > 0 ? '#34d399' : '#94a3b8',
+                            background: qty > 0 ? 'rgba(16,185,129,0.18)' : '#334155',
+                            color: qty > 0 ? '#34d399' : '#94a3b8',
                             padding: '4px 10px',
                             borderRadius: '999px',
                             fontWeight: 700,
@@ -322,8 +442,11 @@ export default function NppStores() {
                             cursor: (store.totalSerials || 0) > 0 ? 'pointer' : 'default'
                           }}
                         >
-                          {store.totalSerials || 0} serial
+                          {qty} SP
                         </span>
+                      </td>
+                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800, color: rev > 0 ? '#fbbf24' : '#64748b' }}>
+                        {formatCurrency(rev)}
                       </td>
                       <td style={{ padding: '12px 14px' }}>
                         {recent.length === 0 ? (

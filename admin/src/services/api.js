@@ -245,10 +245,17 @@ class ApiService {
 
   // ── Retail Stores (Điểm bán nhỏ của NPP) ──────────────────────────────────
   getRetailStores(params) { return this.request('GET', '/public/retail-stores', null, params); }
-  getRetailStoreSerials(id) { return this.request('GET', `/public/retail-stores/${id}/serials`); }
+  getRetailStoreSerials(id, params) { return this.request('GET', `/public/retail-stores/${id}/serials`, null, params); }
   createRetailStore(data) { return this.request('POST', '/public/retail-stores', data); }
   updateRetailStore(id, data) { return this.request('PUT', `/public/retail-stores/${id}`, data); }
   deleteRetailStore(id) { return this.request('DELETE', `/public/retail-stores/${id}`); }
+
+  // ── Location Alerts (Cảnh báo quét sai vị trí điểm bán) ───────────────────
+  getLocationAlerts(params) { return this.request('GET', '/public/location-alerts', null, params); }
+  dismissLocationAlert(id, data = {}) { return this.request('PUT', `/public/location-alerts/${id}/dismiss`, data); }
+  dismissAllLocationAlerts(data = {}) { return this.request('PUT', '/public/location-alerts/dismiss-all', data); }
+  deleteLocationAlert(id) { return this.request('DELETE', `/public/location-alerts/${id}`); }
+  simulateLocationAlert(data = {}) { return this.request('POST', '/public/location-alerts/simulate', data); }
 
   // ── Admin impersonation ───────────────────────────────────────────────────
   adminLoginAs() { return this.request('POST', '/public/admin-login-as'); }

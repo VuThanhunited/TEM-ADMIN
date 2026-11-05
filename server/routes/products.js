@@ -1,7 +1,7 @@
 const express = require('express');
 const Product = require('../models/Product');
 const auth = require('../middleware/auth');
-const { requireOwnership } = require('../middleware/rbac');
+const { requireOwnership, getRelatedEnterpriseIds } = require('../middleware/rbac');
 
 const router = express.Router();
 
@@ -53,7 +53,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 
     if (simple === 'true') {
       // Chế độ gọn nhẹ phục vụ dropdown / select: siêu nhanh (<100ms), không populate manufacturerId nặng
-      findQuery = findQuery.select('name sku category enterpriseId distributors');
+      findQuery = findQuery.select('name sku price category enterpriseId distributors');
     } else {
       findQuery = findQuery.populate('manufacturerId', 'name address phone email');
       // Không strip dữ liệu quan trọng (images, congBoImages, certifications...) để frontend luôn có đủ 100% dữ liệu
@@ -134,7 +134,7 @@ const normalizeManufacturer = async (product) => {
 router.post('/', auth, requireOwnership, async (req, res) => {
   try {
     const {
-      name, images, description, category, sku, barcode, distributors, specifications,
+      name, images, description, category, sku, price, barcode, distributors, specifications,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
       chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText,
       bannerImage, theme
@@ -165,6 +165,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       description,
       category,
       sku,
+      price: price !== undefined && price !== '' ? Math.max(0, Number(price) || 0) : 0,
       barcode,
       distributors: distributors || [],
       specifications: specifications || {},
@@ -199,11 +200,20 @@ router.post('/', auth, requireOwnership, async (req, res) => {
 router.put('/:id', auth, async (req, res) => {
   try {
     const {
-      name, images, description, category, sku, barcode, distributors, specifications, isActive,
+      name, images, description, category, sku, price, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
       chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText,
       bannerImage, theme
     } = req.body;
+
+    if (req.user.role !== 'ADMIN') {
+      const existingProd = await Product.findById(req.params.id).select('enterpriseId').lean();
+      if (!existingProd) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      if (!relatedIds.some(id => String(id) === String(existingProd.enterpriseId))) {
+        return res.status(403).json({ error: 'Không có quyền chỉnh sửa sản phẩm của doanh nghiệp khác' });
+      }
+    }
 
     let manufacturerModel = 'Enterprise';
     if (manufacturerId) {
@@ -220,6 +230,10 @@ router.put('/:id', auth, async (req, res) => {
       distributionBannerText: distributionBannerText !== undefined ? distributionBannerText : undefined,
       congBoNumber: congBoNumber !== undefined ? congBoNumber : undefined
     };
+
+    if (price !== undefined && price !== '') {
+      updateData.price = Math.max(0, Number(price) || 0);
+    }
 
     if (bannerImage !== undefined) updateData.bannerImage = bannerImage;
     if (theme !== undefined) updateData.theme = theme;
@@ -270,6 +284,14 @@ router.put('/:id', auth, async (req, res) => {
 // DELETE /api/products/:id
 router.delete('/:id', auth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN') {
+      const existingProd = await Product.findById(req.params.id).select('enterpriseId').lean();
+      if (!existingProd) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      if (!relatedIds.some(id => String(id) === String(existingProd.enterpriseId))) {
+        return res.status(403).json({ error: 'Không có quyền xóa sản phẩm của doanh nghiệp khác' });
+      }
+    }
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     invalidateProductsCache();

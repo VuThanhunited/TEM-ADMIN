@@ -351,6 +351,45 @@ export default function ProductInfo() {
   };
 
 
+  // Bộ câu hỏi tự chọn gửi Chatbot (kết hợp cấu hình Sản phẩm + Doanh nghiệp + Câu hỏi gợi ý mặc định)
+  const configuredQAs = [
+    ...(product?.chatbotQA || []),
+    ...(enterprise?.chatbotConfig?.qaList || [])
+  ].filter(qa => qa && qa.question && qa.question.trim());
+
+  const defaultPresetQAs = [
+    {
+      question: 'Cách sử dụng và công dụng của sản phẩm?',
+      answer: product?.description
+        ? `Thông tin & công dụng sản phẩm "${product?.name}": ${product.description}`
+        : `Quý khách vui lòng sử dụng sản phẩm "${product?.name || 'chính hãng'}" theo đúng hướng dẫn in trên bao bì hoặc liên hệ Hotline ${enterprise?.phone || 'doanh nghiệp'} để được tư vấn chi tiết.`
+    },
+    {
+      question: 'Làm sao để kiểm tra sản phẩm chính hãng?',
+      answer: `Sản phẩm "${product?.name || ''}" được bảo vệ bằng tem QR chống giả thông minh. Mã Serial ${label?.serialNumber || serial || ''} đã được xác thực chính hãng bởi ${enterprise?.name || 'nhà phân phối'}.`
+    },
+    {
+      question: 'Địa chỉ và Hotline liên hệ của đơn vị phân phối?',
+      answer: `Đơn vị phân phối: ${enterprise?.name || 'Chính hãng'}. Địa chỉ: ${enterprise?.address || 'Việt Nam'}. Hotline hỗ trợ: ${enterprise?.phone || 'Đang cập nhật'}.`
+    },
+    {
+      question: 'Hạn sử dụng và cách bảo quản sản phẩm?',
+      answer: `Quý khách vui lòng bảo quản sản phẩm ở nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp. Hạn sử dụng tem xác thực: ${formatDate(label?.expiryDate || scanData?.label?.batchId?.expiryDate)}.`
+    }
+  ];
+
+  const presetQuestions = configuredQAs.length > 0 ? configuredQAs : defaultPresetQAs;
+
+  const handleSelectPresetQuestion = (qa) => {
+    if (!qa || !qa.question) return;
+    const newUserMsg = { sender: 'user', text: qa.question, time: new Date() };
+    setChatMessages(prev => [...prev, newUserMsg]);
+    setTimeout(() => {
+      const reply = qa.answer || `Cảm ơn bạn đã quan tâm đến sản phẩm "${product?.name}". Vui lòng liên hệ Hotline ${enterprise?.phone || ''} để được tư vấn chi tiết hơn!`;
+      setChatMessages(prev => [...prev, { sender: 'bot', text: reply, time: new Date() }]);
+    }, 450);
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -364,10 +403,7 @@ export default function ProductInfo() {
       let botResponse = '';
       const textLower = userText.toLowerCase().trim();
 
-      const allQAs = [
-        ...(product?.chatbotQA || []),
-        ...(enterprise?.chatbotConfig?.qaList || [])
-      ];
+      const allQAs = [...configuredQAs, ...defaultPresetQAs];
 
       let foundQA = null;
       for (const qa of allQAs) {
@@ -1805,6 +1841,49 @@ export default function ProductInfo() {
           </div>
         )}
 
+        {/* 7B. Khối Tư vấn sản phẩm trực tuyến (Chatbot Bộ câu hỏi tự chọn) */}
+        <div
+          style={{
+            margin: '12px 14px 4px',
+            padding: '14px 16px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+            border: '1.5px solid #fdba74',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            boxShadow: '0 4px 12px rgba(234, 88, 12, 0.1)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ea580c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <MessageSquare size={20} />
+            </div>
+            <div>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: '#c2410c' }}>TƯ VẤN SẢN PHẨM TRỰC TUYẾN</h4>
+              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#7c2d12' }}>Chọn câu hỏi để nhận tư vấn tự động từ Chatbot</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            style={{
+              background: '#ea580c',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '20px',
+              padding: '8px 16px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            💬 Tư vấn ngay
+          </button>
+        </div>
+
         {/* 8. Bottom Wave Landscape & Footer */}
         <div className="vyphyto-bottom-landscape">
           <img src="/images/vyphyto_bottom_wave.png" alt="Vyphyto" className="vyphyto-bottom-wave-img" />
@@ -3137,29 +3216,65 @@ export default function ProductInfo() {
           {!chatOpen ? (
             <button className="chatbot-toggle-btn" onClick={() => setChatOpen(true)}>
               <MessageSquare size={20} />
-              <span>Trò chuyện AI</span>
+              <span>Tư vấn sản phẩm</span>
             </button>
           ) : (
-            <div className="chatbot-window">
+            <div className="chatbot-window" style={{ width: 350, maxWidth: 'calc(100vw - 24px)', height: 480, maxHeight: '80vh' }}>
               <div className="chatbot-header">
-                <span>Trợ lý AI {enterprise?.name ? enterprise.name.split(' ').pop() : ''}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Bot size={18} /> Tư vấn — {enterprise?.name ? enterprise.name.split(' ').slice(-2).join(' ') : 'Trợ lý AI'}
+                </span>
                 <button className="chatbot-close-btn" onClick={() => setChatOpen(false)}>
                   <X size={18} />
                 </button>
               </div>
-              <div className="chatbot-messages">
+              <div className="chatbot-messages" style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
                 {chatMessages.map((msg, idx) => (
                   <div key={idx} className={`chat-msg ${msg.sender}`}>
                     {msg.text}
                   </div>
                 ))}
+
+                {/* Bộ câu hỏi tự chọn gửi Chatbot */}
+                {presetQuestions.length > 0 && (
+                  <div style={{ marginTop: 10, padding: '10px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Sparkles size={13} color="#ea580c" /> Bộ câu hỏi tự chọn (Bấm để gửi):
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {presetQuestions.map((qa, qIdx) => (
+                        <button
+                          key={qIdx}
+                          type="button"
+                          onClick={() => handleSelectPresetQuestion(qa)}
+                          style={{
+                            textAlign: 'left',
+                            padding: '8px 11px',
+                            borderRadius: 8,
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#1e293b',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            lineHeight: 1.35
+                          }}
+                        >
+                          💬 {qa.question}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div ref={chatEndRef}></div>
               </div>
               <form onSubmit={handleSendMessage} className="chatbot-input-area">
                 <input
                   type="text"
                   className="chatbot-input"
-                  placeholder="Hỏi đáp về sản phẩm..."
+                  placeholder="Nhập câu hỏi hoặc chọn ở trên..."
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                 />

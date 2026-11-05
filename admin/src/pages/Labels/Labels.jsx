@@ -1014,15 +1014,17 @@ export default function Labels() {
                 <button className="btn btn-ghost" onClick={handleClearAllLabels} style={{ border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }} title="Reset dữ liệu tem về 0">
                   <Trash2 size={16}/> Reset/Clear toàn bộ tem
                 </button>
-                <button className="btn btn-primary" onClick={openCreateBatchModal}>
-                  <Plus size={18}/> Tạo lô tem mới
-                </button>
               </>
+            )}
+            {activeTab === 'batches' && (
+              <button className="btn btn-primary" onClick={openCreateBatchModal}>
+                <Plus size={18}/> Tạo lô tem mới
+              </button>
             )}
           </div>
         )}
-        {activeTab === 'migrate' && isAdmin && (
-          <button className="btn btn-primary" onClick={() => { setModalError(null); setMigrateForm({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: '' }); setShowMigrateModal(true); }}>
+        {activeTab === 'migrate' && (
+          <button className="btn btn-primary" onClick={() => { setModalError(null); setMigrateForm({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: isAdmin ? '' : (enterpriseId || '') }); setShowMigrateModal(true); }}>
             <Upload size={18}/> Import tem cũ
           </button>
         )}

@@ -347,7 +347,7 @@ export default function Products() {
   const MAX_IMAGES = 6;
 
   const initialForm = {
-    name: '', description: '', category: '', sku: '', barcode: '',
+    name: '', description: '', category: '', sku: '', price: 0, barcode: '',
     images: ['', '', '', '', '', ''], distributors: [], specifications: [], enterpriseId: '',
     verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
     productionProcess: [],
@@ -529,6 +529,7 @@ export default function Products() {
         description: p.description || '',
         category: p.category || '',
         sku: p.sku || '',
+        price: p.price !== undefined && p.price !== null ? p.price : 0,
         barcode: p.barcode || '',
         images: imgList,
         distributors: p.distributors || [],
@@ -757,7 +758,12 @@ export default function Products() {
               </div>
               <div className="product-info">
                 <h3 className="product-name">{product.name}</h3>
-                <span className="product-category badge badge-neutral">{product.category || 'Chung'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                  <span className="product-category badge badge-neutral">{product.category || 'Chung'}</span>
+                  <span className="badge badge-success" style={{ fontWeight: 700 }}>
+                    {Number(product.price || 0).toLocaleString('vi-VN')} đ / SP
+                  </span>
+                </div>
                 {product.sku && <span className="product-sku">SKU: {product.sku}</span>}
                 <p className="product-desc">{product.description?.substring(0, 80)}{product.description?.length > 80 ? '...' : ''}</p>
                 {product.manufacturerId && (
@@ -834,13 +840,25 @@ export default function Products() {
                 </div>
                 <div className="form-row">
                   <div className="input-group">
+                    <label>💰 Giá bán 1 sản phẩm (VNĐ) — Dùng tính doanh số Điểm bán</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      className="input"
+                      value={form.price}
+                      onChange={e => setForm({ ...form, price: e.target.value })}
+                      placeholder="VD: 250000"
+                    />
+                  </div>
+                  <div className="input-group">
                     <label>Mã vạch (Barcode EAN/UPC)</label>
                     <input className="input" value={form.barcode} onChange={e => setForm({ ...form, barcode: e.target.value })} placeholder="VD: 8931234567890" />
                   </div>
-                  <div className="input-group">
-                    <label>Dòng thông tin xác thực (CMS) <span style={{fontWeight:400, color:'var(--text-muted)', fontSize:'0.82em'}}>— Với sản phẩm OCOP: nhập text chứng nhận sao (VD: Sản Phẩm đạt tiêu chuẩn OCOP 3 sao)</span></label>
-                    <input className="input" value={form.verificationText} onChange={e => setForm({ ...form, verificationText: e.target.value })} />
-                  </div>
+                </div>
+                <div className="input-group">
+                  <label>Dòng thông tin xác thực (CMS) <span style={{fontWeight:400, color:'var(--text-muted)', fontSize:'0.82em'}}>— Với sản phẩm OCOP: nhập text chứng nhận sao (VD: Sản Phẩm đạt tiêu chuẩn OCOP 3 sao)</span></label>
+                  <input className="input" value={form.verificationText} onChange={e => setForm({ ...form, verificationText: e.target.value })} />
                 </div>
 
                 {/* Phần upload ảnh: Hỗ trợ URL và upload từ thiết bị */}

@@ -11,6 +11,7 @@ const ScanLog = require('../models/ScanLog');
 const User = require('../models/User');
 const Namecard = require('../models/Namecard');
 const RetailStore = require('../models/RetailStore');
+const LocationAlert = require('../models/LocationAlert');
 
 // URL hệ thống chính – dùng làm fallback khi batch không có customDomain
 const ADMIN_URL = process.env.USER_PAGE_URL || 'https://www.giaiphapqrcode.vn';
@@ -24,6 +25,193 @@ const removeVietnameseTones = (str = '') =>
     .replace(/Đ/g, 'D')
     .toLowerCase()
     .trim();
+
+// Danh sách tỉnh/thành Việt Nam kèm tọa độ tâm và từ khóa địa phương để xác thực vị trí quét
+const VN_PROVINCES = [
+  { name: 'TP. Hồ Chí Minh', lat: 10.8231, lng: 106.6297, aliases: ['ho chi minh', 'tphcm', 'hcm', 'sai gon', 'thu duc', 'binh thanh', 'go vap', 'tan binh', 'tan phu', 'phu nhuan', 'binh tan', 'cu chi', 'hoc mon', 'binh chanh', 'nha be'] },
+  { name: 'Hà Nội', lat: 21.0285, lng: 105.8542, aliases: ['ha noi', 'hanoi', 'ba dinh', 'hoan kiem', 'dong da', 'hai ba trung', 'cau giay', 'thanh xuan', 'hoang mai', 'long bien', 'tay ho', 'ha dong', 'nam tu liem', 'bac tu liem', 'gia lam', 'dong anh'] },
+  { name: 'Đà Nẵng', lat: 16.0544, lng: 108.2022, aliases: ['da nang', 'danang', 'hai chau', 'thanh khe', 'son tra', 'ngu hanh son', 'lien chieu', 'cam le'] },
+  { name: 'Hải Phòng', lat: 20.8449, lng: 106.6881, aliases: ['hai phong', 'haiphong', 'le chan', 'ngo quyen', 'hong bang', 'hai an', 'kien an'] },
+  { name: 'Cần Thơ', lat: 10.0452, lng: 105.7469, aliases: ['can tho', 'cantho', 'ninh kieu', 'binh thuy', 'cai rang'] },
+  { name: 'Bình Dương', lat: 10.9804, lng: 106.6519, aliases: ['binh duong', 'thu dau mot', 'di an', 'thuan an', 'ben cat', 'tan uyen'] },
+  { name: 'Đồng Nai', lat: 10.9574, lng: 106.8429, aliases: ['dong nai', 'bien hoa', 'long khanh', 'long thanh', 'nhon trach', 'trang bom'] },
+  { name: 'Bà Rịa - Vũng Tàu', lat: 10.3460, lng: 107.0843, aliases: ['vung tau', 'ba ria', 'phu my'] },
+  { name: 'Khánh Hòa', lat: 12.2388, lng: 109.1967, aliases: ['khanh hoa', 'nha trang', 'cam ranh'] },
+  { name: 'Lâm Đồng', lat: 11.9404, lng: 108.4583, aliases: ['lam dong', 'da lat', 'bao loc'] },
+  { name: 'Thừa Thiên Huế', lat: 16.4637, lng: 107.5909, aliases: ['thua thien hue', 'tp hue', 'thanh pho hue', 'hue'] },
+  { name: 'Nghệ An', lat: 18.6796, lng: 105.6813, aliases: ['nghe an', 'tp vinh', 'thanh pho vinh', 'cua lo'] },
+  { name: 'Thanh Hóa', lat: 19.8067, lng: 105.7852, aliases: ['thanh hoa', 'sam son', 'bim son'] },
+  { name: 'Quảng Ninh', lat: 20.9599, lng: 107.0425, aliases: ['quang ninh', 'ha long', 'cam pha', 'uong bi', 'mong cai'] },
+  { name: 'Bắc Ninh', lat: 21.1861, lng: 106.0763, aliases: ['bac ninh', 'tu son'] },
+  { name: 'Bắc Giang', lat: 21.2731, lng: 106.1946, aliases: ['bac giang'] },
+  { name: 'Hải Dương', lat: 20.9373, lng: 106.3146, aliases: ['hai duong', 'chi linh'] },
+  { name: 'Hưng Yên', lat: 20.6464, lng: 106.0511, aliases: ['hung yen', 'van giang'] },
+  { name: 'Vĩnh Phúc', lat: 21.3089, lng: 105.6049, aliases: ['vinh phuc', 'vinh yen', 'phuc yen'] },
+  { name: 'Thái Nguyên', lat: 21.5942, lng: 105.8482, aliases: ['thai nguyen', 'song cong', 'pho yen'] },
+  { name: 'Nam Định', lat: 20.4388, lng: 106.1621, aliases: ['nam dinh'] },
+  { name: 'Thái Bình', lat: 20.4463, lng: 106.3366, aliases: ['thai binh'] },
+  { name: 'Ninh Bình', lat: 20.2506, lng: 105.9745, aliases: ['ninh binh', 'tam diep'] },
+  { name: 'Phú Thọ', lat: 21.3227, lng: 105.4020, aliases: ['phu tho', 'viet tri'] },
+  { name: 'Lào Cai', lat: 22.4856, lng: 103.9707, aliases: ['lao cai', 'sa pa', 'sapa'] },
+  { name: 'Hà Tĩnh', lat: 18.3428, lng: 105.9057, aliases: ['ha tinh', 'ky anh'] },
+  { name: 'Quảng Bình', lat: 17.4689, lng: 106.6223, aliases: ['quang binh', 'dong hoi'] },
+  { name: 'Quảng Nam', lat: 15.5736, lng: 108.4740, aliases: ['quang nam', 'tam ky', 'hoi an'] },
+  { name: 'Quảng Ngãi', lat: 15.1214, lng: 108.8044, aliases: ['quang ngai'] },
+  { name: 'Bình Định', lat: 13.7820, lng: 109.2197, aliases: ['binh dinh', 'quy nhon'] },
+  { name: 'Phú Yên', lat: 13.0882, lng: 109.3086, aliases: ['phu yen', 'tuy hoa'] },
+  { name: 'Gia Lai', lat: 13.9833, lng: 108.0000, aliases: ['gia lai', 'pleiku'] },
+  { name: 'Đắk Lắk', lat: 12.6667, lng: 108.0500, aliases: ['dak lak', 'buon ma thuot'] },
+  { name: 'Bình Thuận', lat: 10.9289, lng: 108.1021, aliases: ['binh thuan', 'phan thiet', 'la gi'] },
+  { name: 'Tây Ninh', lat: 11.3100, lng: 106.0983, aliases: ['tay ninh'] },
+  { name: 'Bình Phước', lat: 11.5350, lng: 106.8832, aliases: ['binh phuoc', 'dong xoai'] },
+  { name: 'Long An', lat: 10.5333, lng: 106.4167, aliases: ['long an', 'tan an', 'duc hoa', 'ben luc'] },
+  { name: 'Tiền Giang', lat: 10.3600, lng: 106.3600, aliases: ['tien giang', 'my tho'] },
+  { name: 'Bến Tre', lat: 10.2415, lng: 106.3759, aliases: ['ben tre'] },
+  { name: 'Vĩnh Long', lat: 10.2537, lng: 105.9722, aliases: ['vinh long'] },
+  { name: 'Đồng Tháp', lat: 10.4600, lng: 105.6300, aliases: ['dong thap', 'cao lanh', 'sa dec'] },
+  { name: 'An Giang', lat: 10.3864, lng: 105.4352, aliases: ['an giang', 'long xuyen', 'chau doc'] },
+  { name: 'Kiên Giang', lat: 10.0125, lng: 105.0809, aliases: ['kien giang', 'rach gia', 'phu quoc', 'ha tien'] },
+  { name: 'Sóc Trăng', lat: 9.6025, lng: 105.9739, aliases: ['soc trang'] },
+  { name: 'Bạc Liêu', lat: 9.2941, lng: 105.7278, aliases: ['bac lieu'] },
+  { name: 'Cà Mau', lat: 9.1768, lng: 105.1524, aliases: ['ca mau'] }
+];
+
+function resolveProvinceFromCoords(lat, lng) {
+  const nLat = parseFloat(lat);
+  const nLng = parseFloat(lng);
+  if (Number.isNaN(nLat) || Number.isNaN(nLng)) return null;
+  let best = null;
+  let minDist = Infinity;
+  for (const p of VN_PROVINCES) {
+    const dLat = nLat - p.lat;
+    const dLng = nLng - p.lng;
+    const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+    if (dist < minDist) {
+      minDist = dist;
+      best = p;
+    }
+  }
+  return best ? best.name : null;
+}
+
+function detectProvinceFromText(text) {
+  const clean = removeVietnameseTones(text || '');
+  if (!clean) return null;
+  for (const p of VN_PROVINCES) {
+    for (const alias of p.aliases) {
+      if (clean.includes(alias)) {
+        return p.name;
+      }
+    }
+  }
+  return null;
+}
+
+function isScanLocationMatchingStore(actualLoc, expectedAddress, warehouseLoc) {
+  const expText = String(expectedAddress || '').trim();
+  const actualText = String(actualLoc?.address || actualLoc?.city || '').trim();
+  if (!expText || !actualText) return true; // Nếu chưa khai báo địa chỉ hoặc chưa có vị trí quét thì chưa báo lỗi
+
+  const expProvince = detectProvinceFromText(expText);
+  const actProvince = detectProvinceFromText(actualText) || (actualLoc?.lat != null && actualLoc?.lng != null ? resolveProvinceFromCoords(actualLoc.lat, actualLoc.lng) : null);
+
+  if (expProvince && actProvince) {
+    if (expProvince === actProvince) return true;
+    // Kiểm tra thêm nếu trùng với vị trí kho đối tác
+    const whProvince = detectProvinceFromText(warehouseLoc?.address || warehouseLoc?.city || '');
+    if (whProvince && whProvince === actProvince) return true;
+    return false;
+  }
+
+  const expNoTone = removeVietnameseTones(expText);
+  const actNoTone = removeVietnameseTones(actualText);
+  if (expNoTone.includes(actNoTone) || actNoTone.includes(expNoTone)) {
+    return true;
+  }
+
+  // So khớp các từ có nghĩa (độ dài >= 4)
+  const stopWords = new Set(['diem', 'ban', 'nha', 'thuoc', 'cua', 'hang', 'cong', 'tnhh', 'duong', 'phuong', 'quan', 'huyen', 'tinh', 'thanh', 'pho', 'viet', 'nam']);
+  const expTokens = expNoTone.split(/[\s,.\-/]+/).filter(w => w.length >= 4 && !stopWords.has(w));
+  if (expTokens.length > 0 && expTokens.some(tok => actNoTone.includes(tok))) {
+    return true;
+  }
+
+  return false;
+}
+
+async function checkAndCreateLocationAlert({ label, actualLocation, req }) {
+  try {
+    if (!label) return null;
+    const isAssignedToStore = Boolean(label.storeId || (label.distributorName && String(label.distributorName).trim()));
+    if (!isAssignedToStore) return null;
+
+    let expectedAddress = label.distributorAddress || label.ownerInfo?.address || '';
+    let storeName = label.distributorName || label.ownerInfo?.name || 'Điểm bán';
+    if (!expectedAddress && label.storeId) {
+      const st = await RetailStore.findById(label.storeId).select('name address').lean();
+      if (st) {
+        expectedAddress = st.address || '';
+        storeName = st.name || storeName;
+      }
+    }
+    if (!expectedAddress || !String(expectedAddress).trim()) return null;
+
+    const resolvedCity = actualLocation?.city || detectProvinceFromText(actualLocation?.address) || resolveProvinceFromCoords(actualLocation?.lat, actualLocation?.lng) || '';
+    const locObj = {
+      city: resolvedCity || actualLocation?.address || 'Không xác định',
+      address: actualLocation?.address || resolvedCity || '',
+      lat: actualLocation?.lat != null ? Number(actualLocation.lat) : null,
+      lng: actualLocation?.lng != null ? Number(actualLocation.lng) : null,
+      ipAddress: actualLocation?.ipAddress || req?.ip || req?.headers?.['x-forwarded-for'] || '',
+      deviceType: actualLocation?.deviceType || (/mobile/i.test(req?.headers?.['user-agent'] || '') ? 'mobile' : 'desktop')
+    };
+
+    if (!locObj.city && !locObj.address) return null;
+
+    const matched = isScanLocationMatchingStore(locObj, expectedAddress, label.warehouseLocation);
+    if (matched) return null;
+
+    const entId = label.enterpriseId?._id || label.enterpriseId;
+    const prodId = label.productId?._id || label.productId || null;
+    const prodName = label.productId?.name || 'Sản phẩm';
+    const warehouseAddr = label.warehouseLocation?.address || label.warehouseLocation?.city || '';
+
+    // Chống tạo trùng lặp liên tiếp trong 2 phút cho cùng 1 serial + cùng vị trí
+    const twoMinsAgo = new Date(Date.now() - 2 * 60 * 1000);
+    const existingRecent = await LocationAlert.findOne({
+      serialNumber: label.serialNumber,
+      'actualLocation.city': locObj.city,
+      isDismissed: false,
+      scannedAt: { $gte: twoMinsAgo }
+    });
+    if (existingRecent) {
+      existingRecent.scannedAt = new Date();
+      await existingRecent.save();
+      return existingRecent;
+    }
+
+    const alertDoc = await LocationAlert.create({
+      enterpriseId: entId,
+      labelId: label._id,
+      serialNumber: label.serialNumber,
+      productId: prodId,
+      productName: prodName,
+      storeId: label.storeId || null,
+      storeName,
+      expectedAddress,
+      warehouseAddress: warehouseAddr,
+      actualLocation: locObj,
+      message: `Cảnh báo lệch vị trí quét! Mã Serial ${label.serialNumber} (${prodName}) đã gán cho "${storeName}" tại [${expectedAddress}] nhưng vừa được quét tại [${locObj.address || locObj.city}].`,
+      isDismissed: false,
+      scannedAt: new Date()
+    });
+
+    return alertDoc;
+  } catch (err) {
+    console.error('checkAndCreateLocationAlert error:', err.message);
+    return null;
+  }
+}
 
 // Helper: escape ký tự đặc biệt trước khi đưa input vào RegExp
 const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -455,6 +643,21 @@ router.get('/scan/:serial', async (req, res) => {
 
     const isActivated = Boolean(label.ownerCode && String(label.ownerCode).trim());
 
+    let locationAlert = null;
+    if (!skipCount && (req.query.scanCity || req.query.scanAddress || (req.query.lat !== undefined && req.query.lng !== undefined))) {
+      locationAlert = await checkAndCreateLocationAlert({
+        label,
+        actualLocation: {
+          city: req.query.scanCity || '',
+          address: req.query.scanAddress || req.query.scanCity || '',
+          lat: req.query.lat,
+          lng: req.query.lng,
+          deviceType
+        },
+        req
+      });
+    }
+
     res.json({
       label: labelOut,
       product: label.productId,
@@ -465,7 +668,8 @@ router.get('/scan/:serial', async (req, res) => {
       isFirstScan,
       firstScanTime,
       theme: responseTheme,
-      isActivated
+      isActivated,
+      locationAlert
     });
 
   } catch (error) {
@@ -541,31 +745,67 @@ router.post('/activate-label', async (req, res) => {
   }
 });
 
-// POST /api/public/scan/:serial/location - Update scan log with precise GPS coordinates
+// POST /api/public/scan/:serial/location - Update scan log with precise GPS coordinates & verify against store address
 router.post('/scan/:serial/location', async (req, res) => {
   try {
     const { serial } = req.params;
-    const { lat, lng } = req.body;
+    const { lat, lng, city, address } = req.body;
 
-    if (lat === undefined || lng === undefined) {
-      return res.status(400).json({ error: 'Thiếu vĩ độ hoặc kinh độ' });
+    if (lat === undefined && lng === undefined && !city && !address) {
+      return res.status(400).json({ error: 'Thiếu thông tin vị trí (tọa độ GPS hoặc địa chỉ)' });
     }
 
-    // Find the latest ScanLog for this serial number created in the last 15 seconds (to cover slow GPS responses)
-    const fifteenSecondsAgo = new Date(Date.now() - 15000);
+    const cleanSerial = String(serial || '').trim();
+    const resolvedCity = city || detectProvinceFromText(address) || (lat !== undefined && lng !== undefined ? resolveProvinceFromCoords(lat, lng) : null) || 'Việt Nam';
+
+    // Find the label by serialNumber or qrCode
+    const label = await Label.findOne({
+      $or: [
+        { serialNumber: cleanSerial },
+        { qrCode: cleanSerial },
+        { activeCode: cleanSerial }
+      ]
+    }).populate('productId', 'name');
+
+    // Find the latest ScanLog for this serial number created in the last 60 seconds
+    const sixtySecondsAgo = new Date(Date.now() - 60000);
+    const targetSerial = label ? label.serialNumber : cleanSerial;
     const scanLog = await ScanLog.findOne({
-      serialNumber: serial,
-      scannedAt: { $gte: fifteenSecondsAgo }
+      serialNumber: targetSerial,
+      scannedAt: { $gte: sixtySecondsAgo }
     }).sort({ scannedAt: -1 });
 
     if (scanLog) {
-      scanLog.location.lat = parseFloat(lat);
-      scanLog.location.lng = parseFloat(lng);
+      if (lat !== undefined && lng !== undefined) {
+        scanLog.location.lat = parseFloat(lat);
+        scanLog.location.lng = parseFloat(lng);
+      }
+      if (resolvedCity) {
+        scanLog.location.city = resolvedCity;
+      }
       await scanLog.save();
-      return res.json({ success: true, message: 'Đã cập nhật tọa độ chính xác GPS' });
     }
 
-    res.status(404).json({ error: 'Không tìm thấy lượt quét gần đây tương ứng' });
+    let locationAlert = null;
+    if (label) {
+      locationAlert = await checkAndCreateLocationAlert({
+        label,
+        actualLocation: {
+          city: resolvedCity,
+          address: address || resolvedCity,
+          lat,
+          lng
+        },
+        req
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Đã cập nhật tọa độ chính xác GPS',
+      city: resolvedCity,
+      locationAlert
+    });
   } catch (error) {
     console.error('Update location error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật vị trí' });
@@ -884,7 +1124,7 @@ async function verifyNppOrAdminRequest(req, res) {
   return { user, decoded };
 }
 
-// Helper: Tạo filter lấy danh sách Điểm bán theo quyền tài khoản
+// Helper: Tạo filter lấy danh sách Điểm bán theo quyền tài khoản (Cô lập chặt chẽ dữ liệu đối tác)
 async function buildRetailStoreFilter(user, decoded, queryEnterpriseId) {
   if (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) {
     return queryEnterpriseId ? { enterpriseId: queryEnterpriseId } : {};
@@ -894,29 +1134,52 @@ async function buildRetailStoreFilter(user, decoded, queryEnterpriseId) {
   for (const id of entIds) {
     conditions.push({ enterpriseId: id });
   }
-  if (queryEnterpriseId) {
-    conditions.push({ enterpriseId: queryEnterpriseId });
-  }
-  // Cho phép NPP/NSX nhìn thấy các Điểm bán chung do Admin tạo
-  const adminUsers = await User.find({ role: 'ADMIN' }).select('_id enterpriseId').lean();
-  for (const adm of adminUsers) {
-    conditions.push({ ownerUserId: adm._id });
-    if (adm.enterpriseId) {
-      conditions.push({ enterpriseId: adm.enterpriseId });
-    }
-  }
   return { $or: conditions };
 }
 
-// GET /api/public/retail-stores - Danh sách Điểm bán + tìm kiếm gần đúng tiếng Việt + lịch sử serial vừa bán
+// Helper: Tính khoảng thời gian lọc doanh số Điểm bán theo Tháng / Quý / Năm
+function buildPeriodDateRange(periodType = 'all', yearParam, monthParam, quarterParam) {
+  const now = new Date();
+  const y = parseInt(yearParam, 10) || now.getFullYear();
+  if (periodType === 'month') {
+    const m = Math.min(12, Math.max(1, parseInt(monthParam, 10) || (now.getMonth() + 1)));
+    const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+    const end = new Date(y, m, 0, 23, 59, 59, 999);
+    return { start, end, label: `Tháng ${m}/${y}`, periodType: 'month', year: y, month: m };
+  }
+  if (periodType === 'quarter') {
+    const q = Math.min(4, Math.max(1, parseInt(quarterParam, 10) || (Math.floor(now.getMonth() / 3) + 1)));
+    const startMonth = (q - 1) * 3;
+    const start = new Date(y, startMonth, 1, 0, 0, 0, 0);
+    const end = new Date(y, startMonth + 3, 0, 23, 59, 59, 999);
+    return { start, end, label: `Quý ${q}/${y}`, periodType: 'quarter', year: y, quarter: q };
+  }
+  if (periodType === 'year') {
+    const start = new Date(y, 0, 1, 0, 0, 0, 0);
+    const end = new Date(y, 11, 31, 23, 59, 59, 999);
+    return { start, end, label: `Năm ${y}`, periodType: 'year', year: y };
+  }
+  return { start: null, end: null, label: 'Tất cả thời gian', periodType: 'all', year: y };
+}
+
+// GET /api/public/retail-stores - Danh sách Điểm bán + tìm kiếm gần đúng tiếng Việt + lịch sử serial + thống kê doanh số Tháng/Quý/Năm
 router.get('/retail-stores', async (req, res) => {
   try {
     const authCtx = await verifyNppOrAdminRequest(req, res);
     if (!authCtx) return;
     const { user, decoded } = authCtx;
 
-    const { search = '', enterpriseId = '', includeStats = '1' } = req.query;
+    const {
+      search = '',
+      enterpriseId = '',
+      includeStats = '1',
+      periodType = 'all',
+      year,
+      month,
+      quarter
+    } = req.query;
     const filter = await buildRetailStoreFilter(user, decoded, enterpriseId);
+    const periodRange = buildPeriodDateRange(periodType, year, month, quarter);
 
     let stores = await RetailStore.find(filter).sort({ createdAt: -1 }).lean();
 
@@ -956,38 +1219,79 @@ router.get('/retail-stores', async (req, res) => {
       stores = scored.map(item => item.store);
     }
 
-    // Bổ sung dữ liệu serial vừa bán + thời gian cho từng Điểm bán (Bước 5)
+    let totalPeriodSerials = 0;
+    let totalPeriodRevenue = 0;
+    let totalAllTimeSerials = 0;
+    let totalAllTimeRevenue = 0;
+
+    // Bổ sung dữ liệu serial vừa bán + thời gian + doanh số cho từng Điểm bán
     if (includeStats !== '0' && stores.length > 0) {
       const enrichedStores = await Promise.all(
         stores.map(async (store) => {
-          const labelQuery = {
-            $or: [
-              { storeId: store._id },
-              { distributorName: store.name },
-              { 'ownerInfo.name': store.name }
-            ]
-          };
-          const [totalSerials, recentLabels] = await Promise.all([
-            Label.countDocuments(labelQuery),
-            Label.find(labelQuery)
-              .populate('productId', 'name')
-              .sort({ distributedAt: -1, updatedAt: -1 })
-              .limit(10)
-              .select('serialNumber productId ownerCode distributedAt ownerInfo updatedAt')
-              .lean()
-          ]);
+          const storeOr = [
+            { storeId: store._id },
+            { distributorName: store.name },
+            { 'ownerInfo.name': store.name }
+          ];
+          const labelQuery = store.enterpriseId
+            ? { enterpriseId: store.enterpriseId, $or: storeOr }
+            : { $or: storeOr };
 
-          const recentSales = recentLabels.map((lbl) => ({
+          const allLabels = await Label.find(labelQuery)
+            .populate('productId', 'name price sku category')
+            .sort({ distributedAt: -1, updatedAt: -1 })
+            .select('serialNumber productId ownerCode distributedAt ownerInfo updatedAt warehouseLocation')
+            .lean();
+
+          let allTimeRevenue = 0;
+          const periodLabels = [];
+          const breakdownMap = new Map();
+
+          for (const lbl of allLabels) {
+            const unitPrice = Number(lbl.productId?.price) || 0;
+            allTimeRevenue += unitPrice;
+
+            const soldAtDate = new Date(lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt);
+            const inPeriod = (!periodRange.start || soldAtDate >= periodRange.start) &&
+                             (!periodRange.end || soldAtDate <= periodRange.end);
+            if (inPeriod) {
+              periodLabels.push(lbl);
+              const pKey = String(lbl.productId?._id || lbl.productId?.name || 'unknown');
+              const pName = lbl.productId?.name || 'Sản phẩm';
+              if (!breakdownMap.has(pKey)) {
+                breakdownMap.set(pKey, {
+                  productId: lbl.productId?._id || null,
+                  productName: pName,
+                  unitPrice,
+                  quantity: 0,
+                  revenue: 0
+                });
+              }
+              const item = breakdownMap.get(pKey);
+              item.quantity += 1;
+              item.revenue += unitPrice;
+            }
+          }
+
+          const periodSerialsCount = periodLabels.length;
+          const periodRevenue = periodLabels.reduce((sum, l) => sum + (Number(l.productId?.price) || 0), 0);
+
+          const recentSales = periodLabels.slice(0, 10).map((lbl) => ({
             _id: lbl._id,
             serialNumber: lbl.serialNumber,
             productName: lbl.productId?.name || 'Sản phẩm',
+            unitPrice: Number(lbl.productId?.price) || 0,
             ownerCode: lbl.ownerCode || lbl.serialNumber,
             soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
           }));
 
           return {
             ...store,
-            totalSerials,
+            totalSerials: allLabels.length,
+            totalRevenue: allTimeRevenue,
+            periodSerialsCount,
+            periodRevenue,
+            productBreakdown: Array.from(breakdownMap.values()),
             recentSales,
             lastSoldSerial: recentSales[0]?.serialNumber || null,
             lastSoldAt: recentSales[0]?.soldAt || null
@@ -995,13 +1299,27 @@ router.get('/retail-stores', async (req, res) => {
         })
       );
       stores = enrichedStores;
+      for (const st of stores) {
+        totalPeriodSerials += st.periodSerialsCount || 0;
+        totalPeriodRevenue += st.periodRevenue || 0;
+        totalAllTimeSerials += st.totalSerials || 0;
+        totalAllTimeRevenue += st.totalRevenue || 0;
+      }
     }
 
     res.json({
       success: true,
       stores,
       data: stores,
-      total: stores.length
+      total: stores.length,
+      summary: {
+        totalStores: stores.length,
+        totalPeriodSerials,
+        totalPeriodRevenue,
+        totalAllTimeSerials,
+        totalAllTimeRevenue,
+        period: periodRange
+      }
     });
   } catch (error) {
     console.error('Get retail stores error:', error);
@@ -1009,47 +1327,86 @@ router.get('/retail-stores', async (req, res) => {
   }
 });
 
-// GET /api/public/retail-stores/:id/serials - Xem toàn bộ serial + thời gian đã bán của 1 Điểm bán
+// GET /api/public/retail-stores/:id/serials - Xem toàn bộ serial + thời gian + doanh số đã bán của 1 Điểm bán
 router.get('/retail-stores/:id/serials', async (req, res) => {
   try {
     const authCtx = await verifyNppOrAdminRequest(req, res);
     if (!authCtx) return;
+    const { user, decoded } = authCtx;
 
-    const store = await RetailStore.findById(req.params.id).lean();
+    const filter = await buildRetailStoreFilter(user, decoded);
+    const store = await RetailStore.findOne({ _id: req.params.id, ...filter }).lean();
     if (!store) {
-      return res.status(404).json({ error: 'Không tìm thấy điểm bán' });
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán hoặc không có quyền truy cập' });
     }
 
-    const labelQuery = {
-      $or: [
-        { storeId: store._id },
-        { distributorName: store.name },
-        { 'ownerInfo.name': store.name }
-      ]
-    };
+    const { periodType = 'all', year, month, quarter } = req.query;
+    const periodRange = buildPeriodDateRange(periodType, year, month, quarter);
+
+    const storeOr = [
+      { storeId: store._id },
+      { distributorName: store.name },
+      { 'ownerInfo.name': store.name }
+    ];
+    const labelQuery = store.enterpriseId
+      ? { enterpriseId: store.enterpriseId, $or: storeOr }
+      : { $or: storeOr };
 
     const labels = await Label.find(labelQuery)
-      .populate('productId', 'name sku category')
+      .populate('productId', 'name sku price category')
       .populate('batchId', 'batchCode')
       .sort({ distributedAt: -1, updatedAt: -1 })
-      .limit(500)
+      .limit(1000)
       .lean();
 
-    const serials = labels.map((lbl) => ({
-      _id: lbl._id,
-      serialNumber: lbl.serialNumber,
-      productName: lbl.productId?.name || 'Sản phẩm',
-      batchCode: lbl.batchId?.batchCode || '—',
-      ownerCode: lbl.ownerCode || lbl.serialNumber,
-      soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
-    }));
+    const filteredLabels = labels.filter((lbl) => {
+      if (!periodRange.start && !periodRange.end) return true;
+      const soldAtDate = new Date(lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt);
+      return (!periodRange.start || soldAtDate >= periodRange.start) &&
+             (!periodRange.end || soldAtDate <= periodRange.end);
+    });
+
+    const breakdownMap = new Map();
+    const serials = filteredLabels.map((lbl) => {
+      const unitPrice = Number(lbl.productId?.price) || 0;
+      const pKey = String(lbl.productId?._id || lbl.productId?.name || 'unknown');
+      const pName = lbl.productId?.name || 'Sản phẩm';
+      if (!breakdownMap.has(pKey)) {
+        breakdownMap.set(pKey, {
+          productId: lbl.productId?._id || null,
+          productName: pName,
+          unitPrice,
+          quantity: 0,
+          revenue: 0
+        });
+      }
+      const bItem = breakdownMap.get(pKey);
+      bItem.quantity += 1;
+      bItem.revenue += unitPrice;
+
+      return {
+        _id: lbl._id,
+        serialNumber: lbl.serialNumber,
+        productName: pName,
+        unitPrice,
+        batchCode: lbl.batchId?.batchCode || '—',
+        ownerCode: lbl.ownerCode || lbl.serialNumber,
+        warehouseAddress: lbl.warehouseLocation?.address || lbl.warehouseLocation?.city || '',
+        soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
+      };
+    });
+
+    const totalRevenue = serials.reduce((sum, item) => sum + (item.unitPrice || 0), 0);
 
     res.json({
       success: true,
       store,
       serials,
       data: serials,
-      total: serials.length
+      total: serials.length,
+      totalRevenue,
+      productBreakdown: Array.from(breakdownMap.values()),
+      period: periodRange
     });
   } catch (error) {
     console.error('Get retail store serials error:', error);
@@ -1105,11 +1462,13 @@ router.put('/retail-stores/:id', async (req, res) => {
   try {
     const authCtx = await verifyNppOrAdminRequest(req, res);
     if (!authCtx) return;
+    const { user, decoded } = authCtx;
 
     const { name, address, phone, isActive } = req.body;
-    const store = await RetailStore.findById(req.params.id);
+    const filter = await buildRetailStoreFilter(user, decoded);
+    const store = await RetailStore.findOne({ _id: req.params.id, ...filter });
     if (!store) {
-      return res.status(404).json({ error: 'Không tìm thấy điểm bán' });
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán hoặc không có quyền chỉnh sửa' });
     }
 
     const oldName = store.name;
@@ -1152,10 +1511,12 @@ router.delete('/retail-stores/:id', async (req, res) => {
   try {
     const authCtx = await verifyNppOrAdminRequest(req, res);
     if (!authCtx) return;
+    const { user, decoded } = authCtx;
 
-    const store = await RetailStore.findByIdAndDelete(req.params.id);
+    const filter = await buildRetailStoreFilter(user, decoded);
+    const store = await RetailStore.findOneAndDelete({ _id: req.params.id, ...filter });
     if (!store) {
-      return res.status(404).json({ error: 'Không tìm thấy điểm bán' });
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán hoặc không có quyền xóa' });
     }
 
     res.json({
@@ -1353,6 +1714,22 @@ router.post('/distributor-entry-single', async (req, res) => {
       : (inputStoreAddr || label.distributorAddress || user.enterpriseId?.address || '');
     label.distributedAt = now;
 
+    // Ghi nhận vị trí KHO đối tác lúc quét gán tem cho Điểm bán
+    const whBody = req.body.warehouseLocation || {};
+    const whLat = whBody.lat !== undefined ? Number(whBody.lat) : null;
+    const whLng = whBody.lng !== undefined ? Number(whBody.lng) : null;
+    const whAddr = whBody.address || user.address || user.enterpriseId?.address || 'Kho đối tác';
+    const whCity = whBody.city || detectProvinceFromText(whAddr) || (whLat != null && whLng != null ? resolveProvinceFromCoords(whLat, whLng) : null) || '';
+    label.warehouseLocation = {
+      address: whAddr,
+      city: whCity,
+      lat: whLat,
+      lng: whLng,
+      ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
+      recordedAt: now,
+      recordedBy: user._id
+    };
+
     if (ownerCode !== undefined && !linkedStore && !inputStoreName) {
       label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
     }
@@ -1379,6 +1756,7 @@ router.post('/distributor-entry-single', async (req, res) => {
       storeId: label.storeId,
       distributorName: label.distributorName,
       distributorAddress: label.distributorAddress,
+      warehouseLocation: label.warehouseLocation,
       ownerPhone: label.ownerInfo?.phone || '',
       ownerCode: label.ownerCode,
       distributedAt: label.distributedAt,
@@ -1387,6 +1765,237 @@ router.post('/distributor-entry-single', async (req, res) => {
   } catch (error) {
     console.error('Distributor entry single error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi nhập dữ liệu phân phối' });
+  }
+});
+
+// ================= CẢNH BÁO VỊ TRÍ QUÉT TEM (LOCATION ALERTS) =================
+
+// Helper: Tạo filter cho LocationAlert theo quyền tài khoản
+async function buildLocationAlertFilter(user, decoded, queryEnterpriseId) {
+  if (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) {
+    return queryEnterpriseId ? { enterpriseId: queryEnterpriseId } : {};
+  }
+  const entIds = await getRelatedEnterpriseIds(user);
+  if (entIds.length === 0) {
+    return { enterpriseId: null };
+  }
+  return { enterpriseId: entIds.length > 1 ? { $in: entIds } : entIds[0] };
+}
+
+// GET /api/public/location-alerts - Danh sách cảnh báo quét sai vị trí điểm bán + số lượng chưa tắt
+router.get('/location-alerts', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const { status = 'all', search = '', page = 1, limit = 50, enterpriseId = '' } = req.query;
+    const baseFilter = await buildLocationAlertFilter(user, decoded, enterpriseId);
+
+    const query = { ...baseFilter };
+    if (status === 'undismissed') {
+      query.isDismissed = false;
+    } else if (status === 'dismissed') {
+      query.isDismissed = true;
+    }
+
+    if (search && String(search).trim()) {
+      const cleanS = String(search).trim();
+      query.$or = [
+        { serialNumber: { $regex: cleanS, $options: 'i' } },
+        { storeName: { $regex: cleanS, $options: 'i' } },
+        { productName: { $regex: cleanS, $options: 'i' } },
+        { expectedAddress: { $regex: cleanS, $options: 'i' } },
+        { 'actualLocation.city': { $regex: cleanS, $options: 'i' } },
+        { 'actualLocation.address': { $regex: cleanS, $options: 'i' } }
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
+
+    const [alerts, total, undismissedCount, totalAll] = await Promise.all([
+      LocationAlert.find(query)
+        .sort({ isDismissed: 1, scannedAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      LocationAlert.countDocuments(query),
+      LocationAlert.countDocuments({ ...baseFilter, isDismissed: false }),
+      LocationAlert.countDocuments(baseFilter)
+    ]);
+
+    res.json({
+      success: true,
+      alerts,
+      data: alerts,
+      undismissedCount,
+      totalAll,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Get location alerts error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách cảnh báo vị trí' });
+  }
+});
+
+// PUT /api/public/location-alerts/dismiss-all - Tắt tất cả cảnh báo vị trí của doanh nghiệp
+router.put('/location-alerts/dismiss-all', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const baseFilter = await buildLocationAlertFilter(user, decoded, req.body?.enterpriseId);
+    const result = await LocationAlert.updateMany(
+      { ...baseFilter, isDismissed: false },
+      {
+        $set: {
+          isDismissed: true,
+          dismissedAt: new Date(),
+          dismissedBy: user._id
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      modifiedCount: result.modifiedCount,
+      message: `Đã tắt ${result.modifiedCount} cảnh báo vị trí thành công.`
+    });
+  } catch (error) {
+    console.error('Dismiss all location alerts error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi tắt cảnh báo vị trí' });
+  }
+});
+
+// PUT /api/public/location-alerts/:id/dismiss - Tắt (hoặc bật lại) 1 cảnh báo vị trí
+router.put('/location-alerts/:id/dismiss', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const baseFilter = await buildLocationAlertFilter(user, decoded);
+    const alertDoc = await LocationAlert.findOne({ _id: req.params.id, ...baseFilter });
+    if (!alertDoc) {
+      return res.status(404).json({ error: 'Không tìm thấy cảnh báo vị trí' });
+    }
+
+    const undismiss = Boolean(req.body?.undismiss);
+    alertDoc.isDismissed = !undismiss;
+    alertDoc.dismissedAt = undismiss ? null : new Date();
+    alertDoc.dismissedBy = undismiss ? null : user._id;
+    await alertDoc.save();
+
+    res.json({
+      success: true,
+      alert: alertDoc,
+      message: undismiss ? 'Đã bật lại nhắc nhở cho cảnh báo này' : 'Đã tắt cảnh báo nhắc nhở thành công'
+    });
+  } catch (error) {
+    console.error('Dismiss location alert error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật trạng thái cảnh báo' });
+  }
+});
+
+// DELETE /api/public/location-alerts/:id - Xóa 1 cảnh báo vị trí
+router.delete('/location-alerts/:id', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const baseFilter = await buildLocationAlertFilter(user, decoded);
+    const deleted = await LocationAlert.findOneAndDelete({ _id: req.params.id, ...baseFilter });
+    if (!deleted) {
+      return res.status(404).json({ error: 'Không tìm thấy cảnh báo vị trí' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Đã xóa cảnh báo vị trí thành công'
+    });
+  } catch (error) {
+    console.error('Delete location alert error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xóa cảnh báo vị trí' });
+  }
+});
+
+// POST /api/public/location-alerts/simulate - Kiểm tra / giả lập quét tem sai vị trí điểm bán
+router.post('/location-alerts/simulate', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user } = authCtx;
+
+    const { serialNumber, scanCity = 'Đà Nẵng', scanAddress = 'Quận Hải Châu, Đà Nẵng' } = req.body || {};
+    const entIds = await getRelatedEnterpriseIds(user);
+
+    let label = null;
+    if (serialNumber && String(serialNumber).trim()) {
+      const cleanS = String(serialNumber).trim();
+      label = await Label.findOne({
+        $or: [{ serialNumber: cleanS }, { qrCode: cleanS }]
+      }).populate('productId', 'name');
+    }
+
+    if (!label) {
+      const lblQuery = entIds.length > 0 ? { enterpriseId: { $in: entIds } } : {};
+      label = await Label.findOne({
+        ...lblQuery,
+        $or: [
+          { storeId: { $ne: null } },
+          { distributorName: { $nin: [null, ''] } }
+        ]
+      }).sort({ distributedAt: -1, updatedAt: -1 }).populate('productId', 'name');
+    }
+
+    if (!label) {
+      const lblQuery = entIds.length > 0 ? { enterpriseId: { $in: entIds } } : {};
+      label = await Label.findOne(lblQuery).sort({ updatedAt: -1 }).populate('productId', 'name');
+      if (label && !label.distributorAddress) {
+        label.distributorName = label.distributorName || 'Điểm bán mẫu TP.HCM';
+        label.distributorAddress = 'Quận 1, TP. Hồ Chí Minh';
+        await label.save();
+      }
+    }
+
+    if (!label) {
+      return res.status(404).json({ error: 'Chưa có tem nhãn nào để kiểm tra cảnh báo vị trí' });
+    }
+
+    if (!label.distributorAddress && !label.ownerInfo?.address) {
+      label.distributorAddress = 'Quận 1, TP. Hồ Chí Minh';
+      await label.save();
+    }
+
+    const alertDoc = await checkAndCreateLocationAlert({
+      label,
+      actualLocation: {
+        city: scanCity,
+        address: scanAddress || scanCity,
+        lat: 16.0544,
+        lng: 108.2022
+      },
+      req
+    });
+
+    res.json({
+      success: true,
+      alert: alertDoc,
+      message: alertDoc
+        ? `Đã tạo cảnh báo lệch vị trí cho Serial ${label.serialNumber}`
+        : `Vị trí quét trùng khớp với địa chỉ điểm bán của Serial ${label.serialNumber}`
+    });
+  } catch (error) {
+    console.error('Simulate location alert error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi kiểm tra cảnh báo vị trí' });
   }
 });
 
