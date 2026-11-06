@@ -1664,6 +1664,31 @@ function buildSmartSerialRangeOr(rawStart, rawEnd, referenceSerial = '') {
   return orList;
 }
 
+// Helper: Lọc chính xác theo giá trị số nguyên của Serial (loại bỏ trường hợp so sánh chuỗi khác độ dài như '25065' <= '00250650')
+function filterLabelsInNumericRange(labels, rawStart, rawEnd) {
+  const s1 = String(rawStart || '').trim();
+  const s2 = String(rawEnd || s1).trim();
+  const m1 = s1.match(/^(.*?)(\d+)$/);
+  const m2 = s2.match(/^(.*?)(\d+)$/);
+  if (!m1 || !m2 || m1[1].toUpperCase() !== m2[1].toUpperCase()) {
+    const a = s1 <= s2 ? s1 : s2;
+    const b = s1 <= s2 ? s2 : s1;
+    return labels.filter(l => l.serialNumber >= a && l.serialNumber <= b);
+  }
+  const prefix = m1[1].toUpperCase();
+  const n1 = parseInt(m1[2], 10);
+  const n2 = parseInt(m2[2], 10);
+  const minN = Math.min(n1, n2);
+  const maxN = Math.max(n1, n2);
+  return labels.filter((lbl) => {
+    const m = String(lbl.serialNumber || '').trim().match(/^(.*?)(\d+)$/);
+    if (!m) return false;
+    if (m[1].toUpperCase() !== prefix) return false;
+    const num = parseInt(m[2], 10);
+    return num >= minN && num <= maxN;
+  });
+}
+
 // Helper: Chuẩn hóa serial kết thúc khi người dùng nhập số đuôi (VD: start="00000001", end="10" hoặc "00000010")
 function resolveEndSerialFromStart(startSerial, rawEndSerial) {
   const cleanStart = String(startSerial || '').trim();
@@ -1993,13 +2018,15 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
             $or: rangeOr
           };
 
-          const labelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId').lean();
+          const rawLabelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId').lean();
+          const labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
           if (labelsInSeg.length === 0) {
             summaryDetails.push({
               storeName: storeDoc.name,
               productName: matchedProduct?.name || col0 || 'Chưa rõ',
               range: `${sStart}${sEnd !== sStart ? ' - ' + sEnd : ''}`,
               assignedCount: 0,
+              matchedLabels: 0,
               note: 'Không tìm thấy serial trong kho tem của doanh nghiệp'
             });
             continue;
@@ -2040,7 +2067,8 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
               storeName: storeDoc.name,
               productName: matchedProduct?.name || col0 || 'Sản phẩm',
               range: `${sStart}${sEnd !== sStart ? ' - ' + sEnd : ''}`,
-              assignedCount: bulkOps.length
+              assignedCount: bulkOps.length,
+              matchedLabels: bulkOps.length
             });
           }
         }
@@ -2050,6 +2078,7 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
     res.json({
       success: true,
       totalAssignedLabels,
+      totalAssignedSerials: totalAssignedLabels,
       rangesProcessed,
       storesProcessed: storeColumns.length,
       importDate: validSoldDate,
@@ -2202,7 +2231,8 @@ router.post('/distributor-entry-single', async (req, res) => {
         $or: rangeOr
       };
 
-      const labelsInRange = await Label.find(rangeQuery).select('_id serialNumber').sort({ serialNumber: 1 }).lean();
+      const rawLabelsInRange = await Label.find(rangeQuery).select('_id serialNumber').sort({ serialNumber: 1 }).lean();
+      const labelsInRange = filterLabelsInNumericRange(rawLabelsInRange, label.serialNumber, resolvedEndSerial);
       if (labelsInRange.length === 0) {
         return res.status(404).json({
           error: `Không tìm thấy tem nào trong đoạn Serial từ ${label.serialNumber} đến ${resolvedEndSerial}`
