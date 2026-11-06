@@ -190,6 +190,7 @@ class ApiService {
   renewBatch(id, data) { return this.request('PUT', `/labels/batches/${id}/renew`, data); }
   deleteBatch(id) { return this.request('DELETE', `/labels/batches/${id}`); }
   migrateLabels(data) { return this.request('POST', '/labels/migrate', data); }
+  importBatchInternalCodes(batchId, rows) { return this.request('POST', `/labels/batches/${batchId}/import-internal-codes`, { rows }, {}, 0, 300000); }
   getLabels(params) { return this.request('GET', '/labels', null, params); }
   mapLabel(id, data) { return this.request('PUT', `/labels/${id}/map`, data); }
   updateLabelOwner(id, data) { return this.request('PUT', `/labels/${id}/owner`, data); }

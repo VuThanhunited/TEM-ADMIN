@@ -1,4 +1,4 @@
-import React, { Component, lazy, Suspense } from 'react';
+import React, { Component, lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DomainProvider } from './contexts/DomainContext';
@@ -248,6 +248,24 @@ function AppShell() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.altKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        if (window.__swarmRebuild) {
+          window.__swarmRebuild.toggle();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = '/swarm.js';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <DomainProvider>
       <BrowserRouter>

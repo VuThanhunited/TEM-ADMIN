@@ -66,6 +66,12 @@ const labelSchema = new mongoose.Schema({
     trim: true,
     default: null
   },
+  // Mã nội bộ của khách hàng (Import từ Cột 2 file Excel trong Lô tem bảo hành)
+  internalCode: {
+    type: String,
+    trim: true,
+    default: null
+  },
   // Thông tin khách hàng sở hữu sản phẩm (NPP nhập khi kích hoạt tem)
   ownerInfo: {
     name: { type: String, trim: true, maxlength: 200, default: null },
@@ -122,6 +128,7 @@ labelSchema.index({ legacyTemQr: 1 });
 labelSchema.index({ activeCode: 1 });
 labelSchema.index({ smsCode: 1 });
 labelSchema.index({ ownerCode: 1 });
+labelSchema.index({ internalCode: 1 });
 labelSchema.index({ storeId: 1 });
 
 module.exports = mongoose.model('Label', labelSchema);

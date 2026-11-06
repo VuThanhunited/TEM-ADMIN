@@ -66,7 +66,7 @@ const adminMenuItems = [
     children: [
       { label: 'Quản lý Lô tem', path: '/labels' },
       { label: 'Kích hoạt & Gắn Serial', path: '/labels/activate' },
-      { label: 'Đồng bộ tem cũ', path: '/labels/migrate' },
+      { label: 'Mã nội bộ', path: '/labels/migrate' },
       { label: 'Gia hạn lô tem', path: '/labels/renew' },
     ]
   },

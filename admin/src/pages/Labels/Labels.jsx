@@ -56,9 +56,19 @@ export default function Labels() {
   // States quản lý Chỉnh sửa thông số sở hữu tem (Quyền Admin)
   const [showOwnerModal, setShowOwnerModal] = useState(false);
   const [ownerTargetLabel, setOwnerTargetLabel] = useState(null);
-  const [ownerForm, setOwnerForm] = useState({ ownerName: '', ownerAddress: '', ownerPhone: '', activatedSerial: '', ownerCode: '' });
+  const [ownerForm, setOwnerForm] = useState({ ownerName: '', ownerAddress: '', ownerPhone: '', activatedSerial: '', ownerCode: '', internalCode: '' });
   const [savingOwner, setSavingOwner] = useState(false);
   const [ownerModalError, setOwnerModalError] = useState('');
+
+  // States quản lý Import Mã nội bộ cho Lô tem (Cột 1: Serial, Cột 2: Mã nội bộ, Cột 3: Sản phẩm)
+  const [showInternalCodeModal, setShowInternalCodeModal] = useState(false);
+  const [internalCodeBatchId, setInternalCodeBatchId] = useState('');
+  const [internalCodeRows, setInternalCodeRows] = useState([]);
+  const [internalCodeFileName, setInternalCodeFileName] = useState('');
+  const [importingInternalCodes, setImportingInternalCodes] = useState(false);
+  const [downloadingInternalTemplate, setDownloadingInternalTemplate] = useState(false);
+  const [internalImportResult, setInternalImportResult] = useState(null);
+  const [internalImportError, setInternalImportError] = useState('');
 
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [nextSerialInfo, setNextSerialInfo] = useState(null);
@@ -99,7 +109,10 @@ export default function Labels() {
     tabMounted.current = true;
     if (activeTab === 'batches') loadBatches(1, curSearch.current);
     else if (activeTab === 'activate') loadLabels(1, curSearch.current);
-    else if (activeTab === 'renew') {
+    else if (activeTab === 'migrate') {
+      loadBatches(1, curSearch.current);
+      loadBatchOptions();
+    } else if (activeTab === 'renew') {
       loadBatches(1, curSearch.current, { expired: 'true' });
       loadRenewStats();
     }
@@ -508,8 +521,9 @@ export default function Labels() {
       const exportData = labels.map((label, index) => ({
         'STT': index + 1,
         'Mã lô': batch.batchCode,
-        'Sản phẩm': batch.productId?.name || 'Chưa gắn',
+        'Sản phẩm': label.productId?.name || batch.productId?.name || 'Chưa gắn',
         'Mã Serial': label.serialNumber,
+        'Mã nội bộ': label.internalCode || label.ownerCode || '',
         'Link quét': label.qrUrl,
         'Mã SMS': label.smsCode || '',
         'Mã Kích hoạt': label.activeCode || '',
@@ -716,12 +730,13 @@ export default function Labels() {
         'Mã lô': label.batchId?.batchCode || '—',
         'Sản phẩm': label.productId?.name || 'Chưa gắn',
         'Mã Serial': label.serialNumber,
+        'Mã nội bộ': label.internalCode || '',
         'Link quét': label.qrUrl,
         'Mã SMS': label.smsCode || '',
         'Mã Kích hoạt': label.activeCode || '',
         'Điểm bán': label.distributorName || '—',
         'Địa chỉ điểm bán': label.distributorAddress || '—',
-        'Mã sở hữu': label.ownerCode || '—',
+        'Mã sở hữu': label.internalCode || label.ownerCode || '—',
         'Trạng thái': getStatusLabel(label.status),
         'Số lượt quét': label.scanCount || 0
       }));
@@ -1005,6 +1020,175 @@ export default function Labels() {
     } catch (err) { alert(err.message); }
   };
 
+  // ── Mở modal Import Mã nội bộ cho Lô tem ──
+  const handleOpenInternalCodeModal = (batch = null) => {
+    setInternalImportError('');
+    setInternalImportResult(null);
+    setInternalCodeRows([]);
+    setInternalCodeFileName('');
+    setInternalCodeBatchId(batch?._id || '');
+    setShowInternalCodeModal(true);
+  };
+
+  // ── Tải file Excel mẫu 3 cột (Cột 1: Serial, Cột 2: Mã nội bộ, Cột 3: Sản phẩm) ──
+  const handleDownloadInternalCodeTemplate = async (targetBatchId) => {
+    try {
+      setDownloadingInternalTemplate(true);
+      const batchObj = allBatchesForFilter.find(b => b._id === targetBatchId) || batches.find(b => b._id === targetBatchId);
+      let templateRows = [];
+
+      if (targetBatchId) {
+        const batchLabels = await api.exportBatchLabels(targetBatchId);
+        if (batchLabels && batchLabels.length > 0) {
+          templateRows = batchLabels.map(lbl => ({
+            'Serial': lbl.serialNumber,
+            'Mã nội bộ': lbl.internalCode || lbl.ownerCode || '',
+            'Sản phẩm': lbl.productId?.name || batchObj?.productId?.name || ''
+          }));
+        }
+      }
+
+      if (templateRows.length === 0) {
+        templateRows = [
+          { 'Serial': batchObj?.serialStart || '00306916', 'Mã nội bộ': '00066', 'Sản phẩm': batchObj?.productId?.name || 'Tên sản phẩm' },
+          { 'Serial': batchObj?.serialEnd || '00306917', 'Mã nội bộ': '00067', 'Sản phẩm': batchObj?.productId?.name || 'Tên sản phẩm' }
+        ];
+      }
+
+      const ws = XLSX.utils.json_to_sheet(templateRows);
+      ws['!cols'] = [{ wch: 20 }, { wch: 22 }, { wch: 35 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ma_Noi_Bo');
+      const fileSuffix = batchObj?.batchCode ? `_lo_${batchObj.batchCode}` : '';
+      XLSX.writeFile(wb, `Mau_Import_Ma_Noi_Bo${fileSuffix}.xlsx`);
+    } catch (err) {
+      alert('Lỗi tải file mẫu Mã nội bộ: ' + (err.message || err));
+    } finally {
+      setDownloadingInternalTemplate(false);
+    }
+  };
+
+  // ── Đọc file Excel 3 cột (Cột 1: Serial, Cột 2: Mã nội bộ, Cột 3: Sản phẩm) ──
+  const handleInternalCodeExcelUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setInternalImportError('');
+    setInternalImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false });
+
+        if (!jsonData || jsonData.length === 0) {
+          setInternalImportError('File Excel không có dữ liệu!');
+          return;
+        }
+
+        // Kiểm tra dòng đầu tiên là tiêu đề hay dữ liệu trực tiếp
+        const firstRow = (jsonData[0] || []).map(cell => String(cell || '').trim());
+        const firstRowUpper = firstRow.map(c => c.toUpperCase());
+        const isHeaderRow = firstRowUpper.some(c =>
+          c === 'STT' ||
+          c.includes('SERIAL') ||
+          c.includes('MÃ CHỐNG GIẢ') ||
+          c.includes('MA CHONG GIA') ||
+          c.includes('MÃ NỘI BỘ') ||
+          c.includes('MA NOI BO') ||
+          c.includes('SẢN PHẨM') ||
+          c.includes('SAN PHAM') ||
+          c.includes('CỘT 1') ||
+          c.includes('COT 1')
+        );
+
+        let serialCol = 0;
+        let internalCol = 1;
+        let productCol = 2;
+        let startIdx = 0;
+
+        if (isHeaderRow) {
+          startIdx = 1;
+          // Nếu cột 0 là STT và không có header rõ ràng thì dịch sang cột 1, 2, 3
+          if (firstRowUpper[0] === 'STT' && firstRow.length >= 4) {
+            serialCol = 1;
+            internalCol = 2;
+            productCol = 3;
+          }
+          const foundSerialIdx = firstRowUpper.findIndex(c => c.includes('SERIAL') || c.includes('CHỐNG GIẢ') || c.includes('CHONG GIA') || c === 'CỘT 1' || c === 'COT 1');
+          const foundInternalIdx = firstRowUpper.findIndex(c => c.includes('NỘI BỘ') || c.includes('NOI BO') || c.includes('SỞ HỮU') || c.includes('XÁC THỰC') || c === 'CỘT 2' || c === 'COT 2');
+          const foundProductIdx = firstRowUpper.findIndex(c => c.includes('SẢN PHẨM') || c.includes('SAN PHAM') || c.includes('TÊN SP') || c === 'CỘT 3' || c === 'COT 3');
+
+          if (foundSerialIdx !== -1) serialCol = foundSerialIdx;
+          if (foundInternalIdx !== -1) internalCol = foundInternalIdx;
+          else if (foundSerialIdx !== -1) internalCol = foundSerialIdx + 1;
+
+          if (foundProductIdx !== -1) productCol = foundProductIdx;
+          else if (foundInternalIdx !== -1) productCol = foundInternalIdx + 1;
+        }
+
+        const parsed = [];
+        for (let i = startIdx; i < jsonData.length; i++) {
+          const row = jsonData[i];
+          if (!row || row.length === 0) continue;
+          const serialVal = String(row[serialCol] ?? '').trim();
+          const internalVal = String(row[internalCol] ?? '').trim();
+          const productVal = String(row[productCol] ?? '').trim();
+          if (!serialVal && !internalVal) continue;
+          if (!serialVal) continue;
+          parsed.push({
+            serial: serialVal,
+            internalCode: internalVal,
+            productName: productVal
+          });
+        }
+
+        if (parsed.length === 0) {
+          setInternalImportError('Không tìm thấy dòng dữ liệu hợp lệ nào trong file Excel! Vui lòng kiểm tra Cột 1 (Serial), Cột 2 (Mã nội bộ), Cột 3 (Sản phẩm).');
+          return;
+        }
+
+        setInternalCodeRows(parsed);
+        setInternalCodeFileName(file.name);
+      } catch (err) {
+        setInternalImportError('Lỗi đọc file Excel: ' + (err.message || err));
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
+  // ── Gửi dữ liệu Import Mã nội bộ lên Server ──
+  const handleSubmitInternalCodes = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setInternalImportError('');
+    setInternalImportResult(null);
+
+    if (!internalCodeBatchId) {
+      setInternalImportError('Vui lòng chọn Lô tem cần import mã nội bộ!');
+      return;
+    }
+    if (!internalCodeRows || internalCodeRows.length === 0) {
+      setInternalImportError('Vui lòng chọn file Excel chứa dữ liệu Mã nội bộ (Cột 1: Serial, Cột 2: Mã nội bộ, Cột 3: Sản phẩm)!');
+      return;
+    }
+
+    try {
+      setImportingInternalCodes(true);
+      const res = await api.importBatchInternalCodes(internalCodeBatchId, internalCodeRows);
+      setInternalImportResult(res);
+      loadBatches(curBatchPage.current, curSearch.current);
+      if (activeTab === 'activate') loadLabels(curLabelPage.current, curSearch.current);
+    } catch (err) {
+      setInternalImportError(err.message || 'Lỗi khi import mã nội bộ cho lô tem');
+    } finally {
+      setImportingInternalCodes(false);
+    }
+  };
+
   // Mở modal Edit thông số sở hữu bằng quyền Admin
   const handleOpenEditOwner = (label) => {
     setOwnerTargetLabel(label);
@@ -1014,7 +1198,8 @@ export default function Labels() {
       ownerAddress: label.ownerInfo?.address || '',
       ownerPhone: label.ownerInfo?.phone || '',
       activatedSerial: label.ownerInfo?.activatedSerial || label.serialNumber || '',
-      ownerCode: label.ownerCode || ''
+      ownerCode: label.ownerCode || label.internalCode || '',
+      internalCode: label.internalCode || label.ownerCode || ''
     });
     setShowOwnerModal(true);
   };
@@ -1037,7 +1222,8 @@ export default function Labels() {
           ownerAddress: ownerForm.ownerAddress,
           ownerPhone: ownerForm.ownerPhone,
           activatedSerial: ownerForm.activatedSerial,
-          ownerCode: ownerForm.ownerCode
+          ownerCode: ownerForm.ownerCode || ownerForm.internalCode,
+          internalCode: ownerForm.internalCode || ownerForm.ownerCode
         });
       }
       setShowOwnerModal(false);
@@ -1080,7 +1266,7 @@ export default function Labels() {
   const tabs = [
     { id: 'batches', label: 'Quản lý Lô tem', icon: Tag },
     { id: 'activate', label: 'Kích hoạt & Gắn Serial', icon: Link2 },
-    { id: 'migrate', label: 'Đồng bộ tem cũ', icon: Upload },
+    { id: 'migrate', label: 'Mã nội bộ', icon: Upload },
     { id: 'renew', label: 'Gia hạn lô tem', icon: Clock },
   ];
 
@@ -1138,6 +1324,9 @@ export default function Labels() {
                 {exportingDistBatchId ? 'Đang xuất phân phối...' : 'Xuất dữ liệu Điểm bán / Serial / SP'}
               </button>
             )}
+            <button className="btn btn-ghost" onClick={() => handleOpenInternalCodeModal(null)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(16, 185, 129, 0.45)', color: '#10b981' }} title="Import file Excel 3 cột: Serial | Mã nội bộ | Sản phẩm cho lô tem">
+              <Upload size={16} /> Import mã nội bộ
+            </button>
             <button className="btn btn-ghost" onClick={() => { setModalError(null); setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' }); setShowBulkMapModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <Link2 size={16} /> Gắn kết hàng loạt
             </button>
@@ -1162,9 +1351,14 @@ export default function Labels() {
           </div>
         )}
         {activeTab === 'migrate' && (
-          <button className="btn btn-primary" onClick={() => { setModalError(null); setMigrateForm({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: isAdmin ? '' : (enterpriseId || '') }); setShowMigrateModal(true); }}>
-            <Upload size={18}/> Import tem cũ
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button className="btn btn-ghost" onClick={() => { setModalError(null); setMigrateForm({ batchCode: '', migrationSource: '', migrationOldLink: '', productId: '', templateId: '', theme: 'default', labelsText: '', enterpriseId: isAdmin ? '' : (enterpriseId || '') }); setShowMigrateModal(true); }} style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
+              <Upload size={16}/> Đồng bộ tem hệ thống cũ
+            </button>
+            <button className="btn btn-primary" onClick={() => handleOpenInternalCodeModal(null)}>
+              <FileSpreadsheet size={18}/> Import mã nội bộ theo Lô tem
+            </button>
+          </div>
         )}
       </div>
 
@@ -1572,6 +1766,15 @@ export default function Labels() {
                                 </button>
                               </>
                             )}
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => handleOpenInternalCodeModal(batch)}
+                              title={`Import mã nội bộ cho lô "${batch.batchCode}" (Excel 3 cột: Serial | Mã nội bộ | Sản phẩm)`}
+                              style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
+                            >
+                              <Upload size={13} />
+                              <span>Mã nội bộ</span>
+                            </button>
                             <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
                               {exportingBatchId === batch._id ? (
                                 <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
@@ -1661,8 +1864,13 @@ export default function Labels() {
                       )}
                     </td>
                     <td>
-                      {label.ownerCode ? (
-                        <strong style={{ color: '#059669', fontSize: '0.86rem' }}>{label.ownerCode}</strong>
+                      {label.internalCode || label.ownerCode ? (
+                        <div>
+                          <strong style={{ color: '#059669', fontSize: '0.86rem' }}>{label.internalCode || label.ownerCode}</strong>
+                          {label.internalCode && (
+                            <span className="badge badge-info" style={{ marginLeft: 6, fontSize: '0.68rem', padding: '1px 5px' }}>Mã nội bộ</span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted">—</span>
                       )}
@@ -1719,18 +1927,169 @@ export default function Labels() {
         </div>
       )}
 
-      {/* Migrate Tab */}
+      {/* Mã nội bộ Tab */}
       {activeTab === 'migrate' && (
         <div className="card">
-          <div className="card-header">
-            <h3 className="card-title"><Upload size={20}/> Hướng dẫn Import tem cũ</h3>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FileSpreadsheet size={20} style={{ color: '#10b981' }} />
+              Import Mã nội bộ cho Lô tem (Giao diện Bảo hành)
+            </h3>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() => handleDownloadInternalCodeTemplate(internalCodeBatchId)}
+              disabled={downloadingInternalTemplate}
+              style={{ border: '1px solid rgba(16, 185, 129, 0.4)', color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Download size={15} />
+              {downloadingInternalTemplate ? 'Đang tạo file mẫu...' : 'Tải file Excel mẫu 3 cột theo Lô'}
+            </button>
           </div>
+
           <div className="migrate-guide">
-            <p>Di trú dữ liệu từ hệ thống tem cũ sang hệ thống mới. Các serial cũ và link cũ sẽ được giữ nguyên nhưng hiển thị theo giao diện mới.</p>
-            <div className="guide-steps">
-              <div className="guide-step"><span className="step-num">1</span><span>Chuẩn bị danh sách serial cũ (định dạng CSV: serial,link_cũ)</span></div>
-              <div className="guide-step"><span className="step-num">2</span><span>Điền thông tin nguồn gốc và mã lô mới</span></div>
-              <div className="guide-step"><span className="step-num">3</span><span>Bấm "Import tem cũ" và dán dữ liệu</span></div>
+            <p style={{ marginBottom: 14 }}>
+              Chức năng <strong>Import mã nội bộ</strong> dùng để gắn <strong>Mã nội bộ (Mã sở hữu sản phẩm)</strong> và <strong>Sản phẩm</strong> vào từng con tem đã tạo trong Lô tem theo đúng cấu trúc 3 cột Excel:
+            </p>
+            <div className="guide-steps" style={{ marginBottom: 20 }}>
+              <div className="guide-step">
+                <span className="step-num">1</span>
+                <span><strong>Cột 1 (Serial / Mã chống giả)</strong>: Trùng với mã Serial trong data lô tem đã tải về để in (VD: <code>00306916</code>).</span>
+              </div>
+              <div className="guide-step">
+                <span className="step-num">2</span>
+                <span><strong>Cột 2 (Mã nội bộ)</strong>: Mã xác thực / mã sở hữu sản phẩm nội bộ của khách hàng cùng hàng với Cột 1 (VD: <code>00066</code>).</span>
+              </div>
+              <div className="guide-step">
+                <span className="step-num">3</span>
+                <span><strong>Cột 3 (Sản phẩm)</strong>: Tên sản phẩm (hoặc mã SKU) tương ứng để gắn tự động vào con tem.</span>
+              </div>
+            </div>
+
+            {internalImportError && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8, padding: 12, marginBottom: 16,
+                borderRadius: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.25)'
+              }}>
+                <XCircle size={18} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.9rem' }}>{internalImportError}</span>
+              </div>
+            )}
+
+            {internalImportResult && (
+              <div style={{
+                padding: '14px 16px', marginBottom: 16, borderRadius: 10,
+                backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#10b981'
+              }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CheckCircle size={18} />
+                  <span>{internalImportResult.message || 'Import mã nội bộ thành công!'}</span>
+                </div>
+                {internalImportResult.data && (
+                  <div style={{ fontSize: '0.84rem', marginTop: 6, color: 'var(--color-text-secondary)' }}>
+                    • Đã khớp và cập nhật: <strong>{internalImportResult.data.updatedCount}</strong> / {internalImportResult.data.totalRows} dòng
+                    {' | '}Đã gắn sản phẩm (Cột 3): <strong>{internalImportResult.data.productMatchedCount || 0}</strong> tem
+                    {internalImportResult.data.unmatchedSerialsCount > 0 && (
+                      <div style={{ color: '#fbbf24', marginTop: 4 }}>
+                        ⚠️ Có {internalImportResult.data.unmatchedSerialsCount} serial không nằm trong lô tem này: {internalImportResult.data.unmatchedSerials?.slice(0, 10).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', alignItems: 'end', marginBottom: '16px' }}>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>1. Chọn Lô tem cần Import Mã nội bộ *</label>
+                <select
+                  className="input select"
+                  value={internalCodeBatchId}
+                  onChange={e => {
+                    setInternalCodeBatchId(e.target.value);
+                    setInternalImportResult(null);
+                  }}
+                >
+                  <option value="">-- Chọn lô tem --</option>
+                  {(allBatchesForFilter.length > 0 ? allBatchesForFilter : batches).map(b => (
+                    <option key={b._id} value={b._id}>
+                      {b.batchCode} ({b.totalLabels} tem: {b.serialStart} → {b.serialEnd}) {b.productId?.name ? `- ${b.productId.name}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>2. Tải lên File Excel 3 cột (.xlsx, .xls, .csv) *</label>
+                <label style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '10px 14px', borderRadius: 8, border: '1.5px dashed rgba(16, 185, 129, 0.5)',
+                  backgroundColor: 'rgba(16, 185, 129, 0.06)', color: '#10b981', fontWeight: 600,
+                  cursor: 'pointer', fontSize: '0.88rem'
+                }}>
+                  <Upload size={16} />
+                  <span>{internalCodeFileName ? `Đã chọn: ${internalCodeFileName} (${internalCodeRows.length} dòng)` : 'Chọn file Excel (Serial | Mã nội bộ | Sản phẩm)'}</span>
+                  <input type="file" accept=".xlsx,.xls,.csv" onChange={handleInternalCodeExcelUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+            </div>
+
+            {internalCodeRows.length > 0 && (
+              <div style={{ marginTop: 14, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-text-primary)' }}>
+                    📋 Xem trước dữ liệu đọc từ Excel ({internalCodeRows.length} dòng):
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => { setInternalCodeRows([]); setInternalCodeFileName(''); }}
+                    style={{ color: '#f87171', fontSize: '0.78rem' }}
+                  >
+                    Xóa file đã chọn
+                  </button>
+                </div>
+                <div className="table-container" style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                  <table className="table" style={{ fontSize: '0.84rem' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 60 }}>#</th>
+                        <th>Cột 1: Serial (Mã chống giả)</th>
+                        <th>Cột 2: Mã nội bộ (Mã sở hữu SP)</th>
+                        <th>Cột 3: Sản phẩm</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {internalCodeRows.slice(0, 50).map((r, idx) => (
+                        <tr key={idx}>
+                          <td>{idx + 1}</td>
+                          <td><span className="serial-number">{r.serial}</span></td>
+                          <td><strong style={{ color: '#10b981' }}>{r.internalCode || '—'}</strong></td>
+                          <td>{r.productName || <span className="text-muted">Giữ nguyên theo lô</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {internalCodeRows.length > 50 && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    ... Đang hiển thị 50 dòng đầu tiên trên tổng số {internalCodeRows.length} dòng.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSubmitInternalCodes}
+                disabled={importingInternalCodes || !internalCodeBatchId || internalCodeRows.length === 0}
+                style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+              >
+                <Upload size={16} />
+                {importingInternalCodes ? 'Đang Import Mã nội bộ...' : `Thực hiện Import Mã nội bộ (${internalCodeRows.length} tem)`}
+              </button>
             </div>
           </div>
         </div>
@@ -2542,23 +2901,23 @@ export default function Labels() {
               </div>
 
               <div className="input-group" style={{ background: 'rgba(16, 185, 129, 0.06)', padding: '12px', borderRadius: 8, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
-                <label style={{ color: '#047857', fontWeight: 700 }}>5. Mã sở hữu sản phẩm (Serial con tem)</label>
+                <label style={{ color: '#047857', fontWeight: 700 }}>5. Mã nội bộ / Mã sở hữu sản phẩm (Cột 2)</label>
                 <input
                   className="input"
-                  placeholder="VD: 00000007"
-                  value={ownerForm.ownerCode}
-                  onChange={e => setOwnerForm({ ...ownerForm, ownerCode: e.target.value })}
+                  placeholder="VD: 00066"
+                  value={ownerForm.internalCode || ownerForm.ownerCode}
+                  onChange={e => setOwnerForm({ ...ownerForm, internalCode: e.target.value, ownerCode: e.target.value })}
                   style={{ fontWeight: 700, color: '#065f46', borderColor: '#86efac' }}
                 />
                 <p style={{ fontSize: '0.75rem', color: '#059669', margin: '4px 0 0' }}>
-                  Giá trị này sẽ hiển thị ở dòng "Serial đã được kích hoạt" trên trang tra cứu sản phẩm của người dùng.
+                  Giá trị này sẽ hiển thị ở mục "Mã sở hữu sản phẩm" và dòng "Serial đã được kích hoạt" trên trang tra cứu Bảo hành.
                 </p>
               </div>
             </div>
 
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                {(ownerTargetLabel.ownerInfo?.name || ownerTargetLabel.ownerCode) && (
+                {(ownerTargetLabel.ownerInfo?.name || ownerTargetLabel.ownerCode || ownerTargetLabel.internalCode) && (
                   <button
                     type="button"
                     className="btn btn-sm btn-ghost"
@@ -2578,6 +2937,161 @@ export default function Labels() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Import Mã nội bộ cho Lô tem (Mở trực tiếp từ dòng Lô tem hoặc nút Header) */}
+      {showInternalCodeModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !importingInternalCodes && setShowInternalCodeModal(false)}>
+          <div className="modal" style={{ maxWidth: 640 }}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileSpreadsheet size={20} color="#10b981" />
+                  Import Mã nội bộ cho Lô tem
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  Cấu trúc file Excel 3 cột: <strong>Cột 1: Serial</strong> | <strong>Cột 2: Mã nội bộ</strong> | <strong>Cột 3: Sản phẩm</strong>
+                </p>
+              </div>
+              <button className="btn-icon" onClick={() => !importingInternalCodes && setShowInternalCodeModal(false)}><X size={20} /></button>
+            </div>
+
+            <form onSubmit={handleSubmitInternalCodes}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {internalImportError && (
+                  <div className="modal-error animate-fade-in" style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: 12,
+                    borderRadius: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.25)'
+                  }}>
+                    <XCircle size={18} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.88rem' }}>{internalImportError}</span>
+                  </div>
+                )}
+
+                {internalImportResult && (
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 10,
+                    backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#10b981'
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CheckCircle size={18} />
+                      <span>{internalImportResult.message || 'Import mã nội bộ thành công!'}</span>
+                    </div>
+                    {internalImportResult.data && (
+                      <div style={{ fontSize: '0.82rem', marginTop: 6, color: 'var(--color-text-secondary)' }}>
+                        • Đã khớp và cập nhật: <strong>{internalImportResult.data.updatedCount}</strong> / {internalImportResult.data.totalRows} dòng
+                        {' | '}Đã gắn sản phẩm (Cột 3): <strong>{internalImportResult.data.productMatchedCount || 0}</strong> tem
+                        {internalImportResult.data.unmatchedSerialsCount > 0 && (
+                          <div style={{ color: '#fbbf24', marginTop: 4 }}>
+                            ⚠️ Không tìm thấy {internalImportResult.data.unmatchedSerialsCount} serial trong lô này: {internalImportResult.data.unmatchedSerials?.slice(0, 8).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="input-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ margin: 0 }}>1. Lô tem cần Import *</label>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => handleDownloadInternalCodeTemplate(internalCodeBatchId)}
+                      disabled={downloadingInternalTemplate}
+                      style={{ color: '#10b981', fontSize: '0.78rem', padding: '2px 8px', border: '1px solid rgba(16,185,129,0.35)' }}
+                    >
+                      <Download size={13} /> {downloadingInternalTemplate ? 'Đang tạo...' : 'Tải file Excel mẫu của lô này'}
+                    </button>
+                  </div>
+                  <select
+                    className="input select"
+                    value={internalCodeBatchId}
+                    onChange={e => {
+                      setInternalCodeBatchId(e.target.value);
+                      setInternalImportResult(null);
+                    }}
+                    required
+                  >
+                    <option value="">-- Chọn lô tem --</option>
+                    {(allBatchesForFilter.length > 0 ? allBatchesForFilter : batches).map(b => (
+                      <option key={b._id} value={b._id}>
+                        {b.batchCode} ({b.totalLabels} tem: {b.serialStart} → {b.serialEnd}) {b.productId?.name ? `- ${b.productId.name}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="input-group">
+                  <label>2. Chọn File Excel 3 cột (.xlsx, .xls, .csv) *</label>
+                  <label style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '14px', borderRadius: 10, border: '1.5px dashed rgba(16, 185, 129, 0.5)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.05)', color: '#10b981', fontWeight: 600,
+                    cursor: 'pointer', fontSize: '0.9rem'
+                  }}>
+                    <Upload size={18} />
+                    <span>{internalCodeFileName ? `Đã đọc: ${internalCodeFileName} (${internalCodeRows.length} dòng)` : 'Nhấn để chọn file Excel (Cột 1: Serial | Cột 2: Mã nội bộ | Cột 3: Sản phẩm)'}</span>
+                    <input type="file" accept=".xlsx,.xls,.csv" onChange={handleInternalCodeExcelUpload} style={{ display: 'none' }} />
+                  </label>
+                </div>
+
+                {internalCodeRows.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>
+                        Xem trước ({internalCodeRows.length} dòng):
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => { setInternalCodeRows([]); setInternalCodeFileName(''); }}
+                        style={{ color: '#f87171', fontSize: '0.76rem', padding: '2px 6px' }}
+                      >
+                        Xóa file
+                      </button>
+                    </div>
+                    <div className="table-container" style={{ maxHeight: 220, overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                      <table className="table" style={{ fontSize: '0.82rem' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 45 }}>#</th>
+                            <th>Cột 1: Serial</th>
+                            <th>Cột 2: Mã nội bộ</th>
+                            <th>Cột 3: Sản phẩm</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {internalCodeRows.slice(0, 30).map((r, idx) => (
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td><span className="serial-number">{r.serial}</span></td>
+                              <td><strong style={{ color: '#10b981' }}>{r.internalCode || '—'}</strong></td>
+                              <td>{r.productName || <span className="text-muted">Theo lô</span>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowInternalCodeModal(false)} disabled={importingInternalCodes}>Đóng</button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={importingInternalCodes || !internalCodeBatchId || internalCodeRows.length === 0}
+                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+                >
+                  <Upload size={16} />
+                  {importingInternalCodes ? 'Đang Import...' : `Import Mã nội bộ (${internalCodeRows.length} tem)`}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

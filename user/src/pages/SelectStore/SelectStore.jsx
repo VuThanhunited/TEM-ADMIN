@@ -106,7 +106,12 @@ export default function SelectStore() {
   const enterprise = scanData?.enterprise;
   const detectedSerial = label?.serialNumber || serial || codeParam || '';
   const ownerInfo = label?.ownerInfo;
-  const isActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
+  const isActivated = Boolean(
+    (ownerInfo?.activatedAt && ownerInfo?.name) ||
+    label?.storeId ||
+    label?.distributedAt ||
+    (!label?.internalCode && label?.ownerCode && String(label.ownerCode).trim())
+  );
   const isLocked = isActivated && user?.role === 'NPP';
 
   // Xác định tem thuộc giao diện Thực phẩm chức năng (TPCN) hay giao diện khác (Gia dụng, OCOP, Nông nghiệp...)
@@ -181,10 +186,10 @@ export default function SelectStore() {
   }, [label?.serialNumber, serial, codeParam]);
 
   useEffect(() => {
-    if (label?.ownerCode) {
-      setOwnerCode(label.ownerCode);
+    if (label?.internalCode || label?.ownerCode) {
+      setOwnerCode(label.internalCode || label.ownerCode);
     }
-  }, [label?.ownerCode]);
+  }, [label?.internalCode, label?.ownerCode]);
 
   const loadScanData = async () => {
     setLoading(true);
@@ -362,7 +367,7 @@ export default function SelectStore() {
     setFormError('');
     try {
       const serialNumber = label?.serialNumber || serial || codeParam;
-      const cleanOwnerCode = ownerCode.trim() || serialNumber;
+      const cleanOwnerCode = ownerCode.trim() || label?.internalCode || serialNumber;
       const cleanEndSerial = isFoodTheme && !storeOverride ? endSerial.trim() : '';
 
       const res = await userApi.submitSingleEntry({
@@ -896,7 +901,7 @@ export default function SelectStore() {
               {ownerInfo?.phone && <div className="owner-activated-row"><span>SĐT:</span> {ownerInfo.phone}</div>}
               <div className="owner-activated-row">
                 <span>Serial đã kích hoạt:</span>{' '}
-                <strong>{label?.ownerCode || ownerInfo?.activatedSerial || label?.serialNumber}</strong>
+                <strong>{label?.internalCode || label?.ownerCode || ownerInfo?.activatedSerial || label?.serialNumber}</strong>
               </div>
               {isLocked && (
                 <>
@@ -1401,14 +1406,16 @@ export default function SelectStore() {
                   <div className="store-owner-code-header">
                     <label className="store-field-label" style={{ marginBottom: 0 }}>
                       <ShieldCheck size={16} color="#059669" />
-                      <span style={{ fontWeight: 800, color: '#065f46' }}>Mã kích hoạt / Mã sở hữu sản phẩm</span>
+                      <span style={{ fontWeight: 800, color: '#065f46' }}>Mã nội bộ / Mã sở hữu sản phẩm</span>
                     </label>
-                    <span className="store-owner-badge">Tự động nhận Serial nếu để trống</span>
+                    <span className="store-owner-badge">
+                      {label?.internalCode ? `Mã nội bộ đã import: ${label.internalCode}` : 'Tự động nhận Serial nếu để trống'}
+                    </span>
                   </div>
                   <input
                     type="text"
                     className="store-field-input store-owner-input"
-                    placeholder={`Mặc định: ${label?.serialNumber || serial}`}
+                    placeholder={`Mặc định: ${label?.internalCode || label?.serialNumber || serial}`}
                     value={ownerCode}
                     onChange={(e) => setOwnerCode(e.target.value)}
                   />

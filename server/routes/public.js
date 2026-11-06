@@ -762,21 +762,27 @@ router.post('/activate-label', async (req, res) => {
 
     // Nếu tem có activeCode quy định sẵn thì mã nhập phải khớp
     if (label.activeCode) {
-      const match = isSerialMatch(cleanCode, label.activeCode) || cleanCode.toUpperCase() === label.activeCode.toUpperCase();
+      const match =
+        isSerialMatch(cleanCode, label.activeCode) ||
+        cleanCode.toUpperCase() === label.activeCode.toUpperCase() ||
+        (label.internalCode && cleanCode.toUpperCase() === String(label.internalCode).trim().toUpperCase());
       if (!match) {
         return res.status(400).json({ error: 'Mã kích hoạt không chính xác. Vui lòng kiểm tra lại mã cào trên tem.' });
       }
     }
 
     const activatedAt = new Date();
+    const resolvedOwnerCode = (label.internalCode && String(label.internalCode).trim())
+      ? String(label.internalCode).trim()
+      : cleanCode;
 
     // Cập nhật trạng thái kích hoạt tem
-    label.ownerCode = cleanCode;
+    label.ownerCode = resolvedOwnerCode;
     label.ownerInfo = {
       name: (customerName || '').trim() || label.ownerInfo?.name || 'Khách hàng cá nhân',
       phone: (customerPhone || '').trim() || label.ownerInfo?.phone || null,
       address: label.ownerInfo?.address || null,
-      activatedSerial: label.serialNumber,
+      activatedSerial: resolvedOwnerCode || label.serialNumber,
       activatedAt
     };
     if (label.status === 'INACTIVE') {
@@ -2323,25 +2329,33 @@ router.post('/distributor-entry-single', async (req, res) => {
       if (
         inputSerial &&
         !isSerialMatch(inputSerial, label.serialNumber) &&
+        (!label.internalCode || !isSerialMatch(inputSerial, label.internalCode)) &&
         inputSerial.toLowerCase() !== String(label.qrCode || '').toLowerCase() &&
         inputSerial.toLowerCase() !== String(label.activeCode || '').toLowerCase()
       ) {
         return res.status(400).json({ error: 'Số serial không khớp với tem vừa quét. Vui lòng kiểm tra lại số in trên tem.' });
       }
 
-      const finalOwnerCode = (ownerCode && typeof ownerCode === 'string' && ownerCode.trim())
-        ? ownerCode.trim()
-        : ((linkedStore || name) ? label.serialNumber : null);
+      const rawOwnerCodeInput = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : '';
+      const hasPreimportedInternalCode = Boolean(label.internalCode && String(label.internalCode).trim());
+      const finalOwnerCode = hasPreimportedInternalCode && (!rawOwnerCodeInput || isSerialMatch(rawOwnerCodeInput, label.serialNumber))
+        ? String(label.internalCode).trim()
+        : (rawOwnerCodeInput
+            ? rawOwnerCodeInput
+            : ((linkedStore || name) ? (hasPreimportedInternalCode ? String(label.internalCode).trim() : label.serialNumber) : null));
 
       label.ownerInfo = {
         name: name || null,
         address: address || null,
         phone: phone || null,
-        activatedSerial: finalOwnerCode || label.serialNumber,
+        activatedSerial: (hasPreimportedInternalCode ? String(label.internalCode).trim() : finalOwnerCode) || label.serialNumber,
         activatedAt: (finalOwnerCode || name) ? now : null,
         activatedBy: user._id
       };
       label.ownerCode = finalOwnerCode;
+      if (!hasPreimportedInternalCode && rawOwnerCodeInput && !isSerialMatch(rawOwnerCodeInput, label.serialNumber)) {
+        label.internalCode = rawOwnerCodeInput;
+      }
     }
 
     // Update the label distributor & store fields

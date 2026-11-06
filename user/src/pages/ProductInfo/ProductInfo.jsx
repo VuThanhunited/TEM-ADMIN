@@ -247,8 +247,11 @@ export default function ProductInfo() {
         : (enterprise?.displayConfig?.showRelatedProducts !== false));
 
   // Kiểm tra trạng thái kích hoạt riêng cho giao diện Điện gia dụng - Bảo hành:
-  // Chỉ khi bên khách hàng đã nhập mã kích hoạt (ownerCode) thì mới coi là đã kích hoạt
-  const isApplianceActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
+  // Chỉ khi bên khách hàng đã nhập mã kích hoạt (ownerCode) hoặc đã import Mã nội bộ (internalCode) thì mới coi là đã kích hoạt
+  const isApplianceActivated = Boolean(
+    (label?.internalCode && String(label.internalCode).trim()) ||
+    (label?.ownerCode && String(label.ownerCode).trim())
+  );
 
   // Kiểm tra trạng thái kích hoạt cho Thực phẩm chức năng (Bước 6):
   // Active mã (qua Điểm bán quét hoặc nhập mã kích hoạt) mới xem được full thông tin & Giấy công bố;
@@ -720,9 +723,15 @@ export default function ProductInfo() {
             </div>
             <div className="appliance-activated-grid">
               <div className="appliance-activated-item highlight">
-                <span className="appliance-activated-label">Mã Serial đã kích hoạt:</span>
+                <span className="appliance-activated-label">Mã sở hữu sản phẩm:</span>
                 <strong className="appliance-activated-value serial-code">
-                  {label?.ownerCode || label?.ownerInfo?.activatedSerial || label?.serialNumber}
+                  {label?.internalCode || label?.ownerCode || label?.ownerInfo?.activatedSerial || label?.serialNumber}
+                </strong>
+              </div>
+              <div className="appliance-activated-item highlight">
+                <span className="appliance-activated-label">Mã chống giả:</span>
+                <strong className="appliance-activated-value serial-code">
+                  {label?.serialNumber || serial}
                 </strong>
               </div>
               <div className="appliance-activated-item">
@@ -2084,7 +2093,7 @@ export default function ProductInfo() {
         <div className="owner-card-serial">
           <ShieldCheck size={18} />
           <span>Serial đã được kích hoạt:</span>
-          <strong>{label?.ownerCode || ownerInfo.ownerCode || ownerInfo.activatedSerial || label?.serialNumber}</strong>
+          <strong>{label?.internalCode || label?.ownerCode || ownerInfo.ownerCode || ownerInfo.activatedSerial || label?.serialNumber}</strong>
         </div>
       </div>
     );
@@ -2101,10 +2110,11 @@ export default function ProductInfo() {
     const mfgPhone = mfg?.phone || enterprise?.phone;
     const mfgEmail = mfg?.email || enterprise?.email;
 
-    // 2. Dữ liệu Nhà phân phối (NPP) & Mã sở hữu
+    // 2. Dữ liệu Nhà phân phối (NPP) & Mã sở hữu (Cột 2: Mã nội bộ) + Mã chống giả (Cột 1: Serial hệ thống)
     const distributorName = label?.distributorName || product?.distributors?.[0]?.name || product?.distributorInfo;
     const distributorAddress = label?.distributorAddress || product?.distributors?.[0]?.address || '';
-    const ownerCode = label?.ownerCode;
+    const ownerCode = label?.internalCode || label?.ownerCode;
+    const antiCounterfeitCode = label?.serialNumber || serial;
 
     // 3. Dữ liệu Giấy tờ công bố & Chứng nhận
     const congBoImagesList = (product?.congBoImages || []).filter(img => img && img.trim());
@@ -2276,30 +2286,41 @@ export default function ProductInfo() {
             </div>
           )}
 
-          {/* Trường MÃ SỞ HỮU (Yêu cầu quan trọng từ khách hàng) */}
+          {/* Trường MÃ SỞ HỮU SẢN PHẨM (Cột 2: Mã nội bộ) & MÃ CHỐNG GIẢ (Cột 1: Serial lô tem) */}
           {ownerCode ? (
             <div style={{
               marginTop: 12,
-              padding: '10px 14px',
+              padding: '12px 14px',
               borderRadius: 10,
               background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
               border: '1.5px solid #6ee7b7',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              gap: 10
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ShieldCheck size={20} color="#059669" />
-                <div>
-                  <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    Mã sở hữu sản phẩm
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <ShieldCheck size={22} color="#059669" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      Mã sở hữu sản phẩm
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
+                      {ownerCode}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.98rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
-                    {ownerCode}
+                  <div style={{ paddingTop: 6, borderTop: '1px dashed rgba(5, 150, 105, 0.28)' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      Mã chống giả
+                    </div>
+                    <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
+                      {antiCounterfeitCode}
+                    </div>
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#059669', color: '#fff', padding: '3px 8px', borderRadius: 12 }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#059669', color: '#fff', padding: '4px 10px', borderRadius: 12, flexShrink: 0 }}>
                 ĐÃ XÁC THỰC
               </span>
             </div>

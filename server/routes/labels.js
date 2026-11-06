@@ -83,7 +83,7 @@ router.get('/export', auth, requireOwnership, async (req, res) => {
     }
 
     const data = await Label.find(query)
-      .select('serialNumber qrUrl smsCode activeCode legacyQrCode legacyTemQr status scanCount storeId distributorName distributorAddress ownerCode ownerInfo distributedAt productId')
+      .select('serialNumber qrUrl smsCode activeCode legacyQrCode legacyTemQr status scanCount storeId distributorName distributorAddress ownerCode internalCode ownerInfo distributedAt productId')
       .populate('productId', 'name price sku')
       .sort({ serialNumber: 1 })
       .skip(skip)
@@ -166,6 +166,8 @@ router.get('/export-all', auth, requireOwnership, async (req, res) => {
 
       const orConditions = [
         { serialNumber: { $regex: cleanSearch, $options: 'i' } },
+        { internalCode: { $regex: cleanSearch, $options: 'i' } },
+        { ownerCode: { $regex: cleanSearch, $options: 'i' } },
         { distributorName: { $regex: cleanSearch, $options: 'i' } },
         { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
         { activeCode: { $regex: cleanSearch, $options: 'i' } },
@@ -180,7 +182,7 @@ router.get('/export-all', auth, requireOwnership, async (req, res) => {
 
     // Use lean cursor for memory-efficient streaming
     const cursor = Label.find(query)
-      .select('serialNumber qrUrl smsCode activeCode storeId distributorName distributorAddress ownerCode ownerInfo distributedAt status scanCount batchId productId')
+      .select('serialNumber qrUrl smsCode activeCode storeId distributorName distributorAddress ownerCode internalCode ownerInfo distributedAt status scanCount batchId productId')
       .populate('batchId', 'batchCode theme')
       .populate('productId', 'name price sku')
       .sort({ serialNumber: 1 })
@@ -959,6 +961,169 @@ router.post('/migrate', auth, requireOwnership, async (req, res) => {
   }
 });
 
+// POST /api/labels/batches/:id/import-internal-codes - Import Mã nội bộ (Cột 1: Serial, Cột 2: Mã nội bộ, Cột 3: Sản phẩm) cho 1 Lô tem
+router.post('/batches/:id/import-internal-codes', auth, requireOwnership, async (req, res) => {
+  try {
+    const batchId = req.params.id;
+    const { rows } = req.body || {};
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ error: 'Không có dữ liệu dòng nào để import mã nội bộ!' });
+    }
+
+    const batch = await LabelBatch.findOne({ _id: batchId, ...(req.enterpriseFilter || {}) });
+    if (!batch) {
+      return res.status(404).json({ error: 'Không tìm thấy lô tem hoặc bạn không có quyền truy cập lô tem này!' });
+    }
+
+    // Tải toàn bộ tem trong lô để khớp chính xác cả khi Excel làm mất số 0 ở đầu (VD: 306916 -> 00306916)
+    let batchLabels = await Label.find({ batchId: batch._id })
+      .select('_id serialNumber ownerCode internalCode productId ownerInfo')
+      .lean();
+
+    if (batchLabels.length === 0 && batch.totalLabels > 0) {
+      try {
+        await regenerateLabelsForBatch(batch.toObject ? batch.toObject() : batch);
+        batchLabels = await Label.find({ batchId: batch._id })
+          .select('_id serialNumber ownerCode internalCode productId ownerInfo')
+          .lean();
+      } catch (repairErr) {
+        console.warn('Auto-recover batch before import internal codes failed:', repairErr.message);
+      }
+    }
+
+    // Lập bản đồ tra cứu nhanh theo serialNumber (exact + bỏ số 0 đầu)
+    const exactSerialMap = new Map();
+    const numericSerialMap = new Map();
+    const normalizeNumericSerial = (s) => {
+      const str = String(s || '').trim();
+      if (!str) return '';
+      if (/^\d+$/.test(str)) {
+        return str.replace(/^0+/, '') || '0';
+      }
+      const m = str.match(/^(\D*?)0*(\d+)$/);
+      if (m) {
+        return `${m[1].toUpperCase()}${m[2]}`;
+      }
+      return str.toUpperCase();
+    };
+
+    for (const lbl of batchLabels) {
+      const sClean = String(lbl.serialNumber || '').trim();
+      exactSerialMap.set(sClean.toUpperCase(), lbl);
+      const normKey = normalizeNumericSerial(sClean);
+      if (normKey && !numericSerialMap.has(normKey)) {
+        numericSerialMap.set(normKey, lbl);
+      }
+    }
+
+    // Tải danh sách sản phẩm của doanh nghiệp sở hữu lô tem để khớp Cột 3 (Sản phẩm)
+    const enterpriseProducts = await Product.find({ enterpriseId: batch.enterpriseId })
+      .select('_id name sku')
+      .lean();
+
+    const productLookupMap = new Map();
+    for (const p of enterpriseProducts) {
+      if (p.name) {
+        productLookupMap.set(String(p.name).trim().toLowerCase(), p._id);
+      }
+      if (p.sku) {
+        productLookupMap.set(String(p.sku).trim().toLowerCase(), p._id);
+      }
+    }
+
+    const bulkOps = [];
+    let updatedCount = 0;
+    let matchedProductsCount = 0;
+    const unmatchedSerials = [];
+    let firstMatchedProductId = null;
+
+    for (const row of rows) {
+      const rawSerial = String(row.serial ?? row.col1 ?? '').trim();
+      const rawInternalCode = String(row.internalCode ?? row.col2 ?? '').trim();
+      const rawProductName = String(row.productName ?? row.col3 ?? '').trim();
+
+      if (!rawSerial && !rawInternalCode) continue;
+      if (!rawSerial) continue;
+
+      const matchedLabel =
+        exactSerialMap.get(rawSerial.toUpperCase()) ||
+        numericSerialMap.get(normalizeNumericSerial(rawSerial));
+
+      if (!matchedLabel) {
+        unmatchedSerials.push(rawSerial);
+        continue;
+      }
+
+      const setFields = {};
+      if (rawInternalCode) {
+        setFields.internalCode = rawInternalCode;
+        // Đồng bộ luôn sang ownerCode & activatedSerial để hiển thị đúng Mã nội bộ (Cột 2)
+        setFields.ownerCode = rawInternalCode;
+        if (matchedLabel.ownerInfo?.activatedAt) {
+          setFields['ownerInfo.activatedSerial'] = rawInternalCode;
+        }
+      }
+
+      if (rawProductName) {
+        const prodKey = rawProductName.toLowerCase();
+        let matchedProdId = productLookupMap.get(prodKey);
+        if (!matchedProdId) {
+          // Tìm gần đúng nếu tên sản phẩm chứa hoặc được chứa
+          const foundProd = enterpriseProducts.find(p => {
+            const pName = String(p.name || '').trim().toLowerCase();
+            const pSku = String(p.sku || '').trim().toLowerCase();
+            return (pName && (pName === prodKey || pName.includes(prodKey) || prodKey.includes(pName))) ||
+                   (pSku && pSku === prodKey);
+          });
+          if (foundProd) matchedProdId = foundProd._id;
+        }
+        if (matchedProdId) {
+          setFields.productId = matchedProdId;
+          matchedProductsCount++;
+          if (!firstMatchedProductId) firstMatchedProductId = matchedProdId;
+        }
+      }
+
+      if (Object.keys(setFields).length > 0) {
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: matchedLabel._id },
+            update: { $set: setFields }
+          }
+        });
+        updatedCount++;
+      }
+    }
+
+    if (bulkOps.length > 0) {
+      const CHUNK = 2000;
+      for (let i = 0; i < bulkOps.length; i += CHUNK) {
+        await Label.bulkWrite(bulkOps.slice(i, i + CHUNK));
+      }
+    }
+
+    // Nếu lô tem chưa gắn sản phẩm mà trong file Excel có gắn sản phẩm, cập nhật sản phẩm đại diện cho lô tem
+    if (!batch.productId && firstMatchedProductId) {
+      batch.productId = firstMatchedProductId;
+      await batch.save();
+    }
+
+    res.json({
+      success: true,
+      message: `Đã import thành công Mã nội bộ cho ${updatedCount}/${rows.length} tem trong lô "${batch.batchCode}"${matchedProductsCount > 0 ? ` (đã tự động gắn sản phẩm cho ${matchedProductsCount} tem)` : ''}!`,
+      updatedCount,
+      totalRows: rows.length,
+      matchedProductsCount,
+      unmatchedCount: unmatchedSerials.length,
+      unmatchedSerials: unmatchedSerials.slice(0, 20)
+    });
+  } catch (error) {
+    console.error('Import internal codes error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi import mã nội bộ: ' + error.message });
+  }
+});
+
 // ======= INDIVIDUAL LABEL ROUTES =======
 
 // GET /api/labels
@@ -988,6 +1153,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 
       const orConditions = [
         { serialNumber: { $regex: cleanSearch, $options: 'i' } },
+        { internalCode: { $regex: cleanSearch, $options: 'i' } },
         { distributorName: { $regex: cleanSearch, $options: 'i' } },
         { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
         { 'ownerInfo.name': { $regex: cleanSearch, $options: 'i' } },
@@ -1102,7 +1268,7 @@ router.put('/:id/map', auth, async (req, res) => {
 // PUT /api/labels/:id/owner - Admin/NSX chỉnh sửa thông số sở hữu của tem
 router.put('/:id/owner', auth, async (req, res) => {
   try {
-    const { ownerName, ownerAddress, ownerPhone, activatedSerial, ownerCode, clearOwnerInfo } = req.body;
+    const { ownerName, ownerAddress, ownerPhone, activatedSerial, ownerCode, internalCode, clearOwnerInfo } = req.body;
     const label = await Label.findById(req.params.id);
     if (!label) return res.status(404).json({ error: 'Không tìm thấy tem' });
 
@@ -1133,9 +1299,10 @@ router.put('/:id/owner', auth, async (req, res) => {
       if (ownerPhone !== undefined) label.ownerInfo.phone = (ownerPhone && typeof ownerPhone === 'string') ? ownerPhone.trim() : null;
       if (activatedSerial !== undefined) label.ownerInfo.activatedSerial = (activatedSerial && typeof activatedSerial === 'string') ? activatedSerial.trim() : null;
       if (ownerCode !== undefined) label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
+      if (internalCode !== undefined) label.internalCode = (internalCode && typeof internalCode === 'string') ? internalCode.trim() : null;
 
       // Nếu có mã sở hữu (mã kích hoạt), đánh dấu thời gian kích hoạt; nếu xóa mã thì bỏ trạng thái kích hoạt
-      if (label.ownerCode) {
+      if (label.ownerCode || label.internalCode) {
         if (!label.ownerInfo.activatedAt) label.ownerInfo.activatedAt = new Date();
         label.ownerInfo.activatedBy = req.user?.id || req.user?._id;
       } else if (ownerCode !== undefined && !label.ownerCode) {
