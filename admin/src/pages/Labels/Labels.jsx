@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer, ChevronDown, Building2, UserCheck
+  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer, ChevronDown, Building2, UserCheck, FileSpreadsheet
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';
@@ -47,6 +47,7 @@ export default function Labels() {
   const [labelPagination, setLabelPagination] = useState({ page: 1, totalPages: 1 });
   const [templates, setTemplates] = useState([]);
   const [exportingBatchId, setExportingBatchId] = useState(null);
+  const [exportingDistBatchId, setExportingDistBatchId] = useState(null);
   const [exportingLabels, setExportingLabels] = useState(false);
   const [showBulkMapModal, setShowBulkMapModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '', ownerCode: '' });
@@ -546,6 +547,128 @@ export default function Labels() {
     }
   };
 
+  // Yêu cầu 3 (Chỉ áp dụng cho giao diện Thực phẩm chức năng): Xuất dữ liệu phân phối (Điểm bán / Serial / Sản phẩm)
+  const handleExportDistributionBatch = async (batch) => {
+    try {
+      setExportingDistBatchId(batch._id);
+      const batchLabels = await api.exportBatchLabels(batch._id);
+      if (!batchLabels || batchLabels.length === 0) {
+        alert(`Lô tem "${batch.batchCode}" chưa có dữ liệu tem nhãn để xuất!`);
+        return;
+      }
+
+      // Sheet 1: Chi tiết phân phối Điểm bán / Serial / Sản phẩm
+      const detailRows = batchLabels.map((label, idx) => {
+        const storeName = label.distributorName || label.ownerInfo?.name || '';
+        const storeAddr = label.distributorAddress || label.ownerInfo?.address || '';
+        const storePhone = label.ownerInfo?.phone || '';
+        const prodName = label.productId?.name || batch.productId?.name || 'Chưa gắn sản phẩm';
+        const soldDateRaw = label.distributedAt || label.ownerInfo?.activatedAt;
+        const soldDateStr = soldDateRaw ? new Date(soldDateRaw).toLocaleString('vi-VN') : '';
+        return {
+          'STT': idx + 1,
+          'Mã lô': batch.batchCode,
+          'Tên sản phẩm': prodName,
+          'Mã Serial': label.serialNumber,
+          'Điểm bán': storeName || 'Chưa gán điểm bán',
+          'Địa chỉ điểm bán': storeAddr,
+          'SĐT điểm bán': storePhone,
+          'Ngày bán / gán': soldDateStr,
+          'Trạng thái': getStatusLabel(label.status),
+          'Số lượt quét': label.scanCount || 0
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+      wsDetail['!cols'] = [
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 28 },
+        { wch: 16 },
+        { wch: 26 },
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 22 },
+        { wch: 16 },
+        { wch: 12 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Chi tiết phân phối');
+
+      // Sheet 2: Bảng Ma trận Điểm bán × Sản phẩm × Dải Serial (theo mẫu vyphyto_req_image2.png)
+      const storeSet = new Set();
+      const productSet = new Set();
+      const cellSerialsMap = new Map(); // `${prodName}|||${storeName}` -> [serials]
+
+      batchLabels.forEach((label) => {
+        const storeName = (label.distributorName || label.ownerInfo?.name || '').trim();
+        const prodName = (label.productId?.name || batch.productId?.name || 'Sản phẩm').trim();
+        productSet.add(prodName);
+        if (storeName) {
+          storeSet.add(storeName);
+          const key = `${prodName}|||${storeName}`;
+          if (!cellSerialsMap.has(key)) cellSerialsMap.set(key, []);
+          cellSerialsMap.get(key).push(String(label.serialNumber).trim());
+        }
+      });
+
+      const storeList = Array.from(storeSet);
+      const productList = Array.from(productSet);
+
+      const compressSerialRanges = (serialArr = []) => {
+        if (!serialArr.length) return '';
+        const sorted = [...serialArr].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const ranges = [];
+        let rangeStart = sorted[0];
+        let prev = sorted[0];
+
+        const isNextConsecutive = (s1, s2) => {
+          const m1 = s1.match(/^(.*?)(\d+)$/);
+          const m2 = s2.match(/^(.*?)(\d+)$/);
+          if (!m1 || !m2) return false;
+          if (m1[1] !== m2[1]) return false;
+          return parseInt(m2[2], 10) - parseInt(m1[2], 10) === 1;
+        };
+
+        for (let i = 1; i < sorted.length; i++) {
+          const cur = sorted[i];
+          if (isNextConsecutive(prev, cur)) {
+            prev = cur;
+          } else {
+            ranges.push(rangeStart === prev ? rangeStart : `${rangeStart}-${prev}`);
+            rangeStart = cur;
+            prev = cur;
+          }
+        }
+        ranges.push(rangeStart === prev ? rangeStart : `${rangeStart}-${prev}`);
+        return ranges.join('; ');
+      };
+
+      const matrixHeaderRow1 = ['Điểm bán --------->', ...(storeList.length > 0 ? storeList : ['Chưa có điểm bán được gán'])];
+      const matrixHeaderRow2 = ['Tên sản phẩm', ...(storeList.length > 0 ? storeList.map(() => '') : [''])];
+      const matrixBodyRows = productList.map((prodName) => {
+        if (storeList.length === 0) return [prodName, ''];
+        return [
+          prodName,
+          ...storeList.map((stName) => {
+            const serials = cellSerialsMap.get(`${prodName}|||${stName}`) || [];
+            return compressSerialRanges(serials);
+          })
+        ];
+      });
+
+      const wsMatrix = XLSX.utils.aoa_to_sheet([matrixHeaderRow1, matrixHeaderRow2, ...matrixBodyRows]);
+      wsMatrix['!cols'] = [{ wch: 28 }, ...(storeList.length > 0 ? storeList.map(() => ({ wch: 24 })) : [{ wch: 28 }])];
+      XLSX.utils.book_append_sheet(wb, wsMatrix, 'Bảng Ma trận Điểm bán');
+
+      XLSX.writeFile(wb, `Phan_phoi_DiemBan_Serial_SP_${batch.batchCode}.xlsx`);
+    } catch (err) {
+      alert('Lỗi xuất dữ liệu phân phối: ' + (err.message || err));
+    } finally {
+      setExportingDistBatchId(null);
+    }
+  };
+
   // Khôi phục labels bị mất cho batch (do server restart trong lúc background insert)
   const handleRepairBatch = async (batch) => {
     try {
@@ -999,7 +1122,22 @@ export default function Labels() {
           <p>Khởi tạo, theo dõi và quản lý lô tem - serial</p>
         </div>
         {(activeTab === 'batches' || activeTab === 'activate') && (
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {activeTab === 'batches' && batches.some(b => b.theme === 'functional_food' || b.theme === 'food') && (
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  const tpcnBatch = batches.find(b => b.theme === 'functional_food' || b.theme === 'food');
+                  if (tpcnBatch) handleExportDistributionBatch(tpcnBatch);
+                }}
+                disabled={Boolean(exportingDistBatchId)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fbbf24' }}
+                title="Xuất dữ liệu phân phối Điểm bán / Serial / Sản phẩm (Thực phẩm chức năng)"
+              >
+                <FileSpreadsheet size={16} />
+                {exportingDistBatchId ? 'Đang xuất phân phối...' : 'Xuất dữ liệu Điểm bán / Serial / SP'}
+              </button>
+            )}
             <button className="btn btn-ghost" onClick={() => { setModalError(null); setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' }); setShowBulkMapModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
               <Link2 size={16} /> Gắn kết hàng loạt
             </button>
@@ -1400,23 +1538,40 @@ export default function Labels() {
                             }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
                               <Edit size={14} className="text-primary"/>
                             </button>
-                            <button className="btn btn-sm btn-ghost" onClick={() => {
-                              setModalError(null);
-                              const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
-                              if (targetEntId) loadProducts(targetEntId);
-                              setBulkForm({
-                                batchId: batch._id,
-                                serialStart: batch.serialStart,
-                                serialEnd: batch.serialEnd,
-                                productId: batch.productId?._id || batch.productId || '',
-                                distributorIdx: '',
-                                distributorName: '',
-                                distributorAddress: ''
-                              });
-                              setShowBulkMapModal(true);
-                            }} title="Gắn Serial cho Điểm bán">
-                              <MapPin size={14} className="text-primary"/>
-                            </button>
+                            {(batch.theme === 'functional_food' || batch.theme === 'food') && (
+                              <>
+                                <button className="btn btn-sm btn-ghost" onClick={() => {
+                                  setModalError(null);
+                                  const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
+                                  if (targetEntId) loadProducts(targetEntId);
+                                  setBulkForm({
+                                    batchId: batch._id,
+                                    serialStart: batch.serialStart,
+                                    serialEnd: batch.serialEnd,
+                                    productId: batch.productId?._id || batch.productId || '',
+                                    distributorIdx: '',
+                                    distributorName: '',
+                                    distributorAddress: ''
+                                  });
+                                  setShowBulkMapModal(true);
+                                }} title="Gắn Serial cho Điểm bán (Thực phẩm chức năng)">
+                                  <MapPin size={14} className="text-primary"/>
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-ghost"
+                                  onClick={() => handleExportDistributionBatch(batch)}
+                                  title="Xuất dữ liệu phân phối (Điểm bán / Serial / Sản phẩm)"
+                                  disabled={exportingDistBatchId === batch._id}
+                                  style={{ color: '#f59e0b' }}
+                                >
+                                  {exportingDistBatchId === batch._id ? (
+                                    <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
+                                  ) : (
+                                    <FileSpreadsheet size={14} />
+                                  )}
+                                </button>
+                              </>
+                            )}
                             <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
                               {exportingBatchId === batch._id ? (
                                 <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>

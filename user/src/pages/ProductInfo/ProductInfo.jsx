@@ -3235,8 +3235,8 @@ export default function ProductInfo() {
                   </div>
                 ))}
 
-                {/* Bộ câu hỏi tự chọn gửi Chatbot */}
-                {presetQuestions.length > 0 && (
+                {/* Bộ câu hỏi tự chọn gửi Chatbot (Chỉ áp dụng cho giao diện Thực phẩm chức năng) */}
+                {isFoodTheme && presetQuestions.length > 0 && (
                   <div style={{ marginTop: 10, padding: '10px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
                       <Sparkles size={13} color="#ea580c" /> Bộ câu hỏi tự chọn (Bấm để gửi):

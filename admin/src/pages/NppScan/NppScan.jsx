@@ -68,12 +68,16 @@ export default function NppScan() {
   });
   const [showStoreDropdown, setShowStoreDropdown] = useState(false);
 
-  // Trạng thái xử lý sau khi quét 1 mã QR (Bước 3 & Bước 4)
+  // Trạng thái xử lý sau khi quét 1 mã QR (Bước 3 & Bước 4 + SERI ĐOẠN theo yêu cầu Vyphyto)
   // 'scanning' | 'choose_store' | 'assigned_action'
   const [scanStep, setScanStep] = useState('scanning');
   const [pendingSerial, setPendingSerial] = useState('');
+  const [endSerial, setEndSerial] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
+  const [storePhone, setStorePhone] = useState('');
+  const [addingStore, setAddingStore] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [lastAssigned, setLastAssigned] = useState(null); // { serialNumber, storeName, storeAddress, soldAt }
+  const [lastAssigned, setLastAssigned] = useState(null); // { serialNumber, endSerial, assignedCount, storeName, storeAddress, soldAt }
   const [sessionSerials, setSessionSerials] = useState([]);
   const [warehouseCoords, setWarehouseCoords] = useState(null);
   const selectedStoreRef = useRef(selectedStore);
@@ -97,6 +101,8 @@ export default function NppScan() {
     selectedStoreRef.current = selectedStore;
     if (selectedStore?.name) {
       setStoreSearch(selectedStore.name);
+      setStoreAddress(selectedStore.address || '');
+      setStorePhone(selectedStore.phone || '');
     }
   }, [selectedStore]);
 
@@ -189,55 +195,110 @@ export default function NppScan() {
     }
   }, []);
 
-  const assignSerialToStore = async (serialNumber, storeObj) => {
-    if (!serialNumber || !storeObj?.name) return;
+  const handleQuickAddStore = async () => {
+    const cleanName = storeSearch.trim();
+    if (!cleanName) {
+      showToast('error', '⚠️ Vui lòng nhập tên Điểm bán trước khi bấm Thêm mới.');
+      return;
+    }
+    setAddingStore(true);
+    try {
+      const res = await api.createRetailStore({
+        name: cleanName,
+        address: storeAddress.trim(),
+        phone: storePhone.trim()
+      });
+      const created = res.store || res.data || {
+        name: cleanName,
+        address: storeAddress.trim(),
+        phone: storePhone.trim()
+      };
+      setStores(prev => {
+        const exists = prev.some(s => String(s._id) === String(created._id));
+        return exists ? prev.map(s => (String(s._id) === String(created._id) ? created : s)) : [created, ...prev];
+      });
+      setSelectedStore(created);
+      setStoreSearch(created.name);
+      setStoreAddress(created.address || '');
+      setStorePhone(created.phone || '');
+      localStorage.setItem('npp_active_store_session', JSON.stringify(created));
+      setShowStoreDropdown(false);
+      showToast('success', `✅ Đã thêm mới điểm bán: ${created.name}`);
+    } catch (err) {
+      showToast('error', `❌ ${err.message || 'Không thể thêm điểm bán mới'}`);
+    } finally {
+      setAddingStore(false);
+    }
+  };
+
+  const assignSerialToStore = async (serialNumber, storeObj, customEndSerial = endSerial) => {
+    const targetName = (storeObj?.name || storeSearch || '').trim();
+    const targetAddress = (storeObj?.address !== undefined ? storeObj.address : storeAddress).trim();
+    const targetPhone = (storeObj?.phone !== undefined ? storeObj.phone : storePhone).trim();
+    if (!serialNumber || !targetName) {
+      showToast('error', '⚠️ Vui lòng chọn hoặc nhập tên Điểm bán.');
+      return false;
+    }
     setAssigning(true);
     try {
+      const cleanEnd = String(customEndSerial || '').trim();
       const res = await api.nppScanSerial({
         serialNumber,
-        storeId: storeObj._id || null,
-        distributorName: storeObj.name,
-        distributorAddress: storeObj.address || '',
-        ownerName: storeObj.name,
-        ownerAddress: storeObj.address || '',
-        ownerPhone: storeObj.phone || '',
+        endSerial: cleanEnd || undefined,
+        storeId: storeObj?._id || null,
+        distributorName: targetName,
+        distributorAddress: targetAddress,
+        ownerName: targetName,
+        ownerAddress: targetAddress,
+        ownerPhone: targetPhone,
         activatedSerial: serialNumber,
         ownerCode: serialNumber,
         warehouseLocation: {
-          address: user?.address || storeObj.address || '',
+          address: user?.address || targetAddress || '',
           lat: warehouseCoords?.lat ?? null,
           lng: warehouseCoords?.lng ?? null
         }
       });
 
       const soldAt = res.distributedAt || new Date().toISOString();
+      const assignedCount = res.assignedCount || 1;
+      const resolvedEnd = res.endSerial || cleanEnd || serialNumber;
+      const serialDisplay = assignedCount > 1 || (cleanEnd && cleanEnd !== serialNumber)
+        ? `${serialNumber} → ${resolvedEnd} (${assignedCount} tem)`
+        : serialNumber;
+
       const resolvedStore = {
-        _id: res.storeId || storeObj._id || null,
-        name: storeObj.name,
-        address: storeObj.address || '',
-        phone: storeObj.phone || ''
+        _id: res.storeId || storeObj?._id || null,
+        name: targetName,
+        address: targetAddress,
+        phone: targetPhone
       };
 
       setSelectedStore(resolvedStore);
       localStorage.setItem('npp_active_store_session', JSON.stringify(resolvedStore));
 
       setLastAssigned({
-        serialNumber,
+        serialNumber: serialDisplay,
+        rawStartSerial: serialNumber,
+        rawEndSerial: resolvedEnd,
+        assignedCount,
         storeName: resolvedStore.name,
         storeAddress: resolvedStore.address,
         storePhone: resolvedStore.phone,
         soldAt
       });
       setSessionSerials(prev => [
-        { serialNumber, soldAt },
-        ...prev.filter(item => item.serialNumber !== serialNumber)
+        { serialNumber: serialDisplay, soldAt },
+        ...prev.filter(item => item.serialNumber !== serialDisplay)
       ]);
-      setStats(prev => ({ ...prev, totalImported: prev.totalImported + 1 }));
+      setStats(prev => ({ ...prev, totalImported: prev.totalImported + assignedCount }));
       setScanStep('assigned_action');
-      showToast('success', `✅ Đã gán Serial ${serialNumber} cho điểm bán: ${resolvedStore.name}`);
+      showToast('success', res.message || `✅ Đã gán Serial ${serialDisplay} cho điểm bán: ${resolvedStore.name}`);
+      return true;
     } catch (err) {
       showToast('error', `❌ ${err.message || 'Lỗi khi gán serial cho điểm bán'}`);
       setScanStep('choose_store');
+      return false;
     } finally {
       setAssigning(false);
     }
@@ -344,16 +405,16 @@ export default function NppScan() {
     setDetected(true);
     setDetectedSerial(serial);
     setPendingSerial(serial);
+    setEndSerial('');
     await stopCamera();
 
-    // Nếu đã chọn Điểm bán (hoặc đang trong chế độ "Quét tiếp" của Điểm bán đó) -> gán tự động luôn (Bước 4)
     const activeStore = selectedStoreRef.current;
     if (activeStore && activeStore.name) {
-      await assignSerialToStore(serial, activeStore);
-    } else {
-      // Chưa chọn Điểm bán -> hiển thị khung chọn Điểm bán (Bước 3)
-      setScanStep('choose_store');
+      setStoreSearch(activeStore.name);
+      setStoreAddress(activeStore.address || '');
+      setStorePhone(activeStore.phone || '');
     }
+    setScanStep('choose_store');
   };
 
   // Bước 4 - Hướng 1: Bấm "Quét tiếp" -> giữ nguyên Điểm bán đã chọn và bật lại camera quét mã kế tiếp
@@ -361,22 +422,26 @@ export default function NppScan() {
     setDetected(false);
     setDetectedSerial('');
     setPendingSerial('');
+    setEndSerial('');
     setScanStep('scanning');
     await startCamera();
   };
 
-  // Bước 4 - Hướng 2: Bấm "Dừng" -> xóa Điểm bán đang chọn để lần quét mới chọn Điểm bán khác
+  // Bước 4 - Hướng 2: Bấm "Dừng / Kết thúc" -> xóa Điểm bán đang chọn để lần quét mới chọn Điểm bán khác
   const handleStopStoreSession = async () => {
     localStorage.removeItem('npp_active_store_session');
     setSelectedStore(null);
     setStoreSearch('');
+    setStoreAddress('');
+    setStorePhone('');
     setSessionSerials([]);
     setLastAssigned(null);
     setDetected(false);
     setDetectedSerial('');
     setPendingSerial('');
+    setEndSerial('');
     setScanStep('scanning');
-    showToast('success', '🛑 Đã dừng phiên điểm bán hiện tại. Hãy chọn điểm bán mới cho lần quét tiếp theo.');
+    showToast('success', '🛑 Đã kết thúc phiên điểm bán hiện tại. Hãy chọn điểm bán mới cho lần quét tiếp theo.');
     await startCamera();
   };
 
@@ -634,15 +699,15 @@ export default function NppScan() {
           </div>
         )}
 
-        {/* Bước 3: Nếu quét mã khi chưa chọn Điểm bán -> Hiện bảng chọn Điểm bán ngay cho mã vừa quét */}
+        {/* Bước 3 & SERI ĐOẠN (Theo mẫu vyphyto_req_image1.png): Điểm bán + [ thêm mới ], Địa chỉ, SDT, SERI ĐOẠN (Seri hiện đang quét + serial cuối + [ ok ]), [ quét tiếp ] / [ kết thúc ] */}
         {scanStep === 'choose_store' && (
           <div
             style={{
               position: 'absolute',
               inset: 0,
               zIndex: 30,
-              background: 'rgba(15, 23, 42, 0.94)',
-              padding: '20px',
+              background: 'rgba(15, 23, 42, 0.96)',
+              padding: '16px',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
@@ -653,103 +718,290 @@ export default function NppScan() {
             <div
               style={{
                 width: '100%',
-                maxWidth: '440px',
+                maxWidth: '480px',
                 background: '#1e293b',
-                border: '1px solid #334155',
+                border: '1.5px solid #475569',
                 borderRadius: '16px',
-                padding: '20px',
-                color: '#f8fafc'
+                padding: '18px',
+                color: '#f8fafc',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
               }}
             >
-              <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-                <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Đã quét mã Serial</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#34d399', fontFamily: 'monospace' }}>
-                  {pendingSerial}
-                </div>
-                <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: '6px 0 0' }}>
-                  Vui lòng chọn Điểm bán cho Serial này (gõ 1 từ để tìm gần đúng nhất):
-                </p>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0f172a', border: '1px solid #475569', borderRadius: '10px', padding: '8px 12px' }}>
-                  <Search size={16} color="#94a3b8" />
-                  <input
-                    type="text"
-                    placeholder="VD: gõ 'thanh' sẽ ra Thành, Thánh, Thạnh..."
-                    value={storeSearch}
-                    onChange={(e) => setStoreSearch(e.target.value)}
-                    autoFocus
-                    style={{ background: 'none', border: 'none', color: '#ffffff', width: '100%', outline: 'none', fontSize: '0.92rem' }}
-                  />
+              <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Gán Điểm bán &amp; Seri Đoạn</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#34d399', fontFamily: 'monospace' }}>
+                  Seri quét: {pendingSerial}
                 </div>
               </div>
 
-              <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                {filteredStores.map((s) => (
+              {/* Dòng 1: Điểm bán + [ thêm mới ] */}
+              <div style={{ marginBottom: '10px', position: 'relative' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '86px 1fr auto', gap: '8px', alignItems: 'center' }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.88rem', color: '#e2e8f0' }}>Điểm bán</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder="gõ vài ký tự gợi nhớ..."
+                      value={storeSearch}
+                      onFocus={() => setShowStoreDropdown(true)}
+                      onChange={(e) => {
+                        setStoreSearch(e.target.value);
+                        if (selectedStore && selectedStore.name !== e.target.value) {
+                          setSelectedStore(null);
+                        }
+                        setShowStoreDropdown(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '9px 10px',
+                        borderRadius: '8px',
+                        border: selectedStore ? '1.5px solid #10b981' : '1px solid #475569',
+                        background: '#0f172a',
+                        color: '#ffffff',
+                        fontSize: '0.88rem',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
                   <button
-                    key={s._id}
                     type="button"
-                    disabled={assigning}
-                    onClick={() => assignSerialToStore(pendingSerial, s)}
+                    onClick={handleQuickAddStore}
+                    disabled={addingStore}
                     style={{
-                      textAlign: 'left',
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                      border: '1px solid #334155',
-                      background: '#0f172a',
-                      color: '#f8fafc',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>🏪 {s.name}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                        📍 {s.address || '—'} {s.phone ? `• 📞 ${s.phone}` : ''}
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 700 }}>Chọn →</span>
-                  </button>
-                ))}
-                {storeSearch.trim() && filteredStores.length === 0 && (
-                  <button
-                    type="button"
-                    disabled={assigning}
-                    onClick={() => assignSerialToStore(pendingSerial, { name: storeSearch.trim(), address: '', phone: '' })}
-                    style={{
-                      padding: '12px',
-                      borderRadius: '10px',
-                      border: '1px dashed #10b981',
-                      background: 'rgba(16, 185, 129, 0.12)',
-                      color: '#34d399',
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #60a5fa',
+                      background: 'rgba(37, 99, 235, 0.2)',
+                      color: '#93c5fd',
                       fontWeight: 700,
-                      cursor: 'pointer'
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
                     }}
                   >
-                    + Tạo nhanh & gán cho điểm bán mới: &ldquo;{storeSearch.trim()}&rdquo;
+                    {addingStore ? 'Đang thêm...' : 'thêm mới'}
                   </button>
+                </div>
+
+                {/* Gợi ý Điểm bán khi gõ */}
+                {showStoreDropdown && filteredStores.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      maxHeight: '140px',
+                      overflowY: 'auto',
+                      background: '#0f172a',
+                      border: '1px solid #475569',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    {filteredStores.map((s) => (
+                      <div
+                        key={s._id}
+                        onClick={() => {
+                          setSelectedStore(s);
+                          setStoreSearch(s.name);
+                          setStoreAddress(s.address || '');
+                          setStorePhone(s.phone || '');
+                          localStorage.setItem('npp_active_store_session', JSON.stringify(s));
+                          setShowStoreDropdown(false);
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          background: selectedStore?._id === s._id ? 'rgba(16, 185, 129, 0.2)' : 'transparent'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.86rem', color: '#f8fafc' }}>🏪 {s.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                            {s.address || '—'} {s.phone ? `• ${s.phone}` : ''}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 700 }}>Chọn</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleContinueSameStore}
+              {/* Dòng 2: Địa chỉ */}
+              <div style={{ display: 'grid', gridTemplateColumns: '86px 1fr', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+                <label style={{ fontWeight: 700, fontSize: '0.88rem', color: '#e2e8f0' }}>Địa chỉ</label>
+                <input
+                  type="text"
+                  placeholder="Địa chỉ điểm bán..."
+                  value={storeAddress}
+                  onChange={(e) => setStoreAddress(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #475569',
+                    background: '#0f172a',
+                    color: '#ffffff',
+                    fontSize: '0.88rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Dòng 3: SDT */}
+              <div style={{ display: 'grid', gridTemplateColumns: '86px 1fr', gap: '8px', alignItems: 'center', marginBottom: '14px' }}>
+                <label style={{ fontWeight: 700, fontSize: '0.88rem', color: '#e2e8f0' }}>SDT</label>
+                <input
+                  type="text"
+                  placeholder="Số điện thoại..."
+                  value={storePhone}
+                  onChange={(e) => setStorePhone(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #475569',
+                    background: '#0f172a',
+                    color: '#ffffff',
+                    fontSize: '0.88rem',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Khung SERI ĐOẠN */}
+              <div
                 style={{
-                  width: '100%',
-                  padding: '10px',
+                  border: '2px solid #60a5fa',
                   borderRadius: '10px',
-                  border: '1px solid #475569',
-                  background: 'transparent',
-                  color: '#cbd5e1',
-                  cursor: 'pointer',
-                  fontWeight: 600
+                  padding: '12px',
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  marginBottom: '14px'
                 }}
               >
-                Hủy & Quét lại
-              </button>
+                <div style={{ fontWeight: 800, fontSize: '0.82rem', color: '#93c5fd', marginBottom: '10px', letterSpacing: '0.5px' }}>
+                  SERI ĐOẠN
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '132px 1fr', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.83rem', fontWeight: 700, color: '#cbd5e1' }}>Seri hiện đang quét</label>
+                  <input
+                    type="text"
+                    value={pendingSerial}
+                    onChange={(e) => setPendingSerial(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #3b82f6',
+                      background: '#1e293b',
+                      color: '#34d399',
+                      fontWeight: 800,
+                      fontFamily: 'monospace',
+                      fontSize: '0.95rem',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '132px 1fr auto', gap: '8px', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.83rem', fontWeight: 700, color: '#cbd5e1' }}>serial cuối</label>
+                  <input
+                    type="text"
+                    placeholder={`VD: ${pendingSerial || '00000010'} (để trống nếu 1 tem)`}
+                    value={endSerial}
+                    onChange={(e) => setEndSerial(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #475569',
+                      background: '#0f172a',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      fontFamily: 'monospace',
+                      fontSize: '0.92rem',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={assigning}
+                    onClick={() => assignSerialToStore(pendingSerial, selectedStore || { name: storeSearch, address: storeAddress, phone: storePhone }, endSerial)}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.9rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {assigning ? '...' : 'ok'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 2 Nút thao tác dưới cùng: [ quét tiếp ] và [ kết thúc ] */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button
+                  type="button"
+                  disabled={assigning}
+                  onClick={async () => {
+                    const ok = await assignSerialToStore(
+                      pendingSerial,
+                      selectedStore || { name: storeSearch, address: storeAddress, phone: storePhone },
+                      endSerial
+                    );
+                    if (ok) {
+                      await handleContinueSameStore();
+                    }
+                  }}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: '2px solid #10b981',
+                    background: 'rgba(16, 185, 129, 0.18)',
+                    color: '#34d399',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  quét tiếp
+                </button>
+                <button
+                  type="button"
+                  disabled={assigning}
+                  onClick={async () => {
+                    if (storeSearch.trim()) {
+                      const ok = await assignSerialToStore(
+                        pendingSerial,
+                        selectedStore || { name: storeSearch, address: storeAddress, phone: storePhone },
+                        endSerial
+                      );
+                      if (!ok) return;
+                    }
+                    await handleStopStoreSession();
+                  }}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: '2px solid #ef4444',
+                    background: 'rgba(239, 68, 68, 0.16)',
+                    color: '#f87171',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  kết thúc
+                </button>
+              </div>
             </div>
           </div>
         )}

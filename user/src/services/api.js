@@ -179,6 +179,18 @@ class UserApiService {
     return this.request('DELETE', `/public/retail-stores/${id}`);
   }
 
+  importRetailStores(data) {
+    return this.request('POST', '/public/retail-stores/import-stores', data);
+  }
+
+  importDistributionMatrix(data) {
+    return this.request('POST', '/public/retail-stores/import-matrix', data);
+  }
+
+  getRetailStoreTemplateUrl(type = 'matrix') {
+    return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}`;
+  }
+
   // Submit distributor entry (one label = +1 product)
   submitSingleEntry(data) {
     return this.request('POST', '/public/distributor-entry-single', data);

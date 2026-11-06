@@ -58,6 +58,12 @@ export default function SelectStore() {
   // Trường Mã sở hữu (NPP nhập tay hoặc tự động lấy serial)
   const [ownerCode, setOwnerCode] = useState('');
 
+  // SERI ĐOẠN (Serial bắt đầu = serial vừa quét -> Serial cuối) dành riêng cho Thực phẩm chức năng (TPCN)
+  const [endSerial, setEndSerial] = useState('');
+  const [creatingStore, setCreatingStore] = useState(false);
+  const [quickStoreNotice, setQuickStoreNotice] = useState('');
+  const storeInputRef = useRef(null);
+
   // Danh sách Điểm bán (Bước 2 & Bước 3)
   const [stores, setStores] = useState([]);
   const [loadingStores, setLoadingStores] = useState(false);
@@ -74,7 +80,7 @@ export default function SelectStore() {
       return null;
     }
   });
-  const [assignedSuccess, setAssignedSuccess] = useState(null); // { serialNumber, storeName, storeAddress, storePhone, soldAt }
+  const [assignedSuccess, setAssignedSuccess] = useState(null); // { serialNumber, serialStart, serialEnd, assignedCount, isRange, storeName, storeAddress, storePhone, soldAt }
   const [sessionStopped, setSessionStopped] = useState(false);
   const [warehouseCoords, setWarehouseCoords] = useState(null);
   const autoAssignedRef = useRef(false);
@@ -97,10 +103,31 @@ export default function SelectStore() {
 
   const product = scanData?.product;
   const label = scanData?.label;
+  const enterprise = scanData?.enterprise;
   const detectedSerial = label?.serialNumber || serial || codeParam || '';
   const ownerInfo = label?.ownerInfo;
   const isActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
   const isLocked = isActivated && user?.role === 'NPP';
+
+  // Xác định tem thuộc giao diện Thực phẩm chức năng (TPCN) hay giao diện khác (Gia dụng, OCOP, Nông nghiệp...)
+  const isFoodTheme = useMemo(() => {
+    const normalizeTheme = (val) => (val === 'warranty' || val === 'warranty_solution' ? 'appliance' : val);
+    const prodTheme = normalizeTheme(product?.theme);
+    const batchTheme = normalizeTheme(label?.batchId?.theme || scanData?.theme || scanData?.template?.layout);
+    const entTheme = normalizeTheme(enterprise?.displayConfig?.defaultTheme);
+    const nonFood = ['appliance', 'ocop', 'agriculture', 'medical', 'cosmetics'];
+    if (nonFood.includes(prodTheme) || nonFood.includes(batchTheme) || nonFood.includes(entTheme)) {
+      return false;
+    }
+    if (['functional_food', 'food', 'staycool', 'vyphyto'].includes(prodTheme)) return true;
+    if (['functional_food', 'food', 'staycool', 'vyphyto'].includes(batchTheme)) return true;
+    if (['functional_food', 'food', 'staycool', 'vyphyto'].includes(entTheme)) return true;
+    const text = `${product?.category || ''} ${product?.name || ''} ${enterprise?.name || ''}`.toLowerCase();
+    if (text.includes('staycool') || text.includes('vyphyto') || text.includes('thực phẩm') || text.includes('tpcn') || text.includes('bảo vệ sức khỏe')) {
+      return true;
+    }
+    return false;
+  }, [product, label, enterprise, scanData]);
 
   // Tải danh sách Điểm bán đã tạo ở Bước 2
   useEffect(() => {
@@ -264,14 +291,66 @@ export default function SelectStore() {
     }
   };
 
-  // Hàm thực thi gán Serial cho Điểm bán (dùng cho cả bấm nút Xác nhận và tự động gán khi Quét tiếp)
+  // Thêm nhanh Điểm bán ngay trên màn hình quét (theo nút [thêm mới] trong sơ đồ của khách)
+  const handleQuickAddStore = async () => {
+    setFormError('');
+    setQuickStoreNotice('');
+    // Nếu đang chọn sẵn 1 điểm bán cũ trong danh sách -> xóa trắng để nhập điểm bán mới
+    if (selectedStore && storeSearch.trim().toLowerCase() === (selectedStore.name || '').trim().toLowerCase()) {
+      setSelectedStore(null);
+      setStoreSearch('');
+      setForm(prev => ({ ...prev, name: '', address: '', phone: '' }));
+      setShowDropdown(false);
+      setQuickStoreNotice('Hãy nhập Tên điểm bán mới, Địa chỉ, SĐT rồi bấm "Lưu điểm bán" hoặc bấm "OK" để gán luôn.');
+      setTimeout(() => storeInputRef.current?.focus(), 50);
+      return;
+    }
+
+    const cleanName = (storeSearch || form.name || '').trim();
+    if (!cleanName) {
+      setQuickStoreNotice('Vui lòng nhập Tên điểm bán mới vào ô Điểm bán rồi bấm "Thêm mới".');
+      setTimeout(() => storeInputRef.current?.focus(), 50);
+      return;
+    }
+
+    setCreatingStore(true);
+    try {
+      const res = await userApi.createRetailStore({
+        name: cleanName,
+        address: (form.address || '').trim(),
+        phone: (form.phone || '').trim()
+      });
+      const created = res?.store || res?.data || { name: cleanName, address: form.address, phone: form.phone };
+      setStores(prev => [created, ...prev.filter(s => s._id !== created._id)]);
+      setSelectedStore(created);
+      setStoreSearch(created.name);
+      setForm(prev => ({
+        ...prev,
+        name: created.name || cleanName,
+        address: created.address || prev.address,
+        phone: created.phone || prev.phone
+      }));
+      setShowDropdown(false);
+      setQuickStoreNotice(`✅ Đã thêm mới điểm bán "${created.name}" thành công!`);
+    } catch (err) {
+      setFormError(err.message || 'Không thể thêm điểm bán mới');
+    } finally {
+      setCreatingStore(false);
+    }
+  };
+
+  // Hàm thực thi gán Serial (hoặc SERI ĐOẠN) cho Điểm bán
   const executeAssignSerial = async (storeOverride = null) => {
     const targetStore = storeOverride || selectedStore;
-    const storeName = (targetStore?.name || form.name || '').trim();
+    const storeName = (targetStore?.name || form.name || storeSearch || '').trim();
     const storeAddress = (targetStore?.address ?? form.address ?? '').trim();
     const storePhone = (targetStore?.phone ?? form.phone ?? '').trim();
 
     if (!storeOverride) {
+      if (isFoodTheme && !storeName) {
+        setFormError('Vui lòng chọn hoặc nhập tên Điểm bán trước khi bấm OK.');
+        return;
+      }
       const validationError = validate();
       if (validationError) {
         setFormError(validationError);
@@ -284,9 +363,11 @@ export default function SelectStore() {
     try {
       const serialNumber = label?.serialNumber || serial || codeParam;
       const cleanOwnerCode = ownerCode.trim() || serialNumber;
+      const cleanEndSerial = isFoodTheme && !storeOverride ? endSerial.trim() : '';
 
       const res = await userApi.submitSingleEntry({
         serialNumber,
+        endSerial: cleanEndSerial || undefined,
         storeId: targetStore?._id || null,
         distributorName: storeName,
         distributorAddress: storeAddress,
@@ -305,14 +386,18 @@ export default function SelectStore() {
       const soldAtTime = res?.distributedAt || new Date().toISOString();
       const resolvedStoreId = res?.storeId || targetStore?._id || null;
       const finalStoreName = storeName || user?.fullName || user?.username || 'Điểm bán';
+      const isRangeAssigned = Boolean(res?.isRange && res?.assignedCount > 1);
+      const displaySerialLabel = isRangeAssigned
+        ? `${res.serialStart} → ${res.serialEnd} (${res.assignedCount} mã)`
+        : (res?.serialNumber || serialNumber);
 
       // Cập nhật phiên Điểm bán hiện tại để phục vụ chức năng "Quét tiếp" (Bước 4)
       const prevSerials = activeStoreSession?._id === resolvedStoreId || activeStoreSession?.name === finalStoreName
         ? (activeStoreSession?.sessionSerials || [])
         : [];
       const updatedSessionSerials = [
-        { serialNumber, productName: product?.name || 'Sản phẩm', soldAt: soldAtTime },
-        ...prevSerials.filter(s => s.serialNumber !== serialNumber)
+        { serialNumber: displaySerialLabel, productName: product?.name || 'Sản phẩm', soldAt: soldAtTime },
+        ...prevSerials.filter(s => s.serialNumber !== displaySerialLabel)
       ];
 
       const newSession = {
@@ -322,8 +407,10 @@ export default function SelectStore() {
         phone: storePhone,
         sessionSerials: updatedSessionSerials
       };
-      localStorage.setItem('npp_active_store_session', JSON.stringify(newSession));
-      setActiveStoreSession(newSession);
+      if (isFoodTheme) {
+        localStorage.setItem('npp_active_store_session', JSON.stringify(newSession));
+        setActiveStoreSession(newSession);
+      }
       setSessionStopped(false);
 
       // Lưu vào lịch sử quét trên máy
@@ -331,7 +418,7 @@ export default function SelectStore() {
         const localHistory = JSON.parse(localStorage.getItem('npp_scan_history') || '[]');
         const newHistoryItem = {
           productName: product?.name || 'Sản phẩm',
-          serial: serialNumber,
+          serial: displaySerialLabel,
           storeName: finalStoreName,
           storeAddress,
           ownerCode: cleanOwnerCode,
@@ -351,7 +438,11 @@ export default function SelectStore() {
       }
 
       setAssignedSuccess({
-        serialNumber,
+        serialNumber: displaySerialLabel,
+        isRange: isRangeAssigned,
+        serialStart: res?.serialStart || serialNumber,
+        serialEnd: res?.serialEnd || serialNumber,
+        assignedCount: res?.assignedCount || 1,
         storeName: finalStoreName,
         storeAddress,
         storePhone,
@@ -837,72 +928,109 @@ export default function SelectStore() {
             </div>
           )}
 
-          {!isLocked && !isBarcode && (
+          {!isLocked && !isBarcode && isFoodTheme && (
             <>
-              {/* BƯỚC 3: TÌM & CHỌN ĐIỂM BÁN GẦN ĐÚNG NHẤT (GÕ 1 TỪ RA LIST) */}
+              {/* GIAO DIỆN RIÊNG CHO THỰC PHẨM CHỨC NĂNG (TPCN): ĐIỂM BÁN + THÊM MỚI + ĐỊA CHỈ + SĐT + KHUNG SERI ĐOẠN + QUÉT TIẾP / KẾT THÚC */}
               <div className="store-manual-section" style={{ marginBottom: '14px' }}>
                 <div className="store-manual-form">
                   <div className="owner-form-title" style={{ justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Store size={18} color="#059669" />
-                      <span>Chọn Điểm bán (đã thêm ở Bảng Điểm bán)</span>
+                      <span>Thông tin Điểm bán &amp; Gán Serial (TPCN)</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => navigate('/npp/stores')}
                       style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.78rem', color: '#2563eb', fontWeight: 700, cursor: 'pointer' }}
                     >
-                      + Quản lý Điểm bán
+                      Bảng Điểm bán →
                     </button>
                   </div>
 
+                  {/* Hàng 1: Điểm bán [ gõ vài ký tự gợi nhớ ] [ thêm mới ] */}
                   <div className="store-field-group" style={{ position: 'relative' }}>
                     <label className="store-field-label" htmlFor="store-search-input">
-                      <Search size={15} color="#059669" />
-                      <span>Nhập 1 từ để tìm Điểm bán gần đúng nhất (VD: gõ &ldquo;thanh&rdquo; → Thành, Thánh, Thạnh...)</span>
+                      <Store size={15} color="#059669" />
+                      <span style={{ fontWeight: 700 }}>Điểm bán</span>
+                      <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 500 }}>
+                        (Gõ vài ký tự gợi nhớ để chọn hoặc bấm Thêm mới)
+                      </span>
                     </label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        id="store-search-input"
-                        type="text"
-                        className="store-field-input"
-                        placeholder="Gõ tên điểm bán (VD: thanh, minh, an...) để chọn nhanh"
-                        value={storeSearch}
-                        onFocus={() => setShowDropdown(true)}
-                        onChange={handleStoreSearchChange}
-                        autoComplete="off"
-                        style={{
-                          paddingRight: '36px',
-                          borderColor: selectedStore ? '#10b981' : undefined,
-                          background: selectedStore ? '#f0fdf4' : undefined,
-                          fontWeight: selectedStore ? 700 : 500
-                        }}
-                      />
-                      {storeSearch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setStoreSearch('');
-                            setSelectedStore(null);
-                            setForm(prev => ({ ...prev, name: '', address: '', phone: '' }));
-                            setShowDropdown(true);
-                          }}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input
+                          ref={storeInputRef}
+                          id="store-search-input"
+                          type="text"
+                          className="store-field-input"
+                          placeholder="Gõ vài ký tự gợi nhớ (VD: thanh, minh...)"
+                          value={storeSearch}
+                          onFocus={() => setShowDropdown(true)}
+                          onChange={handleStoreSearchChange}
+                          autoComplete="off"
                           style={{
-                            position: 'absolute',
-                            right: '10px',
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            background: 'none',
-                            border: 'none',
-                            color: '#64748b',
-                            cursor: 'pointer',
-                            padding: '4px'
+                            width: '100%',
+                            paddingRight: '34px',
+                            borderColor: selectedStore ? '#10b981' : '#334155',
+                            borderWidth: '2px',
+                            background: selectedStore ? '#f0fdf4' : '#ffffff',
+                            fontWeight: selectedStore ? 700 : 600
                           }}
-                        >
-                          <X size={16} />
-                        </button>
-                      )}
+                        />
+                        {storeSearch && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStoreSearch('');
+                              setSelectedStore(null);
+                              setForm(prev => ({ ...prev, name: '', address: '', phone: '' }));
+                              setShowDropdown(true);
+                            }}
+                            style={{
+                              position: 'absolute',
+                              right: '8px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: 'none',
+                              border: 'none',
+                              color: '#64748b',
+                              cursor: 'pointer',
+                              padding: '4px'
+                            }}
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleQuickAddStore}
+                        disabled={creatingStore}
+                        style={{
+                          padding: '0 14px',
+                          borderRadius: '10px',
+                          border: '2px solid #0f172a',
+                          background: '#f8fafc',
+                          color: '#0f172a',
+                          fontWeight: 800,
+                          fontSize: '0.86rem',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <PlusCircle size={15} color="#059669" />
+                        <span>{creatingStore ? 'Đang lưu...' : 'thêm mới'}</span>
+                      </button>
                     </div>
+
+                    {quickStoreNotice && (
+                      <div style={{ marginTop: '6px', fontSize: '0.79rem', color: '#059669', fontWeight: 600 }}>
+                        {quickStoreNotice}
+                      </div>
+                    )}
 
                     {/* Dropdown danh sách Điểm bán gợi ý gần đúng nhất */}
                     {showDropdown && (
@@ -913,7 +1041,7 @@ export default function SelectStore() {
                           border: '1.5px solid #cbd5e1',
                           borderRadius: '12px',
                           boxShadow: '0 10px 25px rgba(15, 23, 42, 0.12)',
-                          maxHeight: '240px',
+                          maxHeight: '220px',
                           overflowY: 'auto',
                           zIndex: 30
                         }}
@@ -923,11 +1051,11 @@ export default function SelectStore() {
                             Đang tải danh sách điểm bán...
                           </div>
                         ) : filteredStores.length === 0 ? (
-                          <div style={{ padding: '12px 14px', fontSize: '0.85rem', color: '#475569' }}>
-                            <div>Không tìm thấy điểm bán khớp với &ldquo;<strong>{storeSearch}</strong>&rdquo;.</div>
+                          <div style={{ padding: '12px 14px', fontSize: '0.84rem', color: '#475569' }}>
+                            <div>Chưa có điểm bán khớp với &ldquo;<strong>{storeSearch}</strong>&rdquo;.</div>
                             <div style={{ fontSize: '0.78rem', color: '#059669', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <PlusCircle size={14} />
-                              Điểm bán mới <strong>&ldquo;{storeSearch}&rdquo;</strong> sẽ được tự động thêm vào Bảng Điểm bán khi bạn bấm Xác nhận!
+                              Nhập thêm Địa chỉ, SĐT bên dưới rồi bấm <strong>thêm mới</strong> hoặc bấm <strong>OK</strong> để tạo và gán luôn!
                             </div>
                           </div>
                         ) : (
@@ -975,39 +1103,273 @@ export default function SelectStore() {
                     )}
                   </div>
 
-                  {/* Thông tin chi tiết Điểm bán (tự động điền khi chọn Điểm bán ở trên, hoặc nhập mới) */}
-                  <div className="store-field-group">
-                    <label className="store-field-label" htmlFor="owner-name">
-                      <span className="owner-field-index">1</span>
-                      <User size={15} />
-                      <span>Tên Điểm bán / Đại lý</span>
-                    </label>
-                    <input
-                      id="owner-name"
-                      type="text"
-                      className="store-field-input"
-                      placeholder="VD: Điểm bán Thành Công / Nhà thuốc Minh Châu"
-                      value={form.name}
-                      onChange={(e) => {
-                        setForm(prev => ({ ...prev, name: e.target.value }));
-                        setStoreSearch(e.target.value);
-                        setFormError('');
-                      }}
-                      maxLength={200}
-                    />
-                  </div>
-
+                  {/* Hàng 2: Địa chỉ */}
                   <div className="store-field-group">
                     <label className="store-field-label" htmlFor="owner-address">
-                      <span className="owner-field-index">2</span>
-                      <MapPin size={15} />
-                      <span>Địa chỉ Điểm bán</span>
+                      <MapPin size={15} color="#059669" />
+                      <span style={{ fontWeight: 700 }}>Địa chỉ</span>
                     </label>
                     <input
                       id="owner-address"
                       type="text"
                       className="store-field-input"
-                      placeholder="VD: 123 Giải Phóng, Phương Mai, Hà Nội"
+                      placeholder="Địa chỉ điểm bán (tự động điền hoặc nhập mới)"
+                      value={form.address}
+                      onChange={handleChange('address')}
+                      maxLength={500}
+                      style={{ borderWidth: '2px', borderColor: '#334155' }}
+                    />
+                  </div>
+
+                  {/* Hàng 3: SDT */}
+                  <div className="store-field-group">
+                    <label className="store-field-label" htmlFor="owner-phone">
+                      <Phone size={15} color="#059669" />
+                      <span style={{ fontWeight: 700 }}>SDT</span>
+                    </label>
+                    <input
+                      id="owner-phone"
+                      type="tel"
+                      inputMode="tel"
+                      className="store-field-input"
+                      placeholder="Số điện thoại liên hệ điểm bán"
+                      value={form.phone}
+                      onChange={handleChange('phone')}
+                      maxLength={20}
+                      style={{ borderWidth: '2px', borderColor: '#334155' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* KHUNG SERI ĐOẠN (Theo đúng thiết kế của Tổng Kho Vyphyto) */}
+              <div
+                className="store-owner-code-card"
+                style={{
+                  border: '2px solid #0f172a',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  background: '#ffffff',
+                  marginBottom: '14px'
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    color: '#0f172a',
+                    marginBottom: '12px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <span>📦 SERI ĐOẠN (Gán 1 mã hoặc cả đoạn Serial)</span>
+                  <span style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 700, textTransform: 'none' }}>
+                    Mặc định gán mã đang quét
+                  </span>
+                </div>
+
+                {/* Dòng 1: Seri hiện đang quét */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    marginBottom: '12px'
+                  }}
+                >
+                  <label style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a', flex: '1 1 auto' }}>
+                    Seri hiện đang quét
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={label?.serialNumber || serial}
+                    style={{
+                      width: '150px',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '2px solid #0f172a',
+                      background: '#f1f5f9',
+                      color: '#0f172a',
+                      fontFamily: 'monospace',
+                      fontWeight: 800,
+                      fontSize: '1rem',
+                      textAlign: 'center'
+                    }}
+                  />
+                </div>
+
+                {/* Dòng 2: serial cuối [ 0000010 ] [ ok ] */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px'
+                  }}
+                >
+                  <label
+                    htmlFor="end-serial-input"
+                    style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a', flex: '1 1 auto' }}
+                  >
+                    serial cuối
+                  </label>
+                  <input
+                    id="end-serial-input"
+                    type="text"
+                    placeholder={label?.serialNumber || 'VD: 00000010'}
+                    value={endSerial}
+                    onChange={(e) => setEndSerial(e.target.value)}
+                    style={{
+                      width: '130px',
+                      padding: '10px 10px',
+                      borderRadius: '8px',
+                      border: '2px solid #0f172a',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontFamily: 'monospace',
+                      fontWeight: 800,
+                      fontSize: '0.98rem',
+                      textAlign: 'center'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    style={{
+                      minWidth: '58px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '2px solid #0f172a',
+                      background: '#059669',
+                      color: '#ffffff',
+                      fontWeight: 900,
+                      fontSize: '0.98rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {submitting ? '...' : 'ok'}
+                  </button>
+                </div>
+
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '8px', lineHeight: 1.4 }}>
+                  💡 Để trống <strong>serial cuối</strong> rồi bấm <strong>ok</strong> nếu chỉ gán 1 mã <strong>{label?.serialNumber || serial}</strong>. Nếu nhập <strong>serial cuối</strong> (VD: 00000010) rồi bấm <strong>ok</strong>, hệ thống sẽ gán cả đoạn từ <strong>{label?.serialNumber || serial}</strong> đến số cuối cho Điểm bán.
+                </div>
+              </div>
+
+              {formError && (
+                <div className="owner-alert owner-alert--error" role="alert">
+                  <AlertCircle size={16} />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              {/* 2 NÚT HÀNH ĐỘNG BÊN DƯỚI THEO SƠ ĐỒ: [ quét tiếp ] [ kết thúc ] */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={async () => {
+                    // Nếu chưa gán mã đang quét mà đã chọn điểm bán -> gán luôn rồi chuyển sang Quét tiếp
+                    const storeName = (selectedStore?.name || form.name || storeSearch || '').trim();
+                    if (storeName) {
+                      await executeAssignSerial();
+                    }
+                    navigate('/scan?continueStore=1', { replace: true });
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: '2px solid #0f172a',
+                    background: '#ecfdf5',
+                    color: '#065f46',
+                    fontWeight: 800,
+                    fontSize: '0.98rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Camera size={18} />
+                  <span>quét tiếp</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => {
+                    handleStopStoreSession();
+                    navigate(`/trace/${encodeURIComponent(label?.qrCode || label?.serialNumber || serial)}`, { replace: true });
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: '2px solid #0f172a',
+                    background: '#fef2f2',
+                    color: '#dc2626',
+                    fontWeight: 800,
+                    fontSize: '0.98rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <StopCircle size={18} />
+                  <span>kết thúc</span>
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* GIAO DIỆN MẶC ĐỊNH CHO CÁC THEME KHÁC (Bảo hành Gia dụng, OCOP, Nông nghiệp...): Giữ nguyên form Bổ sung thông tin KH sở hữu */}
+          {!isLocked && !isBarcode && !isFoodTheme && (
+            <>
+              <div className="store-manual-section" style={{ marginBottom: '14px' }}>
+                <div className="store-manual-form">
+                  <div className="owner-form-title">
+                    <User size={18} color="#059669" />
+                    <span>Bổ sung thông tin Khách hàng sở hữu</span>
+                  </div>
+
+                  <div className="store-field-group">
+                    <label className="store-field-label" htmlFor="owner-name-std">
+                      <span className="owner-field-index">1</span>
+                      <User size={15} />
+                      <span>Tên Khách hàng / Đại lý sở hữu</span>
+                    </label>
+                    <input
+                      id="owner-name-std"
+                      type="text"
+                      className="store-field-input"
+                      placeholder="Nhập họ tên khách hàng hoặc đại lý"
+                      value={form.name}
+                      onChange={handleChange('name')}
+                      maxLength={200}
+                    />
+                  </div>
+
+                  <div className="store-field-group">
+                    <label className="store-field-label" htmlFor="owner-address-std">
+                      <span className="owner-field-index">2</span>
+                      <MapPin size={15} />
+                      <span>Địa chỉ</span>
+                    </label>
+                    <input
+                      id="owner-address-std"
+                      type="text"
+                      className="store-field-input"
+                      placeholder="Nhập địa chỉ"
                       value={form.address}
                       onChange={handleChange('address')}
                       maxLength={500}
@@ -1015,17 +1377,17 @@ export default function SelectStore() {
                   </div>
 
                   <div className="store-field-group">
-                    <label className="store-field-label" htmlFor="owner-phone">
+                    <label className="store-field-label" htmlFor="owner-phone-std">
                       <span className="owner-field-index">3</span>
                       <Phone size={15} />
-                      <span>Điện thoại liên hệ</span>
+                      <span>Số điện thoại</span>
                     </label>
                     <input
-                      id="owner-phone"
+                      id="owner-phone-std"
                       type="tel"
                       inputMode="tel"
                       className="store-field-input"
-                      placeholder="VD: 0987 552 336"
+                      placeholder="Nhập số điện thoại"
                       value={form.phone}
                       onChange={handleChange('phone')}
                       maxLength={20}
@@ -1034,7 +1396,6 @@ export default function SelectStore() {
                 </div>
               </div>
 
-              {/* Trường "Mã sở hữu / Mã kích hoạt" */}
               <div className="store-owner-code-card">
                 <div className="store-field-group">
                   <div className="store-owner-code-header">
@@ -1044,9 +1405,6 @@ export default function SelectStore() {
                     </label>
                     <span className="store-owner-badge">Tự động nhận Serial nếu để trống</span>
                   </div>
-                  <p className="store-owner-help">
-                    Nhập mã kích hoạt (hoặc để trống hệ thống sẽ tự lấy mã Serial <strong>{label?.serialNumber || serial}</strong> để kích hoạt)
-                  </p>
                   <input
                     type="text"
                     className="store-field-input store-owner-input"
@@ -1064,7 +1422,6 @@ export default function SelectStore() {
                 </div>
               )}
 
-              {/* Confirm button */}
               <div className="store-confirm-bar">
                 <button
                   id="store-confirm-btn"
@@ -1072,17 +1429,7 @@ export default function SelectStore() {
                   className="store-confirm-btn"
                   disabled={submitting}
                 >
-                  {submitting ? (
-                    <>
-                      <span className="btn-spinner" />
-                      Đang gán Serial cho Điểm bán...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={20} />
-                      Xác nhận gán cho Điểm bán
-                    </>
-                  )}
+                  {submitting ? 'Đang lưu thông tin...' : 'Xác nhận lưu thông tin'}
                 </button>
               </div>
             </>

@@ -83,7 +83,8 @@ router.get('/export', auth, requireOwnership, async (req, res) => {
     }
 
     const data = await Label.find(query)
-      .select('serialNumber qrUrl smsCode activeCode legacyQrCode legacyTemQr status scanCount')
+      .select('serialNumber qrUrl smsCode activeCode legacyQrCode legacyTemQr status scanCount storeId distributorName distributorAddress ownerCode ownerInfo distributedAt productId')
+      .populate('productId', 'name price sku')
       .sort({ serialNumber: 1 })
       .skip(skip)
       .limit(limitNum)
@@ -179,9 +180,9 @@ router.get('/export-all', auth, requireOwnership, async (req, res) => {
 
     // Use lean cursor for memory-efficient streaming
     const cursor = Label.find(query)
-      .select('serialNumber qrUrl smsCode activeCode distributorName distributorAddress status scanCount batchId productId')
-      .populate('batchId', 'batchCode')
-      .populate('productId', 'name')
+      .select('serialNumber qrUrl smsCode activeCode storeId distributorName distributorAddress ownerCode ownerInfo distributedAt status scanCount batchId productId')
+      .populate('batchId', 'batchCode theme')
+      .populate('productId', 'name price sku')
       .sort({ serialNumber: 1 })
       .lean()
       .cursor({ batchSize: 2000 });

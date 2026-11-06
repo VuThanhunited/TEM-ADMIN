@@ -249,6 +249,9 @@ class ApiService {
   createRetailStore(data) { return this.request('POST', '/public/retail-stores', data); }
   updateRetailStore(id, data) { return this.request('PUT', `/public/retail-stores/${id}`, data); }
   deleteRetailStore(id) { return this.request('DELETE', `/public/retail-stores/${id}`); }
+  importRetailStores(data) { return this.request('POST', '/public/retail-stores/import-stores', data); }
+  importDistributionMatrix(data) { return this.request('POST', '/public/retail-stores/import-matrix', data); }
+  getRetailStoreTemplateUrl(type = 'matrix') { return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}`; }
 
   // ── Location Alerts (Cảnh báo quét sai vị trí điểm bán) ───────────────────
   getLocationAlerts(params) { return this.request('GET', '/public/location-alerts', null, params); }

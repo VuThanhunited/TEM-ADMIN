@@ -16,8 +16,19 @@ import {
   X,
   CheckCircle,
   Package,
-  ArrowLeft
+  ArrowLeft,
+  Upload,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
+
+const readFileAsBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '—';
@@ -48,6 +59,21 @@ export default function NppStores() {
   const [storeSerials, setStoreSerials] = useState([]);
   const [storeSerialStats, setStoreSerialStats] = useState(null);
   const [loadingSerials, setLoadingSerials] = useState(false);
+
+  // Yêu cầu 2: Modal Import Danh sách Điểm bán (Excel)
+  const [showImportStoresModal, setShowImportStoresModal] = useState(false);
+  const [importStoresFile, setImportStoresFile] = useState(null);
+  const [importingStores, setImportingStores] = useState(false);
+  const [importStoresResult, setImportStoresResult] = useState(null);
+  const [importStoresError, setImportStoresError] = useState('');
+
+  // Yêu cầu 4: Modal Import Bảng Excel Phân phối Ma trận
+  const [showImportMatrixModal, setShowImportMatrixModal] = useState(false);
+  const [importMatrixFile, setImportMatrixFile] = useState(null);
+  const [importMatrixDate, setImportMatrixDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [importingMatrix, setImportingMatrix] = useState(false);
+  const [importMatrixResult, setImportMatrixResult] = useState(null);
+  const [importMatrixError, setImportMatrixError] = useState('');
 
   // Bộ lọc thống kê doanh số Điểm bán theo Tháng / Quý / Năm
   const nowDate = new Date();
@@ -174,6 +200,51 @@ export default function NppStores() {
     navigate('/scan?continueStore=1');
   };
 
+  const handleImportStoresSubmit = async (e) => {
+    e.preventDefault();
+    if (!importStoresFile) {
+      setImportStoresError('Vui lòng chọn file Excel (.xlsx, .xls, .csv) danh sách điểm bán.');
+      return;
+    }
+    setImportingStores(true);
+    setImportStoresError('');
+    setImportStoresResult(null);
+    try {
+      const fileBase64 = await readFileAsBase64(importStoresFile);
+      const res = await userApi.importRetailStores({ fileBase64 });
+      setImportStoresResult(res);
+      loadStores(search);
+    } catch (err) {
+      setImportStoresError(err.message || 'Lỗi khi import danh sách điểm bán');
+    } finally {
+      setImportingStores(false);
+    }
+  };
+
+  const handleImportMatrixSubmit = async (e) => {
+    e.preventDefault();
+    if (!importMatrixFile) {
+      setImportMatrixError('Vui lòng chọn file Excel bảng phân phối (Điểm bán × Sản phẩm × Dải Serial).');
+      return;
+    }
+    setImportingMatrix(true);
+    setImportMatrixError('');
+    setImportMatrixResult(null);
+    try {
+      const fileBase64 = await readFileAsBase64(importMatrixFile);
+      const res = await userApi.importDistributionMatrix({
+        fileBase64,
+        importDate: importMatrixDate ? new Date(`${importMatrixDate}T12:00:00`).toISOString() : new Date().toISOString()
+      });
+      setImportMatrixResult(res);
+      loadStores(search);
+    } catch (err) {
+      setImportMatrixError(err.message || 'Lỗi khi import bảng Excel phân phối');
+    } finally {
+      setImportingMatrix(false);
+    }
+  };
+
   const totalSerialsAllStores = summaryData?.totalSerialsInPeriod !== undefined
     ? summaryData.totalSerialsInPeriod
     : stores.reduce((sum, s) => sum + (s.periodSerials ?? s.totalSerials ?? 0), 0);
@@ -225,6 +296,55 @@ export default function NppStores() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setImportStoresFile(null);
+                setImportStoresResult(null);
+                setImportStoresError('');
+                setShowImportStoresModal(true);
+              }}
+              style={{
+                background: '#1e293b',
+                border: '1px solid #3b82f6',
+                color: '#93c5fd',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Upload size={17} />
+              Import DS Điểm bán
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setImportMatrixFile(null);
+                setImportMatrixResult(null);
+                setImportMatrixError('');
+                setImportMatrixDate(new Date().toISOString().slice(0, 10));
+                setShowImportMatrixModal(true);
+              }}
+              style={{
+                background: '#1e293b',
+                border: '1px solid #10b981',
+                color: '#34d399',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FileSpreadsheet size={17} />
+              Import Excel Phân phối
+            </button>
             <button
               type="button"
               onClick={() => navigate('/scan')}
@@ -635,6 +755,176 @@ export default function NppStores() {
                 </table>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Yêu cầu 2: Modal Import Danh sách Điểm bán (Excel) */}
+      {showImportStoresModal && (
+        <div
+          onClick={() => setShowImportStoresModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '520px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Upload size={18} color="#60a5fa" />
+                Import Danh sách Điểm bán (Excel)
+              </h3>
+              <button type="button" onClick={() => setShowImportStoresModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleImportStoresSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '10px', padding: '12px', fontSize: '0.84rem', color: '#cbd5e1' }}>
+                <div>• File Excel gồm các cột: <strong>Tên điểm bán</strong>, <strong>Địa chỉ</strong>, <strong>Số điện thoại</strong>.</div>
+                <div style={{ marginTop: '6px' }}>
+                  <a
+                    href={userApi.getRetailStoreTemplateUrl('stores')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
+                  >
+                    <Download size={14} /> Tải file Excel mẫu Danh sách Điểm bán
+                  </a>
+                </div>
+              </div>
+
+              {importStoresError && (
+                <div style={{ background: 'rgba(239,68,68,0.18)', color: '#f87171', padding: '10px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  {importStoresError}
+                </div>
+              )}
+
+              {importStoresResult && (
+                <div style={{ background: 'rgba(16,185,129,0.18)', color: '#34d399', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
+                  {importStoresResult.message}
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Chọn file Excel (.xlsx, .xls, .csv) *</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setImportStoresFile(e.target.files?.[0] || null)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowImportStoresModal(false)}
+                  style={{ background: '#334155', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer' }}
+                >
+                  Đóng
+                </button>
+                <button
+                  type="submit"
+                  disabled={importingStores}
+                  style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {importingStores ? 'Đang import...' : 'Thực hiện Import'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Yêu cầu 4: Modal Import Bảng Excel Phân phối Ma trận */}
+      {showImportMatrixModal && (
+        <div
+          onClick={() => setShowImportMatrixModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '620px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileSpreadsheet size={18} color="#34d399" />
+                Import Bảng Excel Phân phối (Ma trận)
+              </h3>
+              <button type="button" onClick={() => setShowImportMatrixModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleImportMatrixSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', padding: '12px', fontSize: '0.84rem', color: '#cbd5e1' }}>
+                <div>• Dòng 1: <strong>Điểm bán ---------&gt;</strong> | <strong>Nhà A</strong> | <strong>Nhà B</strong> | <strong>Nhà C</strong> ...</div>
+                <div>• Dòng 2: <strong>Tên sản phẩm</strong></div>
+                <div>• Dòng 3+: <strong>Sản phẩm 1</strong> | <code>00001-000010</code> | <code>000011-000020</code> ...</div>
+                <div>• <strong>Ngày import</strong> bên dưới sẽ là <strong>Ngày bán / gán sản phẩm</strong>.</div>
+                <div style={{ marginTop: '6px' }}>
+                  <a
+                    href={userApi.getRetailStoreTemplateUrl('matrix')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
+                  >
+                    <Download size={14} /> Tải file Excel mẫu Bảng Ma trận Phân phối
+                  </a>
+                </div>
+              </div>
+
+              {importMatrixError && (
+                <div style={{ background: 'rgba(239,68,68,0.18)', color: '#f87171', padding: '10px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  {importMatrixError}
+                </div>
+              )}
+
+              {importMatrixResult && (
+                <div style={{ background: 'rgba(16,185,129,0.18)', color: '#34d399', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
+                  {importMatrixResult.message}
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Ngày Import (Ngày bán / gán sản phẩm) *</label>
+                <input
+                  type="date"
+                  required
+                  value={importMatrixDate}
+                  onChange={(e) => setImportMatrixDate(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Chọn file Excel Bảng phân phối (.xlsx, .xls, .csv) *</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => setImportMatrixFile(e.target.files?.[0] || null)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowImportMatrixModal(false)}
+                  style={{ background: '#334155', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', cursor: 'pointer' }}
+                >
+                  Đóng
+                </button>
+                <button
+                  type="submit"
+                  disabled={importingMatrix}
+                  style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {importingMatrix ? 'Đang xử lý...' : 'Import & Gán Serial'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
