@@ -256,6 +256,8 @@ export default function ProductInfo() {
   const product = scanData?.product;
   const enterprise = scanData?.enterprise;
   const label = scanData?.label;
+  const serialNumber = label?.serialNumber || serial || '';
+  const scanCount = Number(label?.scanCount || 0);
   const relatedProducts = scanData?.relatedProducts || scanData?.enterpriseProducts || [];
   const currentProductId = product?._id || product?.id;
   const filteredRelated = relatedProducts.filter(p => (p._id || p.id) !== currentProductId);
@@ -3460,7 +3462,7 @@ export default function ProductInfo() {
           </div>
 
           {/* Dải xác thực mã QR nhỏ gọn nếu có serialNumber */}
-          {serialNumber && (
+          {(label?.internalCode || label?.serialNumber || serial) && (
             <div className="honey-auth-strip">
               <div className="honey-auth-strip-item">
                 <ShieldCheck size={15} />
@@ -3468,12 +3470,12 @@ export default function ProductInfo() {
               </div>
               <div className="honey-auth-strip-item">
                 <QrCode size={14} />
-                <span>{t.serialBadge} <strong>{label?.internalCode || serialNumber}</strong></span>
+                <span>{t.serialBadge} <strong>{label?.internalCode || label?.serialNumber || serial}</strong></span>
               </div>
-              {scanCount > 0 && (
+              {Number(label?.scanCount || 0) > 0 && (
                 <div className="honey-auth-strip-item">
                   <Eye size={14} />
-                  <span>{t.scanCountBadge} <strong>{scanCount}</strong></span>
+                  <span>{t.scanCountBadge} <strong>{label?.scanCount}</strong></span>
                 </div>
               )}
             </div>

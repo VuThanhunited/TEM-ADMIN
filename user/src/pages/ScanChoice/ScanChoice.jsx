@@ -106,7 +106,10 @@ export default function ScanChoice() {
     label?.batchId?.theme === 'appliance' ||
     label?.batchId?.theme === 'warranty';
 
-  const isWarrantyActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
+  const isWarrantyActivated = Boolean(
+    (label?.internalCode && String(label.internalCode).trim()) ||
+    (label?.ownerCode && String(label.ownerCode).trim())
+  );
   const hideProductPreview = isWarrantyTheme && !isWarrantyActivated;
 
   return (
