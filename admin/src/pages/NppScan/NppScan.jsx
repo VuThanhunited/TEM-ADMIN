@@ -115,7 +115,7 @@ export default function NppScan() {
       });
     }).catch(() => {});
 
-    api.getRetailStores().then(res => {
+    api.getRetailStores({ includeStats: '0' }).then(res => {
       const list = res.stores || res.data || [];
       setStores(list);
       const queryStoreId = searchParams.get('storeId');

@@ -130,5 +130,10 @@ labelSchema.index({ smsCode: 1 });
 labelSchema.index({ ownerCode: 1 });
 labelSchema.index({ internalCode: 1 });
 labelSchema.index({ storeId: 1 });
+labelSchema.index({ distributorName: 1 });
+labelSchema.index({ 'ownerInfo.name': 1 });
+labelSchema.index({ 'ownerInfo.activatedBy': 1 });
+labelSchema.index({ enterpriseId: 1, storeId: 1 });
+labelSchema.index({ enterpriseId: 1, distributorName: 1 });
 
 module.exports = mongoose.model('Label', labelSchema);

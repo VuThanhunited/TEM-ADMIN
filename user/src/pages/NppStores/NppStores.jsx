@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import userApi from '../../services/api';
 import {
@@ -29,6 +29,15 @@ const readFileAsBase64 = (file) =>
     reader.onerror = (err) => reject(err);
     reader.readAsDataURL(file);
   });
+
+const removeVietnameseTones = (str = '') =>
+  String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '—';
@@ -83,11 +92,10 @@ export default function NppStores() {
   const [selectedQuarter, setSelectedQuarter] = useState(Math.floor(nowDate.getMonth() / 3) + 1);
   const [summaryData, setSummaryData] = useState(null);
 
-  const loadStores = useCallback(async (searchQuery = search) => {
+  const loadStores = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
-        ...(searchQuery ? { search: searchQuery } : {}),
         periodType,
         year: selectedYear,
         month: selectedMonth,
@@ -101,14 +109,22 @@ export default function NppStores() {
     } finally {
       setLoading(false);
     }
-  }, [search, periodType, selectedYear, selectedMonth, selectedQuarter]);
+  }, [periodType, selectedYear, selectedMonth, selectedQuarter]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadStores(search);
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [search, loadStores]);
+    loadStores();
+  }, [loadStores]);
+
+  const filteredStores = useMemo(() => {
+    const q = removeVietnameseTones(search);
+    if (!q) return stores;
+    return stores.filter((s) => {
+      const nameNorm = removeVietnameseTones(s.name || '');
+      const addrNorm = removeVietnameseTones(s.address || '');
+      const phoneNorm = removeVietnameseTones(s.phone || '');
+      return nameNorm.includes(q) || addrNorm.includes(q) || phoneNorm.includes(q);
+    });
+  }, [stores, search]);
 
   const handleOpenAdd = () => {
     setEditingStore(null);
@@ -509,20 +525,24 @@ export default function NppStores() {
         <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '14px', overflowX: 'auto' }}>
           {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>Đang tải danh sách điểm bán...</div>
-          ) : stores.length === 0 ? (
+          ) : filteredStores.length === 0 ? (
             <div style={{ padding: '44px 20px', textAlign: 'center' }}>
               <Store size={42} style={{ opacity: 0.4, marginBottom: '10px' }} />
-              <h3 style={{ margin: '0 0 8px' }}>Chưa có Điểm bán nào</h3>
+              <h3 style={{ margin: '0 0 8px' }}>{search ? 'Không tìm thấy Điểm bán phù hợp' : 'Chưa có Điểm bán nào'}</h3>
               <p style={{ color: '#94a3b8', fontSize: '0.88rem', marginBottom: '16px' }}>
-                Bấm &ldquo;Thêm Điểm bán&rdquo; để thêm Tên điểm bán, Địa chỉ và Điện thoại liên hệ.
+                {search
+                  ? `Không có điểm bán nào khớp với từ khóa "${search}".`
+                  : 'Bấm “Thêm Điểm bán” để thêm Tên điểm bán, Địa chỉ và Điện thoại liên hệ.'}
               </p>
-              <button
-                type="button"
-                onClick={handleOpenAdd}
-                style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
-              >
-                + Thêm Điểm bán đầu tiên
-              </button>
+              {!search && (
+                <button
+                  type="button"
+                  onClick={handleOpenAdd}
+                  style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 16px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  + Thêm Điểm bán đầu tiên
+                </button>
+              )}
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
@@ -539,7 +559,7 @@ export default function NppStores() {
                 </tr>
               </thead>
               <tbody>
-                {stores.map((store, idx) => {
+                {filteredStores.map((store, idx) => {
                   const recent = store.recentSales || [];
                   const qty = store.periodSerials ?? store.totalSerials ?? 0;
                   const rev = store.periodRevenue ?? store.totalRevenue ?? 0;

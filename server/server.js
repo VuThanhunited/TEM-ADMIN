@@ -55,7 +55,16 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Request timeout middleware (60s) - trả lời JSON lỗi nếu request bị treo quá lâu
 app.use((req, res, next) => {
-  const TIMEOUT_MS = 60000;
+  // Bảo vệ res.json / res.send không ném lỗi ERR_HTTP_HEADERS_SENT nếu request đã timeout trước đó
+  const origJson = res.json.bind(res);
+  res.json = (body) => {
+    if (res.headersSent) return res;
+    return origJson(body);
+  };
+
+  const TIMEOUT_MS = (req.path.includes('/import') || req.path.includes('/batches') || req.path.includes('/bulk-map'))
+    ? 300000
+    : 60000;
   // Bỏ qua các route export vốn cần nhiều thời gian
   if (req.path.includes('/export')) return next();
   // Thêm Connection: keep-alive để tránh idle disconnect
@@ -122,8 +131,8 @@ const MONGOOSE_OPTIONS = {
   connectTimeoutMS: 30000,
   socketTimeoutMS: 75000,           // 75s socket idle – khớp với Keep-Alive=65s
   heartbeatFrequencyMS: 10000,      // ping server mỗi 10s để phát hiện disconnect sớm
-  maxPoolSize: 10,
-  minPoolSize: 2,
+  maxPoolSize: 50,
+  minPoolSize: 5,
   retryWrites: true,
   retryReads: true,
   family: 4,                        // Bắt buộc dùng IPv4, tránh IPv6 lookup timeout

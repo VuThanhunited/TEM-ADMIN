@@ -67,8 +67,8 @@ class ApiService {
     } catch (networkError) {
       const isTimeout = networkError?.name === 'TimeoutError' || networkError?.name === 'AbortError';
 
-      // Retry khi lỗi mạng hoặc timeout
-      if (_retryCount < MAX_RETRIES) {
+      // Retry khi lỗi mạng hoặc timeout (chỉ retry GET để tránh gửi trùng POST/PUT khi import dữ liệu lớn)
+      if (_retryCount < MAX_RETRIES && (!isTimeout || method === 'GET')) {
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
         return this.request(method, endpoint, data, params, _retryCount + 1, timeoutMs);
       }
@@ -250,8 +250,8 @@ class ApiService {
   createRetailStore(data) { return this.request('POST', '/public/retail-stores', data); }
   updateRetailStore(id, data) { return this.request('PUT', `/public/retail-stores/${id}`, data); }
   deleteRetailStore(id) { return this.request('DELETE', `/public/retail-stores/${id}`); }
-  importRetailStores(data) { return this.request('POST', '/public/retail-stores/import-stores', data); }
-  importDistributionMatrix(data) { return this.request('POST', '/public/retail-stores/import-matrix', data); }
+  importRetailStores(data) { return this.request('POST', '/public/retail-stores/import-stores', data, {}, 0, 120000); }
+  importDistributionMatrix(data) { return this.request('POST', '/public/retail-stores/import-matrix', data, {}, 0, 120000); }
   getRetailStoreTemplateUrl(type = 'matrix') { return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}`; }
 
   // ── Location Alerts (Cảnh báo quét sai vị trí điểm bán) ───────────────────

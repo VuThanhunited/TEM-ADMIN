@@ -139,7 +139,7 @@ export default function SelectStore() {
     const fetchStores = async () => {
       setLoadingStores(true);
       try {
-        const res = await userApi.getRetailStores();
+        const res = await userApi.getRetailStores({ includeStats: '0' });
         const storeList = res?.stores || res?.data || [];
         setStores(storeList);
       } catch (err) {

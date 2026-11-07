@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import api from '../../services/api';
 import {
   Store,
@@ -31,6 +32,29 @@ const readFileAsBase64 = (file) =>
     reader.onerror = (err) => reject(err);
     reader.readAsDataURL(file);
   });
+
+const parseExcelFileToRows = async (file) => {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const firstSheetName = workbook.SheetNames?.[0];
+    if (!firstSheetName) return [];
+    const worksheet = workbook.Sheets[firstSheetName];
+    return XLSX.utils.sheet_to_json(worksheet, { defval: '' }) || [];
+  } catch (err) {
+    console.warn('Không thể parse Excel trực tiếp trên trình duyệt, chuyển sang gửi fileBase64:', err);
+    return [];
+  }
+};
+
+const removeVietnameseTones = (str = '') =>
+  String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '—';
@@ -97,7 +121,7 @@ export default function NppStores() {
   const [importMatrixResult, setImportMatrixResult] = useState(null);
   const [importMatrixError, setImportMatrixError] = useState('');
 
-  const loadStores = useCallback(async (searchQuery = search) => {
+  const loadStores = useCallback(async () => {
     setLoading(true);
     try {
       const params = {
@@ -106,7 +130,6 @@ export default function NppStores() {
         month: selectedMonth,
         quarter: selectedQuarter
       };
-      if (searchQuery) params.search = searchQuery;
       const res = await api.getRetailStores(params);
       setStores(res.stores || res.data || []);
       setSummary(res.summary || null);
@@ -115,14 +138,23 @@ export default function NppStores() {
     } finally {
       setLoading(false);
     }
-  }, [search, periodType, selectedYear, selectedMonth, selectedQuarter]);
+  }, [periodType, selectedYear, selectedMonth, selectedQuarter]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadStores(search);
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [search, loadStores]);
+    loadStores();
+  }, [loadStores]);
+
+  // Lọc điểm bán tức thì trên client hỗ trợ gõ không dấu (tránh gửi request liên tục lên server)
+  const filteredStores = useMemo(() => {
+    const q = removeVietnameseTones(search);
+    if (!q) return stores;
+    return stores.filter((s) => {
+      const nameNorm = removeVietnameseTones(s.name || '');
+      const addrNorm = removeVietnameseTones(s.address || '');
+      const phoneNorm = removeVietnameseTones(s.phone || '');
+      return nameNorm.includes(q) || addrNorm.includes(q) || phoneNorm.includes(q);
+    });
+  }, [stores, search]);
 
   const handleOpenAdd = () => {
     setEditingStore(null);
@@ -226,10 +258,16 @@ export default function NppStores() {
     setImportStoresError('');
     setImportStoresResult(null);
     try {
-      const fileBase64 = await readFileAsBase64(importStoresFile);
-      const res = await api.importRetailStores({ fileBase64 });
+      const parsedRows = await parseExcelFileToRows(importStoresFile);
+      let res;
+      if (parsedRows.length > 0) {
+        res = await api.importRetailStores({ stores: parsedRows });
+      } else {
+        const fileBase64 = await readFileAsBase64(importStoresFile);
+        res = await api.importRetailStores({ fileBase64 });
+      }
       setImportStoresResult(res);
-      loadStores(search);
+      loadStores();
     } catch (err) {
       setImportStoresError(err.message || 'Lỗi khi import danh sách điểm bán');
     } finally {
@@ -247,13 +285,23 @@ export default function NppStores() {
     setImportMatrixError('');
     setImportMatrixResult(null);
     try {
-      const fileBase64 = await readFileAsBase64(importMatrixFile);
-      const res = await api.importDistributionMatrix({
-        fileBase64,
-        importDate: importMatrixDate ? new Date(`${importMatrixDate}T12:00:00`).toISOString() : new Date().toISOString()
-      });
+      const parsedRows = await parseExcelFileToRows(importMatrixFile);
+      const importDateIso = importMatrixDate ? new Date(`${importMatrixDate}T12:00:00`).toISOString() : new Date().toISOString();
+      let res;
+      if (parsedRows.length > 0) {
+        res = await api.importDistributionMatrix({
+          rows: parsedRows,
+          importDate: importDateIso
+        });
+      } else {
+        const fileBase64 = await readFileAsBase64(importMatrixFile);
+        res = await api.importDistributionMatrix({
+          fileBase64,
+          importDate: importDateIso
+        });
+      }
       setImportMatrixResult(res);
-      loadStores(search);
+      loadStores();
     } catch (err) {
       setImportMatrixError(err.message || 'Lỗi khi import bảng Excel phân phối');
     } finally {
@@ -478,16 +526,20 @@ export default function NppStores() {
             <div className="spinner" />
             <span>Đang tải danh sách điểm bán...</span>
           </div>
-        ) : stores.length === 0 ? (
+        ) : filteredStores.length === 0 ? (
           <div className="empty-state" style={{ padding: '48px 20px', textAlign: 'center' }}>
             <Store size={48} style={{ opacity: 0.35, marginBottom: '12px' }} />
-            <h3>Chưa có Điểm bán nào</h3>
+            <h3>{search ? 'Không tìm thấy Điểm bán phù hợp' : 'Chưa có Điểm bán nào'}</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '18px' }}>
-              Hãy bấm &ldquo;Thêm Điểm bán&rdquo; để tạo danh sách điểm bán (Tên điểm bán, Địa chỉ, Điện thoại liên hệ).
+              {search
+                ? `Không có điểm bán nào khớp với từ khóa "${search}".`
+                : 'Hãy bấm “Thêm Điểm bán” để tạo danh sách điểm bán (Tên điểm bán, Địa chỉ, Điện thoại liên hệ).'}
             </p>
-            <button type="button" className="btn btn-primary" onClick={handleOpenAdd}>
-              <Plus size={18} /> Thêm Điểm bán đầu tiên
-            </button>
+            {!search && (
+              <button type="button" className="btn btn-primary" onClick={handleOpenAdd}>
+                <Plus size={18} /> Thêm Điểm bán đầu tiên
+              </button>
+            )}
           </div>
         ) : (
           <table className="data-table">
@@ -504,7 +556,7 @@ export default function NppStores() {
               </tr>
             </thead>
             <tbody>
-              {stores.map((store, idx) => {
+              {filteredStores.map((store, idx) => {
                 const recent = store.recentSales || [];
                 const qty = store.periodSerialsCount ?? store.totalSerials ?? 0;
                 const rev = store.periodRevenue ?? store.totalRevenue ?? 0;

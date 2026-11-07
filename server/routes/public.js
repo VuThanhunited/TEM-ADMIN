@@ -383,16 +383,23 @@ router.get('/scan/:serial', async (req, res) => {
       })
       .populate('enterpriseId');
 
+    const lowerSerial = cleanSerial.toLowerCase();
+    const upperSerial = cleanSerial.toUpperCase();
+    const exactQrList = cleanSerial === lowerSerial ? [cleanSerial] : [cleanSerial, lowerSerial];
+    const exactSerialList = cleanSerial === upperSerial ? [cleanSerial] : [cleanSerial, upperSerial];
+
     let label = await populateLabel(Label.findOne({
       $or: [
-        { qrCode: cleanSerial },
-        { serialNumber: cleanSerial },
+        { qrCode: { $in: exactQrList } },
+        { serialNumber: { $in: exactSerialList } },
         { activeCode: cleanSerial },
-        { smsCode: cleanSerial }
+        { smsCode: cleanSerial },
+        { legacyQrCode: cleanSerial },
+        { legacyTemQr: cleanSerial }
       ]
     }));
 
-    if (!label) {
+    if (!label && /^\d+$/.test(cleanSerial)) {
       const suffixRegex = new RegExp(escapeRegex(cleanSerial) + '$', 'i');
       label = await populateLabel(Label.findOne({
         $or: [
@@ -1015,11 +1022,17 @@ async function getRelatedEnterpriseIds(user) {
   const ids = [];
   const entId = user?.enterpriseId?._id || user?.enterpriseId;
   if (entId) ids.push(entId);
-  const entName = user?.enterpriseId?.name;
+  let entName = user?.enterpriseId?.name;
+  if (!entName && entId) {
+    const entDoc = await Enterprise.findById(entId).select('name').lean();
+    entName = entDoc?.name;
+  }
   if (entName) {
-    const sameNameEnts = await Enterprise.find({
-      name: { $regex: new RegExp(`^${escapeRegex(entName.trim())}$`, 'i') }
-    }).select('_id').lean();
+    const isStaycool = entName.toLowerCase().includes('staycool');
+    const nameFilter = isStaycool
+      ? { name: { $regex: /staycool/i } }
+      : { name: { $regex: new RegExp(`^${escapeRegex(entName.trim())}$`, 'i') } };
+    const sameNameEnts = await Enterprise.find(nameFilter).select('_id').lean();
     for (const e of sameNameEnts) {
       if (!ids.some(id => String(id) === String(e._id))) {
         ids.push(e._id);
@@ -1286,80 +1299,131 @@ router.get('/retail-stores', async (req, res) => {
     let totalAllTimeSerials = 0;
     let totalAllTimeRevenue = 0;
 
-    // Bổ sung dữ liệu serial vừa bán + thời gian + doanh số cho từng Điểm bán
+    // Bổ sung dữ liệu serial vừa bán + thời gian + doanh số cho từng Điểm bán (1 query duy nhất thay vì N+1 queries)
     if (includeStats !== '0' && stores.length > 0) {
-      const enrichedStores = await Promise.all(
-        stores.map(async (store) => {
-          const storeOr = [
-            { storeId: store._id },
-            { distributorName: store.name },
-            { 'ownerInfo.name': store.name }
-          ];
-          const labelQuery = store.enterpriseId
-            ? { enterpriseId: store.enterpriseId, $or: storeOr }
-            : { $or: storeOr };
+      const storeIds = stores.map((s) => s._id);
+      const storeNames = [...new Set(stores.map((s) => String(s.name || '').trim()).filter(Boolean))];
 
-          const allLabels = await Label.find(labelQuery)
-            .populate('productId', 'name price sku category')
-            .sort({ distributedAt: -1, updatedAt: -1 })
-            .select('serialNumber productId ownerCode distributedAt ownerInfo updatedAt warehouseLocation')
-            .lean();
+      const allAssignedLabels = await Label.find({
+        $or: [
+          { storeId: { $in: storeIds } },
+          ...(storeNames.length > 0
+            ? [
+                { distributorName: { $in: storeNames } },
+                { 'ownerInfo.name': { $in: storeNames } }
+              ]
+            : [])
+        ]
+      })
+        .populate('productId', 'name price sku category')
+        .sort({ distributedAt: -1, updatedAt: -1 })
+        .select('serialNumber productId storeId enterpriseId distributorName ownerCode distributedAt ownerInfo updatedAt warehouseLocation')
+        .lean();
 
-          let allTimeRevenue = 0;
-          const periodLabels = [];
-          const breakdownMap = new Map();
+      const byStoreId = new Map();
+      const byStoreName = new Map();
 
-          for (const lbl of allLabels) {
-            const unitPrice = Number(lbl.productId?.price) || 0;
-            allTimeRevenue += unitPrice;
+      for (const lbl of allAssignedLabels) {
+        if (lbl.storeId) {
+          const sid = String(lbl.storeId);
+          if (!byStoreId.has(sid)) byStoreId.set(sid, []);
+          byStoreId.get(sid).push(lbl);
+        }
+        const dName = String(lbl.distributorName || '').trim().toLowerCase();
+        if (dName) {
+          if (!byStoreName.has(dName)) byStoreName.set(dName, []);
+          byStoreName.get(dName).push(lbl);
+        }
+        const oName = String(lbl.ownerInfo?.name || '').trim().toLowerCase();
+        if (oName && oName !== dName) {
+          if (!byStoreName.has(oName)) byStoreName.set(oName, []);
+          byStoreName.get(oName).push(lbl);
+        }
+      }
 
-            const soldAtDate = new Date(lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt);
-            const inPeriod = (!periodRange.start || soldAtDate >= periodRange.start) &&
-                             (!periodRange.end || soldAtDate <= periodRange.end);
-            if (inPeriod) {
-              periodLabels.push(lbl);
-              const pKey = String(lbl.productId?._id || lbl.productId?.name || 'unknown');
-              const pName = lbl.productId?.name || 'Sản phẩm';
-              if (!breakdownMap.has(pKey)) {
-                breakdownMap.set(pKey, {
-                  productId: lbl.productId?._id || null,
-                  productName: pName,
-                  unitPrice,
-                  quantity: 0,
-                  revenue: 0
-                });
-              }
-              const item = breakdownMap.get(pKey);
-              item.quantity += 1;
-              item.revenue += unitPrice;
+      const enrichedStores = stores.map((store) => {
+        const sid = String(store._id);
+        const sName = String(store.name || '').trim().toLowerCase();
+        const sEntId = store.enterpriseId ? String(store.enterpriseId) : null;
+
+        const listById = byStoreId.get(sid) || [];
+        const listByName = (byStoreName.get(sName) || []).filter(
+          (lbl) => !sEntId || !lbl.enterpriseId || String(lbl.enterpriseId) === sEntId
+        );
+
+        let allLabels;
+        if (listById.length === 0) {
+          allLabels = listByName;
+        } else if (listByName.length === 0) {
+          allLabels = listById;
+        } else {
+          const seenIds = new Set();
+          allLabels = [];
+          for (const lbl of [...listById, ...listByName]) {
+            const lid = String(lbl._id);
+            if (!seenIds.has(lid)) {
+              seenIds.add(lid);
+              allLabels.push(lbl);
             }
           }
+        }
 
-          const periodSerialsCount = periodLabels.length;
-          const periodRevenue = periodLabels.reduce((sum, l) => sum + (Number(l.productId?.price) || 0), 0);
+        let allTimeRevenue = 0;
+        const periodLabels = [];
+        const breakdownMap = new Map();
 
-          const recentSales = periodLabels.slice(0, 10).map((lbl) => ({
-            _id: lbl._id,
-            serialNumber: lbl.serialNumber,
-            productName: lbl.productId?.name || 'Sản phẩm',
-            unitPrice: Number(lbl.productId?.price) || 0,
-            ownerCode: lbl.ownerCode || lbl.serialNumber,
-            soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
-          }));
+        for (const lbl of allLabels) {
+          const unitPrice = Number(lbl.productId?.price) || 0;
+          allTimeRevenue += unitPrice;
 
-          return {
-            ...store,
-            totalSerials: allLabels.length,
-            totalRevenue: allTimeRevenue,
-            periodSerialsCount,
-            periodRevenue,
-            productBreakdown: Array.from(breakdownMap.values()),
-            recentSales,
-            lastSoldSerial: recentSales[0]?.serialNumber || null,
-            lastSoldAt: recentSales[0]?.soldAt || null
-          };
-        })
-      );
+          const soldAtDate = new Date(lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt);
+          const inPeriod =
+            (!periodRange.start || soldAtDate >= periodRange.start) &&
+            (!periodRange.end || soldAtDate <= periodRange.end);
+          if (inPeriod) {
+            periodLabels.push(lbl);
+            const pKey = String(lbl.productId?._id || lbl.productId?.name || 'unknown');
+            const pName = lbl.productId?.name || 'Sản phẩm';
+            if (!breakdownMap.has(pKey)) {
+              breakdownMap.set(pKey, {
+                productId: lbl.productId?._id || null,
+                productName: pName,
+                unitPrice,
+                quantity: 0,
+                revenue: 0
+              });
+            }
+            const item = breakdownMap.get(pKey);
+            item.quantity += 1;
+            item.revenue += unitPrice;
+          }
+        }
+
+        const periodSerialsCount = periodLabels.length;
+        const periodRevenue = periodLabels.reduce((sum, l) => sum + (Number(l.productId?.price) || 0), 0);
+
+        const recentSales = periodLabels.slice(0, 10).map((lbl) => ({
+          _id: lbl._id,
+          serialNumber: lbl.serialNumber,
+          productName: lbl.productId?.name || 'Sản phẩm',
+          unitPrice: Number(lbl.productId?.price) || 0,
+          ownerCode: lbl.ownerCode || lbl.serialNumber,
+          soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
+        }));
+
+        return {
+          ...store,
+          totalSerials: allLabels.length,
+          totalRevenue: allTimeRevenue,
+          periodSerialsCount,
+          periodRevenue,
+          productBreakdown: Array.from(breakdownMap.values()),
+          recentSales,
+          lastSoldSerial: recentSales[0]?.serialNumber || null,
+          lastSoldAt: recentSales[0]?.soldAt || null
+        };
+      });
+
       stores = enrichedStores;
       for (const st of stores) {
         totalPeriodSerials += st.periodSerialsCount || 0;
@@ -1476,12 +1540,25 @@ router.get('/retail-stores/:id/serials', async (req, res) => {
   }
 });
 
+// Helper: Chuẩn hóa SĐT Việt Nam khi import từ Excel (bù số 0 đầu nếu bị Excel cắt mất, bỏ dấu gạch ngang '-')
+function normalizeVnPhone(rawPhone) {
+  let clean = String(rawPhone ?? '').trim().replace(/\.0$/, '');
+  if (!clean || clean === '-' || clean === '—' || clean === '_' || clean.toLowerCase() === 'null' || clean.toLowerCase() === 'nan') {
+    return '';
+  }
+  const digitsOnly = clean.replace(/[\s.\-()]/g, '');
+  if (/^[235789]\d{8}$/.test(digitsOnly)) {
+    return `0${digitsOnly}`;
+  }
+  return clean.slice(0, 30);
+}
+
 // POST /api/public/retail-stores - Tạo mới Điểm bán (Tên điểm bán / Địa chỉ / Điện thoại liên hệ)
 router.post('/retail-stores', async (req, res) => {
   try {
     const authCtx = await verifyNppOrAdminRequest(req, res);
     if (!authCtx) return;
-    const { user } = authCtx;
+    const { user, decoded } = authCtx;
 
     const { name, address = '', phone = '', enterpriseId } = req.body;
     const cleanName = String(name || '').trim();
@@ -1490,16 +1567,32 @@ router.post('/retail-stores', async (req, res) => {
     }
 
     const targetEntId = enterpriseId || user.enterpriseId?._id || user.enterpriseId || null;
+    const storeFilter = await buildRetailStoreFilter(user, decoded, targetEntId);
+    const cleanAddr = String(address || '').trim();
+    const cleanPhone = normalizeVnPhone(phone);
 
-    const store = new RetailStore({
-      name: cleanName,
-      address: String(address || '').trim(),
-      phone: String(phone || '').trim(),
-      ownerUserId: user._id,
-      enterpriseId: targetEntId,
-      isActive: true
+    // Chống tạo trùng lặp Điểm bán cùng tên trong cùng doanh nghiệp (khi bấm Lưu nhiều lần)
+    let store = await RetailStore.findOne({
+      ...storeFilter,
+      name: { $regex: new RegExp(`^${escapeRegex(cleanName)}$`, 'i') }
     });
-    await store.save();
+
+    if (store) {
+      if (cleanAddr) store.address = cleanAddr;
+      if (cleanPhone) store.phone = cleanPhone;
+      store.isActive = true;
+      await store.save();
+    } else {
+      store = new RetailStore({
+        name: cleanName,
+        address: cleanAddr,
+        phone: cleanPhone,
+        ownerUserId: user._id,
+        enterpriseId: targetEntId,
+        isActive: true
+      });
+      await store.save();
+    }
 
     const createdStore = {
       ...store.toObject(),
@@ -1769,54 +1862,107 @@ router.post('/retail-stores/import-stores', async (req, res) => {
       const buf = Buffer.from(base64Clean, 'base64');
       const wb = XLSX.read(buf, { type: 'buffer' });
       const firstSheet = wb.Sheets[wb.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+      const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: false });
 
       if (rawRows.length > 0) {
-        // Nhận diện dòng tiêu đề cột
-        const headerRow = rawRows[0].map(c => removeVietnameseTones(String(c || '')));
+        // Quét 10 dòng đầu tiên để tìm dòng tiêu đề cột thực sự (tránh trường hợp dòng 0 là tiêu đề gộp ô "DANH SÁCH ĐIỂM BÁN")
+        let headerRowIdx = -1;
         let nameIdx = -1;
         let addrIdx = -1;
         let phoneIdx = -1;
 
-        headerRow.forEach((h, idx) => {
-          if (nameIdx === -1 && (h.includes('diem ban') || h.includes('nha thuoc') || h.includes('dai ly') || h.includes('ten') || h.includes('name') || h.includes('khach hang'))) {
-            nameIdx = idx;
-          } else if (addrIdx === -1 && (h.includes('dia chi') || h.includes('address') || h.includes('khu vuc') || h.includes('tinh'))) {
-            addrIdx = idx;
-          } else if (phoneIdx === -1 && (h.includes('dien thoai') || h.includes('sdt') || h.includes('phone') || h.includes('tel') || h.includes('lien he'))) {
-            phoneIdx = idx;
-          }
-        });
+        for (let r = 0; r < Math.min(10, rawRows.length); r++) {
+          const row = rawRows[r];
+          if (!Array.isArray(row)) continue;
+          const nonEmptyCount = row.filter((c) => String(c ?? '').trim() !== '').length;
+          if (nonEmptyCount < 2) continue;
 
-        let startRowIdx = 1;
+          const normCells = row.map((c) => removeVietnameseTones(String(c ?? '')));
+          let candName = -1;
+          let candAddr = -1;
+          let candPhone = -1;
+
+          normCells.forEach((h, idx) => {
+            if (!h) return;
+            const isIndexCol =
+              h === 'stt' || h === 'tt' || h === 'no' || h === '#' || h.startsWith('stt ') || h === 'ma' || h === 'ma kh';
+            if (
+              !isIndexCol &&
+              candName === -1 &&
+              (h.includes('diem ban') ||
+                h.includes('nha thuoc') ||
+                h.includes('quay thuoc') ||
+                h.includes('dai ly') ||
+                h.includes('cua hang') ||
+                h.includes('khach hang') ||
+                h.includes('ten') ||
+                h.includes('name'))
+            ) {
+              candName = idx;
+            } else if (
+              candAddr === -1 &&
+              (h.includes('dia chi') || h.includes('address') || h.includes('khu vuc') || h.includes('tinh') || h.includes('vi tri'))
+            ) {
+              candAddr = idx;
+            } else if (
+              candPhone === -1 &&
+              (h.includes('dien thoai') || h.includes('sdt') || h.includes('phone') || h.includes('tel') || h.includes('lien he') || h.includes('di dong'))
+            ) {
+              candPhone = idx;
+            }
+          });
+
+          if (candName !== -1 && (candAddr !== -1 || candPhone !== -1 || normCells.some((c) => c === 'stt' || c === 'tt'))) {
+            headerRowIdx = r;
+            nameIdx = candName;
+            addrIdx = candAddr;
+            phoneIdx = candPhone;
+            break;
+          }
+        }
+
+        let startRowIdx = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
         if (nameIdx === -1) {
-          // Không có dòng tiêu đề rõ ràng -> kiểm tra nếu cột 0 là STT
-          const firstCol0 = removeVietnameseTones(String(rawRows[0][0] || ''));
-          if (firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#') {
+          // Không có dòng tiêu đề rõ ràng -> tự động nhận diện cột STT và cột Tên điểm bán
+          const sampleRow = rawRows.find((r) => Array.isArray(r) && r.filter((c) => String(c ?? '').trim() !== '').length >= 2) || rawRows[0];
+          const firstCol0 = removeVietnameseTones(String(sampleRow?.[0] ?? ''));
+          if (firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' || /^\d+$/.test(firstCol0)) {
             nameIdx = 1;
             addrIdx = 2;
             phoneIdx = 3;
-            startRowIdx = 1;
+            startRowIdx = firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' ? 1 : 0;
           } else {
             nameIdx = 0;
             addrIdx = 1;
             phoneIdx = 2;
             startRowIdx = 0;
           }
+        } else {
+          // Nếu có cột Tên nhưng chưa rõ cột Địa chỉ / SĐT thì lấy các cột kế tiếp
+          if (addrIdx === -1 && phoneIdx !== nameIdx + 1) addrIdx = nameIdx + 1;
+          if (phoneIdx === -1) phoneIdx = addrIdx >= 0 ? addrIdx + 1 : nameIdx + 2;
         }
 
         for (let r = startRowIdx; r < rawRows.length; r++) {
           const row = rawRows[r];
           if (!Array.isArray(row)) continue;
-          const nameVal = String(row[nameIdx] || '').trim();
+          const nameVal = String(row[nameIdx] ?? '').trim();
           if (!nameVal) continue;
           const normName = removeVietnameseTones(nameVal);
-          if (normName === 'ten diem ban' || normName === 'diem ban' || normName === 'stt') continue;
+          if (
+            normName === 'ten diem ban' ||
+            normName === 'diem ban' ||
+            normName === 'stt' ||
+            normName === 'ten nha thuoc' ||
+            normName === 'danh sach diem ban'
+          ) {
+            continue;
+          }
 
           rowsToImport.push({
             name: nameVal,
-            address: addrIdx >= 0 ? String(row[addrIdx] || '').trim() : '',
-            phone: phoneIdx >= 0 ? String(row[phoneIdx] || '').trim() : ''
+            address: addrIdx >= 0 ? String(row[addrIdx] ?? '').trim() : '',
+            phone: phoneIdx >= 0 ? normalizeVnPhone(row[phoneIdx]) : ''
           });
         }
       }
@@ -1826,46 +1972,76 @@ router.post('/retail-stores/import-stores', async (req, res) => {
       return res.status(400).json({ error: 'Không tìm thấy dữ liệu Điểm bán hợp lệ trong file Excel' });
     }
 
-    let createdCount = 0;
-    let updatedCount = 0;
-    const processedStores = [];
-
+    // Gom nhóm & khử trùng lặp ngay trong file Excel vừa tải lên
+    const dedupedRowsMap = new Map();
     for (const item of rowsToImport) {
       const cleanName = String(item.name || '').trim();
       if (!cleanName) continue;
+      const key = removeVietnameseTones(cleanName);
+      if (!key) continue;
       const cleanAddr = String(item.address || '').trim();
-      const cleanPhone = String(item.phone || '').trim();
-
-      let existing = await RetailStore.findOne({
-        ...storeFilter,
-        name: { $regex: new RegExp(`^${escapeRegex(cleanName)}$`, 'i') }
-      });
-
-      if (existing) {
-        let changed = false;
-        if (cleanAddr && existing.address !== cleanAddr) {
-          existing.address = cleanAddr;
-          changed = true;
-        }
-        if (cleanPhone && existing.phone !== cleanPhone) {
-          existing.phone = cleanPhone;
-          changed = true;
-        }
-        if (changed) await existing.save();
-        updatedCount += 1;
-        processedStores.push(existing);
+      const cleanPhone = normalizeVnPhone(item.phone);
+      if (dedupedRowsMap.has(key)) {
+        const prev = dedupedRowsMap.get(key);
+        if (cleanAddr) prev.address = cleanAddr;
+        if (cleanPhone) prev.phone = cleanPhone;
       } else {
-        const created = await RetailStore.create({
-          name: cleanName,
-          address: cleanAddr,
-          phone: cleanPhone,
-          ownerUserId: user._id,
-          enterpriseId: targetEntId,
-          isActive: true
+        dedupedRowsMap.set(key, { name: cleanName, address: cleanAddr, phone: cleanPhone });
+      }
+    }
+
+    // Tải 1 lần toàn bộ Điểm bán hiện có của doanh nghiệp để đối chiếu trong bộ nhớ (thay vì 1,000 queries tuần tự)
+    const existingStores = await RetailStore.find(storeFilter).lean();
+    const existingByNormName = new Map();
+    for (const st of existingStores) {
+      const k = removeVietnameseTones(st.name);
+      if (k && !existingByNormName.has(k)) {
+        existingByNormName.set(k, st);
+      }
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+    const bulkOps = [];
+
+    for (const [key, item] of dedupedRowsMap.entries()) {
+      const existing = existingByNormName.get(key);
+      if (existing) {
+        const updateFields = {};
+        if (item.address && existing.address !== item.address) {
+          updateFields.address = item.address;
+        }
+        if (item.phone && existing.phone !== item.phone) {
+          updateFields.phone = item.phone;
+        }
+        if (Object.keys(updateFields).length > 0) {
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: existing._id },
+              update: { $set: updateFields }
+            }
+          });
+        }
+        updatedCount += 1;
+      } else {
+        bulkOps.push({
+          insertOne: {
+            document: {
+              name: item.name,
+              address: item.address,
+              phone: item.phone,
+              ownerUserId: user._id,
+              enterpriseId: targetEntId,
+              isActive: true
+            }
+          }
         });
         createdCount += 1;
-        processedStores.push(created);
       }
+    }
+
+    if (bulkOps.length > 0) {
+      await RetailStore.bulkWrite(bulkOps, { ordered: false });
     }
 
     res.json({
@@ -1873,7 +2049,6 @@ router.post('/retail-stores/import-stores', async (req, res) => {
       createdCount,
       updatedCount,
       totalProcessed: createdCount + updatedCount,
-      stores: processedStores,
       message: `Import thành công ${createdCount + updatedCount} điểm bán (Thêm mới: ${createdCount}, Cập nhật: ${updatedCount}).`
     });
   } catch (error) {
@@ -2133,15 +2308,26 @@ router.post('/distributor-entry-single', async (req, res) => {
     }
     const cleanCode = serialNumber.trim();
 
-    // Find the label – QR in trên tem chứa qrCode (mã bí mật), nên phải tra cả qrCode
-    const label = await Label.findOne({
+    // Find the label – dùng exact match có index trước, chỉ fallback sang regex khi chưa khớp
+    let label = await Label.findOne({
       $or: [
         { serialNumber: cleanCode },
+        { serialNumber: cleanCode.toUpperCase() },
         { qrCode: cleanCode },
-        { legacyQrCode: { $regex: new RegExp(escapeRegex(cleanCode) + '$', 'i') } },
-        { activeCode: cleanCode }
+        { qrCode: cleanCode.toLowerCase() },
+        { activeCode: cleanCode },
+        { legacyQrCode: cleanCode }
       ]
     }).populate('productId', 'name');
+
+    if (!label && /^\d+$/.test(cleanCode)) {
+      label = await Label.findOne({
+        $or: [
+          { serialNumber: { $regex: new RegExp(escapeRegex(cleanCode) + '$', 'i') } },
+          { legacyQrCode: { $regex: new RegExp(escapeRegex(cleanCode) + '$', 'i') } }
+        ]
+      }).populate('productId', 'name');
+    }
 
     if (!label) {
       return res.status(404).json({ error: 'Không tìm thấy tem nhãn với serial này' });
