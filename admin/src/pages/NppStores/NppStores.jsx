@@ -120,6 +120,7 @@ export default function NppStores() {
   const [importingMatrix, setImportingMatrix] = useState(false);
   const [importMatrixResult, setImportMatrixResult] = useState(null);
   const [importMatrixError, setImportMatrixError] = useState('');
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const loadStores = useCallback(async () => {
     setLoading(true);
@@ -258,14 +259,12 @@ export default function NppStores() {
     setImportStoresError('');
     setImportStoresResult(null);
     try {
+      const fileBase64 = await readFileAsBase64(importStoresFile);
       const parsedRows = await parseExcelFileToRows(importStoresFile);
-      let res;
-      if (parsedRows.length > 0) {
-        res = await api.importRetailStores({ stores: parsedRows });
-      } else {
-        const fileBase64 = await readFileAsBase64(importStoresFile);
-        res = await api.importRetailStores({ fileBase64 });
-      }
+      const res = await api.importRetailStores({
+        fileBase64,
+        stores: parsedRows
+      });
       setImportStoresResult(res);
       loadStores();
     } catch (err) {
@@ -285,27 +284,50 @@ export default function NppStores() {
     setImportMatrixError('');
     setImportMatrixResult(null);
     try {
+      const fileBase64 = await readFileAsBase64(importMatrixFile);
       const parsedRows = await parseExcelFileToRows(importMatrixFile);
       const importDateIso = importMatrixDate ? new Date(`${importMatrixDate}T12:00:00`).toISOString() : new Date().toISOString();
-      let res;
-      if (parsedRows.length > 0) {
-        res = await api.importDistributionMatrix({
-          rows: parsedRows,
-          importDate: importDateIso
-        });
-      } else {
-        const fileBase64 = await readFileAsBase64(importMatrixFile);
-        res = await api.importDistributionMatrix({
-          fileBase64,
-          importDate: importDateIso
-        });
-      }
+      const res = await api.importDistributionMatrix({
+        fileBase64,
+        rows: parsedRows,
+        importDate: importDateIso
+      });
       setImportMatrixResult(res);
       loadStores();
     } catch (err) {
       setImportMatrixError(err.message || 'Lỗi khi import bảng Excel phân phối');
     } finally {
       setImportingMatrix(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const res = await api.exportRetailStoresData();
+      if (!res?.fileBase64) {
+        throw new Error('Không nhận được dữ liệu file Excel từ máy chủ');
+      }
+      const binaryStr = window.atob(res.fileBase64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.fileName || `Diem_Ban_Phan_Phoi_TPCN_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Lỗi khi xuất file Excel Điểm bán & Phân phối: ' + (err.message || err));
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -326,6 +348,17 @@ export default function NppStores() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: '#f59e0b', color: '#fbbf24' }}
+            title="Xuất toàn bộ Danh sách Điểm bán + Bảng Ma trận + Chi tiết Serial ra file Excel"
+          >
+            <Download size={17} />
+            {exportingExcel ? 'Đang xuất Excel...' : 'Xuất Excel Điểm bán & Phân phối'}
+          </button>
           <button
             type="button"
             className="btn btn-secondary"

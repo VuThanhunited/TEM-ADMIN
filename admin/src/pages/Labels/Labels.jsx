@@ -1309,11 +1309,11 @@ export default function Labels() {
         </div>
         {(activeTab === 'batches' || activeTab === 'activate') && (
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {activeTab === 'batches' && batches.some(b => b.theme === 'functional_food' || b.theme === 'food') && (
+            {activeTab === 'batches' && batches.some(b => ['functional_food', 'food', 'staycool', 'vyphyto'].includes(b.theme)) && (
               <button
                 className="btn btn-ghost"
                 onClick={() => {
-                  const tpcnBatch = batches.find(b => b.theme === 'functional_food' || b.theme === 'food');
+                  const tpcnBatch = batches.find(b => ['functional_food', 'food', 'staycool', 'vyphyto'].includes(b.theme));
                   if (tpcnBatch) handleExportDistributionBatch(tpcnBatch);
                 }}
                 disabled={Boolean(exportingDistBatchId)}
@@ -1732,7 +1732,7 @@ export default function Labels() {
                             }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
                               <Edit size={14} className="text-primary"/>
                             </button>
-                            {(batch.theme === 'functional_food' || batch.theme === 'food') && (
+                            {['functional_food', 'food', 'staycool', 'vyphyto'].includes(batch.theme) && (
                               <>
                                 <button className="btn btn-sm btn-ghost" onClick={() => {
                                   setModalError(null);

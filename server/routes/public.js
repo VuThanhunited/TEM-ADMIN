@@ -1856,6 +1856,223 @@ router.get('/retail-stores/template-excel', async (req, res) => {
   }
 });
 
+// Helper: Trích xuất danh sách Điểm bán từ mảng 2 chiều (rawRows) của 1 Sheet Excel
+function extractStoresFromRawRows(rawRows = []) {
+  const results = [];
+  if (!Array.isArray(rawRows) || rawRows.length === 0) return results;
+
+  // Kiểm tra nếu đây là Sheet Ma trận ("Điểm bán --------->" | "Nhà A" | "Nhà B" | "Nhà C")
+  for (let r = 0; r < Math.min(4, rawRows.length); r++) {
+    const row = rawRows[r];
+    if (!Array.isArray(row) || row.length < 2) continue;
+    const col0Norm = removeVietnameseTones(String(row[0] ?? ''));
+    if (col0Norm.startsWith('diem ban') && (String(row[0] ?? '').includes('-') || String(row[0] ?? '').includes('>'))) {
+      for (let c = 1; c < row.length; c++) {
+        const stName = String(row[c] ?? '').trim();
+        const stNorm = removeVietnameseTones(stName);
+        if (
+          stName &&
+          !['ten san pham', 'san pham', 'serial', 'dai serial', 'ghi chu', 'chua co diem ban duoc gan'].includes(stNorm)
+        ) {
+          results.push({ name: stName, address: '', phone: '' });
+        }
+      }
+      if (results.length > 0) return results;
+    }
+  }
+
+  // Quét 15 dòng đầu tiên để tìm dòng tiêu đề cột thực sự
+  let headerRowIdx = -1;
+  let nameIdx = -1;
+  let addrIdx = -1;
+  let phoneIdx = -1;
+
+  for (let r = 0; r < Math.min(15, rawRows.length); r++) {
+    const row = rawRows[r];
+    if (!Array.isArray(row)) continue;
+    const nonEmptyCount = row.filter((c) => String(c ?? '').trim() !== '').length;
+    if (nonEmptyCount < 1) continue;
+
+    const normCells = row.map((c) => removeVietnameseTones(String(c ?? '')));
+    let candNameSpecific = -1;
+    let candNameGeneric = -1;
+    let candAddr = -1;
+    let candPhone = -1;
+
+    normCells.forEach((h, idx) => {
+      if (!h) return;
+      const isIndexCol =
+        h === 'stt' || h === 'tt' || h === 'no' || h === '#' || h.startsWith('stt ') || h === 'ma' || h === 'ma kh' || h === 'ma lo' || h === 'ma serial' || h === 'serial';
+      if (isIndexCol) return;
+
+      const isAddrCol = h.includes('dia chi') || h.includes('address') || h.includes('khu vuc') || h.includes('vi tri');
+      const isPhoneCol = h.includes('dien thoai') || h.includes('sdt') || h.includes('phone') || h.includes('tel') || h.includes('lien he') || h.includes('di dong') || h.includes('hotline');
+      const isProductCol = h.includes('san pham') || h.includes('product') || h.includes('sku') || h.includes('trang thai') || h.includes('luot quet') || h.includes('ngay ban') || h.includes('doanh so') || h.includes('tong sp');
+
+      if (isAddrCol) {
+        if (candAddr === -1) candAddr = idx;
+      } else if (isPhoneCol) {
+        if (candPhone === -1) candPhone = idx;
+      } else if (!isProductCol) {
+        if (
+          candNameSpecific === -1 &&
+          (h.includes('diem ban') ||
+            h.includes('nha thuoc') ||
+            h.includes('quay thuoc') ||
+            h.includes('dai ly') ||
+            h.includes('cua hang') ||
+            h.includes('don vi phan phoi') ||
+            h.includes('ten khach hang') ||
+            h === 'store' ||
+            h === 'store name')
+        ) {
+          candNameSpecific = idx;
+        } else if (
+          candNameGeneric === -1 &&
+          (h.includes('khach hang') || h === 'ten' || h === 'name' || h === 'ho ten' || h.startsWith('ten '))
+        ) {
+          candNameGeneric = idx;
+        }
+      }
+    });
+
+    const chosenNameIdx = candNameSpecific !== -1 ? candNameSpecific : candNameGeneric;
+    if (
+      chosenNameIdx !== -1 &&
+      (candAddr !== -1 ||
+        candPhone !== -1 ||
+        candNameSpecific !== -1 ||
+        normCells.some((c) => c === 'stt' || c === 'tt'))
+    ) {
+      headerRowIdx = r;
+      nameIdx = chosenNameIdx;
+      addrIdx = candAddr;
+      phoneIdx = candPhone;
+      break;
+    }
+  }
+
+  let startRowIdx = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
+  if (nameIdx === -1) {
+    // Không có dòng tiêu đề rõ ràng -> tự động nhận diện cột STT và cột Tên điểm bán
+    const sampleRow = rawRows.find((r) => Array.isArray(r) && r.filter((c) => String(c ?? '').trim() !== '').length >= 2) || rawRows[0];
+    const firstCol0 = removeVietnameseTones(String(sampleRow?.[0] ?? ''));
+    if (firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' || /^\d+$/.test(firstCol0)) {
+      nameIdx = 1;
+      addrIdx = 2;
+      phoneIdx = 3;
+      startRowIdx = firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' ? 1 : 0;
+    } else {
+      nameIdx = 0;
+      addrIdx = 1;
+      phoneIdx = 2;
+      startRowIdx = 0;
+    }
+  } else {
+    // Chỉ tự gán cột kế tiếp nếu dòng tiêu đề không phải bảng Chi tiết phân phối nhiều cột
+    const headerRowLen = (rawRows[headerRowIdx] || []).filter((c) => String(c ?? '').trim() !== '').length;
+    if (headerRowLen <= 5) {
+      if (addrIdx === -1 && phoneIdx !== nameIdx + 1) addrIdx = nameIdx + 1;
+      if (phoneIdx === -1) phoneIdx = addrIdx >= 0 ? addrIdx + 1 : nameIdx + 2;
+    }
+  }
+
+  const ignoredStoreNames = new Set([
+    'ten diem ban',
+    'diem ban',
+    'stt',
+    'tt',
+    'ten nha thuoc',
+    'danh sach diem ban',
+    'chua gan diem ban',
+    'chua co diem ban duoc gan',
+    '—',
+    '-'
+  ]);
+
+  for (let r = startRowIdx; r < rawRows.length; r++) {
+    const row = rawRows[r];
+    if (!Array.isArray(row)) continue;
+    const nameVal = String(row[nameIdx] ?? '').trim();
+    if (!nameVal) continue;
+    const normName = removeVietnameseTones(nameVal);
+    if (!normName || ignoredStoreNames.has(normName) || normName.startsWith('diem ban ---')) {
+      continue;
+    }
+
+    results.push({
+      name: nameVal,
+      address: addrIdx >= 0 ? String(row[addrIdx] ?? '').trim() : '',
+      phone: phoneIdx >= 0 ? normalizeVnPhone(row[phoneIdx]) : ''
+    });
+  }
+
+  return results;
+}
+
+// Helper: Trích xuất danh sách Điểm bán từ mảng Object (khi client parse bằng XLSX.utils.sheet_to_json)
+function extractStoresFromObjectArray(objArray = []) {
+  if (!Array.isArray(objArray) || objArray.length === 0) return [];
+
+  // Nếu phần tử đầu là mảng -> xử lý như mảng 2 chiều
+  if (Array.isArray(objArray[0])) {
+    return extractStoresFromRawRows(objArray);
+  }
+
+  const results = [];
+  const ignoredStoreNames = new Set([
+    'ten diem ban',
+    'diem ban',
+    'stt',
+    'tt',
+    'ten nha thuoc',
+    'danh sach diem ban',
+    'chua gan diem ban',
+    'chua co diem ban duoc gan',
+    '—',
+    '-'
+  ]);
+
+  // Kiểm tra nếu object có sẵn key chuẩn { name, address, phone }
+  const firstObj = objArray[0] || {};
+  const firstKeys = Object.keys(firstObj);
+  const hasDirectName = firstKeys.some((k) => k === 'name' || k === 'storeName');
+  if (hasDirectName) {
+    for (const item of objArray) {
+      if (!item || typeof item !== 'object') continue;
+      const cleanName = String(item.name || item.storeName || '').trim();
+      const normName = removeVietnameseTones(cleanName);
+      if (!cleanName || !normName || ignoredStoreNames.has(normName)) continue;
+      results.push({
+        name: cleanName,
+        address: String(item.address || item.storeAddress || '').trim(),
+        phone: normalizeVnPhone(item.phone || item.storePhone || '')
+      });
+    }
+    if (results.length > 0) return results;
+  }
+
+  // Chuyển mảng Object (có key tiếng Việt hoặc __EMPTY) thành mảng 2 chiều để tái sử dụng bộ nhận diện thông minh
+  const allKeys = [];
+  for (const rowObj of objArray.slice(0, 10)) {
+    if (!rowObj || typeof rowObj !== 'object') continue;
+    for (const k of Object.keys(rowObj)) {
+      if (!allKeys.includes(k)) allKeys.push(k);
+    }
+  }
+  const hasEmptyKeys = allKeys.some((k) => k.startsWith('__EMPTY'));
+  const twoDRows = [];
+  if (!hasEmptyKeys) {
+    twoDRows.push(allKeys);
+  }
+  for (const rowObj of objArray) {
+    if (!rowObj || typeof rowObj !== 'object') continue;
+    twoDRows.push(allKeys.map((k) => rowObj[k] ?? ''));
+  }
+
+  return extractStoresFromRawRows(twoDRows);
+}
+
 // POST /api/public/retail-stores/import-stores - Import danh sách Điểm bán từ giải pháp cũ / Excel (Chỉ áp dụng cho TPCN)
 router.post('/retail-stores/import-stores', async (req, res) => {
   try {
@@ -1869,117 +2086,25 @@ router.post('/retail-stores/import-stores', async (req, res) => {
 
     let rowsToImport = [];
 
-    if (Array.isArray(bodyStores) && bodyStores.length > 0) {
-      rowsToImport = bodyStores;
-    } else if (fileBase64 && typeof fileBase64 === 'string') {
+    if (fileBase64 && typeof fileBase64 === 'string') {
       const base64Clean = fileBase64.replace(/^data:.*?;base64,/, '');
       const buf = Buffer.from(base64Clean, 'base64');
       const wb = XLSX.read(buf, { type: 'buffer' });
-      const firstSheet = wb.Sheets[wb.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '', raw: false });
 
-      if (rawRows.length > 0) {
-        // Quét 10 dòng đầu tiên để tìm dòng tiêu đề cột thực sự (tránh trường hợp dòng 0 là tiêu đề gộp ô "DANH SÁCH ĐIỂM BÁN")
-        let headerRowIdx = -1;
-        let nameIdx = -1;
-        let addrIdx = -1;
-        let phoneIdx = -1;
-
-        for (let r = 0; r < Math.min(10, rawRows.length); r++) {
-          const row = rawRows[r];
-          if (!Array.isArray(row)) continue;
-          const nonEmptyCount = row.filter((c) => String(c ?? '').trim() !== '').length;
-          if (nonEmptyCount < 2) continue;
-
-          const normCells = row.map((c) => removeVietnameseTones(String(c ?? '')));
-          let candName = -1;
-          let candAddr = -1;
-          let candPhone = -1;
-
-          normCells.forEach((h, idx) => {
-            if (!h) return;
-            const isIndexCol =
-              h === 'stt' || h === 'tt' || h === 'no' || h === '#' || h.startsWith('stt ') || h === 'ma' || h === 'ma kh';
-            if (
-              !isIndexCol &&
-              candName === -1 &&
-              (h.includes('diem ban') ||
-                h.includes('nha thuoc') ||
-                h.includes('quay thuoc') ||
-                h.includes('dai ly') ||
-                h.includes('cua hang') ||
-                h.includes('khach hang') ||
-                h.includes('ten') ||
-                h.includes('name'))
-            ) {
-              candName = idx;
-            } else if (
-              candAddr === -1 &&
-              (h.includes('dia chi') || h.includes('address') || h.includes('khu vuc') || h.includes('tinh') || h.includes('vi tri'))
-            ) {
-              candAddr = idx;
-            } else if (
-              candPhone === -1 &&
-              (h.includes('dien thoai') || h.includes('sdt') || h.includes('phone') || h.includes('tel') || h.includes('lien he') || h.includes('di dong'))
-            ) {
-              candPhone = idx;
-            }
-          });
-
-          if (candName !== -1 && (candAddr !== -1 || candPhone !== -1 || normCells.some((c) => c === 'stt' || c === 'tt'))) {
-            headerRowIdx = r;
-            nameIdx = candName;
-            addrIdx = candAddr;
-            phoneIdx = candPhone;
-            break;
-          }
-        }
-
-        let startRowIdx = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
-        if (nameIdx === -1) {
-          // Không có dòng tiêu đề rõ ràng -> tự động nhận diện cột STT và cột Tên điểm bán
-          const sampleRow = rawRows.find((r) => Array.isArray(r) && r.filter((c) => String(c ?? '').trim() !== '').length >= 2) || rawRows[0];
-          const firstCol0 = removeVietnameseTones(String(sampleRow?.[0] ?? ''));
-          if (firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' || /^\d+$/.test(firstCol0)) {
-            nameIdx = 1;
-            addrIdx = 2;
-            phoneIdx = 3;
-            startRowIdx = firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' ? 1 : 0;
-          } else {
-            nameIdx = 0;
-            addrIdx = 1;
-            phoneIdx = 2;
-            startRowIdx = 0;
-          }
-        } else {
-          // Nếu có cột Tên nhưng chưa rõ cột Địa chỉ / SĐT thì lấy các cột kế tiếp
-          if (addrIdx === -1 && phoneIdx !== nameIdx + 1) addrIdx = nameIdx + 1;
-          if (phoneIdx === -1) phoneIdx = addrIdx >= 0 ? addrIdx + 1 : nameIdx + 2;
-        }
-
-        for (let r = startRowIdx; r < rawRows.length; r++) {
-          const row = rawRows[r];
-          if (!Array.isArray(row)) continue;
-          const nameVal = String(row[nameIdx] ?? '').trim();
-          if (!nameVal) continue;
-          const normName = removeVietnameseTones(nameVal);
-          if (
-            normName === 'ten diem ban' ||
-            normName === 'diem ban' ||
-            normName === 'stt' ||
-            normName === 'ten nha thuoc' ||
-            normName === 'danh sach diem ban'
-          ) {
-            continue;
-          }
-
-          rowsToImport.push({
-            name: nameVal,
-            address: addrIdx >= 0 ? String(row[addrIdx] ?? '').trim() : '',
-            phone: phoneIdx >= 0 ? normalizeVnPhone(row[phoneIdx]) : ''
-          });
+      // Duyệt qua các sheet để lấy toàn bộ Điểm bán hợp lệ
+      for (const sheetName of wb.SheetNames || []) {
+        const sheet = wb.Sheets[sheetName];
+        if (!sheet) continue;
+        const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+        const extracted = extractStoresFromRawRows(rawRows);
+        if (extracted.length > 0) {
+          rowsToImport.push(...extracted);
         }
       }
+    }
+
+    if (rowsToImport.length === 0 && Array.isArray(bodyStores) && bodyStores.length > 0) {
+      rowsToImport = extractStoresFromObjectArray(bodyStores);
     }
 
     if (rowsToImport.length === 0) {
@@ -2071,7 +2196,190 @@ router.post('/retail-stores/import-stores', async (req, res) => {
   }
 });
 
-// POST /api/public/retail-stores/import-matrix - Import bảng Excel phân phối Ma trận (Điểm bán × Sản phẩm × Dải Serial)
+// GET /api/public/retail-stores/export-data - Lấy toàn bộ dữ liệu Điểm bán & Serial đã phân phối để xuất file Excel 3 Sheet
+router.get('/retail-stores/export-data', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const { enterpriseId = '' } = req.query;
+    const isAdminAll = (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) && !enterpriseId;
+    const targetEntId = enterpriseId || user.enterpriseId?._id || user.enterpriseId || null;
+    const storeFilter = await buildRetailStoreFilter(user, decoded, enterpriseId);
+
+    const stores = await RetailStore.find(storeFilter).sort({ createdAt: -1 }).lean();
+    const entIds = isAdminAll ? [] : await getRelatedEnterpriseIds(user);
+    if (!isAdminAll && targetEntId && !entIds.some((id) => String(id) === String(targetEntId))) {
+      entIds.push(targetEntId);
+    }
+
+    const storeIds = stores.map((s) => s._id);
+    const storeNames = [...new Set(stores.map((s) => String(s.name || '').trim()).filter(Boolean))];
+
+    const labelOr = [
+      ...(storeIds.length > 0 ? [{ storeId: { $in: storeIds } }] : []),
+      ...(storeNames.length > 0
+        ? [
+            { distributorName: { $in: storeNames } },
+            { 'ownerInfo.name': { $in: storeNames } }
+          ]
+        : []),
+      { distributorName: { $nin: [null, ''] } }
+    ];
+
+    const labelQuery = entIds.length > 0
+      ? { enterpriseId: { $in: entIds }, $or: labelOr }
+      : { $or: labelOr };
+
+    const assignedLabels = await Label.find(labelQuery)
+      .populate('productId', 'name price sku category')
+      .populate('batchId', 'batchCode')
+      .sort({ serialNumber: 1 })
+      .select('serialNumber productId batchId storeId enterpriseId distributorName distributorAddress ownerCode distributedAt ownerInfo status scanCount updatedAt')
+      .lean();
+
+    const prodFilter = entIds.length > 0 ? { enterpriseId: { $in: entIds } } : {};
+    const products = await Product.find(prodFilter).select('_id name sku price category').lean();
+
+    // Tổng hợp thống kê từng Điểm bán để đưa vào Sheet 1
+    const storeStatsMap = new Map();
+    for (const st of stores) {
+      storeStatsMap.set(removeVietnameseTones(st.name), { count: 0, revenue: 0 });
+    }
+
+    const storeSet = new Set(stores.map((s) => String(s.name || '').trim()).filter(Boolean));
+    const productSet = new Set(products.map((p) => String(p.name || '').trim()).filter(Boolean));
+    const cellSerialsMap = new Map();
+
+    assignedLabels.forEach((lbl) => {
+      const stName = String(lbl.distributorName || lbl.ownerInfo?.name || '').trim();
+      const prodName = String(lbl.productId?.name || 'Sản phẩm').trim();
+      const unitPrice = Number(lbl.productId?.price) || 0;
+      if (prodName) productSet.add(prodName);
+      if (stName) {
+        storeSet.add(stName);
+        const stNorm = removeVietnameseTones(stName);
+        if (!storeStatsMap.has(stNorm)) {
+          storeStatsMap.set(stNorm, { count: 0, revenue: 0 });
+        }
+        const stat = storeStatsMap.get(stNorm);
+        stat.count += 1;
+        stat.revenue += unitPrice;
+
+        const key = `${prodName}|||${stName}`;
+        if (!cellSerialsMap.has(key)) cellSerialsMap.set(key, []);
+        cellSerialsMap.get(key).push(String(lbl.serialNumber).trim());
+      }
+    });
+
+    const compressSerialRanges = (serialArr = []) => {
+      if (!serialArr.length) return '';
+      const sorted = [...new Set(serialArr)].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const ranges = [];
+      let rangeStart = sorted[0];
+      let prev = sorted[0];
+      const isNextConsecutive = (s1, s2) => {
+        const m1 = s1.match(/^(.*?)(\d+)$/);
+        const m2 = s2.match(/^(.*?)(\d+)$/);
+        if (!m1 || !m2 || m1[1] !== m2[1]) return false;
+        return parseInt(m2[2], 10) - parseInt(m1[2], 10) === 1;
+      };
+      for (let i = 1; i < sorted.length; i++) {
+        const cur = sorted[i];
+        if (isNextConsecutive(prev, cur)) {
+          prev = cur;
+        } else {
+          ranges.push(rangeStart === prev ? rangeStart : `${rangeStart}-${prev}`);
+          rangeStart = cur;
+          prev = cur;
+        }
+      }
+      ranges.push(rangeStart === prev ? rangeStart : `${rangeStart}-${prev}`);
+      return ranges.join('; ');
+    };
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Danh sách Điểm bán (có thể dùng để Import lại vào Import DS Điểm bán)
+    const storeRows = stores.map((st, idx) => {
+      const stat = storeStatsMap.get(removeVietnameseTones(st.name)) || { count: 0, revenue: 0 };
+      return {
+        'STT': idx + 1,
+        'Tên điểm bán': st.name || '',
+        'Địa chỉ': st.address || '',
+        'Số điện thoại': st.phone || '',
+        'Tổng SP đã gán': stat.count,
+        'Doanh số (VNĐ)': stat.revenue
+      };
+    });
+    const wsStores = XLSX.utils.json_to_sheet(
+      storeRows.length > 0
+        ? storeRows
+        : [{ 'STT': 1, 'Tên điểm bán': '', 'Địa chỉ': '', 'Số điện thoại': '', 'Tổng SP đã gán': 0, 'Doanh số (VNĐ)': 0 }]
+    );
+    wsStores['!cols'] = [{ wch: 6 }, { wch: 32 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, wsStores, 'Danh sách Điểm bán');
+
+    // Sheet 2: Bảng Ma trận Điểm bán (có thể dùng để Import lại vào Import Bảng Phân phối)
+    const storeList = Array.from(storeSet);
+    const productList = Array.from(productSet);
+    const matrixHeaderRow1 = ['Điểm bán --------->', ...(storeList.length > 0 ? storeList : ['Nhà A'])];
+    const matrixHeaderRow2 = ['Tên sản phẩm', ...(storeList.length > 0 ? storeList.map(() => '') : [''])];
+    const matrixBodyRows = (productList.length > 0 ? productList : ['Sản phẩm 1']).map((prodName) => {
+      if (storeList.length === 0) return [prodName, ''];
+      return [
+        prodName,
+        ...storeList.map((stName) => compressSerialRanges(cellSerialsMap.get(`${prodName}|||${stName}`) || []))
+      ];
+    });
+    const wsMatrix = XLSX.utils.aoa_to_sheet([matrixHeaderRow1, matrixHeaderRow2, ...matrixBodyRows]);
+    wsMatrix['!cols'] = [{ wch: 28 }, ...(storeList.length > 0 ? storeList.map(() => ({ wch: 24 })) : [{ wch: 24 }])];
+    XLSX.utils.book_append_sheet(wb, wsMatrix, 'Bảng Ma trận Điểm bán');
+
+    // Sheet 3: Chi tiết phân phối từng mã Serial
+    const detailRows = assignedLabels.map((lbl, idx) => {
+      const stName = lbl.distributorName || lbl.ownerInfo?.name || '';
+      const stAddr = lbl.distributorAddress || lbl.ownerInfo?.address || '';
+      const stPhone = lbl.ownerInfo?.phone || '';
+      const soldDateRaw = lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt;
+      return {
+        'STT': idx + 1,
+        'Mã lô': lbl.batchId?.batchCode || '',
+        'Tên sản phẩm': lbl.productId?.name || 'Sản phẩm',
+        'Mã Serial': lbl.serialNumber || '',
+        'Điểm bán': stName,
+        'Địa chỉ điểm bán': stAddr,
+        'SĐT điểm bán': stPhone,
+        'Ngày bán / gán': soldDateRaw ? new Date(soldDateRaw).toLocaleString('vi-VN') : ''
+      };
+    });
+    const wsDetail = XLSX.utils.json_to_sheet(
+      detailRows.length > 0
+        ? detailRows
+        : [{ 'STT': 1, 'Mã lô': '', 'Tên sản phẩm': '', 'Mã Serial': '', 'Điểm bán': '', 'Địa chỉ điểm bán': '', 'SĐT điểm bán': '', 'Ngày bán / gán': '' }]
+    );
+    wsDetail['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 28 }, { wch: 36 }, { wch: 16 }, { wch: 22 }];
+    XLSX.utils.book_append_sheet(wb, wsDetail, 'Chi tiết phân phối');
+
+    const excelBuf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const fileBase64 = excelBuf.toString('base64');
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    res.json({
+      success: true,
+      fileName: `Diem_Ban_Phan_Phoi_TPCN_${dateStr}.xlsx`,
+      fileBase64,
+      storesCount: stores.length,
+      assignedCount: assignedLabels.length
+    });
+  } catch (error) {
+    console.error('Export retail stores data error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xuất dữ liệu điểm bán: ' + error.message });
+  }
+});
+
+// POST /api/public/retail-stores/import-matrix - Import bảng Excel phân phối Ma trận (Điểm bán × Sản phẩm × Dải Serial) hoặc Bảng Chi tiết
 // Lưu ý: Ngày import sẽ là ngày bán / gán sản phẩm đó (distributedAt)
 router.post('/retail-stores/import-matrix', async (req, res) => {
   try {
@@ -2080,9 +2388,10 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
     const { user, decoded } = authCtx;
 
     const { fileBase64, rows: bodyRows, importDate: rawImportDate, enterpriseId } = req.body || {};
+    const isAdminAll = (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) && !enterpriseId;
     const targetEntId = enterpriseId || user.enterpriseId?._id || user.enterpriseId || null;
-    const entIds = await getRelatedEnterpriseIds(user);
-    if (targetEntId && !entIds.some(id => String(id) === String(targetEntId))) {
+    const entIds = isAdminAll ? [] : await getRelatedEnterpriseIds(user);
+    if (!isAdminAll && targetEntId && !entIds.some(id => String(id) === String(targetEntId))) {
       entIds.push(targetEntId);
     }
 
@@ -2090,24 +2399,52 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
     const soldAtDate = rawImportDate ? new Date(rawImportDate) : new Date();
     const validSoldDate = Number.isNaN(soldAtDate.getTime()) ? new Date() : soldAtDate;
 
-    let rawRows = [];
-    if (Array.isArray(bodyRows) && bodyRows.length > 0) {
-      rawRows = bodyRows;
-    } else if (fileBase64 && typeof fileBase64 === 'string') {
+    let allSheetsRows = [];
+    if (fileBase64 && typeof fileBase64 === 'string') {
       const base64Clean = fileBase64.replace(/^data:.*?;base64,/, '');
       const buf = Buffer.from(base64Clean, 'base64');
       const wb = XLSX.read(buf, { type: 'buffer' });
-      const firstSheet = wb.Sheets[wb.SheetNames[0]];
-      rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+      for (const sName of wb.SheetNames || []) {
+        const ws = wb.Sheets[sName];
+        if (!ws) continue;
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+        if (Array.isArray(rows) && rows.length >= 2) {
+          allSheetsRows.push({ sheetName: sName, rows });
+        }
+      }
     }
 
-    if (!rawRows || rawRows.length < 2) {
+    if (allSheetsRows.length === 0 && Array.isArray(bodyRows) && bodyRows.length > 0) {
+      if (Array.isArray(bodyRows[0])) {
+        allSheetsRows.push({ sheetName: 'Sheet1', rows: bodyRows });
+      } else if (typeof bodyRows[0] === 'object' && bodyRows[0] !== null) {
+        const allKeys = [];
+        for (const rowObj of bodyRows.slice(0, 10)) {
+          if (!rowObj || typeof rowObj !== 'object') continue;
+          for (const k of Object.keys(rowObj)) {
+            if (!allKeys.includes(k)) allKeys.push(k);
+          }
+        }
+        const hasEmptyKeys = allKeys.some((k) => k.startsWith('__EMPTY'));
+        const twoD = [];
+        if (!hasEmptyKeys) {
+          twoD.push(allKeys.map((k) => k.replace(/_\d+$/, '')));
+        }
+        for (const rowObj of bodyRows) {
+          if (!rowObj || typeof rowObj !== 'object') continue;
+          twoD.push(allKeys.map((k) => rowObj[k] ?? ''));
+        }
+        allSheetsRows.push({ sheetName: 'Sheet1', rows: twoD });
+      }
+    }
+
+    if (allSheetsRows.length === 0) {
       return res.status(400).json({ error: 'File Excel không có đủ dữ liệu. Vui lòng kiểm tra lại cấu trúc bảng!' });
     }
 
     // Lấy danh sách Sản phẩm và Điểm bán của doanh nghiệp
     const prodFilter = entIds.length > 0 ? { enterpriseId: { $in: entIds } } : {};
-    const enterpriseProducts = await Product.find(prodFilter).select('_id name sku price category').lean();
+    const enterpriseProducts = await Product.find(prodFilter).select('_id name sku price category enterpriseId').lean();
     const storeFilter = await buildRetailStoreFilter(user, decoded, targetEntId);
     const existingStores = await RetailStore.find(storeFilter);
     const storeMap = new Map();
@@ -2115,17 +2452,40 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
       storeMap.set(removeVietnameseTones(st.name), st);
     }
 
-    const getOrCreateStore = async (rawStoreName) => {
+    const getOrCreateStore = async (rawStoreName, rawAddr = '', rawPhone = '', inferredEntId = null) => {
       const cleanName = String(rawStoreName || '').trim();
       if (!cleanName) return null;
       const key = removeVietnameseTones(cleanName);
-      if (storeMap.has(key)) return storeMap.get(key);
+      if (
+        !key ||
+        ['chua gan diem ban', 'chua co diem ban duoc gan', 'ten diem ban', 'diem ban', '—', '-'].includes(key)
+      ) {
+        return null;
+      }
+      const cleanAddr = String(rawAddr || '').trim();
+      const cleanPhone = normalizeVnPhone(rawPhone);
+      if (storeMap.has(key)) {
+        const existing = storeMap.get(key);
+        let changed = false;
+        if (cleanAddr && !existing.address) {
+          existing.address = cleanAddr;
+          changed = true;
+        }
+        if (cleanPhone && !existing.phone) {
+          existing.phone = cleanPhone;
+          changed = true;
+        }
+        if (changed && typeof existing.save === 'function') {
+          await existing.save();
+        }
+        return existing;
+      }
       const newStore = await RetailStore.create({
         name: cleanName,
-        address: '',
-        phone: '',
+        address: cleanAddr,
+        phone: cleanPhone,
         ownerUserId: user._id,
-        enterpriseId: targetEntId,
+        enterpriseId: targetEntId || inferredEntId || null,
         isActive: true
       });
       storeMap.set(key, newStore);
@@ -2136,138 +2496,260 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
       const cleanP = String(rawProdName || '').trim();
       if (!cleanP) return null;
       const normP = removeVietnameseTones(cleanP);
+      if (['chua gan san pham', 'san pham', 'ten san pham'].includes(normP)) return null;
       // 1. Khớp chính xác không dấu
       let found = enterpriseProducts.find(p => removeVietnameseTones(p.name) === normP || removeVietnameseTones(p.sku || '') === normP);
       if (found) return found;
       // 2. Khớp chứa tên
       found = enterpriseProducts.find(p => {
         const np = removeVietnameseTones(p.name);
-        return np.includes(normP) || normP.includes(np);
+        return np && normP && (np.includes(normP) || normP.includes(np));
       });
       return found || null;
     };
 
-    // Tìm dòng tiêu đề Điểm bán (VD: Hàng 1: "Điểm bán --------->" | "Nhà A" | "Nhà B" | "Nhà C")
-    let headerRowIndex = 0;
-    for (let r = 0; r < Math.min(5, rawRows.length); r++) {
-      const nonEmptyCols = (rawRows[r] || []).filter((c, idx) => idx >= 1 && String(c || '').trim() !== '');
-      if (nonEmptyCols.length > 0) {
-        headerRowIndex = r;
-        break;
-      }
-    }
-
-    const headerRow = rawRows[headerRowIndex] || [];
-    const storeColumns = [];
-    for (let c = 1; c < headerRow.length; c++) {
-      const colName = String(headerRow[c] || '').trim();
-      if (!colName) continue;
-      const normCol = removeVietnameseTones(colName);
-      if (['ten san pham', 'san pham', 'serial', 'dai serial', 'ghi chu'].includes(normCol)) continue;
-      storeColumns.push({ colIdx: c, storeName: colName });
-    }
-
-    if (storeColumns.length === 0) {
-      return res.status(400).json({
-        error: 'Không tìm thấy các cột Điểm bán ở dòng đầu tiên (VD: Điểm bán ---> | Nhà A | Nhà B | Nhà C).'
-      });
-    }
-
+    // Helper: Gán dải serial cho 1 Điểm bán
     let totalAssignedLabels = 0;
     let rangesProcessed = 0;
     const summaryDetails = [];
+    const touchedStoresSet = new Set();
 
-    for (let r = headerRowIndex + 1; r < rawRows.length; r++) {
-      const row = rawRows[r];
-      if (!Array.isArray(row)) continue;
-      const col0 = String(row[0] || '').trim();
-      const normCol0 = removeVietnameseTones(col0);
-      // Bỏ qua dòng phụ "Tên sản phẩm" hoặc dòng trống tên sản phẩm nếu tất cả cột trống
-      if (normCol0 === 'ten san pham' || normCol0.startsWith('diem ban')) {
-        continue;
+    const assignSerialCellToStore = async (rawCell, storeDoc, matchedProduct, fallbackProdName) => {
+      const segments = String(rawCell || '').split(/[,;\n\r]+/).map(s => s.trim()).filter(Boolean);
+      for (const seg of segments) {
+        const parts = seg.split(/\s*(?:->|→|~|–|—|-|\bden\b|\bđến\b)\s*/i).map(p => p.trim()).filter(Boolean);
+        const sStart = parts[0];
+        const sEnd = parts.length > 1 ? resolveEndSerialFromStart(sStart, parts[parts.length - 1]) : sStart;
+        if (!sStart) continue;
+
+        const rangeOr = buildSmartSerialRangeOr(sStart, sEnd);
+        if (rangeOr.length === 0) continue;
+
+        const lblQuery = {
+          ...(entIds.length > 0 ? { enterpriseId: { $in: entIds } } : {}),
+          $or: rangeOr
+        };
+
+        let rawLabelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId enterpriseId').lean();
+        let labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
+
+        // Nếu không khớp theo enterpriseId của tài khoản hiện tại (VD: Admin đang dùng tài khoản có gắn DN khác), thử tìm theo serialNumber toàn hệ thống
+        if (labelsInSeg.length === 0 && (decoded.role === 'ADMIN' || decoded.isAdminImpersonating)) {
+          rawLabelsInSeg = await Label.find({ $or: rangeOr }).select('_id serialNumber productId enterpriseId').lean();
+          labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
+        }
+
+        if (labelsInSeg.length === 0) {
+          summaryDetails.push({
+            storeName: storeDoc.name,
+            productName: matchedProduct?.name || fallbackProdName || 'Chưa rõ',
+            range: `${sStart}${sEnd !== sStart ? ' - ' + sEnd : ''}`,
+            assignedCount: 0,
+            matchedLabels: 0,
+            note: 'Không tìm thấy serial trong kho tem của doanh nghiệp'
+          });
+          continue;
+        }
+
+        // Nếu điểm bán mới tạo chưa có enterpriseId thì cập nhật từ tem
+        if (!storeDoc.enterpriseId && labelsInSeg[0]?.enterpriseId && typeof storeDoc.save === 'function') {
+          storeDoc.enterpriseId = labelsInSeg[0].enterpriseId;
+          await storeDoc.save();
+        }
+
+        const bulkOps = labelsInSeg.map((lbl) => {
+          const setFields = {
+            storeId: storeDoc._id,
+            distributorName: storeDoc.name,
+            distributorAddress: storeDoc.address || '',
+            distributedAt: validSoldDate,
+            ownerCode: lbl.serialNumber,
+            'ownerInfo.name': storeDoc.name,
+            'ownerInfo.address': storeDoc.address || '',
+            'ownerInfo.phone': storeDoc.phone || '',
+            'ownerInfo.activatedSerial': lbl.serialNumber,
+            'ownerInfo.activatedAt': validSoldDate,
+            'ownerInfo.activatedBy': user._id,
+            status: 'ACTIVE',
+            isActive: true
+          };
+          if (matchedProduct && !lbl.productId) {
+            setFields.productId = matchedProduct._id;
+          }
+          return {
+            updateOne: {
+              filter: { _id: lbl._id },
+              update: { $set: setFields }
+            }
+          };
+        });
+
+        if (bulkOps.length > 0) {
+          await Label.bulkWrite(bulkOps);
+          totalAssignedLabels += bulkOps.length;
+          rangesProcessed += 1;
+          touchedStoresSet.add(String(storeDoc._id));
+          summaryDetails.push({
+            storeName: storeDoc.name,
+            productName: matchedProduct?.name || fallbackProdName || 'Sản phẩm',
+            range: `${sStart}${sEnd !== sStart ? ' - ' + sEnd : ''}`,
+            assignedCount: bulkOps.length,
+            matchedLabels: bulkOps.length
+          });
+        }
+      }
+    };
+
+    // Ưu tiên tìm Sheet có định dạng Ma trận ("Điểm bán --------->" | "Nhà A" | "Nhà B")
+    let chosenMatrixSheet = null;
+    let chosenTabularSheet = null;
+
+    for (const sItem of allSheetsRows) {
+      const sNameNorm = removeVietnameseTones(sItem.sheetName || '');
+      const r0 = sItem.rows[0] || [];
+      const r0Norms = r0.map((c) => removeVietnameseTones(String(c ?? '')));
+
+      const isTabular = r0Norms.some((h) => h === 'ma serial' || h === 'serial' || h === 'seri' || h === 'dai serial') &&
+        r0Norms.some((h) => h.includes('diem ban') || h.includes('nha thuoc') || h.includes('dai ly'));
+
+      if (isTabular) {
+        if (!chosenTabularSheet) chosenTabularSheet = sItem;
+      } else if (
+        sNameNorm.includes('ma tran') ||
+        sNameNorm.includes('matrix') ||
+        (r0Norms[0] && r0Norms[0].startsWith('diem ban'))
+      ) {
+        if (!chosenMatrixSheet) chosenMatrixSheet = sItem;
+      }
+    }
+
+    if (!chosenMatrixSheet && !chosenTabularSheet) {
+      chosenMatrixSheet = allSheetsRows[0];
+    }
+
+    // Trường hợp 1: Xử lý Sheet Ma trận
+    if (chosenMatrixSheet) {
+      const rawRows = chosenMatrixSheet.rows;
+      let headerRowIndex = 0;
+      for (let r = 0; r < Math.min(5, rawRows.length); r++) {
+        const nonEmptyCols = (rawRows[r] || []).filter((c, idx) => idx >= 1 && String(c || '').trim() !== '');
+        if (nonEmptyCols.length > 0) {
+          headerRowIndex = r;
+          break;
+        }
       }
 
-      const matchedProduct = matchProductByName(col0);
+      const headerRow = rawRows[headerRowIndex] || [];
+      const storeColumns = [];
+      for (let c = 1; c < headerRow.length; c++) {
+        const colName = String(headerRow[c] || '').trim();
+        if (!colName) continue;
+        const normCol = removeVietnameseTones(colName);
+        if (
+          [
+            'ten san pham',
+            'san pham',
+            'serial',
+            'ma serial',
+            'dai serial',
+            'ghi chu',
+            'dia chi',
+            'dia chi diem ban',
+            'sdt',
+            'sdt diem ban',
+            'so dien thoai',
+            'ngay ban',
+            'trang thai',
+            'so luot quet',
+            'chua co diem ban duoc gan'
+          ].includes(normCol)
+        ) {
+          continue;
+        }
+        storeColumns.push({ colIdx: c, storeName: colName });
+      }
 
-      for (const sc of storeColumns) {
-        const rawCell = String(row[sc.colIdx] || '').trim();
-        if (!rawCell) continue;
+      if (storeColumns.length > 0) {
+        for (let r = headerRowIndex + 1; r < rawRows.length; r++) {
+          const row = rawRows[r];
+          if (!Array.isArray(row)) continue;
+          const col0 = String(row[0] || '').trim();
+          const normCol0 = removeVietnameseTones(col0);
 
-        const storeDoc = await getOrCreateStore(sc.storeName);
-        if (!storeDoc) continue;
+          // Nếu dòng có cột 0 là "Tên sản phẩm" nhưng không có ô serial nào có dữ liệu thì bỏ qua
+          const hasAnyCellData = storeColumns.some((sc) => String(row[sc.colIdx] || '').trim() !== '');
+          if (!hasAnyCellData) continue;
+          if (normCol0.startsWith('diem ban')) continue;
 
-        // Tách nhiều đoạn serial trong 1 ô (ngăn cách bởi dấu phẩy, chấm phẩy hoặc xuống dòng)
-        const segments = rawCell.split(/[,;\n\r]+/).map(s => s.trim()).filter(Boolean);
-        for (const seg of segments) {
-          // Tách serial đầu - serial cuối (VD: "00001-000010" hoặc "00101 - 001910" hoặc "00025065")
-          const parts = seg.split(/\s*(?:->|→|~|–|—|-|\bden\b|\bđến\b)\s*/i).map(p => p.trim()).filter(Boolean);
-          const sStart = parts[0];
-          const sEnd = parts.length > 1 ? resolveEndSerialFromStart(sStart, parts[parts.length - 1]) : sStart;
-          if (!sStart) continue;
+          const matchedProduct = normCol0 === 'ten san pham' ? null : matchProductByName(col0);
 
-          const rangeOr = buildSmartSerialRangeOr(sStart, sEnd);
-          if (rangeOr.length === 0) continue;
+          for (const sc of storeColumns) {
+            const rawCell = String(row[sc.colIdx] || '').trim();
+            if (!rawCell) continue;
 
-          const lblQuery = {
-            ...(entIds.length > 0 ? { enterpriseId: { $in: entIds } } : {}),
-            $or: rangeOr
-          };
+            const storeDoc = await getOrCreateStore(sc.storeName);
+            if (!storeDoc) continue;
 
-          const rawLabelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId').lean();
-          const labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
-          if (labelsInSeg.length === 0) {
-            summaryDetails.push({
-              storeName: storeDoc.name,
-              productName: matchedProduct?.name || col0 || 'Chưa rõ',
-              range: `${sStart}${sEnd !== sStart ? ' - ' + sEnd : ''}`,
-              assignedCount: 0,
-              matchedLabels: 0,
-              note: 'Không tìm thấy serial trong kho tem của doanh nghiệp'
-            });
-            continue;
-          }
-
-          const bulkOps = labelsInSeg.map((lbl) => {
-            const setFields = {
-              storeId: storeDoc._id,
-              distributorName: storeDoc.name,
-              distributorAddress: storeDoc.address || '',
-              distributedAt: validSoldDate,
-              ownerCode: lbl.serialNumber,
-              'ownerInfo.name': storeDoc.name,
-              'ownerInfo.address': storeDoc.address || '',
-              'ownerInfo.phone': storeDoc.phone || '',
-              'ownerInfo.activatedSerial': lbl.serialNumber,
-              'ownerInfo.activatedAt': validSoldDate,
-              'ownerInfo.activatedBy': user._id,
-              status: 'ACTIVE',
-              isActive: true
-            };
-            if (matchedProduct && !lbl.productId) {
-              setFields.productId = matchedProduct._id;
-            }
-            return {
-              updateOne: {
-                filter: { _id: lbl._id },
-                update: { $set: setFields }
-              }
-            };
-          });
-
-          if (bulkOps.length > 0) {
-            await Label.bulkWrite(bulkOps);
-            totalAssignedLabels += bulkOps.length;
-            rangesProcessed += 1;
-            summaryDetails.push({
-              storeName: storeDoc.name,
-              productName: matchedProduct?.name || col0 || 'Sản phẩm',
-              range: `${sStart}${sEnd !== sStart ? ' - ' + sEnd : ''}`,
-              assignedCount: bulkOps.length,
-              matchedLabels: bulkOps.length
-            });
+            await assignSerialCellToStore(rawCell, storeDoc, matchedProduct, normCol0 === 'ten san pham' ? 'Sản phẩm' : col0);
           }
         }
       }
+    }
+
+    // Trường hợp 2: Nếu chưa gán được từ Sheet Ma trận và có Sheet Chi tiết dạng bảng (Cột Serial + Cột Điểm bán)
+    if (totalAssignedLabels === 0 && chosenTabularSheet) {
+      const rawRows = chosenTabularSheet.rows;
+      let headerIdx = 0;
+      let serialCol = -1;
+      let serialEndCol = -1;
+      let storeCol = -1;
+      let addrCol = -1;
+      let phoneCol = -1;
+      let prodCol = -1;
+
+      for (let r = 0; r < Math.min(10, rawRows.length); r++) {
+        const row = rawRows[r];
+        if (!Array.isArray(row)) continue;
+        const norms = row.map((c) => removeVietnameseTones(String(c ?? '')));
+        const sIdx = norms.findIndex((h) => h === 'ma serial' || h === 'serial' || h === 'seri' || h === 'dai serial' || h === 'serial dau' || h === 'tu serial');
+        const stIdx = norms.findIndex((h) => (h.includes('diem ban') || h.includes('nha thuoc') || h.includes('dai ly')) && !h.includes('dia chi') && !h.includes('sdt') && !h.includes('dien thoai'));
+        if (sIdx !== -1 && stIdx !== -1) {
+          headerIdx = r;
+          serialCol = sIdx;
+          storeCol = stIdx;
+          serialEndCol = norms.findIndex((h) => h === 'serial cuoi' || h === 'den serial');
+          addrCol = norms.findIndex((h) => h.includes('dia chi'));
+          phoneCol = norms.findIndex((h) => h.includes('sdt') || h.includes('dien thoai') || h.includes('phone'));
+          prodCol = norms.findIndex((h) => h.includes('san pham') || h === 'product');
+          break;
+        }
+      }
+
+      if (serialCol !== -1 && storeCol !== -1) {
+        for (let r = headerIdx + 1; r < rawRows.length; r++) {
+          const row = rawRows[r];
+          if (!Array.isArray(row)) continue;
+          const stName = String(row[storeCol] ?? '').trim();
+          const sVal = String(row[serialCol] ?? '').trim();
+          if (!stName || !sVal) continue;
+          const sEndVal = serialEndCol >= 0 ? String(row[serialEndCol] ?? '').trim() : '';
+          const combinedSerial = sEndVal ? `${sVal}-${sEndVal}` : sVal;
+          const addrVal = addrCol >= 0 ? String(row[addrCol] ?? '').trim() : '';
+          const phoneVal = phoneCol >= 0 ? String(row[phoneCol] ?? '').trim() : '';
+          const prodVal = prodCol >= 0 ? String(row[prodCol] ?? '').trim() : '';
+
+          const storeDoc = await getOrCreateStore(stName, addrVal, phoneVal);
+          if (!storeDoc) continue;
+          const matchedProduct = matchProductByName(prodVal);
+          await assignSerialCellToStore(combinedSerial, storeDoc, matchedProduct, prodVal);
+        }
+      }
+    }
+
+    if (rangesProcessed === 0 && summaryDetails.length === 0) {
+      return res.status(400).json({
+        error: 'Không tìm thấy dữ liệu phân phối Điểm bán × Serial hợp lệ trong file Excel. Vui lòng kiểm tra lại cột Điểm bán và mã Serial!'
+      });
     }
 
     res.json({
@@ -2275,10 +2757,10 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
       totalAssignedLabels,
       totalAssignedSerials: totalAssignedLabels,
       rangesProcessed,
-      storesProcessed: storeColumns.length,
+      storesProcessed: touchedStoresSet.size,
       importDate: validSoldDate,
       details: summaryDetails,
-      message: `Đã import bảng phân phối thành công: Gán ${totalAssignedLabels} mã Serial (${rangesProcessed} đoạn) cho các Điểm bán. Ngày bán/gán: ${validSoldDate.toLocaleDateString('vi-VN')}.`
+      message: `Đã import bảng phân phối thành công: Gán ${totalAssignedLabels} mã Serial (${rangesProcessed} đoạn) cho ${touchedStoresSet.size} Điểm bán. Ngày bán/gán: ${validSoldDate.toLocaleDateString('vi-VN')}.`
     });
   } catch (error) {
     console.error('Import matrix error:', error);

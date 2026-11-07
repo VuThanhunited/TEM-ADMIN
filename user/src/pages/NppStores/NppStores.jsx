@@ -83,6 +83,7 @@ export default function NppStores() {
   const [importingMatrix, setImportingMatrix] = useState(false);
   const [importMatrixResult, setImportMatrixResult] = useState(null);
   const [importMatrixError, setImportMatrixError] = useState('');
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   // Bộ lọc thống kê doanh số Điểm bán theo Tháng / Quý / Năm
   const nowDate = new Date();
@@ -261,6 +262,36 @@ export default function NppStores() {
     }
   };
 
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const res = await userApi.exportRetailStoresData();
+      if (!res?.fileBase64) {
+        throw new Error('Không nhận được dữ liệu file Excel từ máy chủ');
+      }
+      const binaryStr = window.atob(res.fileBase64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.fileName || `Diem_Ban_Phan_Phoi_TPCN_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Lỗi khi xuất file Excel Điểm bán & Phân phối: ' + (err.message || err));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const totalSerialsAllStores = summaryData?.totalSerialsInPeriod !== undefined
     ? summaryData.totalSerialsInPeriod
     : stores.reduce((sum, s) => sum + (s.periodSerials ?? s.totalSerials ?? 0), 0);
@@ -312,6 +343,27 @@ export default function NppStores() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              disabled={exportingExcel}
+              style={{
+                background: '#1e293b',
+                border: '1px solid #f59e0b',
+                color: '#fbbf24',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              title="Xuất toàn bộ Danh sách Điểm bán + Bảng Ma trận + Chi tiết Serial ra file Excel"
+            >
+              <Download size={17} />
+              {exportingExcel ? 'Đang xuất...' : 'Xuất Excel Điểm bán'}
+            </button>
             <button
               type="button"
               onClick={() => {

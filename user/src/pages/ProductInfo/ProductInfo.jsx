@@ -2492,6 +2492,12 @@ export default function ProductInfo() {
 
   // ==================== GIAO DIỆN 9: MẬT ONG HOA BẠC HÀ - HOÀNG BÁCH (3 NGÔN NGỮ & 6 TAB) ====================
   const renderHoneyView = () => {
+    const rawProducer = product?.manufacturer || product?.producerInfo || enterprise?.name || '';
+    const isGenericTestEnterprise = /^(kimdinhtu|admin|test|demo|vinsumi|staycool)$/i.test(String(rawProducer).trim());
+    const resolvedProducerVi = (!rawProducer || isGenericTestEnterprise)
+      ? 'Hộ Kinh Doanh Hoàng Bách'
+      : rawProducer;
+
     const i18n = {
       vi: {
         headerTitle: 'TEM TRUY XUẤT NGUỒN GỐC',
@@ -2500,9 +2506,9 @@ export default function ProductInfo() {
         lblAddress: 'ĐỊA CHỈ:',
         lblContact: 'LIÊN HỆ:',
         defaultProductName: product?.name || 'Mật Ong Hoa Bạc Hà',
-        defaultProducerName: enterprise?.name || product?.manufacturer || 'Hộ Kinh Doanh Hoàng Bách',
-        defaultAddress: enterprise?.address || product?.mfgAddress || 'Thôn Xín Chải, Xã Sơn Vĩ, Tỉnh Tuyên Quang',
-        defaultContact: enterprise?.phone || product?.hotline || '0866.603.589 - 0812.838.589',
+        defaultProducerName: resolvedProducerVi,
+        defaultAddress: product?.mfgAddress || (!isGenericTestEnterprise && enterprise?.address) || 'Thôn Xín Chải, Xã Sơn Vĩ, Tỉnh Tuyên Quang',
+        defaultContact: product?.hotline || (!isGenericTestEnterprise && enterprise?.phone) || '0866.603.589 - 0812.838.589',
         serialBadge: 'Mã xác thực QR:',
         scanCountBadge: 'Lượt tra cứu:',
         verifiedLabel: 'Chính hãng Hoàng Bách',
