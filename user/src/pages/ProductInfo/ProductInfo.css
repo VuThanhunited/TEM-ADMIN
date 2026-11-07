@@ -4403,4 +4403,872 @@
   padding-top: 0;
 }
 
+/* ==========================================================================
+   GIAO DIỆN 9: MẬT ONG HOA BẠC HÀ - HOÀNG BÁCH (theme-honey)
+   Thiết kế chuẩn theo mẫu PDF & yêu cầu khách hàng (3 ngôn ngữ + 6 Tab + Điểm phân phối)
+   ========================================================================== */
+.product-info-page.theme-honey {
+  background: radial-gradient(circle at top, #f7efd8 0%, #eadbb6 50%, #dfd0a8 100%);
+  min-height: 100vh;
+  padding: 16px 8px 36px;
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+}
+
+.honey-trace-wrapper {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.honey-trace-card {
+  background: linear-gradient(180deg, #fdfbf4 0%, #faf3e1 45%, #fcf8ec 100%);
+  border: 2px solid #d4af37;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(20, 60, 25, 0.18), 0 0 0 1px rgba(255, 248, 220, 0.8) inset;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 1. Header Bar: Tiêu đề + 3 ngôn ngữ */
+.honey-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px 10px;
+  background: linear-gradient(180deg, #fffdf7 0%, #f7eed6 100%);
+  flex-wrap: wrap;
+}
+
+.honey-main-title {
+  margin: 0;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.28rem;
+  font-weight: 900;
+  color: #0e441b;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.honey-lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.honey-lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1.5px solid #cbb37b;
+  background: linear-gradient(180deg, #ffffff 0%, #f1e6c8 100%);
+  color: #1f2937;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.honey-lang-btn:hover {
+  border-color: #b5892e;
+  transform: translateY(-1px);
+}
+
+.honey-lang-btn.active {
+  background: linear-gradient(180deg, #1f6b30 0%, #0e3d18 100%);
+  border-color: #d4af37;
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(14, 61, 24, 0.35), 0 0 0 1px rgba(255, 223, 128, 0.4) inset;
+}
+
+.honey-flag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.honey-gold-divider-line {
+  height: 2px;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.2) 0%, #d4af37 50%, rgba(212, 175, 55, 0.2) 100%);
+}
+
+/* 2. Khối thông tin sản phẩm (Trái) & Logo Hoàng Bách (Phải) */
+.honey-product-header-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.95fr;
+  gap: 14px;
+  padding: 14px 18px 10px;
+  align-items: stretch;
+}
+
+.honey-product-meta-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.honey-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 7px 4px;
+  border-bottom: 1px solid rgba(201, 158, 64, 0.42);
+}
+
+.honey-meta-row-contact {
+  background: linear-gradient(90deg, rgba(246, 211, 101, 0.12) 0%, rgba(242, 194, 79, 0.42) 55%, rgba(246, 211, 101, 0.12) 100%);
+  border-radius: 8px;
+  padding: 7px 6px;
+}
+
+.honey-meta-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #f5faf2 0%, #e1efe0 100%);
+  border: 1.5px solid #2b6e37;
+  color: #155224;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(21, 82, 36, 0.1);
+}
+
+.honey-meta-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.honey-meta-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: 0.2px;
+  line-height: 1.25;
+}
+
+.honey-meta-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.32;
+  word-break: break-word;
+}
+
+.honey-contact-highlight {
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: #0b2e13;
+  text-decoration: none;
+  letter-spacing: 0.3px;
+}
+
+.honey-contact-highlight:hover {
+  color: #15803d;
+  text-decoration: underline;
+}
+
+/* Khung viền kép mạ vàng cho Logo Hoàng Bách */
+.honey-brand-logo-frame {
+  background: linear-gradient(145deg, #e7c972 0%, #c89b32 50%, #e5c66b 100%);
+  padding: 3px;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(168, 121, 28, 0.22);
+  display: flex;
+}
+
+.honey-brand-logo-inner {
+  background: #fdf9ef;
+  border: 1.5px solid #f3e2ab;
+  border-radius: 13px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.honey-brand-logo-img {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+/* Dải xác thực QR nhỏ gọn */
+.honey-auth-strip {
+  margin: 0 18px 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #eff8f0 0%, #fdf6df 50%, #eff8f0 100%);
+  border: 1px dashed #86b98e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #14532d;
+}
+
+.honey-auth-strip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+}
+
+.honey-auth-strip-item strong {
+  color: #0b3b18;
+  font-weight: 800;
+}
+
+/* 3. Hệ thống 6 Tab (2 hàng x 3 cột - Bấm vào Tab nào thì Tab đó đổi màu vàng) */
+.honey-tabs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 6px 18px 12px;
+  position: relative;
+  z-index: 3;
+}
+
+.honey-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #237636 0%, #124e20 55%, #0a3514 100%);
+  border: 2px solid #d5ae4e;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 10px rgba(10, 53, 20, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.28);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.honey-tab-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(10, 53, 20, 0.36), inset 0 1px 2px rgba(255, 255, 255, 0.38);
+  border-color: #f3cf68;
+}
+
+/* Trạng thái Tab đang chọn: Đổi sang màu vàng ánh kim nổi bật đúng yêu cầu khách */
+.honey-tab-btn.active {
+  background: linear-gradient(180deg, #fff19e 0%, #f6c444 48%, #d89115 100%);
+  border-color: #b0700b;
+  color: #103b19;
+  box-shadow: 0 5px 14px rgba(216, 145, 21, 0.45), inset 0 1.5px 2px rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.honey-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.honey-tab-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 4. Banner phong cảnh Cao nguyên đá & Hũ mật ong */
+.honey-hero-banner-wrap {
+  width: 100%;
+  line-height: 0;
+  margin-top: -4px;
+  position: relative;
+  z-index: 1;
+}
+
+.honey-hero-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+/* 5. Ô nội dung phía dưới (Ô bôi đỏ theo mô tả của khách - có thanh cuộn mượt khi nội dung dài) */
+.honey-content-outer-frame {
+  padding: 0 14px 10px;
+  margin-top: -6px;
+  position: relative;
+  z-index: 2;
+}
+
+.honey-content-box {
+  background: linear-gradient(180deg, #fdfaf0 0%, #f8f0da 100%);
+  border: 2.5px solid #d4a843;
+  border-radius: 18px;
+  padding: 14px;
+  max-height: 540px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(154, 112, 24, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.75);
+  scroll-behavior: smooth;
+}
+
+/* Tùy chỉnh thanh cuộn vàng sang trọng cho ô nội dung */
+.honey-content-box::-webkit-scrollbar {
+  width: 7px;
+}
+
+.honey-content-box::-webkit-scrollbar-track {
+  background: #f3e8c8;
+  border-radius: 10px;
+}
+
+.honey-content-box::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #d4a843 0%, #9e7115 100%);
+  border-radius: 10px;
+}
+
+/* 5A. Các điểm phân phối: Sub-tabs vùng (Đồng Văn | Mèo Vạc | Yên Minh) */
+.honey-region-subtabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.honey-region-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffdf8 0%, #efe3c2 100%);
+  border: 1.5px solid #cbb070;
+  color: #12461d;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+}
+
+.honey-region-pill:hover {
+  border-color: #1b652a;
+}
+
+.honey-region-pill.active {
+  background: linear-gradient(180deg, #217033 0%, #0e411a 100%);
+  border-color: #d4af37;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(14, 65, 26, 0.3);
+}
+
+.honey-region-pin {
+  flex-shrink: 0;
+}
+
+/* Danh sách thẻ Điểm phân phối */
+.honey-dist-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.honey-dist-card {
+  display: grid;
+  grid-template-columns: 195px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  background: linear-gradient(180deg, #fffef9 0%, #f7efda 100%);
+  border: 1.5px solid #d5bc80;
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.honey-dist-card:hover {
+  border-color: #c29534;
+  box-shadow: 0 6px 16px rgba(168, 121, 28, 0.16);
+}
+
+.honey-dist-card-thumb {
+  width: 195px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid #d7be84;
+  line-height: 0;
+}
+
+.honey-dist-card-thumb img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.honey-dist-card-thumb:hover img {
+  transform: scale(1.03);
+}
+
+.honey-dist-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.honey-dist-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 0.81rem;
+  line-height: 1.36;
+  color: #1f2937;
+}
+
+.honey-dist-info-row p {
+  margin: 0;
+}
+
+.honey-dist-info-row strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.honey-dist-row-icon {
+  color: #166534;
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: inline-flex;
+}
+
+.honey-dist-phone-link {
+  color: #0f5323;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.honey-dist-phone-link:hover {
+  text-decoration: underline;
+}
+
+.honey-dist-card-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.honey-dist-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #217033 0%, #0d3e18 100%);
+  border: 1.5px solid #d4af37;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(13, 62, 24, 0.28);
+  transition: all 0.2s ease;
+}
+
+.honey-dist-more-btn:hover {
+  background: linear-gradient(180deg, #fff099 0%, #f4be3b 50%, #d48c12 100%);
+  color: #103b19;
+  border-color: #a86b08;
+  transform: translateY(-1px);
+}
+
+/* 5B. Màn hình Chi tiết Điểm phân phối + Nút BACK */
+.honey-dist-detail-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: honeyFadeIn 0.22s ease;
+}
+
+@keyframes honeyFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.honey-dist-detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px dashed #d4b263;
+}
+
+.honey-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff19e 0%, #f5c13f 50%, #d68e13 100%);
+  border: 2px solid #a86b08;
+  color: #103b19;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(214, 142, 19, 0.35);
+  transition: all 0.2s ease;
+}
+
+.honey-back-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.honey-dist-detail-badge {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #14532d;
+  background: #e8f5e9;
+  border: 1px solid #86efac;
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+
+.honey-dist-detail-hero {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 14px;
+  background: #fffdf7;
+  border: 1.5px solid #dec484;
+  border-radius: 14px;
+  padding: 12px;
+  align-items: center;
+}
+
+.honey-dist-detail-img {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #d4b263;
+  display: block;
+}
+
+.honey-dist-detail-name {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #0e441b;
+}
+
+.honey-dist-detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.83rem;
+  color: #1f2937;
+}
+
+.honey-dist-detail-meta p {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.38;
+}
+
+.honey-dist-detail-meta svg {
+  color: #15803d;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.honey-dist-detail-meta a {
+  color: #0e441b;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.honey-dist-detail-story {
+  background: #fffef9;
+  border: 1px solid #e5d2a0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.honey-dist-detail-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.honey-call-dist-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #217033 0%, #0e411a 100%);
+  border: 1.5px solid #d4af37;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 3px 8px rgba(14, 65, 26, 0.28);
+}
+
+.honey-back-btn-bottom {
+  flex: 1;
+  justify-content: center;
+}
+
+/* 5C. Bài viết cho các Tab: Giới thiệu, Đặc sắc, Cách dùng, Thổ nhưỡng, Giống ong */
+.honey-article-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: honeyFadeIn 0.22s ease;
+}
+
+.honey-article-header {
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid rgba(212, 168, 67, 0.5);
+}
+
+.honey-article-title {
+  margin: 0 0 4px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1.08rem;
+  font-weight: 900;
+  color: #0e441b;
+  text-transform: uppercase;
+}
+
+.honey-article-subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #855808;
+  font-style: italic;
+}
+
+.honey-article-lead-box {
+  background: linear-gradient(90deg, #f3f9f1 0%, #fdf5dc 100%);
+  border-left: 4px solid #1b652a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.55;
+}
+
+.honey-article-lead-box p {
+  margin: 0;
+}
+
+.honey-article-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.honey-article-section-card {
+  background: #fffef9;
+  border: 1px solid #e2cc94;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.honey-article-sec-heading {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #114b1f;
+}
+
+.honey-article-paragraph {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #334155;
+  line-height: 1.58;
+  text-align: justify;
+}
+
+.honey-article-bullet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.honey-article-bullet-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #1e293b;
+  line-height: 1.5;
+}
+
+.honey-bullet-icon {
+  color: #15803d;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* 6. Footer Banner */
+.honey-footer-banner-wrap {
+  width: 100%;
+  line-height: 0;
+  margin-top: 2px;
+}
+
+.honey-footer-banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Responsive tối ưu trên điện thoại di động */
+@media (max-width: 640px) {
+  .product-info-page.theme-honey {
+    padding: 0 0 24px;
+  }
+
+  .honey-trace-card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .honey-top-header {
+    padding: 12px 12px 10px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .honey-main-title {
+    font-size: 1.05rem;
+    width: 100%;
+  }
+
+  .honey-lang-switcher {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .honey-product-header-grid {
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .honey-brand-logo-img {
+    max-width: 220px;
+  }
+
+  .honey-auth-strip {
+    margin: 0 12px 8px;
+    font-size: 0.73rem;
+  }
+
+  .honey-tabs-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    padding: 4px 10px 10px;
+  }
+
+  .honey-tab-btn {
+    padding: 8px 6px;
+    font-size: 0.76rem;
+    gap: 4px;
+  }
+
+  .honey-tab-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .honey-content-outer-frame {
+    padding: 0 8px 8px;
+  }
+
+  .honey-content-box {
+    padding: 10px;
+    max-height: 500px;
+  }
+
+  .honey-region-subtabs {
+    gap: 6px;
+  }
+
+  .honey-region-pill {
+    padding: 7px 6px;
+    font-size: 0.78rem;
+    gap: 4px;
+  }
+
+  .honey-dist-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .honey-dist-card-thumb {
+    width: 100%;
+  }
+
+  .honey-dist-card-action {
+    justify-content: flex-end;
+  }
+
+  .honey-dist-detail-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .honey-dist-detail-footer-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+
 

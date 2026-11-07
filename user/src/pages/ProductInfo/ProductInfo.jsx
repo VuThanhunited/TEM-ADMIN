@@ -113,7 +113,11 @@ export default function ProductInfo() {
 
   // Dynamic Automatic Theme Detection based on Batch Theme, Product, & Enterprise Info
   const getInitialTheme = () => {
-    const normalizeTheme = (val) => (val === 'warranty' || val === 'warranty_solution' ? 'appliance' : val);
+    const normalizeTheme = (val) => {
+      if (val === 'warranty' || val === 'warranty_solution') return 'appliance';
+      if (val === 'mint_honey' || val === 'hoang_bach') return 'honey';
+      return val;
+    };
     const searchParams = new URLSearchParams(location.search);
     const paramTheme = normalizeTheme(searchParams.get('theme'));
     if (paramTheme) return paramTheme;
@@ -148,6 +152,14 @@ export default function ProductInfo() {
     const desc = (scanData?.product?.description || '').toLowerCase();
 
     const textToMatch = `${cat} ${pName} ${desc} ${entName}`;
+
+    // 0A. Mật Ong Hoa Bạc Hà / Hoàng Bách / Cao Nguyên Đá Hà Giang (3 ngôn ngữ)
+    const honeyKeywords = [
+      'mật ong', 'hoa bạc hà', 'hoàng bách', 'cao nguyên đá', 'đồng văn', 'mèo vạc', 'lũng cú'
+    ];
+    if (honeyKeywords.some(kw => textToMatch.includes(kw))) {
+      return 'honey';
+    }
 
     // 1. Dược phẩm & Y tế
     const medicalKeywords = [
@@ -193,7 +205,7 @@ export default function ProductInfo() {
     // 5. Thực phẩm & Thực phẩm chức năng
     const foodKeywords = [
       'thực phẩm', 'dinh dưỡng', 'gia vị', 'dầu ăn', 'nước uống',
-      'bánh', 'kẹo', 'sữa', 'trà', 'cà phê', 'mật ong', 'yến sào',
+      'bánh', 'kẹo', 'sữa', 'trà', 'cà phê', 'yến sào',
       'food', 'snack', 'beverage', 'tpcn', 'thực phẩm chức năng'
     ];
     if (foodKeywords.some(kw => textToMatch.includes(kw))) {
@@ -232,6 +244,13 @@ export default function ProductInfo() {
   const [isActivatingAppliance, setIsActivatingAppliance] = useState(false);
   const [applianceActivationError, setApplianceActivationError] = useState('');
   const [applianceActivationSuccess, setApplianceActivationSuccess] = useState(false);
+
+  // State cho Giao diện Mật Ong Hoa Bạc Hà - Hoàng Bách (3 ngôn ngữ + 6 tab + điểm phân phối chi tiết)
+  const [honeyLang, setHoneyLang] = useState('vi');
+  const [honeyTab, setHoneyTab] = useState('distribution');
+  const [honeyRegion, setHoneyRegion] = useState('dong_van');
+  const [selectedHoneyDist, setSelectedHoneyDist] = useState(null);
+  const honeyContentBoxRef = useRef(null);
 
   // Computed values (không phải hooks, an toàn để đặt đây)
   const product = scanData?.product;
@@ -688,8 +707,18 @@ export default function ProductInfo() {
     }
 
     // -------------------------------------------------------------
-    // TRƯỜNG HỢP 2: SẢN PHẨM ĐÃ ĐƯỢC KÍCH HOẠT (Đã nhập mã kích hoạt)
+    // TRƯỜNG HỢP 2: SẢN PHẨM ĐÃ ĐƯỢC KÍCH HOẠT (Đã nhập mã kích hoạt / Mã nội bộ)
+    // Với các doanh nghiệp dùng giao diện bảo hành tiêu chuẩn (VD: PUMPS GLOBAL - xacthuc.tubosglobal.com),
+    // hiển thị đúng giao diện bảo hành tiêu chuẩn (renderDefaultView) theo ảnh yêu cầu của khách hàng.
     // -------------------------------------------------------------
+    const isVinsumiBrand =
+      (enterprise?.name || '').toLowerCase().includes('vinsumi') ||
+      (product?.name || '').toLowerCase().includes('vinsumi');
+
+    if (!isVinsumiBrand) {
+      return renderDefaultView();
+    }
+
     return (
       <div className="appliance-canvas-outer">
         <div className="appliance-poster-card">
@@ -2059,7 +2088,12 @@ export default function ProductInfo() {
   // KHỐI CHUNG: THÔNG TIN KHÁCH HÀNG SỞ HỮU SẢN PHẨM (NPP nhập khi kích hoạt tem)
   // =========================================================================
   const ownerInfo = label?.ownerInfo;
-  const hasOwnerInfo = Boolean(ownerInfo?.activatedAt && ownerInfo?.name);
+  const activatedSerialCode = label?.internalCode || label?.ownerCode || ownerInfo?.ownerCode || ownerInfo?.activatedSerial || label?.serialNumber;
+  const hasOwnerInfo = Boolean(
+    (ownerInfo?.activatedAt && ownerInfo?.name) ||
+    (label?.internalCode && String(label.internalCode).trim()) ||
+    (label?.ownerCode && String(label.ownerCode).trim())
+  );
 
   const renderOwnerInfoCard = () => {
     if (!hasOwnerInfo) return null;
@@ -2069,31 +2103,33 @@ export default function ProductInfo() {
           <UserCheck size={16} />
           <span>Thông tin KH sở hữu sản phẩm</span>
         </div>
-        <div className="owner-card-list">
-          <div className="owner-card-row">
-            <User size={15} className="owner-card-icon" />
-            <span className="owner-card-label">Tên NPP / cá nhân:</span>
-            <strong className="owner-card-value">{ownerInfo.name}</strong>
+        {ownerInfo?.name && (
+          <div className="owner-card-list">
+            <div className="owner-card-row">
+              <User size={15} className="owner-card-icon" />
+              <span className="owner-card-label">Tên NPP / cá nhân:</span>
+              <strong className="owner-card-value">{ownerInfo.name}</strong>
+            </div>
+            {ownerInfo.address && (
+              <div className="owner-card-row">
+                <MapPin size={15} className="owner-card-icon" />
+                <span className="owner-card-label">Địa chỉ:</span>
+                <span className="owner-card-value">{ownerInfo.address}</span>
+              </div>
+            )}
+            {ownerInfo.phone && (
+              <div className="owner-card-row">
+                <Phone size={15} className="owner-card-icon" />
+                <span className="owner-card-label">Số ĐT liên hệ:</span>
+                <span className="owner-card-value">{ownerInfo.phone}</span>
+              </div>
+            )}
           </div>
-          {ownerInfo.address && (
-            <div className="owner-card-row">
-              <MapPin size={15} className="owner-card-icon" />
-              <span className="owner-card-label">Địa chỉ:</span>
-              <span className="owner-card-value">{ownerInfo.address}</span>
-            </div>
-          )}
-          {ownerInfo.phone && (
-            <div className="owner-card-row">
-              <Phone size={15} className="owner-card-icon" />
-              <span className="owner-card-label">Số ĐT liên hệ:</span>
-              <span className="owner-card-value">{ownerInfo.phone}</span>
-            </div>
-          )}
-        </div>
+        )}
         <div className="owner-card-serial">
           <ShieldCheck size={18} />
           <span>Serial đã được kích hoạt:</span>
-          <strong>{label?.internalCode || label?.ownerCode || ownerInfo.ownerCode || ownerInfo.activatedSerial || label?.serialNumber}</strong>
+          <strong>{activatedSerialCode}</strong>
         </div>
       </div>
     );
@@ -2452,10 +2488,1236 @@ export default function ProductInfo() {
     );
   };
 
+  // ==================== GIAO DIỆN 9: MẬT ONG HOA BẠC HÀ - HOÀNG BÁCH (3 NGÔN NGỮ & 6 TAB) ====================
+  const renderHoneyView = () => {
+    const i18n = {
+      vi: {
+        headerTitle: 'TEM TRUY XUẤT NGUỒN GỐC',
+        lblProduct: 'SẢN PHẨM:',
+        lblProducer: 'ĐƠN VỊ SẢN XUẤT:',
+        lblAddress: 'ĐỊA CHỈ:',
+        lblContact: 'LIÊN HỆ:',
+        defaultProductName: product?.name || 'Mật Ong Hoa Bạc Hà',
+        defaultProducerName: enterprise?.name || product?.manufacturer || 'Hộ Kinh Doanh Hoàng Bách',
+        defaultAddress: enterprise?.address || product?.mfgAddress || 'Thôn Xín Chải, Xã Sơn Vĩ, Tỉnh Tuyên Quang',
+        defaultContact: enterprise?.phone || product?.hotline || '0866.603.589 - 0812.838.589',
+        serialBadge: 'Mã xác thực QR:',
+        scanCountBadge: 'Lượt tra cứu:',
+        verifiedLabel: 'Chính hãng Hoàng Bách',
+        tabs: [
+          { id: 'intro', label: 'Giới thiệu' },
+          { id: 'featured', label: 'Đặc sắc' },
+          { id: 'usage', label: 'Cách dùng' },
+          { id: 'distribution', label: 'Các điểm phân phối' },
+          { id: 'soil', label: 'Thổ nhưỡng' },
+          { id: 'bee_breed', label: 'Giống ong' },
+        ],
+        regions: [
+          { id: 'dong_van', label: 'Đồng Văn' },
+          { id: 'meo_vac', label: 'Mèo Vạc' },
+          { id: 'yen_minh', label: 'Yên Minh' },
+        ],
+        distLabels: {
+          unitName: 'Tên đơn vị sản xuất:',
+          address: 'Địa chỉ:',
+          contact: 'Liên hệ:',
+          intro: 'Giới thiệu:',
+          btnMore: 'GIỚI THIỆU',
+          btnBack: 'QUAY LẠI DANH SÁCH ĐIỂM PHÂN PHỐI (BACK)',
+          btnBackShort: 'QUAY LẠI (BACK)',
+          detailTitle: 'THÔNG TIN CHI TIẾT ĐIỂM SẢN XUẤT & PHÂN PHỐI',
+          scaleLabel: 'Quy mô & Sản lượng:',
+          areaLabel: 'Vùng nguyên liệu:',
+          certLabel: 'Tiêu chuẩn chất lượng:',
+          callNow: 'Gọi điện liên hệ ngay',
+        },
+        articles: {
+          intro: {
+            title: 'GIỚI THIỆU MẬT ONG HOA BẠC HÀ HOÀNG BÁCH',
+            subtitle: 'Tinh hoa mật quý từ Công viên Địa chất Toàn cầu Cao nguyên đá Đồng Văn - Hà Giang',
+            lead: (product?.description && product.description.length > 40)
+              ? product.description
+              : 'Mật Ong Hoa Bạc Hà Hoàng Bách là sản phẩm đặc sản trứ danh được khai thác hoàn toàn tự nhiên từ những cánh rừng hoa bạc hà tím biếc nở rộ trên độ cao 1.000m – 1.600m tại Cao nguyên đá Hà Giang vào dịp cuối thu đầu đông (tháng 10 đến tháng 1 năm sau).',
+            sections: [
+              {
+                heading: '1. Nguồn gốc thiên nhiên thuần khiết 100%',
+                body: 'Cây bạc hà dại trên Cao nguyên đá là loài thảo dược mọc tự nhiên trên các triền núi đá tai mèo hiểm trở. Mỗi năm hoa chỉ nở duy nhất một vụ kéo dài từ 2,5 đến 3 tháng. Đàn ong nội bản địa hút mật trực tiếp từ nhụy hoa bạc hà tạo nên dòng mật có màu vàng chanh ánh xanh lục đặc trưng, sánh đặc tự nhiên và hương thơm thanh mát dịu nhẹ không lẫn với bất kỳ loại mật nào khác.'
+              },
+              {
+                heading: '2. Quy trình khai thác & kiểm định nghiêm ngặt',
+                body: 'Hộ Kinh Doanh Hoàng Bách liên kết trực tiếp với các hợp tác xã và hộ nuôi ong lâu năm tại Đồng Văn, Mèo Vạc, Lũng Cú, Yên Minh. Mật được quay khai thác khi cầu mật đã vít nắp chín tự nhiên tối thiểu 90%, lọc tĩnh loại bỏ sáp vụn hoàn toàn thủ công, không qua xử lý nhiệt công nghiệp nhằm giữ trọn vẹn hệ enzyme, vitamin và khoáng chất quý giá.'
+              },
+              {
+                heading: '3. Cam kết chất lượng từ Hoàng Bách',
+                bullets: [
+                  '100% mật ong hoa bạc hà nguyên chất khai thác đúng vụ tại Cao nguyên đá.',
+                  'Không pha trộn đường, không chất bảo quản, không hương liệu hay phẩm màu nhân tạo.',
+                  'Mỗi sản phẩm đều gắn tem QR truy xuất nguồn gốc minh bạch từng lô thu hoạch.',
+                  'Đạt tiêu chuẩn An toàn vệ sinh thực phẩm và chứng nhận đặc sản vùng cao.'
+                ]
+              }
+            ]
+          },
+          featured: {
+            title: 'ĐẶC SẮC CỦA MẬT ONG HOA BẠC HÀ',
+            subtitle: 'Những giá trị độc bản tạo nên danh tiếng "Vàng lỏng" vùng Cao nguyên đá',
+            lead: 'Mật ong hoa bạc hà sở hữu sắc - hương - vị và hàm lượng dinh dưỡng vượt trội nhờ sự giao thoa kỳ diệu giữa cây dược liệu bạc hà núi đá và giống ong nội bản địa.',
+            sections: [
+              {
+                heading: '1. Màu sắc & Hương vị độc nhất vô nhị',
+                body: 'Mật có màu vàng chanh óng ả pha chút ánh xanh oliu dịu mắt, độ kết dính cao, khi rót tạo dòng chảy mềm mại không đứt đoạn. Vị ngọt thanh tao, mát dịu nơi đầu lưỡi và đọng lại hậu vị the mát thoảng hương hoa bạc hà rừng tự nhiên, hoàn toàn không ngọt gắt như các loại mật thông thường.'
+              },
+              {
+                heading: '2. Giá trị dược tính & Chăm sóc sức khỏe',
+                bullets: [
+                  'Hỗ trợ làm dịu cổ họng, giảm ho khan, ho có đờm, viêm họng và bảo vệ đường hô hấp hiệu quả khi thời tiết giao mùa.',
+                  'Bồi bổ cơ thể, tăng cường sức đề kháng tự nhiên nhờ hàm lượng cao các axit amin, enzyme tự nhiên (Diastase, Invertase), Vitamin B1, B2, B6, C và khoáng chất (Canxi, Sắt, Kẽm, Magie).',
+                  'Hỗ trợ hệ tiêu hóa khỏe mạnh, làm dịu niêm mạc dạ dày và cải thiện giấc ngủ sâu.',
+                  'Làm đẹp da từ bên trong nhờ hoạt chất chống oxy hóa tự nhiên dồi dào.'
+                ]
+              },
+              {
+                heading: '3. Dấu hiệu nhận biết mật ong hoa bạc hà chuẩn Hoàng Bách',
+                body: 'Mật ong hoa bạc hà chuẩn có hàm lượng thủy phần thấp (< 20%), sánh đặc tự nhiên, để lâu năm vẫn giữ hương thơm dịu và màu sắc tươi sáng, không bị chua hay lên ga khi bảo quản đúng cách.'
+              }
+            ]
+          },
+          usage: {
+            title: 'HƯỚNG DẪN SỬ DỤNG & BẢO QUẢN ĐÚNG CÁCH',
+            subtitle: 'Phát huy tối đa dưỡng chất quý giá từ Mật Ong Hoa Bạc Hà',
+            lead: 'Sử dụng mật ong hoa bạc hà đúng thời điểm và đúng nhiệt độ giúp cơ thể hấp thu trọn vẹn các enzyme sinh học và hoạt chất thảo dược tự nhiên.',
+            sections: [
+              {
+                heading: '1. Cách dùng hàng ngày tốt nhất cho sức khỏe',
+                bullets: [
+                  'Pha uống buổi sáng: Pha 1–2 thìa cà phê (10–15ml) mật ong hoa bạc hà với 150–200ml nước ấm (nhiệt độ lý tưởng 40°C – 50°C, không dùng nước sôi trên 60°C để tránh làm mất enzyme quý). Uống trước bữa sáng 20–30 phút giúp thanh lọc cơ thể và bảo vệ dạ dày.',
+                  'Giảm ho, dịu họng: Ngậm trực tiếp 1 thìa nhỏ mật ong nguyên chất hoặc chưng cách thủy cùng quất (tắc), chanh đào, gừng tươi, lá hẹ dùng 2–3 lần/ngày.',
+                  'Kết hợp thảo dược & ẩm thực: Pha cùng trà hoa cúc, trà thảo mộc, saffron (nhụy hoa nghệ tây), nước cam chanh hoặc dùng kèm sữa chua, bánh mì, salad trái cây.'
+                ]
+              },
+              {
+                heading: '2. Đối tượng sử dụng & Lưu ý quan trọng',
+                bullets: [
+                  'Phù hợp cho người lớn, người cao tuổi, người suy nhược cơ thể, người làm việc căng thẳng và trẻ em trên 1 tuổi.',
+                  'Lưu ý: Không dùng mật ong cho trẻ sơ sinh dưới 12 tháng tuổi.',
+                  'Nên dùng thìa gỗ, sứ hoặc nhựa sạch để lấy mật; hạn chế ngâm thìa kim loại lâu trong hũ mật.'
+                ]
+              },
+              {
+                heading: '3. Hướng dẫn bảo quản',
+                body: 'Đậy kín nắp sau khi sử dụng, đặt ở nơi khô ráo, thoáng mát (nhiệt độ phòng 20°C – 28°C), tránh ánh nắng mặt trời chiếu trực tiếp. Không cần bảo quản trong ngăn mát tủ lạnh vì nhiệt độ thấp dễ làm mật ong tự nhiên kết tinh đường glucose.'
+              }
+            ]
+          },
+          soil: {
+            title: 'THỔ NHƯỠNG & KHÍ HẬU VÙNG CAO NGUYÊN ĐÁ',
+            subtitle: 'Hệ sinh thái núi đá vôi hàng trăm triệu năm tuổi tạo nên loài hoa bạc hà độc bản',
+            lead: 'Cao nguyên đá Đồng Văn (bao gồm 4 huyện Quản Bạ, Yên Minh, Đồng Văn, Mèo Vạc) được UNESCO công nhận là Công viên Địa chất Toàn cầu với địa hình hơn 80% là núi đá vôi tai mèo dựng đứng ở độ cao 1.000m – 1.600m so với mực nước biển.',
+            sections: [
+              {
+                heading: '1. Địa chất đá vôi giàu khoáng chất tự nhiên',
+                body: 'Trải qua hàng trăm triệu năm kiến tạo địa chất, lớp đất mùn tích tụ trong các hốc đá tai mèo cực kỳ giàu khoáng chất vi lượng (Canxi, Magie, Kali, Silic). Cây bạc hà dại (Elsholtzia ciliata / Mentha arvensis bản địa) bám rễ sâu vào các khe đá khô cằn để hút dưỡng chất và sương núi, giúp tinh dầu trong cánh hoa và mật hoa đậm đặc gấp nhiều lần vùng đồng bằng.'
+              },
+              {
+                heading: '2. Khí hậu khắc nghiệt hun đúc tinh hoa',
+                body: 'Vào mùa hoa bạc hà nở (từ tháng 10 đến tháng 12 âm lịch), vùng cao nguyên có biên độ nhiệt ngày và đêm rất lớn: ban ngày nắng hanh vàng rực rỡ, ban đêm sương mù bao phủ và nhiệt độ hạ thấp 8°C – 15°C. Chính sự khắc nghiệt này kích thích cây bạc hà tiết ra lượng mật hoa cô đặc nhất, giàu đường tự nhiên và tinh dầu thơm mát để thu hút đàn ong.'
+              },
+              {
+                heading: '3. Môi trường sinh thái nguyên sơ',
+                bullets: [
+                  'Hoàn toàn tách biệt khỏi khu công nghiệp, khói bụi đô thị và hóa chất nông nghiệp.',
+                  'Cây bạc hà mọc hoang dã tự nhiên trên sườn núi đá, không sử dụng phân bón hóa học hay thuốc bảo vệ thực vật.',
+                  'Nguồn nước sương núi trong lành tạo nên độ tinh khiết tuyệt đối cho từng giọt mật.'
+                ]
+              }
+            ]
+          },
+          bee_breed: {
+            title: 'GIỐNG ONG NỘI BẢN ĐỊA CAO NGUYÊN ĐÁ',
+            subtitle: 'Những "nghệ nhân" cần mẫn vượt gió sương núi đá thu lượm mật quý',
+            lead: 'Mật Ong Hoa Bạc Hà Hoàng Bách được tạo nên bởi giống Ong Nội địa bản xứ (Apis cerana) đã thích nghi hàng ngàn năm với địa hình hiểm trở và khí hậu lạnh giá của vùng núi cao cực Bắc.',
+            sections: [
+              {
+                heading: '1. Đặc điểm sinh học vượt trội của giống Ong Nội vùng cao',
+                body: 'Khác với các giống ong ngoại nhập khẩu, ong nội bản địa Cao nguyên đá có kích thước cơ thể nhỏ gọn, đôi cánh khỏe, cực kỳ nhanh nhẹn và có khả năng chịu rét, chịu sương mù xuất sắc. Nhờ vòi hút mật mảnh và sự linh hoạt, ong nội dễ dàng len lỏi sâu vào từng đài hoa bạc hà nhỏ li ti mọc sát vách đá tai mèo để lấy trọn giọt mật tinh túy nhất.'
+              },
+              {
+                heading: '2. Quá trình luyện mật kỳ công trong tổ',
+                body: 'Mỗi ngày, hàng vạn ong thợ bay hàng cây số qua các triền đá để thu gom mật hoa. Khi mang về tổ, đàn ong truyền mật qua nhau, tiết thêm hệ enzyme tự nhiên từ tuyến hầu và quạt cánh liên tục suốt ngày đêm để làm bay hơi nước tự nhiên. Chỉ khi hàm lượng nước giảm xuống dưới 19–20%, ong mới dùng sáp trắng vít kín nắp lỗ tổ (mật chín tự nhiên).'
+              },
+              {
+                heading: '3. Phương thức nuôi ong truyền thống bền vững',
+                bullets: [
+                  'Thùng ong được làm từ gỗ tự nhiên khô thoáng, đặt dọc theo các thung lũng và sườn núi đá nơi có thảm hoa bạc hà dày đặc nhất.',
+                  'Tuyệt đối không cho ong ăn đường trong suốt vụ thu hoạch mật hoa bạc hà.',
+                  'Không sử dụng kháng sinh trong mật thương phẩm, bảo tồn quần thể ong bản địa và hệ sinh thái tự nhiên.'
+                ]
+              }
+            ]
+          }
+        }
+      },
+      en: {
+        headerTitle: 'ORIGIN TRACEABILITY STAMP',
+        lblProduct: 'PRODUCT:',
+        lblProducer: 'PRODUCER:',
+        lblAddress: 'ADDRESS:',
+        lblContact: 'CONTACT:',
+        defaultProductName: 'Wild Mint Flower Honey (Mật Ong Hoa Bạc Hà)',
+        defaultProducerName: 'Hoang Bach Business Household',
+        defaultAddress: 'Xin Chai Village, Son Vi Commune, Tuyen Quang Province, Vietnam',
+        defaultContact: '0866.603.589 - 0812.838.589',
+        serialBadge: 'QR Auth Code:',
+        scanCountBadge: 'Total Scans:',
+        verifiedLabel: 'Authentic Hoang Bach',
+        tabs: [
+          { id: 'intro', label: 'Introduction' },
+          { id: 'featured', label: 'Highlights' },
+          { id: 'usage', label: 'How to Use' },
+          { id: 'distribution', label: 'Distribution' },
+          { id: 'soil', label: 'Terroir & Soil' },
+          { id: 'bee_breed', label: 'Bee Breed' },
+        ],
+        regions: [
+          { id: 'dong_van', label: 'Dong Van' },
+          { id: 'meo_vac', label: 'Meo Vac' },
+          { id: 'yen_minh', label: 'Yen Minh' },
+        ],
+        distLabels: {
+          unitName: 'Production Unit:',
+          address: 'Address:',
+          contact: 'Contact:',
+          intro: 'Overview:',
+          btnMore: 'DETAILS',
+          btnBack: 'BACK TO DISTRIBUTION POINTS (BACK)',
+          btnBackShort: 'BACK TO LIST',
+          detailTitle: 'PRODUCTION & DISTRIBUTION POINT DETAILS',
+          scaleLabel: 'Scale & Capacity:',
+          areaLabel: 'Foraging Zone:',
+          certLabel: 'Quality Standard:',
+          callNow: 'Call Hotline Now',
+        },
+        articles: {
+          intro: {
+            title: 'ABOUT HOANG BACH WILD MINT FLOWER HONEY',
+            subtitle: 'Precious Highland Nectar from the Dong Van Karst Plateau UNESCO Global Geopark',
+            lead: 'Hoang Bach Mint Flower Honey is a renowned highland specialty harvested 100% naturally from wild purple mint blossoms thriving at altitudes of 1,000m – 1,600m across the rocky mountains of Ha Giang from late autumn to early winter (October to January).',
+            sections: [
+              {
+                heading: '1. 100% Pure Highland Origin',
+                body: 'Wild highland mint grows naturally along jagged limestone cliffs. Blooming only once a year for under three months, its nectar is gathered by indigenous honeybees to create a signature lemon-yellow honey with a delicate olive-green hue, rich viscosity, and a refreshing herbal aroma.'
+              },
+              {
+                heading: '2. Artisanal Harvesting & Strict Quality Control',
+                body: 'Hoang Bach partners directly with traditional beekeeping cooperatives across Dong Van, Meo Vac, Lung Cu, and Yen Minh. Honeycombs are extracted only when at least 90% naturally capped with beeswax, cold-filtered without industrial heat treatment to preserve all natural enzymes, vitamins, and minerals.'
+              },
+              {
+                heading: '3. Our Quality Commitment',
+                bullets: [
+                  '100% pure seasonal wild mint blossom honey from the Karst Plateau.',
+                  'Zero added sugar, zero preservatives, and zero artificial flavors or colorings.',
+                  'Full batch-level QR traceability from apiary to jar.',
+                  'Certified food safety and authentic highland specialty standards.'
+                ]
+              }
+            ]
+          },
+          featured: {
+            title: 'SIGNATURE HIGHLIGHTS OF MINT FLOWER HONEY',
+            subtitle: 'Unique sensory and nutritional qualities known as "Liquid Gold" of the Highlands',
+            lead: 'Wild mint honey stands apart thanks to the extraordinary synergy between medicinal mountain mint flowers and indigenous highland honeybees.',
+            sections: [
+              {
+                heading: '1. Distinctive Color, Texture & Flavor',
+                body: 'Luminous golden-yellow with a subtle greenish tint and thick, silky consistency. It offers a refined, gentle sweetness on the palate followed by a cool, soothing floral aftertaste without any harsh throat burn.'
+              },
+              {
+                heading: '2. Wellness & Nutritional Benefits',
+                bullets: [
+                  'Soothes sore throats, relieves coughs, and supports respiratory health during cold seasons.',
+                  'Boosts natural immunity with abundant amino acids, live enzymes (Diastase, Invertase), B-complex vitamins, Vitamin C, and trace minerals (Calcium, Iron, Zinc, Magnesium).',
+                  'Supports healthy digestion, calms the stomach lining, and promotes restful sleep.',
+                  'Rich in natural antioxidants that nourish skin vitality from within.'
+                ]
+              },
+              {
+                heading: '3. Authenticity Benchmark',
+                body: 'Naturally low moisture content (< 20%) ensures long-lasting freshness, vibrant color, and stable herbal aroma without fermentation when stored properly.'
+              }
+            ]
+          },
+          usage: {
+            title: 'HOW TO USE & STORE PROPERLY',
+            subtitle: 'Maximize the natural bio-enzymes and herbal nutrients in every spoonful',
+            lead: 'Using wild mint honey at the right temperature and time of day ensures optimal absorption of its active enzymes and botanical compounds.',
+            sections: [
+              {
+                heading: '1. Daily Recommended Usage',
+                bullets: [
+                  'Morning Wellness Drink: Mix 1–2 teaspoons (10–15ml) of mint honey into 150–200ml of warm water (ideal temperature 40°C – 50°C; avoid boiling water above 60°C to protect live enzymes). Drink 20–30 minutes before breakfast.',
+                  'Throat & Cough Relief: Take 1 teaspoon of pure honey directly or steam-infuse with kumquat, lemon, or fresh ginger 2–3 times daily.',
+                  'Culinary & Herbal Pairing: Stir into chamomile tea, herbal infusions, saffron water, fresh citrus juice, or drizzle over yogurt, toast, and fruit salads.'
+                ]
+              },
+              {
+                heading: '2. Suitable Users & Precautions',
+                bullets: [
+                  'Ideal for adults, seniors, individuals recovering from fatigue, and children over 1 year old.',
+                  'Note: Do not feed honey to infants under 12 months of age.',
+                  'Use clean wooden, ceramic, or food-grade plastic spoons rather than leaving metal spoons submerged.'
+                ]
+              },
+              {
+                heading: '3. Storage Instructions',
+                body: 'Keep the lid tightly sealed after each use. Store in a cool, dry place at room temperature (20°C – 28°C) away from direct sunlight. Do not refrigerate, as cold temperatures accelerate natural glucose crystallization.'
+              }
+            ]
+          },
+          soil: {
+            title: 'TERROIR & CLIMATE OF THE KARST PLATEAU',
+            subtitle: 'Hundreds of millions of years of limestone geology shaping a rare botanical ecosystem',
+            lead: 'The Dong Van Karst Plateau (spanning Quan Ba, Yen Minh, Dong Van, and Meo Vac) is a UNESCO Global Geopark characterized by over 80% rugged limestone peaks rising 1,000m – 1,600m above sea level.',
+            sections: [
+              {
+                heading: '1. Mineral-Rich Limestone Karst',
+                body: 'Organic humus pockets nestled within ancient limestone crevices are naturally enriched with Calcium, Magnesium, Potassium, and Silica. Wild mint roots penetrate deep into the rock fissures, producing blossoms with exceptionally concentrated essential oils and nectar.'
+              },
+              {
+                heading: '2. High-Altitude Microclimate',
+                body: 'During the blooming season (October to December), crisp golden sunshine by day and misty mountain nights (8°C – 15°C) stimulate the wild mint plants to secrete dense, aromatic nectar rich in natural sugars and trace minerals.'
+              },
+              {
+                heading: '3. Untouched Pristine Environment',
+                bullets: [
+                  'Completely isolated from industrial zones, urban pollution, and agricultural chemicals.',
+                  '100% wild-growing mint flora with zero chemical fertilizers or pesticides.',
+                  'Nourished solely by pure mountain mist and natural rainfall.'
+                ]
+              }
+            ]
+          },
+          bee_breed: {
+            title: 'INDIGENOUS HIGHLAND HONEYBEE BREED',
+            subtitle: 'Resilient native pollinators braving mountain winds and mist',
+            lead: 'Hoang Bach Mint Flower Honey is crafted by native Eastern honeybees (Apis cerana) that have co-evolved for centuries with the steep terrain and cold climate of Vietnam’s northernmost highlands.',
+            sections: [
+              {
+                heading: '1. Superior Adaptation of Native Highland Bees',
+                body: 'Smaller, agile, and remarkably cold-hardy compared to imported lowland bees, native highland bees forage actively even in chilly mountain mist. Their slender proboscis easily reaches deep inside tiny wild mint corollas clinging to limestone cliffs.'
+              },
+              {
+                heading: '2. Natural Hive Ripening Process',
+                body: 'Worker bees fly miles across rocky valleys to collect nectar, enriching it with pharyngeal enzymes and fanning their wings tirelessly until moisture drops below 19–20% before sealing the cells with pure white beeswax.'
+              },
+              {
+                heading: '3. Sustainable Traditional Beekeeping',
+                bullets: [
+                  'Natural wooden hives placed directly along wild mint valleys and karst slopes.',
+                  'Strictly no sugar-feeding during the mint blossom harvest season.',
+                  'Zero antibiotics in harvested honey, preserving both native bee health and biodiversity.'
+                ]
+              }
+            ]
+          }
+        }
+      },
+      zh: {
+        headerTitle: '原产地溯源防伪标签',
+        lblProduct: '产品名称:',
+        lblProducer: '生产单位:',
+        lblAddress: '生产地址:',
+        lblContact: '联系电话:',
+        defaultProductName: '野生薄荷花蜂蜜 (Mật Ong Hoa Bạc Hà)',
+        defaultProducerName: '黄百 (Hoàng Bách) 经营户',
+        defaultAddress: '越南宣光省山尾社新寨村',
+        defaultContact: '0866.603.589 - 0812.838.589',
+        serialBadge: '防伪溯源码:',
+        scanCountBadge: '查询次数:',
+        verifiedLabel: '黄百正品认证',
+        tabs: [
+          { id: 'intro', label: '产品介绍' },
+          { id: 'featured', label: '产品特色' },
+          { id: 'usage', label: '使用方法' },
+          { id: 'distribution', label: '分销网点' },
+          { id: 'soil', label: '风土环境' },
+          { id: 'bee_breed', label: '蜜蜂品种' },
+        ],
+        regions: [
+          { id: 'dong_van', label: '同文 (Đồng Văn)' },
+          { id: 'meo_vac', label: '苗旺 (Mèo Vạc)' },
+          { id: 'yen_minh', label: '安明 (Yên Minh)' },
+        ],
+        distLabels: {
+          unitName: '生产合作单位:',
+          address: '地址:',
+          contact: '联系电话:',
+          intro: '简介:',
+          btnMore: '详细介绍',
+          btnBack: '返回分销网点列表 (BACK)',
+          btnBackShort: '返回列表 (BACK)',
+          detailTitle: '生产与分销网点详细介绍',
+          scaleLabel: '养殖规模与产量:',
+          areaLabel: '采蜜产区:',
+          certLabel: '质量认证标准:',
+          callNow: '立即拨打电话',
+        },
+        articles: {
+          intro: {
+            title: '黄百 (HOÀNG BÁCH) 野生薄荷花蜂蜜介绍',
+            subtitle: '源自河江同文喀斯特高原世界地质公园的珍贵高山蜜源',
+            lead: '黄百薄荷花蜂蜜是采集自海拔 1,000 米至 1,600 米高寒石山野生紫薄荷花海的纯天然高原特产，每年仅在深秋至初冬（农历十月至十二月）盛花期采收一季。',
+            sections: [
+              {
+                heading: '1. 100% 纯天然高山野生蜜源',
+                body: '高原野生薄荷自然生长在险峻的石灰岩峰丛裂缝间，一年仅开一次花。当地本土中华蜜蜂采集薄荷花蜜酿造出的蜂蜜呈独特的柠檬金黄带微绿光泽，蜜质浓稠醇厚，散发清新淡雅的草本薄荷花香。'
+              },
+              {
+                heading: '2. 传统自然成熟采割与严格品控',
+                body: '黄百与同文、苗旺、龙鼓、安明等地资深养蜂合作社紧密合作。坚持只采割自然封盖率达 90% 以上的成熟蜜脾，采用传统物理静置过滤，不经工业高温浓缩，完整保留天然活性酶、维生素与矿物质。'
+              },
+              {
+                heading: '3. 黄百品质承诺',
+                bullets: [
+                  '100% 喀斯特石山高原当季纯正野生薄荷花蜜。',
+                  '绝不添加白糖、防腐剂、人工香精或色素。',
+                  '一物一码二维码防伪溯源，批次信息透明可查。',
+                  '符合食品安全卫生标准及高山特色农产品认证。'
+                ]
+              }
+            ]
+          },
+          featured: {
+            title: '薄荷花蜂蜜的独特品质',
+            subtitle: '色、香、味俱佳的高原“液体黄金”',
+            lead: '凭借高山药用野生薄荷与本土耐寒蜜蜂的完美结合，薄荷花蜜展现出与众不同的感官与营养价值。',
+            sections: [
+              {
+                heading: '1. 独特外观与清润口感',
+                body: '色泽金黄透亮并带有柔和的橄榄绿光晕，质地绵密顺滑。入口清甜细腻而不腻喉，回味带有淡淡的野生薄荷清凉花香。'
+              },
+              {
+                heading: '2. 养生价值与营养成分',
+                bullets: [
+                  '润肺止咳、舒缓咽喉不适，特别适合换季时节呵护呼吸道健康。',
+                  '富含多种氨基酸、天然活性酶（淀粉酶、转化酶）、B族维生素、维生素C及钙、铁、锌、镁等微量元素，增强机体免疫力。',
+                  '温和调理肠胃消化系统，舒缓神经并帮助改善睡眠质量。',
+                  '富含天然抗氧化成分，由内而外滋养肌肤。'
+                ]
+              },
+              {
+                heading: '3. 纯正薄荷蜜鉴别特征',
+                body: '天然波美度高、水分含量低（< 20%），久置依然保持清雅花香与鲜亮色泽，正确保存下不发酸、不胀气。'
+              }
+            ]
+          },
+          usage: {
+            title: '科学食用方法与保存指南',
+            subtitle: '充分锁住每一滴薄荷花蜜的天然活性营养',
+            lead: '掌握正确的冲泡水温与饮用时间，有助于人体充分吸收蜂蜜中的生物活性酶与草本精华。',
+            sections: [
+              {
+                heading: '1. 日常养生推荐吃法',
+                bullets: [
+                  '晨起温水冲饮：取 1–2 茶匙（10–15ml）薄荷蜂蜜，加入 150–200ml 温开水（适宜水温 40°C – 50°C，切勿使用超过 60°C 的沸水以免破坏活性酶），早餐前 20–30 分钟饮用最佳。',
+                  '润喉护嗓：直接含服一勺纯蜜，或搭配金桔、柠檬、鲜姜片隔水炖服，每日 2–3 次。',
+                  '花草茶与美食搭配：可调入菊花茶、草本茶、藏红花水、鲜榨果汁，或搭配酸奶、吐司面包及水果沙拉。'
+                ]
+              },
+              {
+                heading: '2. 适用人群与注意事项',
+                bullets: [
+                  '适合成年人、中老年人、体虚疲劳人群及 1 周岁以上儿童。',
+                  '注意：未满 12 个月的婴幼儿不宜食用蜂蜜。',
+                  '建议使用干净的木勺、瓷勺或食品级塑料勺取蜜，避免金属勺长时间浸泡在蜜罐中。'
+                ]
+              },
+              {
+                heading: '3. 保存方法',
+                body: '每次食用后请拧紧瓶盖，置于阴凉干燥通风处（室温 20°C – 28°C），避免阳光直射。无需放入冰箱冷藏，低温环境容易导致天然葡萄糖结晶。'
+              }
+            ]
+          },
+          soil: {
+            title: '喀斯特石山高原的风土与气候',
+            subtitle: '数亿年石灰岩地质孕育出的珍稀高山蜜源生态',
+            lead: '同文喀斯特高原（涵盖管簿、安明、同文、苗旺四县）被联合国教科文组织列为世界地质公园，超过 80% 的地表为海拔 1,000 米至 1,600 米的陡峭石灰岩山峰。',
+            sections: [
+              {
+                heading: '1. 富含矿物质的石灰岩风土',
+                body: '历经数亿年地质演变，石缝中沉积的腐殖土富含钙、镁、钾、硅等天然矿物质。野生薄荷根系深扎于岩石缝隙中汲取养分与高山晨露，使花瓣精油与花蜜浓度远高于平原地区。'
+              },
+              {
+                heading: '2. 昼夜温差造就醇厚蜜质',
+                body: '每年花期（农历十月至十二月）高原白天阳光明媚干燥，夜间云雾缭绕、气温降至 8°C – 15°C。巨大的昼夜温差促使野生薄荷分泌出高浓度、富含芳香精油与天然糖分的优质花蜜。'
+              },
+              {
+                heading: '3. 零污染原生生态环境',
+                bullets: [
+                  '远离工业区、城市粉尘与农业化学品污染。',
+                  '野生薄荷自然生长于石山坡地，零化肥、零农药。',
+                  '高山甘露滋养，确保每一滴蜂蜜纯净无暇。'
+                ]
+              }
+            ]
+          },
+          bee_breed: {
+            title: '高原本土中华蜜蜂品种',
+            subtitle: '不畏寒风雾露、穿梭于悬崖石缝间的勤劳采蜜者',
+            lead: '黄百薄荷花蜂蜜由世居极北高寒石山区的本土中华蜜蜂（Apis cerana）采集酿造，千百年来已完美适应高原险峻地形与寒冷气候。',
+            sections: [
+              {
+                heading: '1. 高原本土蜜蜂的生物学优势',
+                body: '与外来引进蜂种相比，喀斯特高原本土蜜蜂体型精巧、双翼强健、飞行敏捷，具备极强的耐寒与抗雾能力。其细长的吻部能轻松深入紧贴岩壁生长的微小薄荷花萼中采撷精华。'
+              },
+              {
+                heading: '2. 蜂巢内的自然酿熟过程',
+                body: '成千上万只工蜂每日飞越数公里石山采集花蜜，回巢后通过口口相传混入咽下腺天然活性酶，并昼夜不停振翅扇风使水分自然蒸发。当水分降至 19–20% 以下时，蜜蜂才用洁白蜂蜡将蜜脾完全封盖。'
+              },
+              {
+                heading: '3. 可持续的传统生态养蜂方式',
+                bullets: [
+                  '采用天然原木蜂箱，沿野生薄荷最繁茂的石山谷地分布式摆放。',
+                  '薄荷花采蜜期绝不饲喂白糖。',
+                  '商品蜜零抗生素残留，守护本土蜂群与高原自然生态平衡。'
+                ]
+              }
+            ]
+          }
+        }
+      }
+    };
+
+    const distributorsByRegion = {
+      dong_van: [
+        {
+          id: 'htx_dong_van',
+          region: 'dong_van',
+          image: '/images/honey/honey_dist_dong_van.png',
+          vi: {
+            name: 'Hợp tác xã Mật ong Hoa Bạc Hà Đồng Văn',
+            address: 'Thị trấn Đồng Văn, huyện Đồng Văn, tỉnh Hà Giang',
+            phone: '0987 654 321',
+            shortIntro: 'HTX quy tụ các hộ nuôi ong bản địa, khai thác mật ong hoa bạc hà theo phương thức truyền thống trên vùng Cao nguyên đá Đồng Văn.',
+            scale: 'Hơn 45 hộ thành viên — 1.200+ đàn ong nội bản địa',
+            foragingArea: 'Các sườn núi đá vôi Phố Cáo, Sủng Là, Phố Bảng, Thị trấn Đồng Văn (độ cao 1.200m – 1.500m)',
+            cert: 'Chứng nhận OCOP 4 Sao & An toàn thực phẩm Chi cục Quản lý chất lượng Nông lâm sản và Thủy sản',
+            fullStory: [
+              'Hợp tác xã Mật ong Hoa Bạc Hà Đồng Văn là đơn vị nòng cốt trong mạng lưới liên kết sản xuất và phân phối của Hộ Kinh Doanh Hoàng Bách tại khu vực trung tâm Cao nguyên đá Đồng Văn. Được thành lập bởi những nghệ nhân nuôi ong người Mông, Tày, Giáy có truyền thống lâu đời, HTX hiện quản lý hơn 1.200 đàn ong nội đặt tại các thung lũng hoa bạc hà tự nhiên đẹp nhất vùng lõi công viên địa chất.',
+              'Toàn bộ các hộ thành viên trong HTX tuân thủ nghiêm ngặt quy trình nuôi ong sinh thái: chỉ di chuyển đàn ong đến vùng hoa bạc hà tự nhiên từ đầu tháng 10 âm lịch, tuyệt đối không cho ong ăn đường trong mùa khai thác và chỉ quay mật khi cầu ong đã vít nắp sáp trắng chín tự nhiên trên 90%.',
+              'Mật sau khi thu hoạch tại từng điểm trại được kiểm tra độ thủy phần bằng khúc xạ kế chuyên dụng, lọc thô qua lưới inox thực phẩm và đóng can niêm phong chuyển về kho bảo quản tiêu chuẩn, đảm bảo giữ nguyên hương vị the mát đặc trưng và màu vàng chanh ánh xanh nguyên bản của vùng đá Đồng Văn.'
+            ]
+          },
+          en: {
+            name: 'Dong Van Mint Flower Honey Cooperative',
+            address: 'Dong Van Town, Dong Van District, Ha Giang Province',
+            phone: '0987 654 321',
+            shortIntro: 'The cooperative unites indigenous beekeeping households harvesting wild mint flower honey using traditional methods across the Dong Van Karst Plateau.',
+            scale: '45+ member households — 1,200+ native highland bee colonies',
+            foragingArea: 'Limestone valleys of Pho Cao, Sung La, Pho Bang, and Dong Van Town (altitude 1,200m – 1,500m)',
+            cert: '4-Star OCOP Specialty & Certified Food Hygiene and Safety Standard',
+            fullStory: [
+              'Dong Van Mint Flower Honey Cooperative is a cornerstone production and distribution partner of Hoang Bach in the heart of the Dong Van Karst Plateau. Founded by experienced local H’Mong, Tay, and Giay beekeepers, the cooperative manages over 1,200 native bee colonies stationed across pristine wild mint valleys.',
+              'Every member household adheres strictly to ecological beekeeping protocols: zero sugar feeding during the blossom season and harvesting only when honeycombs are over 90% naturally wax-capped.',
+              'Each batch is tested for moisture content via refractometer, cold-filtered through food-grade stainless mesh, and sealed with full origin traceability.'
+            ]
+          },
+          zh: {
+            name: '同文薄荷花蜂蜜合作社 (HTX Mật ong Đồng Văn)',
+            address: '河江省同文县同文镇',
+            phone: '0987 654 321',
+            shortIntro: '合作社汇聚当地世居养蜂农户，在同文喀斯特高原采用传统生态方式采酿纯正野生薄荷花蜂蜜。',
+            scale: '45+ 合作社成员农户 — 1,200+ 群高原本土中华蜜蜂',
+            foragingArea: '副告 (Phố Cáo)、崇喇 (Sủng Là)、副榜 (Phố Bảng) 及同文镇周边海拔 1,200m – 1,500m 石山花谷',
+            cert: 'OCOP 四星级特产认证 & 农林水产品质量安全卫生认证',
+            fullStory: [
+              '同文薄荷花蜂蜜合作社是黄百 (Hoàng Bách) 在同文喀斯特高原核心产区的重要生产与分销网点。合作社由世代养蜂的赫蒙族、岱依族匠人创立，目前管理超过 1,200 群本土蜜蜂，分布在世界地质公园核心区最茂盛的野生薄荷山谷中。',
+              '所有成员农户严格执行生态养蜂规范：花期绝不饲喂白糖，坚持只采割自然封盖率达 90% 以上的成熟蜜脾。',
+              '采收后的原蜜均经过专业折光仪检测波美度与水分含量，采用食品级滤网物理过滤，确保每一滴蜂蜜都保持同文产区标志性的清凉薄荷花香与柠檬黄绿光泽。'
+            ]
+          }
+        },
+        {
+          id: 'ho_lung_cu',
+          region: 'dong_van',
+          image: '/images/honey/honey_dist_lung_cu.png',
+          vi: {
+            name: 'Hộ sản xuất Mật ong Lũng Cú – Đồng Văn',
+            address: 'Thôn Lũng Cú, xã Lũng Cú, huyện Đồng Văn, tỉnh Hà Giang',
+            phone: '0369 888 568',
+            shortIntro: 'Hộ gia đình có nhiều năm nuôi ong tại Lũng Cú, khai thác mật ong hoa bạc hà tự nhiên, đảm bảo nguyên chất, đậm hương vị vùng cao.',
+            scale: '320 đàn ong nội bản địa đặt quanh chân Cột cờ Lũng Cú & thung lũng Thèn Pả',
+            foragingArea: 'Thôn Lô Lô Chải, Thèn Pả, Séo Lủng – Xã Lũng Cú (độ cao 1.450m – 1.600m)',
+            cert: 'Chứng nhận cơ sở đủ điều kiện An toàn thực phẩm & Truy xuất nguồn gốc QR',
+            fullStory: [
+              'Nằm ngay dưới chân Cột cờ Quốc gia Lũng Cú – điểm cực Bắc thiêng liêng của Tổ quốc ở độ cao gần 1.500m, Hộ sản xuất Mật ong Lũng Cú là một trong những điểm nuôi ong lâu đời và uy tín nhất tại huyện Đồng Văn. Gia đình sinh sống trong ngôi nhà trình tường đất truyền thống với hàng trăm thùng ong gỗ đặt dọc theo sườn núi đá.',
+              'Nhờ vị trí địa lý đặc biệt nơi khí hậu lạnh sâu và sương muối dày vào mùa đông, cây bạc hà dại tại vùng núi đá Lũng Cú có thân thấp, lá dày và hoa tím đậm, tiết ra lượng mật hoa đặc sánh với hàm lượng tinh dầu bạc hà tự nhiên rất cao.',
+              'Du khách khi ghé thăm Lũng Cú có thể trực tiếp trải nghiệm quy trình thăm tổ ong, thưởng thức mật ong hoa bạc hà nguyên sáp ngay tại vườn đá và tra cứu tem QR chính hãng Hoàng Bách trên từng sản phẩm.'
+            ]
+          },
+          en: {
+            name: 'Lung Cu – Dong Van Honey Production Household',
+            address: 'Lung Cu Village, Lung Cu Commune, Dong Van District, Ha Giang Province',
+            phone: '0369 888 568',
+            shortIntro: 'Long-standing family apiary in Lung Cu harvesting pure natural wild mint honey with rich highland character.',
+            scale: '320 native bee colonies around Lung Cu Flag Tower & Then Pa Valley',
+            foragingArea: 'Lo Lo Chai, Then Pa, and Seo Lung Villages – Lung Cu Commune (altitude 1,450m – 1,600m)',
+            cert: 'Certified Food Safety Household & QR Origin Traceability',
+            fullStory: [
+              'Located at the foot of the iconic Lung Cu National Flag Tower at Vietnam’s northernmost point (nearly 1,500m elevation), the Lung Cu Honey Production Household has practiced traditional stone-walled courtyard beekeeping for generations.',
+              'Because of the colder microclimate and dense mountain mist in Lung Cu, wild mint blossoms here develop deep purple petals with highly concentrated aromatic nectar.',
+              'Visitors to Lung Cu can visit the family apiary in person, taste freshly harvested honeycomb, and verify every jar via the Hoang Bach QR traceability stamp.'
+            ]
+          },
+          zh: {
+            name: '龙鼓 (Lũng Cú) – 同文养蜂生产户',
+            address: '河江省同文县龙鼓社龙鼓村',
+            phone: '0369 888 568',
+            shortIntro: '在极北龙鼓地区拥有多年养蜂经验的传统农户，采集纯天然野生薄荷花蜜，高原风味浓郁纯正。',
+            scale: '320 群本土中华蜜蜂，分布于龙鼓国旗台脚下及山谷地带',
+            foragingArea: '倮倮寨 (Lô Lô Chải)、Then Pả、Séo Lủng 村 – 龙鼓社（海拔 1,450m – 1,600m）',
+            cert: '食品安全合格生产户认证 & 二维码原产地溯源',
+            fullStory: [
+              '位于越南极北地标龙鼓国家旗台脚下（海拔近 1,500 米），龙鼓养蜂生产户世代居住在传统的夯土石墙民居中，数百个原木蜂箱整齐排列在石山坡地与花海之间。',
+              '得益于龙鼓高海拔严寒与浓雾气候，这里的野生薄荷植株紧凑、花色深紫，分泌出的花蜜尤为浓稠，天然薄荷精油香气极为浓郁。',
+              '来到龙鼓的游客可以亲临蜂场参观采蜜过程，品尝新鲜成熟巢蜜，并通过黄百 (Hoàng Bách) 防伪溯源二维码查询每一瓶蜂蜜的完整产地信息。'
+            ]
+          }
+        }
+      ],
+      meo_vac: [
+        {
+          id: 'htx_meo_vac',
+          region: 'meo_vac',
+          image: '/images/honey/honey_dist_dong_van.png',
+          vi: {
+            name: 'Hợp tác xã Ong mật Hoa Bạc Hà Mèo Vạc',
+            address: 'Thị trấn Mèo Vạc, huyện Mèo Vạc, tỉnh Hà Giang',
+            phone: '0866 603 589',
+            shortIntro: 'Đơn vị liên kết khai thác mật ong hoa bạc hà trên các triền núi đá vôi hùng vĩ dọc đèo Mã Pì Lèng và thung lũng Pả Vi, Sín Cái.',
+            scale: '38 hộ nuôi ong liên kết — hơn 950 đàn ong nội bản địa',
+            foragingArea: 'Khu vực đèo Mã Pì Lèng, Pả Vi, Giàng Chu Phìn, Sủng Trà – Huyện Mèo Vạc',
+            cert: 'Chứng nhận Chỉ dẫn địa lý Mật ong Bạc hà Mèo Vạc & OCOP 4 Sao',
+            fullStory: [
+              'Huyện Mèo Vạc từ lâu được mệnh danh là "thủ phủ" của cây hoa bạc hà dại trên Cao nguyên đá với diện tích hoa mọc tự nhiên rộng lớn trải dài dọc theo sườn đèo Mã Pì Lèng, hẻm vực sông Nho Quế và các xã Pả Vi, Giàng Chu Phìn, Sủng Trà.',
+              'Hợp tác xã Ong mật Hoa Bạc Hà Mèo Vạc phối hợp chặt chẽ cùng Hộ Kinh Doanh Hoàng Bách để tuyển chọn những mẻ mật đầu vụ và giữa vụ đạt độ chín hoàn hảo nhất. Mật ong Mèo Vạc nổi tiếng với độ sánh đặc cao, sắc vàng chanh ánh xanh ngọc bích rất đẹp mắt và hương thơm thanh khiết lâu phai.',
+              'Tại điểm phân phối Mèo Vạc, khách hàng được tư vấn trực tiếp cách phân biệt mật ong hoa bạc hà thật – giả, kiểm tra độ đặc sóng sánh và hỗ trợ vận chuyển toàn quốc.'
+            ]
+          },
+          en: {
+            name: 'Meo Vac Mint Flower Honey Cooperative',
+            address: 'Meo Vac Town, Meo Vac District, Ha Giang Province',
+            phone: '0866 603 589',
+            shortIntro: 'Partner cooperative harvesting wild mint honey along the majestic limestone cliffs of Ma Pi Leng Pass and Pa Vi Valley.',
+            scale: '38 partner beekeeping families — 950+ native bee colonies',
+            foragingArea: 'Ma Pi Leng Pass, Pa Vi, Giang Chu Phin, and Sung Tra – Meo Vac District',
+            cert: 'Geographical Indication Certified & 4-Star OCOP Specialty',
+            fullStory: [
+              'Meo Vac District is widely celebrated as the heartland of wild highland mint, with vast natural blossom carpets stretching along Ma Pi Leng Pass and the Nho Que River canyon.',
+              'Meo Vac Mint Flower Honey Cooperative works closely with Hoang Bach to select peak-season honey harvests renowned for their emerald-tinted golden hue, exceptional viscosity, and long-lasting floral bouquet.',
+              'Customers visiting our Meo Vac distribution center can sample authentic mid-season harvests and arrange nationwide delivery.'
+            ]
+          },
+          zh: {
+            name: '苗旺 (Mèo Vạc) 薄荷花蜂蜜合作社',
+            address: '河江省苗旺县苗旺镇',
+            phone: '0866 603 589',
+            shortIntro: '在雄伟的马皮凉 (Mã Pì Lèng) 险峰与帕薇山谷地带合作采酿优质高山野生薄荷花蜜。',
+            scale: '38 户联合养蜂家庭 — 950+ 群本土中华蜜蜂',
+            foragingArea: '马皮凉山口、帕薇 (Pả Vi)、Giàng Chu Phìn、Sủng Trà – 苗旺县产区',
+            cert: '地理标志保护产品认证 & OCOP 四星级标准',
+            fullStory: [
+              '苗旺县素有喀斯特高原“野生薄荷之乡”的美誉，广阔的天然薄荷花海沿着马皮凉大峡谷与儒桂河两岸连绵分布。',
+              '苗旺薄荷花蜂蜜合作社与黄百 (Hoàng Bách) 深度合作，严选盛花期自然封盖成熟蜜。苗旺产区的薄荷蜜以极高的浓稠度、迷人的翠绿金黄光泽和持久幽雅的花香而闻名。',
+              '分销中心提供现场品鉴、真伪鉴别指导及全国安全配送服务。'
+            ]
+          }
+        },
+        {
+          id: 'ho_xin_chai_hoang_bach',
+          region: 'meo_vac',
+          image: '/images/honey/honey_dist_lung_cu.png',
+          vi: {
+            name: 'Trại Ong Hoàng Bách – Xín Chải, Sơn Vĩ',
+            address: 'Thôn Xín Chải, Xã Sơn Vĩ (Khu vực biên giới Thượng Phùng - Sơn Vĩ)',
+            phone: '0812 838 589',
+            shortIntro: 'Cơ sở sản xuất và đóng gói trung tâm của Hộ Kinh Doanh Hoàng Bách, trực tiếp quản lý đàn ong tại vùng núi cao biên giới.',
+            scale: 'Trụ sở chính & Trại ong trung tâm — hơn 600 đàn ong nội',
+            foragingArea: 'Thôn Xín Chải, Xã Sơn Vĩ và vùng núi đá giáp ranh Mèo Vạc',
+            cert: 'Cơ sở chính chủ Hộ Kinh Doanh Hoàng Bách — Kiểm định chất lượng định kỳ',
+            fullStory: [
+              'Trại Ong Hoàng Bách tại Thôn Xín Chải, Xã Sơn Vĩ là cơ sở sản xuất gốc và trung tâm kiểm soát chất lượng của thương hiệu Mật Ong Hoa Bạc Hà Hoàng Bách. Nằm ở vùng núi cao nguyên sơ nơi thảm thực vật rừng đá còn giữ nguyên vẻ hoang dã, trại ong thu hoạch những giọt mật tinh khiết nhất từ các triền đá vôi biệt lập.',
+              'Mọi lô mật ong trước khi đóng chai thủy tinh và dán tem truy xuất nguồn gốc đều được kiểm tra nghiêm ngặt về độ trong, thủy phần, hương vị và lưu mẫu đối chứng tại cơ sở Xín Chải – Sơn Vĩ.',
+              'Quý khách hàng và đại lý có thể liên hệ trực tiếp qua số hotline 0866.603.589 hoặc 0812.838.589 để đặt hàng chính gốc từ cơ sở sản xuất.'
+            ]
+          },
+          en: {
+            name: 'Hoang Bach Central Apiary – Xin Chai, Son Vi',
+            address: 'Xin Chai Village, Son Vi Commune, Tuyen Quang / Ha Giang Highland Border',
+            phone: '0812 838 589',
+            shortIntro: 'Central production and packaging facility of Hoang Bach Business Household, directly managing highland apiaries.',
+            scale: 'Headquarters & Central Apiary — 600+ native bee colonies',
+            foragingArea: 'Xin Chai Village, Son Vi Commune, and surrounding pristine karst ridges',
+            cert: 'Official Hoang Bach Production Facility — Periodic Lab Quality Testing',
+            fullStory: [
+              'Hoang Bach Central Apiary in Xin Chai Village, Son Vi Commune serves as the primary production base and quality control center for Hoang Bach Mint Flower Honey.',
+              'Every harvested batch undergoes rigorous testing for clarity, moisture level, and floral aroma before bottling and applying the official QR traceability seal.',
+              'Customers and distributors can contact our direct hotline at 0866.603.589 - 0812.838.589 for authentic factory-direct orders.'
+            ]
+          },
+          zh: {
+            name: '黄百 (Hoàng Bách) 中心蜂场 – 新寨村, 山尾社',
+            address: '山尾社新寨村（高山生态核心产区）',
+            phone: '0812 838 589',
+            shortIntro: '黄百经营户核心生产与灌装基地，直接管理高山原生态养蜂场与品质检验中心。',
+            scale: '总部基地与中心蜂场 — 600+ 群本土蜜蜂',
+            foragingArea: '新寨村、山尾社及毗邻苗旺的高山原始石林花海',
+            cert: '黄百官方直营生产基地 — 定期实验室理化指标检测',
+            fullStory: [
+              '位于山尾社新寨村的黄百中心蜂场是“黄百薄荷花蜂蜜”品牌的源头生产基地与质量控制中心。这里地处偏远纯净的高山石林地带，野生薄荷植被茂密且远离人为干扰。',
+              '每一批次蜂蜜在灌装贴标前，均在新寨基地经过波美度、纯净度与感官风味的严格检验，并留存批次样品备查。',
+              '欢迎广大消费者与合作伙伴拨打官方热线 0866.603.589 或 0812.838.589 直接订购源头正品。'
+            ]
+          }
+        }
+      ],
+      yen_minh: [
+        {
+          id: 'htx_yen_minh',
+          region: 'yen_minh',
+          image: '/images/honey/honey_dist_dong_van.png',
+          vi: {
+            name: 'Tổ hợp tác Nuôi ong Bạc Hà Yên Minh',
+            address: 'Thị trấn Yên Minh, huyện Yên Minh, tỉnh Hà Giang',
+            phone: '0866 603 589',
+            shortIntro: 'Điểm thu hoạch và phân phối mật ong hoa bạc hà tại cửa ngõ Cao nguyên đá Yên Minh – Lao Và Chải – Du Già.',
+            scale: '28 hộ nuôi ong truyền thống — hơn 680 đàn ong nội',
+            foragingArea: 'Xã Lao Và Chải, Na Khê, Bạch Đích, Du Già – Huyện Yên Minh',
+            cert: 'Chứng nhận An toàn vệ sinh thực phẩm & Chuỗi cung ứng Mật ong Cao nguyên đá',
+            fullStory: [
+              'Tổ hợp tác Nuôi ong Bạc Hà Yên Minh phụ trách vùng nguyên liệu phía Tây và phía Nam của Cao nguyên đá, trải dài từ các sườn núi đá vôi Lao Và Chải, Na Khê, Bạch Đích cho tới vùng rừng núi nguyên sinh Du Già.',
+              'Nhờ thảm thực vật phong phú giao thoa giữa rừng thông Yên Minh và các triền đá tai mèo phủ đầy hoa bạc hà tím, mật ong thu hoạch tại khu vực Yên Minh có hương thơm dịu nhẹ quyến rũ, vị ngọt thanh mát rất dễ thưởng thức cho cả người lớn tuổi và trẻ nhỏ.',
+              'Điểm phân phối tại Thị trấn Yên Minh là trạm dừng chân tin cậy cho du khách trên cung đường khám phá Hà Giang muốn mua mật ong hoa bạc hà Hoàng Bách chính hãng có tem truy xuất nguồn gốc rõ ràng.'
+            ]
+          },
+          en: {
+            name: 'Yen Minh Mint Honey Beekeeping Cooperative Group',
+            address: 'Yen Minh Town, Yen Minh District, Ha Giang Province',
+            phone: '0866 603 589',
+            shortIntro: 'Harvesting and distribution hub at the gateway to the Yen Minh – Lao Va Chai – Du Gia karst region.',
+            scale: '28 traditional beekeeping households — 680+ native bee colonies',
+            foragingArea: 'Lao Va Chai, Na Khe, Bach Dich, and Du Gia Communes – Yen Minh District',
+            cert: 'Certified Food Hygiene & Karst Plateau Honey Supply Chain Partner',
+            fullStory: [
+              'The Yen Minh Beekeeping Cooperative Group oversees the western and southern foraging zones of the Karst Plateau, spanning from the limestone slopes of Lao Va Chai and Bach Dich to the pristine valleys of Du Gia.',
+              'Surrounded by highland pine forests and wild mint limestone ridges, honey harvested in Yen Minh features a remarkably gentle floral aroma and smooth, refreshing sweetness.',
+              'Our Yen Minh Town center serves as a trusted stopover for travelers exploring Ha Giang who seek authentic QR-verified Hoang Bach Mint Flower Honey.'
+            ]
+          },
+          zh: {
+            name: '安明 (Yên Minh) 薄荷蜜养蜂合作组',
+            address: '河江省安明县安明镇',
+            phone: '0866 603 589',
+            shortIntro: '位于安明 – 劳瓦寨 (Lao Và Chải) – 游嘉 (Du Già) 喀斯特高原门户产区的采收与分销网点。',
+            scale: '28 户传统养蜂家庭 — 680+ 群高原本土蜜蜂',
+            foragingArea: '劳瓦寨、那溪 (Na Khê)、白迪 (Bạch Đích) 及游嘉自然保护区周边石山',
+            cert: '食品安全卫生认证 & 喀斯特高原蜂蜜标准化供应链成员',
+            fullStory: [
+              '安明薄荷蜜养蜂合作组负责喀斯特高原西南部蜜源产区，涵盖劳瓦寨、那溪、白迪的石灰岩山坡以及游嘉原始生态山谷。',
+              '得益于安明高山松林与石山野生薄荷花海交织的微生态，安明产区的薄荷蜜香气柔美清新，口感温润甘甜，老少皆宜。',
+              '安明镇分销网点是环游河江高原游客信赖的正品驿站，所有产品均贴有黄百 (Hoàng Bách) 防伪溯源二维码标签。'
+            ]
+          }
+        },
+        {
+          id: 'ho_du_gia_yen_minh',
+          region: 'yen_minh',
+          image: '/images/honey/honey_dist_lung_cu.png',
+          vi: {
+            name: 'Hộ nuôi ong Sinh thái Du Già – Yên Minh',
+            address: 'Xã Du Già, huyện Yên Minh, tỉnh Hà Giang',
+            phone: '0812 838 589',
+            shortIntro: 'Khai thác mật ong hoa bạc hà tự nhiên tại khu vực vùng đệm Vườn Quốc gia Du Già – Cao nguyên đá Đồng Văn.',
+            scale: '250 đàn ong nội bản địa nuôi theo mô hình sinh thái rừng đá',
+            foragingArea: 'Thung lũng Du Già, Đường Thượng, Lũng Hồ – Huyện Yên Minh',
+            cert: 'Sản phẩm OCOP địa phương & Cam kết 100% nguyên chất tự nhiên',
+            fullStory: [
+              'Nằm trong vùng sinh thái trong lành giáp Vườn Quốc gia Du Già và các xã Đường Thượng, Lũng Hồ, Hộ nuôi ong Sinh thái Du Già sở hữu nguồn hoa bạc hà rừng hoàn toàn tự nhiên mọc xen kẽ trên các dãy núi đá vôi hùng vĩ.',
+              'Đàn ong tại đây tận hưởng nguồn nước suối thác tinh khiết và thảm hoa bạc hà nở muộn kéo dài đến tận tháng Chạp âm lịch, tạo nên những giọt mật cuối vụ sánh đặc, giàu khoáng chất và đậm đà hương vị núi rừng.',
+              'Sản phẩm được thu gom, kiểm định chất lượng và phân phối chính thức trong hệ thống Mật Ong Hoa Bạc Hà Hoàng Bách.'
+            ]
+          },
+          en: {
+            name: 'Du Gia Ecological Beekeeping Household – Yen Minh',
+            address: 'Du Gia Commune, Yen Minh District, Ha Giang Province',
+            phone: '0812 838 589',
+            shortIntro: 'Harvesting wild mint honey in the pristine buffer zone of Du Gia National Park – Dong Van Karst Plateau.',
+            scale: '250 native bee colonies managed under forest-karst ecological standards',
+            foragingArea: 'Du Gia, Duong Thuong, and Lung Ho Valleys – Yen Minh District',
+            cert: 'Local OCOP Specialty & 100% Pure Natural Guarantee',
+            fullStory: [
+              'Nestled in the unspoiled valleys bordering Du Gia National Park, Duong Thuong, and Lung Ho, the Du Gia Ecological Beekeeping Household benefits from wild mountain mint thriving alongside crystal-clear waterfall streams.',
+              'Late-season blossoms here yield a rich, mineral-dense honey with a deep herbal aroma, fully inspected and distributed under the Hoang Bach quality seal.'
+            ]
+          },
+          zh: {
+            name: '游嘉 (Du Già) – 安明生态养蜂户',
+            address: '河江省安明县游嘉社',
+            phone: '0812 838 589',
+            shortIntro: '在游嘉国家公园缓冲带与同文喀斯特高原交界处采集纯天然野生薄荷花蜜。',
+            scale: '250 群原生态石林放养本土蜜蜂',
+            foragingArea: '游嘉山谷、Đường Thượng、Lũng Hồ – 安明县生态产区',
+            cert: '地方特色农产品认证 & 100% 纯天然品质保证',
+            fullStory: [
+              '坐落于毗邻游嘉国家公园的原始山谷中，游嘉生态养蜂户依托清澈的高山溪流与绵延的野生薄荷石山，拥有得天独厚的无污染蜜源环境。',
+              '这里的晚花期薄荷蜜质地尤为醇厚、矿物质丰富，经黄百 (Hoàng Bách) 严格检验后统一贴标溯源上市。'
+            ]
+          }
+        }
+      ]
+    };
+
+    const t = i18n[honeyLang] || i18n.vi;
+    const currentRegionDists = distributorsByRegion[honeyRegion] || distributorsByRegion.dong_van;
+
+    const handleSelectHoneyTab = (tabId) => {
+      setHoneyTab(tabId);
+      setSelectedHoneyDist(null);
+      if (honeyContentBoxRef.current) {
+        honeyContentBoxRef.current.scrollTop = 0;
+      }
+    };
+
+    const handleOpenDistDetail = (distItem) => {
+      setSelectedHoneyDist(distItem);
+      if (honeyContentBoxRef.current) {
+        honeyContentBoxRef.current.scrollTop = 0;
+      }
+    };
+
+    const handleBackToDistList = () => {
+      setSelectedHoneyDist(null);
+      if (honeyContentBoxRef.current) {
+        honeyContentBoxRef.current.scrollTop = 0;
+      }
+    };
+
+    const renderTabIcon = (tabId, isActive) => {
+      const strokeColor = isActive ? '#103b19' : '#f7d56e';
+      switch (tabId) {
+        case 'intro':
+          return <BookOpen size={20} strokeWidth={2.2} color={strokeColor} />;
+        case 'featured':
+          return <Award size={20} strokeWidth={2.2} color={strokeColor} />;
+        case 'usage':
+          return (
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 8h1a4 4 0 1 1 0 8h-1" />
+              <path d="M3 8h14v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z" />
+              <line x1="6" y1="2" x2="6" y2="5" />
+              <line x1="10" y1="2" x2="10" y2="5" />
+              <line x1="14" y1="2" x2="14" y2="5" />
+              <line x1="2" y1="21" x2="18" y2="21" />
+            </svg>
+          );
+        case 'distribution':
+          return <MapPin size={20} strokeWidth={2.2} color={strokeColor} />;
+        case 'soil':
+          return <Sprout size={20} strokeWidth={2.2} color={strokeColor} />;
+        case 'bee_breed':
+          return (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <ellipse cx="12" cy="14" rx="4.5" ry="6" />
+              <path d="M8 12h8" />
+              <path d="M8 15.5h8" />
+              <path d="M12 8C9 5 4 6 3 9c-1 2.5 2 5 4.8 4.2" />
+              <path d="M12 8c3-3 8-2 9 1 1 2.5-2 5-4.8 4.2" />
+              <path d="M10 4.5 11.2 8" />
+              <path d="M14 4.5 12.8 8" />
+              <path d="M12 20v2" />
+            </svg>
+          );
+        default:
+          return <Sparkles size={20} color={strokeColor} />;
+      }
+    };
+
+    const activeArticle = t.articles[honeyTab] || t.articles.intro;
+    const distDetailData = selectedHoneyDist ? (selectedHoneyDist[honeyLang] || selectedHoneyDist.vi) : null;
+
+    return (
+      <div className="honey-trace-wrapper">
+        <div className="honey-trace-card">
+          {/* 1. HEADER BAR: TIÊU ĐỀ + 3 NGÔN NGỮ */}
+          <div className="honey-top-header">
+            <h1 className="honey-main-title">{t.headerTitle}</h1>
+            <div className="honey-lang-switcher" role="group" aria-label="Language Selector">
+              <button
+                type="button"
+                className={`honey-lang-btn ${honeyLang === 'vi' ? 'active' : ''}`}
+                onClick={() => setHoneyLang('vi')}
+              >
+                <span className="honey-flag-icon" aria-hidden="true">
+                  <svg viewBox="0 0 36 36" width="18" height="18">
+                    <circle cx="18" cy="18" r="18" fill="#DA251D" />
+                    <polygon points="18,7.5 20.9,14.8 28.8,15.3 22.7,20.3 24.7,28 18,23.7 11.3,28 13.3,20.3 7.2,15.3 15.1,14.8" fill="#FFFF00" />
+                  </svg>
+                </span>
+                <span>Tiếng Việt</span>
+              </button>
+              <button
+                type="button"
+                className={`honey-lang-btn ${honeyLang === 'en' ? 'active' : ''}`}
+                onClick={() => setHoneyLang('en')}
+              >
+                <span className="honey-flag-icon" aria-hidden="true">
+                  <svg viewBox="0 0 36 36" width="18" height="18">
+                    <circle cx="18" cy="18" r="18" fill="#012169" />
+                    <path d="M5,5 L31,31 M31,5 L5,31" stroke="#FFF" strokeWidth="4.5" />
+                    <path d="M5,5 L31,31 M31,5 L5,31" stroke="#C8102E" strokeWidth="2.2" />
+                    <path d="M18,0 V36 M0,18 H36" stroke="#FFF" strokeWidth="6.5" />
+                    <path d="M18,0 V36 M0,18 H36" stroke="#C8102E" strokeWidth="3.8" />
+                  </svg>
+                </span>
+                <span>English</span>
+              </button>
+              <button
+                type="button"
+                className={`honey-lang-btn ${honeyLang === 'zh' ? 'active' : ''}`}
+                onClick={() => setHoneyLang('zh')}
+              >
+                <span className="honey-flag-icon" aria-hidden="true">
+                  <svg viewBox="0 0 36 36" width="18" height="18">
+                    <circle cx="18" cy="18" r="18" fill="#DE2910" />
+                    <polygon points="10.5,8.5 12,13 16.5,13 12.8,15.8 14.2,20.2 10.5,17.5 6.8,20.2 8.2,15.8 4.5,13 9,13" fill="#FFDE00" />
+                    <circle cx="19.5" cy="7.5" r="1.3" fill="#FFDE00" />
+                    <circle cx="22.8" cy="10.8" r="1.3" fill="#FFDE00" />
+                    <circle cx="22.8" cy="15.5" r="1.3" fill="#FFDE00" />
+                    <circle cx="19.5" cy="19" r="1.3" fill="#FFDE00" />
+                  </svg>
+                </span>
+                <span>中文</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="honey-gold-divider-line" />
+
+          {/* 2. KHỐI THÔNG TIN SẢN PHẨM (TRÁI) & LOGO HOÀNG BÁCH (PHẢI) */}
+          <div className="honey-product-header-grid">
+            <div className="honey-product-meta-list">
+              <div className="honey-meta-row">
+                <div className="honey-meta-icon-box">
+                  <Layers size={19} strokeWidth={2.2} />
+                </div>
+                <div className="honey-meta-text">
+                  <span className="honey-meta-label">{t.lblProduct}</span>
+                  <span className="honey-meta-value">{t.defaultProductName}</span>
+                </div>
+              </div>
+
+              <div className="honey-meta-row">
+                <div className="honey-meta-icon-box">
+                  <Building2 size={19} strokeWidth={2.2} />
+                </div>
+                <div className="honey-meta-text">
+                  <span className="honey-meta-label">{t.lblProducer}</span>
+                  <span className="honey-meta-value">{t.defaultProducerName}</span>
+                </div>
+              </div>
+
+              <div className="honey-meta-row">
+                <div className="honey-meta-icon-box">
+                  <MapPin size={19} strokeWidth={2.2} />
+                </div>
+                <div className="honey-meta-text">
+                  <span className="honey-meta-label">{t.lblAddress}</span>
+                  <span className="honey-meta-value">{t.defaultAddress}</span>
+                </div>
+              </div>
+
+              <div className="honey-meta-row honey-meta-row-contact">
+                <div className="honey-meta-icon-box">
+                  <Phone size={19} strokeWidth={2.2} />
+                </div>
+                <div className="honey-meta-text">
+                  <span className="honey-meta-label">{t.lblContact}</span>
+                  <a href={`tel:${String(t.defaultContact).split('-')[0].replace(/\D/g, '')}`} className="honey-meta-value honey-contact-highlight">
+                    {t.defaultContact}
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="honey-brand-logo-frame">
+              <div className="honey-brand-logo-inner">
+                <img
+                  src="/images/honey/honey_logo_hoang_bach.png"
+                  alt="Hoàng Bách - Mật Ong Hoa Bạc Hà - Cao Nguyên Đá Hà Giang"
+                  className="honey-brand-logo-img"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dải xác thực mã QR nhỏ gọn nếu có serialNumber */}
+          {serialNumber && (
+            <div className="honey-auth-strip">
+              <div className="honey-auth-strip-item">
+                <ShieldCheck size={15} />
+                <span>{t.verifiedLabel}</span>
+              </div>
+              <div className="honey-auth-strip-item">
+                <QrCode size={14} />
+                <span>{t.serialBadge} <strong>{label?.internalCode || serialNumber}</strong></span>
+              </div>
+              {scanCount > 0 && (
+                <div className="honey-auth-strip-item">
+                  <Eye size={14} />
+                  <span>{t.scanCountBadge} <strong>{scanCount}</strong></span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. 6 TAB ĐIỀU HƯỚNG (2 HÀNG x 3 CỘT - BẤM VÀO TAB NÀO THÌ TAB ĐÓ ĐỔI MÀU VÀNG) */}
+          <div className="honey-tabs-grid" role="tablist">
+            {t.tabs.map((tab) => {
+              const isActive = honeyTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`honey-tab-btn ${isActive ? 'active' : ''}`}
+                  onClick={() => handleSelectHoneyTab(tab.id)}
+                >
+                  <span className="honey-tab-icon">
+                    {renderTabIcon(tab.id, isActive)}
+                  </span>
+                  <span className="honey-tab-label">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 4. BANNER PHONG CẢNH CAO NGUYÊN ĐÁ & HŨ MẬT ONG */}
+          <div className="honey-hero-banner-wrap">
+            <img
+              src="/images/honey/honey_hero_banner.png"
+              alt="Mật Ong Hoa Bạc Hà Cao Nguyên Đá Hà Giang"
+              className="honey-hero-banner-img"
+            />
+          </div>
+
+          {/* 5. Ô NỘI DUNG CHÍNH PHÍA DƯỚI (CỨ BẤM VÀO ĐÂU THÌ NỘI DUNG Ở TRONG Ô ĐỎ HẾT, DÀI QUÁ THÌ KÉO XUỐNG DƯỚI) */}
+          <div className="honey-content-outer-frame">
+            <div className="honey-content-box" ref={honeyContentBoxRef}>
+              {honeyTab === 'distribution' ? (
+                selectedHoneyDist === null ? (
+                  /* 5A. DANH SÁCH CÁC ĐIỂM PHÂN PHỐI THEO VÙNG (ĐỒNG VĂN | MÈO VẠC | YÊN MINH) */
+                  <div className="honey-distribution-view">
+                    <div className="honey-region-subtabs">
+                      {t.regions.map((reg) => {
+                        const isRegActive = honeyRegion === reg.id;
+                        return (
+                          <button
+                            key={reg.id}
+                            type="button"
+                            className={`honey-region-pill ${isRegActive ? 'active' : ''}`}
+                            onClick={() => setHoneyRegion(reg.id)}
+                          >
+                            <MapPin size={16} strokeWidth={2.4} className="honey-region-pin" />
+                            <span>{reg.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="honey-dist-cards-list">
+                      {currentRegionDists.map((dist) => {
+                        const dInfo = dist[honeyLang] || dist.vi;
+                        return (
+                          <div key={dist.id} className="honey-dist-card">
+                            <div
+                              className="honey-dist-card-thumb"
+                              onClick={() => handleOpenDistDetail(dist)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => e.key === 'Enter' && handleOpenDistDetail(dist)}
+                            >
+                              <img src={dist.image} alt={dInfo.name} />
+                            </div>
+
+                            <div className="honey-dist-card-info">
+                              <div className="honey-dist-info-row">
+                                <span className="honey-dist-row-icon">
+                                  <Handshake size={15} strokeWidth={2.3} />
+                                </span>
+                                <p>
+                                  <strong>{t.distLabels.unitName}</strong> {dInfo.name}
+                                </p>
+                              </div>
+
+                              <div className="honey-dist-info-row">
+                                <span className="honey-dist-row-icon">
+                                  <MapPin size={15} strokeWidth={2.3} />
+                                </span>
+                                <p>
+                                  <strong>{t.distLabels.address}</strong> {dInfo.address}
+                                </p>
+                              </div>
+
+                              <div className="honey-dist-info-row">
+                                <span className="honey-dist-row-icon">
+                                  <Phone size={15} strokeWidth={2.3} />
+                                </span>
+                                <p>
+                                  <strong>{t.distLabels.contact}</strong>{' '}
+                                  <a href={`tel:${dInfo.phone.replace(/\s+/g, '')}`} className="honey-dist-phone-link">
+                                    {dInfo.phone}
+                                  </a>
+                                </p>
+                              </div>
+
+                              <div className="honey-dist-info-row">
+                                <span className="honey-dist-row-icon">
+                                  <FileText size={15} strokeWidth={2.3} />
+                                </span>
+                                <p>
+                                  <strong>{t.distLabels.intro}</strong> {dInfo.shortIntro}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="honey-dist-card-action">
+                              <button
+                                type="button"
+                                className="honey-dist-more-btn"
+                                onClick={() => handleOpenDistDetail(dist)}
+                              >
+                                <span>{t.distLabels.btnMore}</span>
+                                <ChevronRight size={15} strokeWidth={2.8} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* 5B. CHI TIẾT 1 ĐIỂM PHÂN PHỐI KHI BẤM "GIỚI THIỆU >" + NÚT BACK ĐỂ XEM ĐIỂM KHÁC */
+                  <div className="honey-dist-detail-view">
+                    <div className="honey-dist-detail-topbar">
+                      <button
+                        type="button"
+                        className="honey-back-btn"
+                        onClick={handleBackToDistList}
+                      >
+                        <ArrowLeft size={16} strokeWidth={2.5} />
+                        <span>{t.distLabels.btnBackShort}</span>
+                      </button>
+                      <span className="honey-dist-detail-badge">{t.distLabels.detailTitle}</span>
+                    </div>
+
+                    <div className="honey-dist-detail-hero">
+                      <img
+                        src={selectedHoneyDist.image}
+                        alt={distDetailData.name}
+                        className="honey-dist-detail-img"
+                      />
+                      <div className="honey-dist-detail-summary">
+                        <h3 className="honey-dist-detail-name">{distDetailData.name}</h3>
+                        <div className="honey-dist-detail-meta">
+                          <p><MapPin size={15} /> <strong>{t.distLabels.address}</strong> {distDetailData.address}</p>
+                          <p><Phone size={15} /> <strong>{t.distLabels.contact}</strong> <a href={`tel:${distDetailData.phone.replace(/\s+/g, '')}`}>{distDetailData.phone}</a></p>
+                          <p><Layers size={15} /> <strong>{t.distLabels.scaleLabel}</strong> {distDetailData.scale}</p>
+                          <p><Sprout size={15} /> <strong>{t.distLabels.areaLabel}</strong> {distDetailData.foragingArea}</p>
+                          <p><Award size={15} /> <strong>{t.distLabels.certLabel}</strong> {distDetailData.cert}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="honey-dist-detail-story">
+                      {distDetailData.fullStory.map((paragraph, idx) => (
+                        <p key={idx} className="honey-article-paragraph">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+
+                    <div className="honey-dist-detail-footer-actions">
+                      <a
+                        href={`tel:${distDetailData.phone.replace(/\s+/g, '')}`}
+                        className="honey-call-dist-btn"
+                      >
+                        <Phone size={16} />
+                        <span>{t.distLabels.callNow}: {distDetailData.phone}</span>
+                      </a>
+
+                      <button
+                        type="button"
+                        className="honey-back-btn honey-back-btn-bottom"
+                        onClick={handleBackToDistList}
+                      >
+                        <ArrowLeft size={17} strokeWidth={2.6} />
+                        <span>{t.distLabels.btnBack}</span>
+                      </button>
+                    </div>
+                  </div>
+                )
+              ) : (
+                /* 5C. NỘI DUNG BÀI VIẾT CỦA CÁC TAB: GIỚI THIỆU | ĐẶC SẮC | CÁCH DÙNG | THỔ NHƯỠNG | GIỐNG ONG */
+                <div className="honey-article-view">
+                  <div className="honey-article-header">
+                    <h2 className="honey-article-title">{activeArticle.title}</h2>
+                    <p className="honey-article-subtitle">{activeArticle.subtitle}</p>
+                  </div>
+
+                  <div className="honey-article-lead-box">
+                    <p>{activeArticle.lead}</p>
+                  </div>
+
+                  <div className="honey-article-sections">
+                    {activeArticle.sections.map((sec, idx) => (
+                      <div key={idx} className="honey-article-section-card">
+                        <h3 className="honey-article-sec-heading">{sec.heading}</h3>
+                        {sec.body && <p className="honey-article-paragraph">{sec.body}</p>}
+                        {sec.bullets && (
+                          <ul className="honey-article-bullet-list">
+                            {sec.bullets.map((b, bIdx) => (
+                              <li key={bIdx}>
+                                <CheckCircle2 size={16} className="honey-bullet-icon" />
+                                <span>{b}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 6. FOOTER ĐẶC SẢN CAO NGUYÊN ĐÁ HÀ GIANG */}
+          <div className="honey-footer-banner-wrap">
+            <img
+              src="/images/honey/honey_footer_banner.png"
+              alt="Mật Ong Hoa Bạc Hà - Đặc Sản Cao Nguyên Đá Hà Giang"
+              className="honey-footer-banner-img"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`product-info-page theme-${activeTheme}`}>
       {/* Enterprise Custom Domain Banner */}
-      {isCustomDomain && customEnterprise && !(activeTheme === 'appliance' && !isApplianceActivated) && (
+      {isCustomDomain && customEnterprise && activeTheme !== 'honey' && !(activeTheme === 'appliance' && !isApplianceActivated) && (
         <div className="product-info-domain-banner"
           style={{ background: customEnterprise.brandConfig?.primaryColor || '#1565C0' }}
         >
@@ -2468,6 +3730,7 @@ export default function ProductInfo() {
 
 
       {/* Render Active View by Industry */}
+      {activeTheme === 'honey' && renderHoneyView()}
       {(activeTheme === 'staycool' || activeTheme === 'vyphyto') && renderStayCoolView()}
       {activeTheme === 'medical' && renderMedicalView()}
       {activeTheme === 'appliance' && renderApplianceView()}
@@ -2478,7 +3741,7 @@ export default function ProductInfo() {
       {activeTheme === 'default' && renderDefaultView()}
 
       {/* Thông tin KH sở hữu cho các theme ngành hàng (default, appliance, functional_food đã tự hiển thị) */}
-      {activeTheme !== 'default' && activeTheme !== 'appliance' && !isFoodTheme && hasOwnerInfo && (
+      {activeTheme !== 'default' && activeTheme !== 'appliance' && activeTheme !== 'honey' && !isFoodTheme && hasOwnerInfo && (
         <div className="product-info-body owner-card-standalone">
           {renderOwnerInfoCard()}
         </div>

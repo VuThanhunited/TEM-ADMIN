@@ -1400,6 +1400,7 @@ export default function Enterprise() {
                           }))}
                         >
                           <option value="default">🔲 Tự động nhận diện theo danh mục sản phẩm</option>
+                          <option value="honey">🍯 Mật ong Hoa Bạc Hà / Đặc sản vùng cao (3 ngôn ngữ)</option>
                           <option value="appliance">🔧 Điện gia dụng & Bảo hành điện tử (Navy & Vàng)</option>
                           <option value="medical">⚕️ Dược phẩm & Y tế chuẩn GMP-WHO (Xanh Teal)</option>
                           <option value="functional_food">🌿 Thực phẩm chức năng & Dinh dưỡng (Xanh lá thiên nhiên)</option>

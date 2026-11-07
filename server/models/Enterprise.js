@@ -69,7 +69,7 @@ const enterpriseSchema = new mongoose.Schema({
     showRelatedProducts: { type: Boolean, default: true },
     defaultTheme: {
       type: String,
-      enum: ['default', 'medical', 'appliance', 'functional_food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
+      enum: ['default', 'honey', 'medical', 'appliance', 'food', 'functional_food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
       default: 'default'
     },
     distributionBannerText: { type: String, default: '' },

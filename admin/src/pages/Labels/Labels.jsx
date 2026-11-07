@@ -2265,6 +2265,7 @@ export default function Labels() {
                     <label>Chủ đề giao diện (Theme) *</label>
                     <select className="input select" value={batchForm.theme} onChange={e => setBatchForm({...batchForm, theme: e.target.value})} required>
                       <option value="default">Mặc định (Hiển thị chung)</option>
+                      <option value="honey">🍯 Mật ong Hoa Bạc Hà / Đặc sản vùng cao (3 ngôn ngữ)</option>
                       <option value="agriculture">Nông nghiệp (Lá xanh)</option>
                       <option value="appliance">Điện gia dụng / Thiết bị nhà bếp (Xanh tech)</option>
                       <option value="food">Thực phẩm</option>
@@ -2301,6 +2302,7 @@ export default function Labels() {
                     <label>Chủ đề giao diện (Theme) - Có thể chỉnh sửa</label>
                     <select className="input select" value={mapForm.theme || 'default'} onChange={e => setMapForm({...mapForm, theme: e.target.value})}>
                       <option value="default">Mặc định (Hiển thị chung)</option>
+                      <option value="honey">🍯 Mật ong Hoa Bạc Hà / Đặc sản vùng cao (3 ngôn ngữ)</option>
                       <option value="agriculture">Nông nghiệp (Lá xanh)</option>
                       <option value="appliance">Điện gia dụng / Thiết bị (Xanh tech)</option>
                       <option value="food">Thực phẩm</option>
@@ -2648,12 +2650,14 @@ export default function Labels() {
                     <label>Chủ đề giao diện (Theme)</label>
                     <select className="input select" value={migrateForm.theme} onChange={e => setMigrateForm({...migrateForm, theme: e.target.value})}>
                       <option value="default">Mặc định (Hiển thị chung)</option>
+                      <option value="honey">🍯 Mật ong Hoa Bạc Hà / Đặc sản vùng cao (3 ngôn ngữ)</option>
                       <option value="agriculture">Nông nghiệp (Lá xanh)</option>
                       <option value="appliance">Điện gia dụng / Thiết bị nhà bếp (Xanh tech)</option>
                       <option value="food">Thực phẩm</option>
                       <option value="functional_food">Thực phẩm chức năng</option>
                       <option value="medical">Y tế / Dược phẩm (Sạch & Tin cậy)</option>
                       <option value="cosmetics">Mỹ phẩm (Hồng thanh lịch)</option>
+                      <option value="ocop">OCOP (Đặc sản địa phương)</option>
                     </select>
                   </div>
                 </div>

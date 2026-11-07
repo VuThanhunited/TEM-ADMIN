@@ -626,7 +626,11 @@ router.get('/scan/:serial', async (req, res) => {
       }).select('name category images description').lean();
     }
 
-    const normalizeTheme = (t) => (t === 'warranty' || t === 'warranty_solution' ? 'appliance' : t);
+    const normalizeTheme = (t) => {
+      if (t === 'warranty' || t === 'warranty_solution') return 'appliance';
+      if (t === 'mint_honey' || t === 'hoang_bach') return 'honey';
+      return t;
+    };
 
     let responseTheme = (label.productId?.theme && label.productId.theme !== 'auto' && label.productId.theme !== 'default')
       ? normalizeTheme(label.productId.theme)
@@ -634,14 +638,21 @@ router.get('/scan/:serial', async (req, res) => {
 
     // Nếu enterprise đã cấu hình theme mặc định và product/batch chưa chọn theme riêng, dùng theme doanh nghiệp
     const enterpriseDefaultTheme = normalizeTheme(enterprise.displayConfig?.defaultTheme);
+    const entNameLower = (enterprise.name || '').toLowerCase();
     if ((!responseTheme || responseTheme === 'auto' || responseTheme === 'default') && enterpriseDefaultTheme && enterpriseDefaultTheme !== 'default') {
       responseTheme = enterpriseDefaultTheme;
-    } else if (responseTheme === 'default' && (enterprise.name || '').toLowerCase().includes('staycool')) {
+    } else if (responseTheme === 'default' && entNameLower.includes('staycool')) {
       responseTheme = 'staycool';
+    } else if (responseTheme === 'default' && (entNameLower.includes('hoàng bách') || entNameLower.includes('mật ong hoa bạc hà'))) {
+      responseTheme = 'honey';
     } else if (responseTheme === 'default' && label.productId) {
       const cat = (label.productId.category || '').toLowerCase().trim();
       const pName = (label.productId.name || '').toLowerCase().trim();
       
+      const honeyKeywords = [
+        'mật ong', 'hoa bạc hà', 'hoàng bách', 'cao nguyên đá'
+      ];
+
       const warrantyKeywords = [
         'bảo hành', 'tem bảo hành', 'warranty', 'homeplus', 'bảo hành điện tử'
       ];
@@ -656,7 +667,7 @@ router.get('/scan/:serial', async (req, res) => {
         'thực phẩm', 'gia vị', 'dầu ăn', 'nước uống', 'nước ngọt', 
         'nước đóng chai', 'nước ép', 'nước khoáng', 'bia', 'rượu', 
         'bánh kẹo', 'bánh', 'kẹo', 'sữa', 'ăn uống', 'dinh dưỡng', 
-        'trà', 'cà phê', 'mật ong', 'yến sào', 'mật', 'mứt', 'food', 
+        'trà', 'cà phê', 'yến sào', 'mật', 'mứt', 'food', 
         'beverage', 'snack', 'candy', 'milk'
       ];
 
@@ -677,13 +688,16 @@ router.get('/scan/:serial', async (req, res) => {
         'pharmaceutical', 'medical', 'kháng sinh', 'sức khỏe'
       ];
 
+      const isHoney = honeyKeywords.some(kw => cat.includes(kw) || pName.includes(kw));
       const isWarranty = warrantyKeywords.some(kw => cat.includes(kw) || pName.includes(kw));
       const isAgri = agriKeywords.some(keyword => cat.includes(keyword));
       const isFood = foodKeywords.some(keyword => cat.includes(keyword));
       const isAppliance = applianceKeywords.some(keyword => cat.includes(keyword));
       const isMedical = medicalKeywords.some(keyword => cat.includes(keyword));
 
-      if (isAppliance || isWarranty) {
+      if (isHoney) {
+        responseTheme = 'honey';
+      } else if (isAppliance || isWarranty) {
         responseTheme = 'appliance';
       } else if (isAgri) {
         responseTheme = 'agriculture';

@@ -90,7 +90,7 @@ const labelBatchSchema = new mongoose.Schema({
   },
   theme: {
     type: String,
-    enum: ['default', 'agriculture', 'medical', 'food', 'functional_food', 'cosmetics', 'appliance', 'ocop'],
+    enum: ['default', 'honey', 'agriculture', 'medical', 'food', 'functional_food', 'cosmetics', 'appliance', 'ocop', 'staycool', 'vyphyto'],
     default: 'default'
   },
   customDomain: {

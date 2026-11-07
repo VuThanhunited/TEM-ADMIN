@@ -348,6 +348,7 @@ export default function Products() {
 
   const initialForm = {
     name: '', description: '', category: '', sku: '', price: 0, barcode: '',
+    theme: 'auto',
     images: ['', '', '', '', '', ''], distributors: [], specifications: [], enterpriseId: '',
     verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
     productionProcess: [],
@@ -531,6 +532,7 @@ export default function Products() {
         sku: p.sku || '',
         price: p.price !== undefined && p.price !== null ? p.price : 0,
         barcode: p.barcode || '',
+        theme: p.theme || 'auto',
         images: imgList,
         distributors: p.distributors || [],
         specifications: specList,
@@ -837,6 +839,21 @@ export default function Products() {
                     <label>Mã SKU</label>
                     <input className="input" value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} placeholder="VD: SP-001" />
                   </div>
+                </div>
+                <div className="input-group">
+                  <label>🎨 Giao diện Tem hiển thị (Theme riêng cho sản phẩm)</label>
+                  <select className="input select" value={form.theme || 'auto'} onChange={e => setForm({ ...form, theme: e.target.value })}>
+                    <option value="auto">-- Tự động theo Lô tem / Danh mục --</option>
+                    <option value="honey">🍯 Mật ong Hoa Bạc Hà / Đặc sản vùng cao (3 ngôn ngữ)</option>
+                    <option value="default">Mặc định (Hiển thị chung)</option>
+                    <option value="appliance">Điện gia dụng & Bảo hành điện tử</option>
+                    <option value="medical">Dược phẩm & Y tế</option>
+                    <option value="functional_food">Thực phẩm chức năng</option>
+                    <option value="ocop">OCOP (Đặc sản địa phương)</option>
+                    <option value="agriculture">Nông nghiệp</option>
+                    <option value="cosmetics">Mỹ phẩm</option>
+                    <option value="staycool">StayCool / VYPHYTO</option>
+                  </select>
                 </div>
                 <div className="form-row">
                   <div className="input-group">
