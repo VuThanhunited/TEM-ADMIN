@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -7,7 +8,7 @@ import {
   Bold, Italic, Underline, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Heading2, Heading3, Code, Eye,
-  Image as ImageIcon, Link2 as LinkIcon, FileText, Upload
+  Image as ImageIcon, Link2 as LinkIcon, FileText, Upload, FileSpreadsheet
 } from 'lucide-react';
 import './Distributors.css';
 import Pagination from '../../components/Pagination';
@@ -15,6 +16,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 
 export default function Distributors() {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [distributors, setDistributors] = useState([]);
   const [enterprises, setEnterprises] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -242,9 +244,19 @@ export default function Distributors() {
           <h1>Quản lý NSX / Nhà phân phối / Điểm bán</h1>
           <p>Tạo và quản lý NSX, nhà phân phối, đại lý và các điểm bán sản phẩm</p>
         </div>
-        <button className="btn btn-primary" onClick={handleOpenCreate}>
-          <Plus size={18} /> Thêm đơn vị mới
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => navigate('/npp/stores')}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(59, 130, 246, 0.5)', color: '#60a5fa' }}
+          >
+            <FileSpreadsheet size={17} /> Quản lý Điểm bán &amp; Import/Export Excel (TPCN)
+          </button>
+          <button className="btn btn-primary" onClick={handleOpenCreate}>
+            <Plus size={18} /> Thêm đơn vị mới
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}

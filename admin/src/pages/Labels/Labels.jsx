@@ -70,6 +70,15 @@ export default function Labels() {
   const [internalImportResult, setInternalImportResult] = useState(null);
   const [internalImportError, setInternalImportError] = useState('');
 
+  // States quản lý Import Điểm bán & Phân phối (Dành cho Thực phẩm chức năng - TPCN)
+  const [showTpcnImportModal, setShowTpcnImportModal] = useState(false);
+  const [tpcnImportFile, setTpcnImportFile] = useState(null);
+  const [tpcnImportDate, setTpcnImportDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [tpcnImportEnterpriseId, setTpcnImportEnterpriseId] = useState('');
+  const [importingTpcn, setImportingTpcn] = useState(false);
+  const [tpcnImportResult, setTpcnImportResult] = useState(null);
+  const [tpcnImportError, setTpcnImportError] = useState('');
+
   const [batchForm, setBatchForm] = useState({ batchCode: '', totalLabels: 100, prefix: '', serialType: 'GLOBAL_SEQUENTIAL', productId: '', templateId: '', theme: 'default', expiryDate: '', notes: '', enterpriseId: '' });
   const [nextSerialInfo, setNextSerialInfo] = useState(null);
   const [renewMonths, setRenewMonths] = useState(12);
@@ -564,53 +573,59 @@ export default function Labels() {
   // Yêu cầu 3 (Chỉ áp dụng cho giao diện Thực phẩm chức năng): Xuất dữ liệu phân phối (Điểm bán / Serial / Sản phẩm)
   const handleExportDistributionBatch = async (batch) => {
     try {
-      setExportingDistBatchId(batch._id);
-      const batchLabels = await api.exportBatchLabels(batch._id);
+      setExportingDistBatchId(batch?._id || 'all');
+      if (!batch) {
+        const res = await api.exportRetailStoresData();
+        if (!res?.fileBase64) throw new Error('Không nhận được dữ liệu file Excel từ máy chủ');
+        const binaryStr = window.atob(res.fileBase64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = res.fileName || `Diem_Ban_Phan_Phoi_TPCN_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      const targetEntId = batch.enterpriseId?._id || batch.enterpriseId || enterpriseId || '';
+      const [batchLabels, storesRes] = await Promise.all([
+        api.exportBatchLabels(batch._id),
+        api.getRetailStores({ enterpriseId: targetEntId, includeStats: '0' }).catch(() => ({ stores: [] }))
+      ]);
+      const enterpriseStores = storesRes?.stores || storesRes?.data || [];
+
       if (!batchLabels || batchLabels.length === 0) {
         alert(`Lô tem "${batch.batchCode}" chưa có dữ liệu tem nhãn để xuất!`);
         return;
       }
 
-      // Sheet 1: Chi tiết phân phối Điểm bán / Serial / Sản phẩm
-      const detailRows = batchLabels.map((label, idx) => {
-        const storeName = label.distributorName || label.ownerInfo?.name || '';
-        const storeAddr = label.distributorAddress || label.ownerInfo?.address || '';
-        const storePhone = label.ownerInfo?.phone || '';
-        const prodName = label.productId?.name || batch.productId?.name || 'Chưa gắn sản phẩm';
-        const soldDateRaw = label.distributedAt || label.ownerInfo?.activatedAt;
-        const soldDateStr = soldDateRaw ? new Date(soldDateRaw).toLocaleString('vi-VN') : '';
-        return {
-          'STT': idx + 1,
-          'Mã lô': batch.batchCode,
-          'Tên sản phẩm': prodName,
-          'Mã Serial': label.serialNumber,
-          'Điểm bán': storeName || 'Chưa gán điểm bán',
-          'Địa chỉ điểm bán': storeAddr,
-          'SĐT điểm bán': storePhone,
-          'Ngày bán / gán': soldDateStr,
-          'Trạng thái': getStatusLabel(label.status),
-          'Số lượt quét': label.scanCount || 0
-        };
-      });
-
+      // Sheet 1: Danh sách Điểm bán của doanh nghiệp
       const wb = XLSX.utils.book_new();
-      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
-      wsDetail['!cols'] = [
-        { wch: 6 },
-        { wch: 15 },
-        { wch: 28 },
-        { wch: 16 },
-        { wch: 26 },
-        { wch: 32 },
-        { wch: 16 },
-        { wch: 22 },
-        { wch: 16 },
-        { wch: 12 }
-      ];
-      XLSX.utils.book_append_sheet(wb, wsDetail, 'Chi tiết phân phối');
+      const storeRows = enterpriseStores.map((st, idx) => ({
+        'STT': idx + 1,
+        'Tên điểm bán': st.name || '',
+        'Địa chỉ': st.address || '',
+        'Số điện thoại': st.phone || ''
+      }));
+      const wsStores = XLSX.utils.json_to_sheet(
+        storeRows.length > 0
+          ? storeRows
+          : [{ 'STT': 1, 'Tên điểm bán': '', 'Địa chỉ': '', 'Số điện thoại': '' }]
+      );
+      wsStores['!cols'] = [{ wch: 6 }, { wch: 32 }, { wch: 40 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, wsStores, 'Danh sách Điểm bán');
 
       // Sheet 2: Bảng Ma trận Điểm bán × Sản phẩm × Dải Serial (theo mẫu vyphyto_req_image2.png)
-      const storeSet = new Set();
+      const storeSet = new Set(enterpriseStores.map((s) => String(s.name || '').trim()).filter(Boolean));
       const productSet = new Set();
       const cellSerialsMap = new Map(); // `${prodName}|||${storeName}` -> [serials]
 
@@ -675,11 +690,116 @@ export default function Labels() {
       wsMatrix['!cols'] = [{ wch: 28 }, ...(storeList.length > 0 ? storeList.map(() => ({ wch: 24 })) : [{ wch: 28 }])];
       XLSX.utils.book_append_sheet(wb, wsMatrix, 'Bảng Ma trận Điểm bán');
 
+      // Sheet 3: Chi tiết phân phối Điểm bán / Serial / Sản phẩm
+      const detailRows = batchLabels.map((label, idx) => {
+        const storeName = label.distributorName || label.ownerInfo?.name || '';
+        const storeAddr = label.distributorAddress || label.ownerInfo?.address || '';
+        const storePhone = label.ownerInfo?.phone || '';
+        const prodName = label.productId?.name || batch.productId?.name || 'Chưa gắn sản phẩm';
+        const soldDateRaw = label.distributedAt || label.ownerInfo?.activatedAt;
+        const soldDateStr = soldDateRaw ? new Date(soldDateRaw).toLocaleString('vi-VN') : '';
+        return {
+          'STT': idx + 1,
+          'Mã lô': batch.batchCode,
+          'Tên sản phẩm': prodName,
+          'Mã Serial': label.serialNumber,
+          'Điểm bán': storeName || 'Chưa gán điểm bán',
+          'Địa chỉ điểm bán': storeAddr,
+          'SĐT điểm bán': storePhone,
+          'Ngày bán / gán': soldDateStr,
+          'Trạng thái': getStatusLabel(label.status),
+          'Số lượt quét': label.scanCount || 0
+        };
+      });
+
+      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+      wsDetail['!cols'] = [
+        { wch: 6 },
+        { wch: 15 },
+        { wch: 28 },
+        { wch: 16 },
+        { wch: 26 },
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 22 },
+        { wch: 16 },
+        { wch: 12 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Chi tiết phân phối');
+
       XLSX.writeFile(wb, `Phan_phoi_DiemBan_Serial_SP_${batch.batchCode}.xlsx`);
     } catch (err) {
       alert('Lỗi xuất dữ liệu phân phối: ' + (err.message || err));
     } finally {
       setExportingDistBatchId(null);
+    }
+  };
+
+  // Mở modal Import Điểm bán & Phân phối (TPCN)
+  const handleOpenTpcnImportModal = (batch = null) => {
+    setTpcnImportFile(null);
+    setTpcnImportResult(null);
+    setTpcnImportError('');
+    setTpcnImportDate(new Date().toISOString().slice(0, 10));
+    const entId = batch?.enterpriseId?._id || batch?.enterpriseId || filterEnterprise || enterpriseId || '';
+    setTpcnImportEnterpriseId(entId);
+    setShowTpcnImportModal(true);
+  };
+
+  const handleDownloadTpcnTemplate = (type = 'stores') => {
+    const wb = XLSX.utils.book_new();
+    if (type === 'stores') {
+      const wsData = [
+        ['STT', 'Tên điểm bán', 'Địa chỉ', 'Số điện thoại'],
+        [1, 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
+        [2, 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321']
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{ wch: 6 }, { wch: 32 }, { wch: 40 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Danh_sach_diem_ban');
+      XLSX.writeFile(wb, 'Mau_Import_Danh_Sach_Diem_Ban.xlsx');
+      return;
+    }
+    const wsMatrix = XLSX.utils.aoa_to_sheet([
+      ['Điểm bán --------->', 'Nhà A', 'Nhà B', 'Nhà C'],
+      ['Tên sản phẩm', '', '', ''],
+      ['Sản phẩm 1', '00001-000010', '00011-000020', ''],
+      ['Sản phẩm 2', '00101-000110', '', '']
+    ]);
+    wsMatrix['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 22 }];
+    XLSX.utils.book_append_sheet(wb, wsMatrix, 'Bang_Ma_Tran_Diem_Ban');
+    XLSX.writeFile(wb, 'Mau_Import_Ma_Tran_Diem_Ban_Serial.xlsx');
+  };
+
+  const handleTpcnImportSubmit = async (e) => {
+    e.preventDefault();
+    if (!tpcnImportFile) {
+      setTpcnImportError('Vui lòng chọn file Excel (.xlsx, .xls, .csv) Danh sách Điểm bán hoặc Bảng Phân phối.');
+      return;
+    }
+    setImportingTpcn(true);
+    setTpcnImportError('');
+    setTpcnImportResult(null);
+    try {
+      const fileBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(tpcnImportFile);
+      });
+      const importDateIso = tpcnImportDate ? new Date(`${tpcnImportDate}T12:00:00`).toISOString() : new Date().toISOString();
+      const res = await api.importDistributionMatrix({
+        fileBase64,
+        importDate: importDateIso,
+        ...(tpcnImportEnterpriseId ? { enterpriseId: tpcnImportEnterpriseId } : {})
+      });
+      setTpcnImportResult(res);
+      if (activeTab === 'batches') loadBatches(curBatchPage.current, curSearch.current);
+      if (activeTab === 'activate') loadLabels(curLabelPage.current, curSearch.current);
+    } catch (err) {
+      setTpcnImportError(err.message || 'Lỗi khi import file Điểm bán / Phân phối');
+    } finally {
+      setImportingTpcn(false);
     }
   };
 
@@ -1309,22 +1429,29 @@ export default function Labels() {
         </div>
         {(activeTab === 'batches' || activeTab === 'activate') && (
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {activeTab === 'batches' && batches.some(b => ['functional_food', 'food', 'staycool', 'vyphyto'].includes(b.theme)) && (
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  const tpcnBatch = batches.find(b => ['functional_food', 'food', 'staycool', 'vyphyto'].includes(b.theme));
-                  if (tpcnBatch) handleExportDistributionBatch(tpcnBatch);
-                }}
-                disabled={Boolean(exportingDistBatchId)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fbbf24' }}
-                title="Xuất dữ liệu phân phối Điểm bán / Serial / Sản phẩm (Thực phẩm chức năng)"
-              >
-                <FileSpreadsheet size={16} />
-                {exportingDistBatchId ? 'Đang xuất phân phối...' : 'Xuất dữ liệu Điểm bán / Serial / SP'}
-              </button>
-            )}
-            <button className="btn btn-ghost" onClick={() => handleOpenInternalCodeModal(null)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(16, 185, 129, 0.45)', color: '#10b981' }} title="Import file Excel 3 cột: Serial | Mã nội bộ | Sản phẩm cho lô tem">
+            <button
+              className="btn btn-ghost"
+              onClick={() => handleOpenTpcnImportModal(null)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(59, 130, 246, 0.5)', color: '#60a5fa' }}
+              title="Import danh sách Điểm bán hoặc Bảng Excel Phân phối Ma trận (Thực phẩm chức năng)"
+            >
+              <Upload size={16} />
+              Import Điểm bán / Phân phối (TPCN)
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                const tpcnBatch = batches.find(b => ['functional_food', 'food', 'staycool', 'vyphyto'].includes(b.theme));
+                handleExportDistributionBatch(tpcnBatch || null);
+              }}
+              disabled={Boolean(exportingDistBatchId)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fbbf24' }}
+              title="Xuất dữ liệu phân phối Điểm bán / Serial / Sản phẩm (Thực phẩm chức năng)"
+            >
+              <FileSpreadsheet size={16} />
+              {exportingDistBatchId ? 'Đang xuất phân phối...' : 'Xuất dữ liệu Điểm bán / Serial / SP'}
+            </button>
+            <button className="btn btn-ghost" onClick={() => handleOpenInternalCodeModal(null)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(16, 185, 129, 0.45)', color: '#10b981' }} title="Import file Excel 3 cột: Serial | Mã nội bộ | Sản phẩm cho lô tem Bảo hành">
               <Upload size={16} /> Import mã nội bộ
             </button>
             <button className="btn btn-ghost" onClick={() => { setModalError(null); setBulkForm({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '' }); setShowBulkMapModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
@@ -1732,7 +1859,7 @@ export default function Labels() {
                             }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
                               <Edit size={14} className="text-primary"/>
                             </button>
-                            {['functional_food', 'food', 'staycool', 'vyphyto'].includes(batch.theme) && (
+                            {['functional_food', 'food', 'staycool', 'vyphyto'].includes(batch.theme) ? (
                               <>
                                 <button className="btn btn-sm btn-ghost" onClick={() => {
                                   setModalError(null);
@@ -1753,28 +1880,39 @@ export default function Labels() {
                                 </button>
                                 <button
                                   className="btn btn-sm btn-ghost"
+                                  onClick={() => handleOpenTpcnImportModal(batch)}
+                                  title={`Import Điểm bán / Phân phối Excel cho lô "${batch.batchCode}"`}
+                                  style={{ color: '#60a5fa', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(59, 130, 246, 0.35)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
+                                >
+                                  <Upload size={13} />
+                                  <span>Import Điểm bán</span>
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-ghost"
                                   onClick={() => handleExportDistributionBatch(batch)}
                                   title="Xuất dữ liệu phân phối (Điểm bán / Serial / Sản phẩm)"
                                   disabled={exportingDistBatchId === batch._id}
-                                  style={{ color: '#f59e0b' }}
+                                  style={{ color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(245, 158, 11, 0.35)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
                                 >
                                   {exportingDistBatchId === batch._id ? (
-                                    <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
+                                    <div className="loading-spinner" style={{ width: 13, height: 13, borderWidth: 2 }}></div>
                                   ) : (
-                                    <FileSpreadsheet size={14} />
+                                    <FileSpreadsheet size={13} />
                                   )}
+                                  <span>Xuất PP</span>
                                 </button>
                               </>
+                            ) : (
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                onClick={() => handleOpenInternalCodeModal(batch)}
+                                title={`Import mã nội bộ cho lô "${batch.batchCode}" (Excel 3 cột: Serial | Mã nội bộ | Sản phẩm)`}
+                                style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
+                              >
+                                <Upload size={13} />
+                                <span>Mã nội bộ</span>
+                              </button>
                             )}
-                            <button
-                              className="btn btn-sm btn-ghost"
-                              onClick={() => handleOpenInternalCodeModal(batch)}
-                              title={`Import mã nội bộ cho lô "${batch.batchCode}" (Excel 3 cột: Serial | Mã nội bộ | Sản phẩm)`}
-                              style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
-                            >
-                              <Upload size={13} />
-                              <span>Mã nội bộ</span>
-                            </button>
                             <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
                               {exportingBatchId === batch._id ? (
                                 <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
@@ -3094,6 +3232,144 @@ export default function Labels() {
                   <Upload size={16} />
                   {importingInternalCodes ? 'Đang Import...' : `Import Mã nội bộ (${internalCodeRows.length} tem)`}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Import Điểm bán & Phân phối (Thực phẩm chức năng - TPCN) */}
+      {showTpcnImportModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !importingTpcn && setShowTpcnImportModal(false)}>
+          <div className="modal" style={{ maxWidth: 660 }}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileSpreadsheet size={20} color="#60a5fa" />
+                  Import Điểm bán &amp; Phân phối Serial (Thực phẩm chức năng)
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  Hỗ trợ cả File Danh sách Điểm bán (Tên điểm bán | Địa chỉ | SĐT) và Bảng Ma trận / Chi tiết Phân phối (Điểm bán × Sản phẩm × Dải Serial)
+                </p>
+              </div>
+              <button className="btn-icon" onClick={() => !importingTpcn && setShowTpcnImportModal(false)}><X size={20} /></button>
+            </div>
+
+            <form onSubmit={handleTpcnImportSubmit}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 10, padding: '12px 14px', fontSize: '0.83rem', color: 'var(--color-text-secondary)' }}>
+                  <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: 6 }}>
+                    📋 Tự động nhận diện mọi định dạng file Excel Điểm bán &amp; Phân phối TPCN:
+                  </div>
+                  <div>• <strong>Mẫu 1 (Danh sách Điểm bán):</strong> Cột <code>Tên điểm bán</code>, <code>Địa chỉ</code>, <code>Số điện thoại</code>.</div>
+                  <div>• <strong>Mẫu 2 (Ma trận Phân phối):</strong> Dòng 1 <code>Điểm bán ---------&gt; | Nhà A | Nhà B</code>, các dòng dưới là <code>Tên sản phẩm</code> và dải Serial (VD: <code>00001-000010</code>).</div>
+                  <div>• <strong>Mẫu 3 (Chi tiết Phân phối):</strong> Cột <code>Tên sản phẩm</code>, <code>Mã Serial / Dải Serial</code>, <code>Điểm bán</code>.</div>
+                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadTpcnTemplate('stores')}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, color: '#60a5fa', fontWeight: 700, textDecoration: 'underline', fontSize: '0.82rem' }}
+                    >
+                      <Download size={14} /> Tải mẫu DS Điểm bán (.xlsx)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadTpcnTemplate('matrix')}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, color: '#34d399', fontWeight: 700, textDecoration: 'underline', fontSize: '0.82rem' }}
+                    >
+                      <Download size={14} /> Tải mẫu Ma trận Phân phối (.xlsx)
+                    </button>
+                  </div>
+                </div>
+
+                {tpcnImportError && (
+                  <div className="modal-error animate-fade-in" style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: 12,
+                    borderRadius: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.25)'
+                  }}>
+                    <XCircle size={18} style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.88rem' }}>{tpcnImportError}</span>
+                  </div>
+                )}
+
+                {tpcnImportResult && (
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 10,
+                    backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#34d399'
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{tpcnImportResult.message}</div>
+                    <div style={{ marginTop: 4, fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
+                      Điểm bán thêm mới: <strong>{tpcnImportResult.createdCount || 0}</strong> • Cập nhật: <strong>{tpcnImportResult.updatedCount || 0}</strong>
+                      {tpcnImportResult.totalAssignedLabels > 0 && (
+                        <> • Đã gán: <strong style={{ color: '#34d399' }}>{tpcnImportResult.totalAssignedLabels}</strong> mã Serial</>
+                      )}
+                    </div>
+                    {Array.isArray(tpcnImportResult.details) && tpcnImportResult.details.length > 0 && (
+                      <div style={{ maxHeight: 130, overflowY: 'auto', marginTop: 8, fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
+                        {tpcnImportResult.details.map((d, idx) => (
+                          <div key={idx} style={{ padding: '3px 0', borderBottom: '1px dashed rgba(255,255,255,0.08)' }}>
+                            🏪 <strong>{d.storeName}</strong> — {d.productName} ({d.range}): Đã gán <strong style={{ color: '#34d399' }}>{d.matchedLabels}</strong> serial
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isAdmin && enterprises.length > 0 && (
+                  <div className="input-group">
+                    <label>Doanh nghiệp sở hữu Điểm bán (Tùy chọn)</label>
+                    <select
+                      className="input select"
+                      value={tpcnImportEnterpriseId}
+                      onChange={e => setTpcnImportEnterpriseId(e.target.value)}
+                    >
+                      <option value="">-- Tự động theo tài khoản / lô tem --</option>
+                      {enterprises.map(ent => (
+                        <option key={ent._id} value={ent._id}>{ent.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="input-group">
+                  <label>Ngày Import (Ngày bán / gán sản phẩm) *</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={tpcnImportDate}
+                    onChange={e => setTpcnImportDate(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label>Chọn file Excel Điểm bán hoặc Bảng phân phối (.xlsx, .xls, .csv) *</label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="input"
+                    onChange={e => setTpcnImportFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => navigate('/npp/stores')}
+                  style={{ color: '#60a5fa', fontSize: '0.82rem' }}
+                >
+                  Mở trang Quản lý Điểm bán &amp; Doanh số →
+                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => setShowTpcnImportModal(false)} disabled={importingTpcn}>Đóng</button>
+                  <button type="submit" className="btn btn-primary" disabled={importingTpcn}>
+                    <Upload size={16} />
+                    {importingTpcn ? 'Đang xử lý Import...' : 'Thực hiện Import'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

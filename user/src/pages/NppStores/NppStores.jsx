@@ -873,8 +873,14 @@ export default function NppStores() {
               )}
 
               {importStoresResult && (
-                <div style={{ background: 'rgba(16,185,129,0.18)', color: '#34d399', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
-                  {importStoresResult.message}
+                <div style={{ background: 'rgba(16,185,129,0.18)', color: '#34d399', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 700 }}>{importStoresResult.message}</div>
+                  <div style={{ marginTop: '4px', fontSize: '0.78rem', color: '#cbd5e1' }}>
+                    Thêm mới: <strong>{importStoresResult.createdCount || 0}</strong> • Cập nhật: <strong>{importStoresResult.updatedCount || 0}</strong>
+                    {importStoresResult.totalAssignedLabels > 0 && (
+                      <> • Đã gán Serial: <strong style={{ color: '#34d399' }}>{importStoresResult.totalAssignedLabels}</strong></>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -954,8 +960,22 @@ export default function NppStores() {
               )}
 
               {importMatrixResult && (
-                <div style={{ background: 'rgba(16,185,129,0.18)', color: '#34d399', padding: '10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
-                  {importMatrixResult.message}
+                <div style={{ background: 'rgba(16,185,129,0.18)', color: '#34d399', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 700 }}>{importMatrixResult.message}</div>
+                  {(importMatrixResult.createdCount > 0 || importMatrixResult.updatedCount > 0) && (
+                    <div style={{ marginTop: '4px', fontSize: '0.78rem', color: '#cbd5e1' }}>
+                      Điểm bán thêm mới: <strong>{importMatrixResult.createdCount || 0}</strong> • Cập nhật: <strong>{importMatrixResult.updatedCount || 0}</strong>
+                    </div>
+                  )}
+                  {Array.isArray(importMatrixResult.details) && importMatrixResult.details.length > 0 && (
+                    <div style={{ maxHeight: '130px', overflowY: 'auto', marginTop: '6px', fontSize: '0.78rem', color: '#cbd5e1' }}>
+                      {importMatrixResult.details.map((d, idx) => (
+                        <div key={idx} style={{ padding: '2px 0', borderBottom: '1px dashed rgba(255,255,255,0.08)' }}>
+                          🏪 <strong>{d.storeName}</strong> — {d.productName} ({d.range}): Đã gán <strong style={{ color: '#34d399' }}>{d.matchedLabels}</strong> serial
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

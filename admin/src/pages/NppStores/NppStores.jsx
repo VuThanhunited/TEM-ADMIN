@@ -249,6 +249,49 @@ export default function NppStores() {
     navigate(`/npp/scan?storeId=${store._id}`);
   };
 
+  const handleDownloadTemplate = (type = 'stores') => {
+    try {
+      const wb = XLSX.utils.book_new();
+      if (type === 'stores') {
+        const wsData = [
+          ['STT', 'Tên điểm bán', 'Địa chỉ', 'Số điện thoại'],
+          [1, 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
+          [2, 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321'],
+          [3, 'Quầy Thuốc An Khang', '88 Trần Phú, Hải Châu, Đà Nẵng', '0905112233']
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{ wch: 6 }, { wch: 32 }, { wch: 42 }, { wch: 18 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Danh_sach_diem_ban');
+        XLSX.writeFile(wb, 'Mau_Import_Danh_Sach_Diem_Ban.xlsx');
+        return;
+      }
+
+      const wsMatrixData = [
+        ['Điểm bán --------->', 'Nhà A', 'Nhà B', 'Nhà C'],
+        ['Tên sản phẩm', '', '', ''],
+        ['Sản phẩm 1', '00001-000010', '00011-000020', ''],
+        ['Sản phẩm 2', '00101-000110', '', ''],
+        ['Sản phẩm 3', '', '', '']
+      ];
+      const wsMatrix = XLSX.utils.aoa_to_sheet(wsMatrixData);
+      wsMatrix['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 22 }];
+      XLSX.utils.book_append_sheet(wb, wsMatrix, 'Bang_Ma_Tran_Diem_Ban');
+
+      const wsDetailData = [
+        ['STT', 'Tên sản phẩm', 'Mã Serial', 'Điểm bán', 'Địa chỉ điểm bán', 'SĐT điểm bán'],
+        [1, 'Sản phẩm 1', '00001-000010', 'Nhà A', '120 Nguyễn Trãi, Hà Nội', '0912345678'],
+        [2, 'Sản phẩm 1', '00011-000020', 'Nhà B', '45 Hai Bà Trưng, TP.HCM', '0987654321']
+      ];
+      const wsDetail = XLSX.utils.aoa_to_sheet(wsDetailData);
+      wsDetail['!cols'] = [{ wch: 6 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 36 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Chi_tiet_phan_phoi');
+
+      XLSX.writeFile(wb, 'Mau_Import_Ma_Tran_Diem_Ban_Serial.xlsx');
+    } catch (err) {
+      window.open(api.getRetailStoreTemplateUrl(type), '_blank');
+    }
+  };
+
   const handleImportStoresSubmit = async (e) => {
     e.preventDefault();
     if (!importStoresFile) {
@@ -260,13 +303,13 @@ export default function NppStores() {
     setImportStoresResult(null);
     try {
       const fileBase64 = await readFileAsBase64(importStoresFile);
-      const parsedRows = await parseExcelFileToRows(importStoresFile);
+      const parsedRows = fileBase64 ? undefined : await parseExcelFileToRows(importStoresFile);
       const res = await api.importRetailStores({
         fileBase64,
-        stores: parsedRows
+        ...(parsedRows ? { stores: parsedRows } : {})
       });
       setImportStoresResult(res);
-      loadStores();
+      loadStores(search);
     } catch (err) {
       setImportStoresError(err.message || 'Lỗi khi import danh sách điểm bán');
     } finally {
@@ -285,15 +328,15 @@ export default function NppStores() {
     setImportMatrixResult(null);
     try {
       const fileBase64 = await readFileAsBase64(importMatrixFile);
-      const parsedRows = await parseExcelFileToRows(importMatrixFile);
+      const parsedRows = fileBase64 ? undefined : await parseExcelFileToRows(importMatrixFile);
       const importDateIso = importMatrixDate ? new Date(`${importMatrixDate}T12:00:00`).toISOString() : new Date().toISOString();
       const res = await api.importDistributionMatrix({
         fileBase64,
-        rows: parsedRows,
+        ...(parsedRows ? { rows: parsedRows } : {}),
         importDate: importDateIso
       });
       setImportMatrixResult(res);
-      loadStores();
+      loadStores(search);
     } catch (err) {
       setImportMatrixError(err.message || 'Lỗi khi import bảng Excel phân phối');
     } finally {
@@ -952,14 +995,13 @@ export default function NppStores() {
                   <div>• File Excel gồm các cột: <strong>Tên điểm bán</strong>, <strong>Địa chỉ</strong>, <strong>Số điện thoại</strong>.</div>
                   <div>• Nếu tên điểm bán đã tồn tại, hệ thống sẽ tự động cập nhật Địa chỉ và SĐT mới.</div>
                   <div style={{ marginTop: '8px' }}>
-                    <a
-                      href={api.getRetailStoreTemplateUrl('stores')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadTemplate('stores')}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline', fontSize: '13px' }}
                     >
-                      <Download size={14} /> Tải file Excel mẫu Danh sách Điểm bán
-                    </a>
+                      <Download size={14} /> Tải file Excel mẫu Danh sách Điểm bán (.xlsx)
+                    </button>
                   </div>
                 </div>
 
@@ -974,6 +1016,9 @@ export default function NppStores() {
                     <div style={{ fontWeight: 700 }}>{importStoresResult.message}</div>
                     <div style={{ marginTop: '4px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                       Thêm mới: <strong>{importStoresResult.createdCount || 0}</strong> • Cập nhật: <strong>{importStoresResult.updatedCount || 0}</strong>
+                      {importStoresResult.totalAssignedLabels > 0 && (
+                        <> • Đã gán Serial: <strong style={{ color: '#34d399' }}>{importStoresResult.totalAssignedLabels}</strong></>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1049,14 +1094,13 @@ export default function NppStores() {
                   <div>• Hệ thống tự động nhận diện Điểm bán (tạo mới nếu chưa có), khớp Sản phẩm và gán toàn bộ dải Serial trong ô.</div>
                   <div>• <strong>Lưu ý quan trọng:</strong> Ngày import được chọn bên dưới sẽ được ghi nhận là <strong>Ngày bán / gán sản phẩm</strong> để tính doanh số Điểm bán.</div>
                   <div style={{ marginTop: '8px' }}>
-                    <a
-                      href={api.getRetailStoreTemplateUrl('matrix')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadTemplate('matrix')}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline', fontSize: '13px' }}
                     >
-                      <Download size={14} /> Tải file Excel mẫu Bảng Ma trận Phân phối
-                    </a>
+                      <Download size={14} /> Tải file Excel mẫu Bảng Ma trận &amp; Chi tiết Phân phối (.xlsx)
+                    </button>
                   </div>
                 </div>
 
@@ -1069,6 +1113,11 @@ export default function NppStores() {
                 {importMatrixResult && (
                   <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#34d399', fontSize: '13.5px' }}>
                     <div style={{ fontWeight: 700 }}>{importMatrixResult.message}</div>
+                    {(importMatrixResult.createdCount > 0 || importMatrixResult.updatedCount > 0) && (
+                      <div style={{ marginTop: '4px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                        Điểm bán thêm mới: <strong>{importMatrixResult.createdCount || 0}</strong> • Cập nhật: <strong>{importMatrixResult.updatedCount || 0}</strong>
+                      </div>
+                    )}
                     {Array.isArray(importMatrixResult.details) && importMatrixResult.details.length > 0 && (
                       <div style={{ maxHeight: '140px', overflowY: 'auto', marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                         {importMatrixResult.details.map((d, idx) => (
