@@ -905,6 +905,8 @@ export default function ProductInfo() {
               </p>
             </div>
           </div>
+
+          {renderOwnerInfoCard()}
         </div>
       </div>
     );
@@ -2153,6 +2155,11 @@ export default function ProductInfo() {
     const distributorAddress = label?.distributorAddress || product?.distributors?.[0]?.address || '';
     const ownerCode = label?.internalCode || label?.ownerCode;
     const antiCounterfeitCode = label?.serialNumber || serial;
+    const isWarrantyView =
+      activeTheme === 'appliance' ||
+      activeTheme === 'warranty' ||
+      activeTheme === 'warranty_solution' ||
+      Boolean(label?.internalCode && String(label.internalCode).trim());
 
     // 3. Dữ liệu Giấy tờ công bố & Chứng nhận
     const congBoImagesList = (product?.congBoImages || []).filter(img => img && img.trim());
@@ -2348,14 +2355,16 @@ export default function ProductInfo() {
                       {ownerCode}
                     </div>
                   </div>
-                  <div style={{ paddingTop: 6, borderTop: '1px dashed rgba(5, 150, 105, 0.28)' }}>
-                    <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                      Mã chống giả
+                  {isWarrantyView && (
+                    <div style={{ paddingTop: 6, borderTop: '1px dashed rgba(5, 150, 105, 0.28)' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                        Mã chống giả
+                      </div>
+                      <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
+                        {antiCounterfeitCode}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
-                      {antiCounterfeitCode}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
               <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#059669', color: '#fff', padding: '4px 10px', borderRadius: 12, flexShrink: 0 }}>

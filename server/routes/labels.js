@@ -978,21 +978,21 @@ router.post('/batches/:id/import-internal-codes', auth, requireOwnership, async 
 
     // Tải toàn bộ tem trong lô để khớp chính xác cả khi Excel làm mất số 0 ở đầu (VD: 306916 -> 00306916)
     let batchLabels = await Label.find({ batchId: batch._id })
-      .select('_id serialNumber ownerCode internalCode productId ownerInfo')
+      .select('_id serialNumber qrCode ownerCode internalCode productId ownerInfo')
       .lean();
 
     if (batchLabels.length === 0 && batch.totalLabels > 0) {
       try {
         await regenerateLabelsForBatch(batch.toObject ? batch.toObject() : batch);
         batchLabels = await Label.find({ batchId: batch._id })
-          .select('_id serialNumber ownerCode internalCode productId ownerInfo')
+          .select('_id serialNumber qrCode ownerCode internalCode productId ownerInfo')
           .lean();
       } catch (repairErr) {
         console.warn('Auto-recover batch before import internal codes failed:', repairErr.message);
       }
     }
 
-    // Lập bản đồ tra cứu nhanh theo serialNumber (exact + bỏ số 0 đầu)
+    // Lập bản đồ tra cứu nhanh theo serialNumber (exact + bỏ số 0 đầu) và qrCode
     const exactSerialMap = new Map();
     const numericSerialMap = new Map();
     const normalizeNumericSerial = (s) => {
@@ -1008,12 +1008,30 @@ router.post('/batches/:id/import-internal-codes', auth, requireOwnership, async 
       return str.toUpperCase();
     };
 
+    const removeVnTones = (str) => {
+      if (!str) return '';
+      return String(str)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
     for (const lbl of batchLabels) {
       const sClean = String(lbl.serialNumber || '').trim();
-      exactSerialMap.set(sClean.toUpperCase(), lbl);
-      const normKey = normalizeNumericSerial(sClean);
-      if (normKey && !numericSerialMap.has(normKey)) {
-        numericSerialMap.set(normKey, lbl);
+      if (sClean) {
+        exactSerialMap.set(sClean.toUpperCase(), lbl);
+        const normKey = normalizeNumericSerial(sClean);
+        if (normKey && !numericSerialMap.has(normKey)) {
+          numericSerialMap.set(normKey, lbl);
+        }
+      }
+      const qClean = String(lbl.qrCode || '').trim();
+      if (qClean && !exactSerialMap.has(qClean.toUpperCase())) {
+        exactSerialMap.set(qClean.toUpperCase(), lbl);
       }
     }
 
@@ -1023,13 +1041,21 @@ router.post('/batches/:id/import-internal-codes', auth, requireOwnership, async 
       .lean();
 
     const productLookupMap = new Map();
-    for (const p of enterpriseProducts) {
+    const registerProductInMap = (p) => {
+      if (!p || !p._id) return;
       if (p.name) {
-        productLookupMap.set(String(p.name).trim().toLowerCase(), p._id);
+        const lowerName = String(p.name).trim().toLowerCase();
+        const normName = removeVnTones(p.name);
+        productLookupMap.set(lowerName, p._id);
+        if (normName) productLookupMap.set(normName, p._id);
       }
       if (p.sku) {
-        productLookupMap.set(String(p.sku).trim().toLowerCase(), p._id);
+        const lowerSku = String(p.sku).trim().toLowerCase();
+        productLookupMap.set(lowerSku, p._id);
       }
+    };
+    for (const p of enterpriseProducts) {
+      registerProductInMap(p);
     }
 
     const bulkOps = [];
@@ -1055,34 +1081,68 @@ router.post('/batches/:id/import-internal-codes', auth, requireOwnership, async 
         continue;
       }
 
-      const setFields = {};
+      const setFields = {
+        status: 'ACTIVE',
+        isActive: true
+      };
+
       if (rawInternalCode) {
         setFields.internalCode = rawInternalCode;
         // Đồng bộ luôn sang ownerCode & activatedSerial để hiển thị đúng Mã nội bộ (Cột 2)
         setFields.ownerCode = rawInternalCode;
-        if (matchedLabel.ownerInfo?.activatedAt) {
-          setFields['ownerInfo.activatedSerial'] = rawInternalCode;
-        }
+        const existingOwnerInfo =
+          matchedLabel.ownerInfo && typeof matchedLabel.ownerInfo === 'object'
+            ? matchedLabel.ownerInfo
+            : {};
+        setFields.ownerInfo = {
+          ...existingOwnerInfo,
+          activatedSerial: rawInternalCode,
+          activatedAt: existingOwnerInfo.activatedAt || new Date()
+        };
       }
 
       if (rawProductName) {
         const prodKey = rawProductName.toLowerCase();
-        let matchedProdId = productLookupMap.get(prodKey);
+        const prodNormKey = removeVnTones(rawProductName);
+        let matchedProdId = productLookupMap.get(prodKey) || productLookupMap.get(prodNormKey);
         if (!matchedProdId) {
           // Tìm gần đúng nếu tên sản phẩm chứa hoặc được chứa
           const foundProd = enterpriseProducts.find(p => {
             const pName = String(p.name || '').trim().toLowerCase();
+            const pNorm = removeVnTones(p.name);
             const pSku = String(p.sku || '').trim().toLowerCase();
             return (pName && (pName === prodKey || pName.includes(prodKey) || prodKey.includes(pName))) ||
+                   (pNorm && prodNormKey && (pNorm === prodNormKey || pNorm.includes(prodNormKey) || prodNormKey.includes(pNorm))) ||
                    (pSku && pSku === prodKey);
           });
           if (foundProd) matchedProdId = foundProd._id;
+        }
+        // Nếu sản phẩm ở Cột 3 chưa tồn tại trong danh mục sản phẩm của DN, tự động khởi tạo sản phẩm mới
+        if (!matchedProdId && batch.enterpriseId) {
+          try {
+            const autoSku = `SP-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`;
+            const createdProd = await Product.create({
+              name: rawProductName,
+              sku: autoSku,
+              enterpriseId: batch.enterpriseId,
+              theme: batch.theme || 'appliance',
+              status: 'ACTIVE'
+            });
+            matchedProdId = createdProd._id;
+            const plainProd = { _id: createdProd._id, name: createdProd.name, sku: createdProd.sku };
+            enterpriseProducts.push(plainProd);
+            registerProductInMap(plainProd);
+          } catch (createProdErr) {
+            console.warn('Auto-create product during import-internal-codes failed:', createProdErr.message);
+          }
         }
         if (matchedProdId) {
           setFields.productId = matchedProdId;
           matchedProductsCount++;
           if (!firstMatchedProductId) firstMatchedProductId = matchedProdId;
         }
+      } else if (!matchedLabel.productId && (batch.productId || firstMatchedProductId)) {
+        setFields.productId = batch.productId || firstMatchedProductId;
       }
 
       if (Object.keys(setFields).length > 0) {
@@ -1103,20 +1163,35 @@ router.post('/batches/:id/import-internal-codes', auth, requireOwnership, async 
       }
     }
 
-    // Nếu lô tem chưa gắn sản phẩm mà trong file Excel có gắn sản phẩm, cập nhật sản phẩm đại diện cho lô tem
+    // Kích hoạt lô tem và gắn sản phẩm đại diện cho lô tem nếu chưa có
+    let batchChanged = false;
     if (!batch.productId && firstMatchedProductId) {
       batch.productId = firstMatchedProductId;
+      batchChanged = true;
+    }
+    if (updatedCount > 0 && batch.status !== 'ACTIVE') {
+      batch.status = 'ACTIVE';
+      batchChanged = true;
+    }
+    if (batchChanged) {
       await batch.save();
     }
+
+    const summaryData = {
+      updatedCount,
+      totalRows: rows.length,
+      matchedProductsCount,
+      productMatchedCount: matchedProductsCount,
+      unmatchedCount: unmatchedSerials.length,
+      unmatchedSerialsCount: unmatchedSerials.length,
+      unmatchedSerials: unmatchedSerials.slice(0, 20)
+    };
 
     res.json({
       success: true,
       message: `Đã import thành công Mã nội bộ cho ${updatedCount}/${rows.length} tem trong lô "${batch.batchCode}"${matchedProductsCount > 0 ? ` (đã tự động gắn sản phẩm cho ${matchedProductsCount} tem)` : ''}!`,
-      updatedCount,
-      totalRows: rows.length,
-      matchedProductsCount,
-      unmatchedCount: unmatchedSerials.length,
-      unmatchedSerials: unmatchedSerials.slice(0, 20)
+      ...summaryData,
+      data: summaryData
     });
   } catch (error) {
     console.error('Import internal codes error:', error);

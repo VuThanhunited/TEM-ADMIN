@@ -392,6 +392,7 @@ router.get('/scan/:serial', async (req, res) => {
       $or: [
         { qrCode: { $in: exactQrList } },
         { serialNumber: { $in: exactSerialList } },
+        { internalCode: { $in: exactSerialList } },
         { activeCode: cleanSerial },
         { smsCode: cleanSerial },
         { legacyQrCode: cleanSerial },
@@ -404,6 +405,7 @@ router.get('/scan/:serial', async (req, res) => {
       label = await populateLabel(Label.findOne({
         $or: [
           { serialNumber: { $regex: suffixRegex } },
+          { internalCode: { $regex: suffixRegex } },
           { legacyQrCode: { $regex: suffixRegex } },
           { legacyTemQr: { $regex: suffixRegex } }
         ]

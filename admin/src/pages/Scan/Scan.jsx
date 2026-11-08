@@ -9,7 +9,7 @@ import {
   ArrowLeft, MoreVertical, Download, Share2, Sprout, Droplet,
   ClipboardCheck, FlaskConical, Beaker, Award, Link2,
   ChevronLeft, ChevronRight, QrCode, FileText, ScanLine, History,
-  BookOpen, Gift, BadgeCheck, Star, ShieldCheck, Bot
+  BookOpen, Gift, BadgeCheck, Star, ShieldCheck, Bot, UserCheck
 } from 'lucide-react';
 import NPPLogin from './NPPLogin';
 import DistributorEntry from './DistributorEntry';
@@ -335,7 +335,10 @@ export default function Scan() {
       ent?.displayConfig?.defaultTheme === 'warranty' ||
       lbl?.batchId?.theme === 'appliance' ||
       lbl?.batchId?.theme === 'warranty';
-    const isWarrantyActivated = Boolean(lbl?.ownerCode && String(lbl.ownerCode).trim());
+    const isWarrantyActivated = Boolean(
+      (lbl?.internalCode && String(lbl.internalCode).trim()) ||
+      (lbl?.ownerCode && String(lbl.ownerCode).trim())
+    );
     const hideChoicePreview = isWarrantyTheme && !isWarrantyActivated;
 
     return (
@@ -477,7 +480,10 @@ export default function Scan() {
     product?.theme === 'appliance' ||
     enterprise?.displayConfig?.defaultTheme === 'appliance' ||
     label?.batchId?.theme === 'appliance';
-  const isWarrantyInfoActivated = Boolean(label?.ownerCode && String(label.ownerCode).trim());
+  const isWarrantyInfoActivated = Boolean(
+    (label?.internalCode && String(label.internalCode).trim()) ||
+    (label?.ownerCode && String(label.ownerCode).trim())
+  );
 
   if (isWarrantyInfoTheme && !isWarrantyInfoActivated) {
     return (
@@ -1315,21 +1321,70 @@ export default function Scan() {
                 </div>
               </div>
 
-              {template.showDistributorInfo && label.distributorName && (
+              {(template.showDistributorInfo || isWarrantyInfoTheme || label.internalCode || label.ownerCode) && (
                 <div className="def-card-section">
                   <div className="section-header-styled">
                     <div className="header-icon-circle-def"><Store size={16} /></div>
-                    <span className="section-title-bold">ĐIỂM PHÂN PHỐI</span>
+                    <span className="section-title-bold">THÔNG TIN NHÀ PHÂN PHỐI (NHÀ PP)</span>
                   </div>
                   <div className="section-body-specs def">
-                    <div className="spec-row-new">
-                      <span className="spec-label-new">Tên điểm bán:</span>
-                      <span className="spec-value-new">{label.distributorName}</span>
-                    </div>
-                    {label.distributorAddress && (
-                      <div className="spec-row-new">
-                        <span className="spec-label-new">Địa chỉ:</span>
-                        <span className="spec-value-new text-left">{label.distributorAddress}</span>
+                    {label.distributorName ? (
+                      <>
+                        <div className="spec-row-new">
+                          <span className="spec-label-new">Tên điểm bán:</span>
+                          <span className="spec-value-new">{label.distributorName}</span>
+                        </div>
+                        {label.distributorAddress && (
+                          <div className="spec-row-new">
+                            <span className="spec-label-new">Địa chỉ:</span>
+                            <span className="spec-value-new text-left">{label.distributorAddress}</span>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '0.86rem', color: '#475569', padding: '4px 0', lineHeight: 1.5 }}>
+                        Sản phẩm chính hãng được phân phối và lưu hành thông qua hệ thống đại lý trên toàn quốc.
+                      </div>
+                    )}
+
+                    {(label.internalCode || label.ownerCode) && (
+                      <div style={{
+                        marginTop: 12,
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                        border: '1.5px solid #6ee7b7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <Shield size={22} color="#059669" style={{ marginTop: 2, flexShrink: 0 }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div>
+                              <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                Mã sở hữu sản phẩm
+                              </div>
+                              <div style={{ fontSize: '1rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
+                                {label.internalCode || label.ownerCode}
+                              </div>
+                            </div>
+                            {(isWarrantyInfoTheme || Boolean(label.internalCode)) && (
+                              <div style={{ paddingTop: 6, borderTop: '1px dashed rgba(5, 150, 105, 0.28)' }}>
+                                <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                  Mã chống giả
+                                </div>
+                                <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
+                                  {label.serialNumber}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#059669', color: '#fff', padding: '4px 10px', borderRadius: 12, flexShrink: 0 }}>
+                          ĐÃ XÁC THỰC
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1430,13 +1485,19 @@ export default function Scan() {
                 </div>
               </div>
 
-              {(label.legacyQrCode || label.legacyTemQr || label.activeCode || label.smsCode) && (
+              {(label.internalCode || label.legacyQrCode || label.legacyTemQr || label.activeCode || label.smsCode) && (
                 <div className="def-card-section">
                   <div className="section-header-styled">
                     <div className="header-icon-circle-def"><Link2 size={16} /></div>
-                    <span className="section-title-bold">DỮ LIỆU TEM CŨ</span>
+                    <span className="section-title-bold">MÃ NỘI BỘ</span>
                   </div>
                   <div className="section-body-specs def">
+                    {label.internalCode && (
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Mã nội bộ:</span>
+                        <span className="spec-value-new">{label.internalCode}</span>
+                      </div>
+                    )}
                     {label.smsCode && (
                       <div className="spec-row-new">
                         <span className="spec-label-new">Mã SMS:</span>
@@ -1449,6 +1510,47 @@ export default function Scan() {
                         <span className="spec-value-new">{label.activeCode}</span>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {(label.ownerInfo?.name || label.ownerInfo?.phone || label.ownerInfo?.address || label.internalCode || label.ownerCode) && (
+                <div className="def-card-section">
+                  <div className="section-header-styled">
+                    <div className="header-icon-circle-def"><UserCheck size={16} /></div>
+                    <span className="section-title-bold">THÔNG TIN KH SỞ HỮU SẢN PHẨM</span>
+                  </div>
+                  <div className="section-body-specs def">
+                    {label.ownerInfo?.name && (
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Tên NPP / cá nhân:</span>
+                        <span className="spec-value-new">{label.ownerInfo.name}</span>
+                      </div>
+                    )}
+                    {label.ownerInfo?.address && (
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Địa chỉ:</span>
+                        <span className="spec-value-new">{label.ownerInfo.address}</span>
+                      </div>
+                    )}
+                    {label.ownerInfo?.phone && (
+                      <div className="spec-row-new">
+                        <span className="spec-label-new">Số điện thoại:</span>
+                        <span className="spec-value-new">{label.ownerInfo.phone}</span>
+                      </div>
+                    )}
+                    <div style={{
+                      marginTop: 8,
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      background: 'rgba(99, 102, 241, 0.08)',
+                      border: '1px solid rgba(99, 102, 241, 0.25)',
+                      color: '#4f46e5',
+                      fontSize: '0.84rem',
+                      fontWeight: 600
+                    }}>
+                      Serial đã được kích hoạt: <strong>{label.internalCode || label.ownerCode || label.ownerInfo?.activatedSerial || label.serialNumber}</strong>
+                    </div>
                   </div>
                 </div>
               )}

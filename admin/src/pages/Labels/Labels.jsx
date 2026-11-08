@@ -2114,28 +2114,33 @@ export default function Labels() {
               </div>
             )}
 
-            {internalImportResult && (
-              <div style={{
-                padding: '14px 16px', marginBottom: 16, borderRadius: 10,
-                backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#10b981'
-              }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={18} />
-                  <span>{internalImportResult.message || 'Import mã nội bộ thành công!'}</span>
-                </div>
-                {internalImportResult.data && (
-                  <div style={{ fontSize: '0.84rem', marginTop: 6, color: 'var(--color-text-secondary)' }}>
-                    • Đã khớp và cập nhật: <strong>{internalImportResult.data.updatedCount}</strong> / {internalImportResult.data.totalRows} dòng
-                    {' | '}Đã gắn sản phẩm (Cột 3): <strong>{internalImportResult.data.productMatchedCount || 0}</strong> tem
-                    {internalImportResult.data.unmatchedSerialsCount > 0 && (
-                      <div style={{ color: '#fbbf24', marginTop: 4 }}>
-                        ⚠️ Có {internalImportResult.data.unmatchedSerialsCount} serial không nằm trong lô tem này: {internalImportResult.data.unmatchedSerials?.slice(0, 10).join(', ')}
-                      </div>
-                    )}
+            {internalImportResult && (() => {
+              const stats = internalImportResult.data || internalImportResult;
+              const matchedProdCount = stats.productMatchedCount ?? stats.matchedProductsCount ?? 0;
+              const unmatchedCountVal = stats.unmatchedSerialsCount ?? stats.unmatchedCount ?? 0;
+              return (
+                <div style={{
+                  padding: '14px 16px', marginBottom: 16, borderRadius: 10,
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#10b981'
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CheckCircle size={18} />
+                    <span>{internalImportResult.message || 'Import mã nội bộ thành công!'}</span>
                   </div>
-                )}
-              </div>
-            )}
+                  {stats && stats.updatedCount !== undefined && (
+                    <div style={{ fontSize: '0.84rem', marginTop: 6, color: 'var(--color-text-secondary)' }}>
+                      • Đã khớp và cập nhật: <strong>{stats.updatedCount}</strong> / {stats.totalRows} dòng
+                      {' | '}Đã gắn sản phẩm (Cột 3): <strong>{matchedProdCount}</strong> tem
+                      {unmatchedCountVal > 0 && (
+                        <div style={{ color: '#fbbf24', marginTop: 4 }}>
+                          ⚠️ Có {unmatchedCountVal} serial không nằm trong lô tem này: {stats.unmatchedSerials?.slice(0, 10).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', alignItems: 'end', marginBottom: '16px' }}>
               <div className="input-group" style={{ marginBottom: 0 }}>
@@ -3112,28 +3117,33 @@ export default function Labels() {
                   </div>
                 )}
 
-                {internalImportResult && (
-                  <div style={{
-                    padding: '12px 14px', borderRadius: 10,
-                    backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#10b981'
-                  }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <CheckCircle size={18} />
-                      <span>{internalImportResult.message || 'Import mã nội bộ thành công!'}</span>
-                    </div>
-                    {internalImportResult.data && (
-                      <div style={{ fontSize: '0.82rem', marginTop: 6, color: 'var(--color-text-secondary)' }}>
-                        • Đã khớp và cập nhật: <strong>{internalImportResult.data.updatedCount}</strong> / {internalImportResult.data.totalRows} dòng
-                        {' | '}Đã gắn sản phẩm (Cột 3): <strong>{internalImportResult.data.productMatchedCount || 0}</strong> tem
-                        {internalImportResult.data.unmatchedSerialsCount > 0 && (
-                          <div style={{ color: '#fbbf24', marginTop: 4 }}>
-                            ⚠️ Không tìm thấy {internalImportResult.data.unmatchedSerialsCount} serial trong lô này: {internalImportResult.data.unmatchedSerials?.slice(0, 8).join(', ')}
-                          </div>
-                        )}
+                {internalImportResult && (() => {
+                  const stats = internalImportResult.data || internalImportResult;
+                  const matchedProdCount = stats.productMatchedCount ?? stats.matchedProductsCount ?? 0;
+                  const unmatchedCountVal = stats.unmatchedSerialsCount ?? stats.unmatchedCount ?? 0;
+                  return (
+                    <div style={{
+                      padding: '12px 14px', borderRadius: 10,
+                      backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.35)', color: '#10b981'
+                    }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CheckCircle size={18} />
+                        <span>{internalImportResult.message || 'Import mã nội bộ thành công!'}</span>
                       </div>
-                    )}
-                  </div>
-                )}
+                      {stats && stats.updatedCount !== undefined && (
+                        <div style={{ fontSize: '0.82rem', marginTop: 6, color: 'var(--color-text-secondary)' }}>
+                          • Đã khớp và cập nhật: <strong>{stats.updatedCount}</strong> / {stats.totalRows} dòng
+                          {' | '}Đã gắn sản phẩm (Cột 3): <strong>{matchedProdCount}</strong> tem
+                          {unmatchedCountVal > 0 && (
+                            <div style={{ color: '#fbbf24', marginTop: 4 }}>
+                              ⚠️ Không tìm thấy {unmatchedCountVal} serial trong lô này: {stats.unmatchedSerials?.slice(0, 8).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="input-group">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
