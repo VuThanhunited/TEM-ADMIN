@@ -66,6 +66,7 @@ export default function Templates() {
   const [setAsDefaultTheme, setSetAsDefaultTheme] = useState(false);
   const [fieldSearch, setFieldSearch] = useState('');
   const [collapsedSections, setCollapsedSections] = useState({});
+  const [activeSectionFilter, setActiveSectionFilter] = useState('all');
 
   const [form, setForm] = useState({
     name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0',
@@ -795,25 +796,29 @@ export default function Templates() {
           ===================================================================== */}
       <div className="theme-builder-card animate-fade-in-up">
         <div className="theme-builder-top-bar">
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <Sparkles size={22} color="#6366f1" />
-              <h2 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800 }}>
+          <div className="theme-builder-header-left">
+            <div className="theme-builder-header-icon">
+              <Sparkles size={22} />
+            </div>
+            <div>
+              <h2 className="theme-builder-title">
                 Trình Tùy Chỉnh Nội Dung Từng Giao Diện Tem (8 Giao Diện)
               </h2>
+              <p className="theme-builder-subtitle">
+                Chọn doanh nghiệp (hoặc từng sản phẩm riêng) rồi bấm vào giao diện cần sửa bên dưới để thay đổi mọi câu chữ, tiêu đề, nhãn nút, thông số và nội dung popup.
+              </p>
             </div>
-            <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--color-text-muted)' }}>
-              Chọn doanh nghiệp (hoặc từng sản phẩm riêng) rồi bấm vào giao diện cần sửa bên dưới để thay đổi mọi câu chữ, tiêu đề, nhãn nút, thông số và nội dung popup.
-            </p>
           </div>
 
           <div className="theme-builder-controls">
             {isAdmin && enterprises.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Building2 size={16} color="#94a3b8" />
+              <div className="theme-control-group">
+                <span className="theme-control-label">
+                  <Building2 size={15} color="#4f46e5" /> Doanh nghiệp:
+                </span>
                 <select
                   className="input select"
-                  style={{ minWidth: 220, height: 38 }}
+                  style={{ minWidth: 210, height: 38, fontWeight: 600 }}
                   value={selectedEnterpriseId}
                   onChange={(e) => setSelectedEnterpriseId(e.target.value)}
                 >
@@ -824,11 +829,13 @@ export default function Templates() {
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Layers size={16} color="#94a3b8" />
+            <div className="theme-control-group">
+              <span className="theme-control-label">
+                <Layers size={15} color="#4f46e5" /> Phạm vi:
+              </span>
               <select
                 className="input select"
-                style={{ minWidth: 230, height: 38 }}
+                style={{ minWidth: 230, height: 38, fontWeight: 600 }}
                 value={selectedProductId}
                 onChange={(e) => setSelectedProductId(e.target.value)}
                 title="Chọn áp dụng cho toàn Doanh nghiệp hoặc riêng 1 Sản phẩm"
@@ -864,12 +871,19 @@ export default function Templates() {
                 key={themeItem.key}
                 type="button"
                 className={`theme-selector-item ${isSelected ? 'active' : ''}`}
-                onClick={() => setSelectedThemeKey(themeItem.key)}
-                style={
-                  isSelected
-                    ? { borderColor: themeItem.color, background: themeItem.bgLight }
-                    : undefined
-                }
+                onClick={() => {
+                  setSelectedThemeKey(themeItem.key);
+                  setActiveSectionFilter('all');
+                }}
+                style={{
+                  '--theme-card-color': themeItem.color,
+                  ...(isSelected
+                    ? {
+                        borderColor: themeItem.color,
+                        background: `linear-gradient(180deg, ${themeItem.bgLight} 0%, #ffffff 75%)`
+                      }
+                    : {})
+                }}
               >
                 <div>
                   <div className="theme-selector-head">
@@ -879,20 +893,57 @@ export default function Templates() {
                     >
                       {themeItem.badge}
                     </span>
-                    <div style={{ display: 'flex', gap: 4 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {isSelected && (
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 800,
+                            background: themeItem.color,
+                            color: '#ffffff',
+                            padding: '2px 7px'
+                          }}
+                        >
+                          ✓ Đang chọn
+                        </span>
+                      )}
                       {isEntDefault && (
-                        <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>
+                        <span
+                          className="badge badge-success"
+                          style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 800,
+                            background: '#dcfce7',
+                            color: '#15803d',
+                            border: '1px solid #86efac'
+                          }}
+                        >
                           Mặc định DN
                         </span>
                       )}
                       {(hasCustomProd || hasCustomEnt) && (
-                        <span className="badge badge-neutral" style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.2)', color: '#a5b4fc' }}>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 700,
+                            background: '#eef2ff',
+                            color: '#4f46e5',
+                            border: '1px solid #c7d2fe'
+                          }}
+                        >
                           Đã tùy chỉnh
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="theme-selector-title">{themeItem.shortName}</div>
+                  <div
+                    className="theme-selector-title"
+                    style={isSelected ? { color: themeItem.color } : undefined}
+                  >
+                    {themeItem.shortName}
+                  </div>
                   <div className="theme-selector-sub">{themeItem.subtitle}</div>
                 </div>
               </button>
@@ -901,48 +952,37 @@ export default function Templates() {
         </div>
 
         {/* Thanh công cụ của Giao diện đang chọn */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          padding: '14px 16px',
-          borderRadius: 12,
-          background: 'rgba(15, 23, 42, 0.55)',
-          border: `1.5px solid ${activeThemeMeta.color}`,
-          marginBottom: 20
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              background: activeThemeMeta.color,
-              display: 'inline-block'
-            }} />
+        <div
+          className="theme-active-toolbar"
+          style={{ borderLeft: `5px solid ${activeThemeMeta.color}` }}
+        >
+          <div className="theme-active-info">
+            <span
+              className="theme-active-dot"
+              style={{ background: activeThemeMeta.color }}
+            />
             <div>
-              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-primary)' }}>
-                Đang chỉnh sửa: {activeThemeMeta.name}
+              <div className="theme-active-name">
+                Đang chỉnh sửa: <span style={{ color: activeThemeMeta.color }}>{activeThemeMeta.name}</span>
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                Phạm vi lưu:{' '}
-                <strong style={{ color: '#38bdf8' }}>
+              <div className="theme-active-scope">
+                <span>Phạm vi lưu:</span>
+                <span className="theme-scope-pill">
                   {targetProduct
-                    ? `Riêng sản phẩm "${targetProduct.name}"`
-                    : `Toàn bộ doanh nghiệp "${targetEnterprise?.name || ''}"`}
-                </strong>
+                    ? `📦 Riêng sản phẩm "${targetProduct.name}"`
+                    : `🏢 Toàn bộ doanh nghiệp "${targetEnterprise?.name || ''}"`}
+                </span>
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative' }}>
-              <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <Search size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
               <input
                 type="text"
                 className="input"
-                style={{ paddingLeft: 32, height: 36, width: 210, fontSize: '0.82rem' }}
+                style={{ paddingLeft: 34, height: 38, width: 220, fontSize: '0.83rem', background: '#ffffff' }}
                 placeholder="Tìm nhanh mục cần sửa..."
                 value={fieldSearch}
                 onChange={(e) => setFieldSearch(e.target.value)}
@@ -950,7 +990,7 @@ export default function Templates() {
             </div>
 
             {!selectedProductId && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', userSelect: 'none' }}>
+              <label className="theme-default-checkbox-pill">
                 <input
                   type="checkbox"
                   checked={setAsDefaultTheme}
@@ -965,7 +1005,14 @@ export default function Templates() {
               className="btn btn-ghost"
               onClick={handleResetThemeContent}
               disabled={savingThemeContent}
-              style={{ height: 38, fontSize: '0.82rem', border: '1px solid var(--color-border)' }}
+              style={{
+                height: 38,
+                fontSize: '0.83rem',
+                fontWeight: 700,
+                background: '#ffffff',
+                color: '#334155',
+                border: '1.5px solid #cbd5e1'
+              }}
             >
               <RotateCcw size={15} /> Khôi phục mặc định
             </button>
@@ -975,7 +1022,13 @@ export default function Templates() {
               className="btn btn-primary"
               onClick={handleSaveThemeContent}
               disabled={savingThemeContent}
-              style={{ height: 38, background: activeThemeMeta.color, borderColor: activeThemeMeta.color }}
+              style={{
+                height: 38,
+                fontWeight: 700,
+                background: activeThemeMeta.color,
+                borderColor: activeThemeMeta.color,
+                boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)'
+              }}
             >
               <Save size={16} />
               {savingThemeContent ? 'Đang lưu...' : 'Lưu Nội Dung Giao Diện'}
@@ -983,11 +1036,80 @@ export default function Templates() {
           </div>
         </div>
 
+        {/* Thanh chọn nhanh nhóm mục (Section Filter Pills) & Đóng/Mở nhanh */}
+        {activeSections.length > 1 && !fieldSearch.trim() && (
+          <div className="theme-section-nav-bar">
+            <div className="theme-section-pills">
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginRight: 4 }}>
+                Chuyển nhanh nhóm mục:
+              </span>
+              <button
+                type="button"
+                className={`theme-sec-pill ${activeSectionFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setActiveSectionFilter('all')}
+                style={activeSectionFilter === 'all' ? { background: activeThemeMeta.color, borderColor: activeThemeMeta.color } : undefined}
+              >
+                Tất cả ({activeSections.length} nhóm)
+              </button>
+              {activeSections.map((sec, idx) => (
+                <button
+                  key={sec.title}
+                  type="button"
+                  className={`theme-sec-pill ${activeSectionFilter === idx ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveSectionFilter(idx);
+                    setCollapsedSections(prev => ({ ...prev, [`${selectedThemeKey}_${idx}`]: false }));
+                  }}
+                  style={activeSectionFilter === idx ? { background: activeThemeMeta.color, borderColor: activeThemeMeta.color } : undefined}
+                >
+                  {sec.title.split(':')[0]}
+                </button>
+              ))}
+            </div>
+
+            {activeSectionFilter === 'all' && (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  className="theme-sec-pill"
+                  onClick={() => {
+                    const next = { ...collapsedSections };
+                    activeSections.forEach((_, idx) => { next[`${selectedThemeKey}_${idx}`] = false; });
+                    setCollapsedSections(next);
+                  }}
+                >
+                  Mở rộng tất cả
+                </button>
+                <button
+                  type="button"
+                  className="theme-sec-pill"
+                  onClick={() => {
+                    const next = { ...collapsedSections };
+                    activeSections.forEach((_, idx) => { next[`${selectedThemeKey}_${idx}`] = true; });
+                    setCollapsedSections(next);
+                  }}
+                >
+                  Thu gọn tất cả
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Workspace 2 Cột: Cột Trái (Form theo Khối) + Cột Phải (Live Mobile Preview) */}
         <div className="theme-builder-workspace">
           <div className="theme-editor-pane">
             {activeSections.map((sec, secIdx) => {
+              if (activeSectionFilter !== 'all' && activeSectionFilter !== secIdx && !fieldSearch.trim()) {
+                return null;
+              }
               const isCollapsed = Boolean(collapsedSections[`${selectedThemeKey}_${secIdx}`]);
+              const modifiedCount = sec.fields.filter(f => {
+                const v = themeDraft[f.key] ?? '';
+                const dv = DEFAULT_THEME_CONTENTS[selectedThemeKey]?.[f.key] ?? '';
+                return v !== dv;
+              }).length;
+
               return (
                 <div key={sec.title} className="theme-section-box">
                   <button
@@ -995,8 +1117,46 @@ export default function Templates() {
                     className="theme-section-header"
                     onClick={() => toggleSectionCollapse(`${selectedThemeKey}_${secIdx}`)}
                   >
-                    <span>{sec.title}</span>
-                    {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          width: 8,
+                          height: 20,
+                          borderRadius: 4,
+                          background: activeThemeMeta.color,
+                          display: 'inline-block'
+                        }}
+                      />
+                      <span>{sec.title}</span>
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                          background: '#e2e8f0',
+                          color: '#475569'
+                        }}
+                      >
+                        {sec.fields.length} trường
+                      </span>
+                      {modifiedCount > 0 && (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            background: '#fef3c7',
+                            color: '#b45309',
+                            border: '1px solid #fde68a'
+                          }}
+                        >
+                          Đã sửa {modifiedCount}
+                        </span>
+                      )}
+                    </div>
+                    {isCollapsed ? <ChevronDown size={18} color="#475569" /> : <ChevronUp size={18} color="#475569" />}
                   </button>
 
                   {!isCollapsed && (
@@ -1005,37 +1165,31 @@ export default function Templates() {
                         const isTextarea = field.type === 'textarea';
                         const val = themeDraft[field.key] ?? '';
                         const defaultVal = DEFAULT_THEME_CONTENTS[selectedThemeKey]?.[field.key] ?? '';
+                        const isModified = val !== defaultVal;
                         return (
                           <div
                             key={field.key}
                             className={`input-group ${isTextarea ? 'theme-field-full' : ''}`}
                             style={{ marginBottom: 0 }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                              <label style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600 }}>
+                            <div className="theme-field-label-row">
+                              <label className="theme-field-label">
                                 {field.label}
                               </label>
-                              {val !== defaultVal && (
+                              {isModified && (
                                 <button
                                   type="button"
+                                  className="theme-field-reset-btn"
                                   onClick={() => handleThemeFieldChange(field.key, defaultVal)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#38bdf8',
-                                    fontSize: '0.72rem',
-                                    cursor: 'pointer',
-                                    padding: 0
-                                  }}
-                                  title="Khôi phục trường này về mặc định"
+                                  title="Khôi phục trường này về mặc định gốc"
                                 >
-                                  Mặc định
+                                  ↺ Mặc định
                                 </button>
                               )}
                             </div>
                             {isTextarea ? (
                               <textarea
-                                className="input textarea"
+                                className={`input textarea ${isModified ? 'is-modified' : ''}`}
                                 rows={3}
                                 value={val}
                                 onChange={(e) => handleThemeFieldChange(field.key, e.target.value)}
@@ -1044,7 +1198,7 @@ export default function Templates() {
                             ) : (
                               <input
                                 type="text"
-                                className="input"
+                                className={`input ${isModified ? 'is-modified' : ''}`}
                                 value={val}
                                 onChange={(e) => handleThemeFieldChange(field.key, e.target.value)}
                                 placeholder={defaultVal}
@@ -1065,6 +1219,12 @@ export default function Templates() {
                 className="btn btn-ghost"
                 onClick={handleResetThemeContent}
                 disabled={savingThemeContent}
+                style={{
+                  fontWeight: 700,
+                  background: '#ffffff',
+                  color: '#334155',
+                  border: '1.5px solid #cbd5e1'
+                }}
               >
                 <RotateCcw size={15} /> Khôi phục mặc định
               </button>
@@ -1073,7 +1233,11 @@ export default function Templates() {
                 className="btn btn-primary"
                 onClick={handleSaveThemeContent}
                 disabled={savingThemeContent}
-                style={{ background: activeThemeMeta.color, borderColor: activeThemeMeta.color }}
+                style={{
+                  fontWeight: 700,
+                  background: activeThemeMeta.color,
+                  borderColor: activeThemeMeta.color
+                }}
               >
                 <Save size={16} />
                 {savingThemeContent ? 'Đang lưu...' : 'Lưu Nội Dung Giao Diện'}
@@ -1084,14 +1248,26 @@ export default function Templates() {
           {/* Cột Phải: Live Mobile Preview */}
           <div className="theme-preview-pane">
             <div className="theme-preview-topbar">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.86rem' }}>
-                <Smartphone size={17} color="#38bdf8" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>
+                <Smartphone size={18} color={activeThemeMeta.color} />
                 <span>Xem trước trực tiếp: {activeThemeMeta.shortName}</span>
               </div>
-              <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>Live Preview</span>
+              <span
+                className="badge"
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  background: activeThemeMeta.color,
+                  color: '#ffffff'
+                }}
+              >
+                LIVE PREVIEW
+              </span>
             </div>
-            <div className="theme-preview-phone">
-              {renderLiveThemePreview()}
+            <div className="theme-preview-phone-bezel">
+              <div className="theme-preview-phone">
+                {renderLiveThemePreview()}
+              </div>
             </div>
           </div>
         </div>
