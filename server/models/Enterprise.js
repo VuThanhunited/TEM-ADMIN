@@ -73,7 +73,8 @@ const enterpriseSchema = new mongoose.Schema({
       default: 'default'
     },
     distributionBannerText: { type: String, default: '' },
-    bannerImage: { type: String, default: '' }
+    bannerImage: { type: String, default: '' },
+    themeContents: { type: mongoose.Schema.Types.Mixed, default: {} }
   },
   subscriptionPlan: {
     type: String,

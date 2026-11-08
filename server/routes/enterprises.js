@@ -134,7 +134,17 @@ router.put('/:id', auth, async (req, res) => {
     if (domain !== undefined) updateData.domain = domain;
     if (subdomain !== undefined) updateData.subdomain = subdomain;
     if (chatbotConfig !== undefined) updateData.chatbotConfig = chatbotConfig;
-    if (displayConfig !== undefined) updateData.displayConfig = displayConfig;
+    if (displayConfig !== undefined) {
+      const existingEnt = await Enterprise.findById(req.params.id).select('displayConfig').lean();
+      const existingDisplay = existingEnt?.displayConfig || {};
+      updateData.displayConfig = {
+        ...existingDisplay,
+        ...displayConfig,
+        themeContents: displayConfig.themeContents !== undefined
+          ? displayConfig.themeContents
+          : (existingDisplay.themeContents || {})
+      };
+    }
 
     const enterprise = await Enterprise.findByIdAndUpdate(
       req.params.id,
@@ -212,6 +222,102 @@ router.patch('/:id/toggle-related-products', auth, async (req, res) => {
   } catch (error) {
     console.error('Toggle related products error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật hiển thị sản phẩm liên quan: ' + error.message });
+  }
+});
+
+// PUT /api/enterprises/:id/theme-content - Lưu cấu hình nội dung chi tiết cho từng giao diện tem (Theme Content Builder)
+router.put('/:id/theme-content', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
+      if (!relatedIds.some(id => String(id) === String(req.params.id))) {
+        return res.status(403).json({ error: 'Không có quyền chỉnh sửa cấu hình giao diện của doanh nghiệp này' });
+      }
+    }
+
+    const { themeKey, content, productId, setAsDefaultTheme } = req.body || {};
+    if (!themeKey) {
+      return res.status(400).json({ error: 'Thiếu mã giao diện (themeKey) cần lưu nội dung' });
+    }
+
+    const enterprise = await Enterprise.findById(req.params.id);
+    if (!enterprise) {
+      return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
+    }
+
+    // Nếu lưu ghi đè riêng cho 1 Sản phẩm cụ thể
+    if (productId) {
+      const Product = require('../models/Product');
+      const prod = await Product.findOne({ _id: productId, enterpriseId: enterprise._id });
+      if (!prod) {
+        return res.status(404).json({ error: 'Không tìm thấy sản phẩm thuộc doanh nghiệp này' });
+      }
+      const existingOverrides = (prod.themeContentOverride && typeof prod.themeContentOverride === 'object')
+        ? prod.themeContentOverride
+        : {};
+      if (content === null) {
+        delete existingOverrides[themeKey];
+        prod.themeContentOverride = Object.keys(existingOverrides).length > 0 ? { ...existingOverrides } : null;
+      } else {
+        prod.themeContentOverride = {
+          ...existingOverrides,
+          [themeKey]: content
+        };
+      }
+      prod.markModified('themeContentOverride');
+      await prod.save();
+      return res.json({
+        success: true,
+        product: prod,
+        themeKey,
+        themeContent: prod.themeContentOverride?.[themeKey] || null,
+        message: content === null
+          ? `Đã khôi phục nội dung mặc định cho sản phẩm "${prod.name}"`
+          : `Đã lưu nội dung giao diện riêng cho sản phẩm "${prod.name}"!`
+      });
+    }
+
+    // Lưu cấu hình nội dung theo Doanh nghiệp + Giao diện (Enterprise.displayConfig.themeContents[themeKey])
+    if (!enterprise.displayConfig || typeof enterprise.displayConfig !== 'object') {
+      enterprise.displayConfig = {
+        showRelatedProducts: true,
+        defaultTheme: 'default',
+        distributionBannerText: '',
+        bannerImage: '',
+        themeContents: {}
+      };
+    }
+
+    const currentThemeContents =
+      enterprise.displayConfig.themeContents && typeof enterprise.displayConfig.themeContents === 'object'
+        ? { ...enterprise.displayConfig.themeContents }
+        : {};
+
+    if (content === null) {
+      delete currentThemeContents[themeKey];
+    } else {
+      currentThemeContents[themeKey] = content;
+    }
+
+    enterprise.displayConfig.themeContents = currentThemeContents;
+    if (setAsDefaultTheme) {
+      enterprise.displayConfig.defaultTheme = themeKey;
+    }
+    enterprise.markModified('displayConfig');
+    await enterprise.save();
+
+    res.json({
+      success: true,
+      enterprise,
+      themeKey,
+      themeContent: currentThemeContents[themeKey] || null,
+      message: content === null
+        ? 'Đã khôi phục nội dung giao diện về mặc định!'
+        : 'Đã lưu thay đổi nội dung giao diện thành công!'
+    });
+  } catch (error) {
+    console.error('Save theme content error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lưu nội dung giao diện: ' + error.message });
   }
 });
 

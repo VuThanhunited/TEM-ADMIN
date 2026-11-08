@@ -1,9 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
-  Palette, Plus, X, Save, Eye, Trash2, CheckCircle, XCircle, FileText, Settings, Layers, ShieldCheck, Package
+  Palette, Plus, X, Save, Eye, Trash2, CheckCircle, XCircle, FileText,
+  Settings, ShieldCheck, Package, RotateCcw, ChevronDown, ChevronUp,
+  Smartphone, Search, Sparkles, Building2, Layers
 } from 'lucide-react';
+import {
+  THEME_LIST,
+  DEFAULT_THEME_CONTENTS,
+  THEME_EDITOR_SECTIONS,
+  resolveCanonicalThemeKey,
+  getMergedThemeContent
+} from '../../config/themeDefaultContents';
 import './Templates.css';
 
 const defaultContentConfig = {
@@ -36,17 +45,27 @@ export default function Templates() {
   const { isAdmin, enterpriseId } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [enterprises, setEnterprises] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [modalTab, setModalTab] = useState('basic'); // 'basic' or 'content'
+  const [modalTab, setModalTab] = useState('basic');
   const [editing, setEditing] = useState(null);
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [modalError, setModalError] = useState(null);
 
-  // Quick On/Off Toggle for Related Products
+  // Quick On/Off Toggle for Related Products & Selected Enterprise
   const [selectedEnterpriseId, setSelectedEnterpriseId] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [togglingRelated, setTogglingRelated] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Theme Content Builder states (8 giao diện)
+  const [selectedThemeKey, setSelectedThemeKey] = useState('appliance');
+  const [themeDraft, setThemeDraft] = useState({ ...DEFAULT_THEME_CONTENTS.appliance });
+  const [savingThemeContent, setSavingThemeContent] = useState(false);
+  const [setAsDefaultTheme, setSetAsDefaultTheme] = useState(false);
+  const [fieldSearch, setFieldSearch] = useState('');
+  const [collapsedSections, setCollapsedSections] = useState({});
 
   const [form, setForm] = useState({
     name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0',
@@ -90,12 +109,133 @@ export default function Templates() {
     } catch (e) {}
   };
 
+  // Khi đổi doanh nghiệp được chọn -> tải danh sách sản phẩm của doanh nghiệp đó & đồng bộ theme mặc định
+  useEffect(() => {
+    if (!selectedEnterpriseId) {
+      setProducts([]);
+      setSelectedProductId('');
+      return;
+    }
+    setSelectedProductId('');
+    api.getProducts({ enterpriseId: selectedEnterpriseId, limit: 200 })
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.products || res?.data || []);
+        setProducts(list.filter(p => String(p.enterpriseId?._id || p.enterpriseId) === String(selectedEnterpriseId)));
+      })
+      .catch(() => setProducts([]));
+
+    const ent = enterprises.find(e => String(e._id) === String(selectedEnterpriseId));
+    if (ent?.displayConfig?.defaultTheme) {
+      const canonical = resolveCanonicalThemeKey(ent.displayConfig.defaultTheme);
+      setSelectedThemeKey(canonical);
+    }
+  }, [selectedEnterpriseId]);
+
+  const targetEnterprise = useMemo(
+    () => enterprises.find(e => String(e._id) === String(selectedEnterpriseId)) || enterprises[0],
+    [enterprises, selectedEnterpriseId]
+  );
+
+  const targetProduct = useMemo(
+    () => products.find(p => String(p._id) === String(selectedProductId)) || null,
+    [products, selectedProductId]
+  );
+
+  // Nạp nội dung của giao diện đang chọn (từ Product Override hoặc Enterprise.displayConfig.themeContents hoặc Default)
+  useEffect(() => {
+    const canonicalKey = resolveCanonicalThemeKey(selectedThemeKey);
+    const entSaved = targetEnterprise?.displayConfig?.themeContents?.[canonicalKey] || {};
+    const prodSaved = targetProduct?.themeContentOverride?.[canonicalKey] || null;
+    const effectiveCustom = targetProduct ? (prodSaved || entSaved) : entSaved;
+    setThemeDraft(getMergedThemeContent(canonicalKey, effectiveCustom));
+    setSetAsDefaultTheme(
+      resolveCanonicalThemeKey(targetEnterprise?.displayConfig?.defaultTheme) === canonicalKey
+    );
+  }, [selectedThemeKey, targetEnterprise, targetProduct]);
+
+  const showToast = (text, type = 'success') => {
+    setToastMessage({ text, type });
+    setTimeout(() => setToastMessage(null), 3800);
+  };
+
+  const handleThemeFieldChange = (fieldKey, value) => {
+    setThemeDraft(prev => ({
+      ...prev,
+      [fieldKey]: value
+    }));
+  };
+
+  const toggleSectionCollapse = (idx) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
+  };
+
+  const handleSaveThemeContent = async () => {
+    if (!targetEnterprise) return;
+    setSavingThemeContent(true);
+    try {
+      const res = await api.saveEnterpriseThemeContent(targetEnterprise._id, {
+        themeKey: selectedThemeKey,
+        content: themeDraft,
+        productId: selectedProductId || undefined,
+        setAsDefaultTheme: !selectedProductId && setAsDefaultTheme
+      });
+
+      if (selectedProductId && res.product) {
+        setProducts(prev => prev.map(p => String(p._id) === String(res.product._id) ? res.product : p));
+      } else if (res.enterprise) {
+        setEnterprises(prev => prev.map(ent => String(ent._id) === String(res.enterprise._id) ? res.enterprise : ent));
+      }
+
+      showToast(res.message || 'Đã lưu thay đổi nội dung giao diện thành công!');
+    } catch (err) {
+      alert(err.message || 'Lỗi khi lưu nội dung giao diện tem');
+    } finally {
+      setSavingThemeContent(false);
+    }
+  };
+
+  const handleResetThemeContent = async () => {
+    if (!targetEnterprise) return;
+    const scopeText = targetProduct
+      ? `sản phẩm "${targetProduct.name}"`
+      : `doanh nghiệp "${targetEnterprise.name}"`;
+    const activeThemeMeta = THEME_LIST.find(t => t.key === selectedThemeKey);
+    if (!confirm(`Khôi phục toàn bộ nội dung của "${activeThemeMeta?.shortName || selectedThemeKey}" cho ${scopeText} về mặc định hệ thống?`)) {
+      return;
+    }
+
+    setSavingThemeContent(true);
+    try {
+      const res = await api.saveEnterpriseThemeContent(targetEnterprise._id, {
+        themeKey: selectedThemeKey,
+        content: null,
+        productId: selectedProductId || undefined
+      });
+
+      if (selectedProductId && res.product) {
+        setProducts(prev => prev.map(p => String(p._id) === String(res.product._id) ? res.product : p));
+      } else if (res.enterprise) {
+        setEnterprises(prev => prev.map(ent => String(ent._id) === String(res.enterprise._id) ? res.enterprise : ent));
+      }
+
+      setThemeDraft({ ...(DEFAULT_THEME_CONTENTS[selectedThemeKey] || DEFAULT_THEME_CONTENTS.appliance) });
+      showToast(res.message || 'Đã khôi phục nội dung mặc định!');
+    } catch (err) {
+      alert(err.message || 'Lỗi khi khôi phục nội dung mặc định');
+    } finally {
+      setSavingThemeContent(false);
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
     setModalError(null);
     setModalTab('basic');
     setForm({
-      name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0', backgroundColor: '#f0f4f8', textColor: '#0f172a', layout: 'warranty_solution', showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, showRelatedProducts: true, enterpriseId: '', logo: '', backgroundImage: '',
+      name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0', backgroundColor: '#f0f4f8', textColor: '#0f172a', layout: 'warranty_solution', showVerificationBadge: true, showProductInfo: true, showDistributorInfo: true, showScanCount: false, showRelatedProducts: true, enterpriseId: selectedEnterpriseId || '', logo: '', backgroundImage: '',
       contentConfig: { ...defaultContentConfig }
     });
     setShowModal(true);
@@ -268,7 +408,6 @@ export default function Templates() {
     catch (err) { alert(err.message); }
   };
 
-  const targetEnterprise = enterprises.find(e => e._id === selectedEnterpriseId) || enterprises[0];
   const currentEntShowRelated = targetEnterprise?.displayConfig?.showRelatedProducts !== false;
 
   const handleToggleQuickRelated = async () => {
@@ -276,7 +415,6 @@ export default function Templates() {
     const nextVal = !currentEntShowRelated;
     setTogglingRelated(true);
 
-    // Optimistic update
     setEnterprises(prev => prev.map(ent => {
       if (ent._id === targetEnterprise._id) {
         return {
@@ -292,13 +430,8 @@ export default function Templates() {
 
     try {
       await api.toggleRelatedProducts(targetEnterprise._id, nextVal);
-      setToastMessage({
-        type: 'success',
-        text: `Đã ${nextVal ? 'BẬT' : 'TẮT'} hiển thị Sản phẩm liên quan cho "${targetEnterprise.name}"`
-      });
-      setTimeout(() => setToastMessage(null), 3500);
+      showToast(`Đã ${nextVal ? 'BẬT' : 'TẮT'} hiển thị Sản phẩm liên quan cho "${targetEnterprise.name}"`);
     } catch (err) {
-      // Revert on failure
       setEnterprises(prev => prev.map(ent => {
         if (ent._id === targetEnterprise._id) {
           return {
@@ -317,16 +450,288 @@ export default function Templates() {
     }
   };
 
+  const activeThemeMeta = useMemo(
+    () => THEME_LIST.find(t => t.key === selectedThemeKey) || THEME_LIST[0],
+    [selectedThemeKey]
+  );
+
+  const activeSections = useMemo(() => {
+    const rawSections = THEME_EDITOR_SECTIONS[selectedThemeKey] || THEME_EDITOR_SECTIONS.appliance;
+    const q = fieldSearch.trim().toLowerCase();
+    if (!q) return rawSections;
+    return rawSections
+      .map(sec => ({
+        ...sec,
+        fields: sec.fields.filter(
+          f =>
+            f.label.toLowerCase().includes(q) ||
+            String(themeDraft[f.key] || '').toLowerCase().includes(q)
+        )
+      }))
+      .filter(sec => sec.fields.length > 0);
+  }, [selectedThemeKey, fieldSearch, themeDraft]);
+
+  // Render Live Preview cho giao diện đang chọn
+  const renderLiveThemePreview = () => {
+    const c = themeDraft || {};
+    const entName = targetEnterprise?.name || 'CÔNG TY CỔ PHẦN THƯƠNG HIỆU CHÍNH HÃNG';
+    const prodName = targetProduct?.name || 'Sản phẩm mẫu chính hãng';
+
+    if (selectedThemeKey === 'appliance') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem' }}>
+          <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ShieldCheck size={22} color="#16a34a" />
+            <div>
+              <div style={{ fontWeight: 800, color: '#166534', fontSize: '0.88rem' }}>{c.verifyTitle}</div>
+              <div style={{ color: '#15803d', fontSize: '0.75rem' }}>{c.verifySubtitle}</div>
+            </div>
+          </div>
+
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #e2e8f0' }}>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a', marginBottom: 6 }}>{prodName}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderTop: '1px solid #f1f5f9' }}>
+              <span style={{ color: '#64748b' }}>{c.activationCodeLabel}:</span>
+              <strong style={{ color: '#0f172a' }}>00066</strong>
+            </div>
+          </div>
+
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #bbf7d0' }}>
+            <div style={{ fontWeight: 800, color: '#166534', marginBottom: 4 }}>{c.nsxSectionTitle}</div>
+            <div style={{ fontWeight: 700, color: '#0f172a' }}>{entName}</div>
+          </div>
+
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #bfdbfe' }}>
+            <div style={{ fontWeight: 800, color: '#1e40af', marginBottom: 6 }}>{c.nppSectionTitle}</div>
+            <div style={{ color: '#475569', fontSize: '0.75rem', marginBottom: 8 }}>{c.nppDefaultText}</div>
+            <div style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', border: '1.5px solid #6ee7b7', borderRadius: 8, padding: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase' }}>{c.ownerCodeLabel}</div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 900, color: '#065f46' }}>00066</div>
+                <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed rgba(5,150,105,0.3)' }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#047857', textTransform: 'uppercase' }}>{c.antiCounterfeitLabel}</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 900, color: '#065f46' }}>00306916</div>
+                </div>
+              </div>
+              <span style={{ background: '#059669', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '3px 8px', borderRadius: 10 }}>
+                {c.verifiedBadgeText}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #fde68a' }}>
+            <div style={{ fontWeight: 800, color: '#b45309', marginBottom: 4 }}>{c.certSectionTitle}</div>
+            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{c.certGuideText}</div>
+          </div>
+
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #c7d2fe' }}>
+            <div style={{ fontWeight: 800, color: '#4338ca', marginBottom: 6 }}>{c.ownerCardTitle}</div>
+            <div style={{ fontSize: '0.76rem', marginBottom: 4 }}>{c.ownerNameLabel} <strong>Đại lý chính hãng</strong></div>
+            <div style={{ background: '#eef2ff', color: '#4338ca', padding: '6px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>
+              {c.activatedSerialLabel} <strong>00066</strong>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedThemeKey === 'functional_food') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem' }}>
+          <div style={{ background: 'linear-gradient(135deg, #15803d, #16a34a)', color: '#fff', borderRadius: 10, padding: 12 }}>
+            <div style={{ fontWeight: 900, fontSize: '0.92rem' }}>{c.headerTitle}</div>
+            <div style={{ fontSize: '0.74rem', opacity: 0.9 }}>{c.headerSubtitle}</div>
+          </div>
+          <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 10, padding: 10 }}>
+            <div style={{ fontWeight: 800, color: '#166534' }}>{c.activatedBannerTitle}</div>
+            <div style={{ fontSize: '0.73rem', color: '#15803d' }}>{c.activatedBannerDesc}</div>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #e2e8f0' }}>
+            <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.65rem', fontWeight: 800, padding: '2px 8px', borderRadius: 10 }}>{c.categoryTagText}</span>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', marginTop: 4 }}>{prodName}</div>
+            <div style={{ color: '#16a34a', fontSize: '0.75rem', fontWeight: 700, marginTop: 4 }}>{c.viewDetailBtnText}</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, background: '#fff', padding: 10, borderRadius: 10, border: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.68rem', fontWeight: 700, color: '#15803d' }}>
+            {[c.btn1Label, c.btn2Label, c.btn3Label, c.btn4Label, c.btn5Label, c.btn6Label, c.btn7Label, c.btn8Label].map((lbl, i) => (
+              <div key={i} style={{ padding: '6px 4px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>{lbl}</div>
+            ))}
+          </div>
+          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 800, color: '#166534', fontSize: '0.8rem' }}>{c.supportTitle}</div>
+              <div style={{ fontSize: '0.7rem', color: '#475569' }}>{c.supportDesc}</div>
+            </div>
+            <span style={{ background: '#16a34a', color: '#fff', padding: '5px 10px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 700 }}>{c.supportBtnText}</span>
+          </div>
+          <div style={{ background: '#14532d', color: '#fff', borderRadius: 8, padding: 8, textAlign: 'center', fontSize: '0.72rem' }}>
+            {c.footerThankYou}
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedThemeKey === 'staycool') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem' }}>
+          <div style={{ background: 'linear-gradient(135deg, #ea580c, #f97316)', color: '#fff', borderRadius: 20, padding: '8px 12px', textAlign: 'center', fontWeight: 800, fontSize: '0.76rem' }}>
+            {c.pillBanner1Activated}
+          </div>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #fed7aa' }}>
+            <div style={{ fontWeight: 800, color: '#c2410c', fontSize: '0.92rem' }}>{prodName}</div>
+            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 4 }}>NSX: {c.mfgDefaultTitle}</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.72rem', fontWeight: 700 }}>
+            {[c.actionPill1Label, c.actionPill2Label, c.actionPill3Label].map((lbl, i) => (
+              <div key={i} style={{ background: '#fff', border: '1.5px solid #fdba74', borderRadius: 20, padding: '6px 4px', color: '#ea580c' }}>{lbl}</div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.72rem', fontWeight: 700 }}>
+            {[c.gridBtn1Label, c.gridBtn2Label, c.gridBtn3Label, c.gridBtn4Label, c.gridBtn5Label, c.gridBtn6Label].map((lbl, i) => (
+              <div key={i} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: '8px 6px', color: '#9a3412' }}>{lbl}</div>
+            ))}
+          </div>
+          <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 10, padding: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontWeight: 800, color: '#c2410c', fontSize: '0.78rem' }}>{c.consultTitle}</div>
+              <div style={{ fontSize: '0.68rem', color: '#7c2d12' }}>{c.consultDesc}</div>
+            </div>
+            <span style={{ background: '#ea580c', color: '#fff', padding: '5px 10px', borderRadius: 16, fontSize: '0.7rem', fontWeight: 700 }}>{c.consultBtnText}</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedThemeKey === 'honey') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem', background: '#fefce8', padding: 10, borderRadius: 10, border: '1px solid #fde047' }}>
+          <div style={{ fontWeight: 900, color: '#14532d', fontSize: '0.88rem', textAlign: 'center', borderBottom: '1px solid #fde047', paddingBottom: 6 }}>
+            {c.headerTitle_vi}
+          </div>
+          <div style={{ background: '#fff', borderRadius: 8, padding: 10, border: '1px solid #fef08a', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div><strong>{c.lblProduct_vi}</strong> {c.defaultProductName_vi}</div>
+            <div><strong>{c.lblProducer_vi}</strong> {c.defaultProducerName_vi}</div>
+            <div><strong>{c.lblAddress_vi}</strong> {c.defaultAddress_vi}</div>
+            <div><strong>{c.lblContact_vi}</strong> {c.defaultContact_vi}</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+            {[c.tab1Label_vi, c.tab2Label_vi, c.tab3Label_vi, c.tab4Label_vi, c.tab5Label_vi, c.tab6Label_vi].map((t, idx) => (
+              <div key={idx} style={{ background: idx === 0 ? '#eab308' : '#15803d', color: '#fff', padding: '6px 4px', borderRadius: 14 }}>
+                {t}
+              </div>
+            ))}
+          </div>
+          <div style={{ background: '#fff', borderRadius: 8, padding: 10, border: '1px solid #bbf7d0' }}>
+            <div style={{ fontWeight: 800, color: '#14532d', fontSize: '0.82rem' }}>{c.introTitle_vi}</div>
+            <div style={{ fontSize: '0.7rem', color: '#15803d', fontStyle: 'italic', marginBottom: 6 }}>{c.introSubtitle_vi}</div>
+            <div style={{ fontSize: '0.73rem', color: '#334155', lineHeight: 1.4 }}>{c.introLead_vi}</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedThemeKey === 'ocop') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem' }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1.5px solid #86efac' }}>
+            <div style={{ fontWeight: 900, color: '#15803d', fontSize: '0.95rem' }}>{prodName}</div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>{c.certSublabel}</div>
+            <div style={{ fontWeight: 900, color: '#dc2626', fontSize: '0.88rem' }}>{c.defaultCertText}</div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>{c.ownerSublabel} <strong style={{ color: '#0f172a' }}>{entName}</strong></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, background: '#fff', padding: 10, borderRadius: 10, border: '1px solid #e2e8f0', textAlign: 'center', fontSize: '0.67rem', fontWeight: 700, color: '#15803d' }}>
+            {[c.btn1Label, c.btn2Label, c.btn3Label, c.btn4Label, c.btn5Label, c.btn6Label, c.btn7Label, c.btn8Label].map((lbl, i) => (
+              <div key={i} style={{ padding: '6px 4px', background: '#f0fdf4', borderRadius: 8 }}>{lbl}</div>
+            ))}
+          </div>
+          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: 10 }}>
+            <div style={{ fontWeight: 800, color: '#15803d', fontSize: '0.8rem' }}>{c.commitmentTitle}</div>
+            <div style={{ fontSize: '0.72rem', color: '#334155', marginTop: 2 }}>{c.commitmentDesc}</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedThemeKey === 'medical') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+            <span style={{ background: '#ccfbf1', color: '#0f766e', fontSize: '0.66rem', fontWeight: 800, padding: '4px 8px', borderRadius: 8 }}>{c.rxBadgeText}</span>
+            <span style={{ background: '#0d9488', color: '#fff', fontSize: '0.66rem', fontWeight: 800, padding: '4px 8px', borderRadius: 8 }}>{c.gmpBadgeText}</span>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #99f6e4' }}>
+            <div style={{ fontWeight: 800, color: '#0f766e', fontSize: '0.92rem' }}>{prodName}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 8, fontSize: '0.72rem' }}>
+              <div style={{ background: '#f0fdfa', padding: 6, borderRadius: 6 }}><div style={{ color: '#64748b' }}>{c.spec1Label}</div><strong>{c.spec1DefaultVal}</strong></div>
+              <div style={{ background: '#f0fdfa', padding: 6, borderRadius: 6 }}><div style={{ color: '#64748b' }}>{c.spec2Label}</div><strong>{c.spec2DefaultVal}</strong></div>
+              <div style={{ background: '#f0fdfa', padding: 6, borderRadius: 6 }}><div style={{ color: '#64748b' }}>{c.spec3Label}</div><strong>{c.spec3DefaultVal}</strong></div>
+              <div style={{ background: '#f0fdfa', padding: 6, borderRadius: 6 }}><div style={{ color: '#64748b' }}>{c.spec4Label}</div><strong>{c.spec4DefaultVal}</strong></div>
+            </div>
+          </div>
+          <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 10, padding: 10 }}>
+            <div style={{ fontWeight: 800, color: '#c2410c', fontSize: '0.76rem' }}>{c.warningTitle}</div>
+            <div style={{ fontSize: '0.7rem', color: '#7c2d12', marginTop: 2 }}>{c.warningDesc}</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedThemeKey === 'agriculture') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem' }}>
+          <div style={{ background: '#15803d', color: '#fff', borderRadius: 10, padding: 12 }}>
+            <div style={{ fontWeight: 800, fontSize: '0.86rem' }}>{c.bannerTitle}</div>
+            <div style={{ fontSize: '0.72rem', opacity: 0.9 }}>{c.bannerSubtitle}</div>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #bbf7d0' }}>
+            <div style={{ fontWeight: 800, color: '#166534', fontSize: '0.92rem', marginBottom: 6 }}>{prodName}</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: '0.72rem' }}>
+              <span style={{ background: '#f0fdf4', padding: '4px 8px', borderRadius: 6, border: '1px solid #86efac' }}>{c.tag1Label} <strong>{c.tag1Val}</strong></span>
+              <span style={{ background: '#f0fdf4', padding: '4px 8px', borderRadius: 6, border: '1px solid #86efac' }}>{c.tag2Label} <strong>{c.tag2Val}</strong></span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.74rem', fontWeight: 700, color: '#15803d' }}>
+            {[c.btn1Label, c.btn2Label, c.btn3Label, c.btn4Label].map((lbl, i) => (
+              <div key={i} style={{ background: '#fff', padding: 8, borderRadius: 8, border: '1px solid #bbf7d0' }}>{lbl}</div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Cosmetics
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.8rem' }}>
+        <div style={{ background: 'linear-gradient(135deg, #be185d, #db2777)', color: '#fff', borderRadius: 10, padding: 12 }}>
+          <div style={{ fontWeight: 800, fontSize: '0.86rem' }}>{c.bannerTitle}</div>
+          <div style={{ fontSize: '0.72rem', opacity: 0.9 }}>{c.bannerSubtitle}</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 10, padding: 12, border: '1px solid #fbcfe8' }}>
+          <div style={{ fontWeight: 800, color: '#9d174d', fontSize: '0.92rem' }}>{prodName}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6, fontSize: '0.73rem' }}>
+            <div>{c.spec1Label} <strong>{c.spec1Val}</strong></div>
+            <div>{c.spec2Label} <strong>{c.spec2Val}</strong></div>
+            <div>{c.spec3Label} <strong>{c.spec3Val}</strong></div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, textAlign: 'center', fontSize: '0.74rem', fontWeight: 700, color: '#be185d' }}>
+          {[c.btn1Label, c.btn2Label, c.btn3Label, c.btn4Label].map((lbl, i) => (
+            <div key={i} style={{ background: '#fdf2f8', padding: 8, borderRadius: 8, border: '1px solid #fbcfe8' }}>{lbl}</div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <div className="loading-overlay"><div className="loading-spinner" style={{width:40,height:40}}></div></div>;
 
   return (
     <div className="templates-page">
       <div className="page-header">
         <div>
-          <h1>Cấu hình Giao diện Tem</h1>
-          <p>Tùy chỉnh màu sắc, logo, các mục hiển thị và bật/tắt khối sản phẩm liên quan khi quét tem</p>
+          <h1>Cấu hình &amp; Tùy chỉnh Nội dung Giao diện Tem</h1>
+          <p>Chọn bất kỳ giao diện nào trong 8 giao diện ngành hàng để tùy ý thay đổi nội dung chữ, tiêu đề, nhãn nút, bài viết tab và popup hiển thị khi quét QR</p>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}><Plus size={18}/> Tạo Template Mới</button>
+        <button className="btn btn-primary" onClick={openCreate}><Plus size={18}/> Tạo Template Màu Sắc</button>
       </div>
 
       {/* Quick Global / Enterprise Display Setting for Related Products */}
@@ -385,44 +790,357 @@ export default function Templates() {
         </div>
       </div>
 
-      <div className="templates-grid">
-        {templates.length === 0 ? (
-          <div className="empty-state"><Palette size={60}/><h3>Chưa có template nào</h3></div>
-        ) : (
-          templates.map(tmpl => (
-            <div key={tmpl._id} className="template-card card animate-fade-in-up">
-              {/* Preview */}
-              <div className="template-preview" style={{background: tmpl.backgroundColor, color: tmpl.textColor}}>
-                <div className="preview-header" style={{background: `linear-gradient(135deg, ${tmpl.primaryColor}, ${tmpl.secondaryColor})`}}>
-                  <CheckCircle size={20}/> <span>{tmpl.contentConfig?.headerTitle2 || 'TEM BẢO HÀNH SẢN PHẨM'}</span>
-                </div>
-                <div className="preview-body">
-                  <div className="preview-product-name">{tmpl.contentConfig?.headerTitle1 || 'GIẢI PHÁP QRcode'}</div>
-                  {tmpl.showProductInfo && <div className="preview-info">Sản phẩm & Thông số</div>}
-                  {tmpl.showDistributorInfo && <div className="preview-info">Điểm bán & NSX</div>}
-                  {tmpl.showScanCount && <div className="preview-scan">Đã quét: 5 lần</div>}
-                </div>
+      {/* =====================================================================
+          TRÌNH TÙY CHỈNH NỘI DUNG CHI TIẾT CHO 8 GIAO DIỆN TEM (THEME CONTENT BUILDER)
+          ===================================================================== */}
+      <div className="theme-builder-card animate-fade-in-up">
+        <div className="theme-builder-top-bar">
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <Sparkles size={22} color="#6366f1" />
+              <h2 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800 }}>
+                Trình Tùy Chỉnh Nội Dung Từng Giao Diện Tem (8 Giao Diện)
+              </h2>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--color-text-muted)' }}>
+              Chọn doanh nghiệp (hoặc từng sản phẩm riêng) rồi bấm vào giao diện cần sửa bên dưới để thay đổi mọi câu chữ, tiêu đề, nhãn nút, thông số và nội dung popup.
+            </p>
+          </div>
+
+          <div className="theme-builder-controls">
+            {isAdmin && enterprises.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Building2 size={16} color="#94a3b8" />
+                <select
+                  className="input select"
+                  style={{ minWidth: 220, height: 38 }}
+                  value={selectedEnterpriseId}
+                  onChange={(e) => setSelectedEnterpriseId(e.target.value)}
+                >
+                  {enterprises.map(ent => (
+                    <option key={ent._id} value={ent._id}>{ent.name}</option>
+                  ))}
+                </select>
               </div>
-              <div className="template-info">
-                <h3>{tmpl.name}</h3>
-                <div className="template-meta">
-                  <span className="badge badge-neutral">{tmpl.layout}</span>
-                  {tmpl.isDefault && <span className="badge badge-success">Mặc định</span>}
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Layers size={16} color="#94a3b8" />
+              <select
+                className="input select"
+                style={{ minWidth: 230, height: 38 }}
+                value={selectedProductId}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                title="Chọn áp dụng cho toàn Doanh nghiệp hoặc riêng 1 Sản phẩm"
+              >
+                <option value="">🌐 Áp dụng chung toàn Doanh nghiệp</option>
+                {products.map(p => (
+                  <option key={p._id} value={p._id}>
+                    📦 Riêng SP: {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Bộ chọn 8 Giao diện Tem */}
+        <div className="theme-selector-grid">
+          {THEME_LIST.map((themeItem) => {
+            const isSelected = selectedThemeKey === themeItem.key;
+            const hasCustomEnt = Boolean(
+              targetEnterprise?.displayConfig?.themeContents?.[themeItem.key] &&
+              Object.keys(targetEnterprise.displayConfig.themeContents[themeItem.key]).length > 0
+            );
+            const hasCustomProd = Boolean(
+              targetProduct?.themeContentOverride?.[themeItem.key] &&
+              Object.keys(targetProduct.themeContentOverride[themeItem.key]).length > 0
+            );
+            const isEntDefault =
+              resolveCanonicalThemeKey(targetEnterprise?.displayConfig?.defaultTheme) === themeItem.key;
+
+            return (
+              <button
+                key={themeItem.key}
+                type="button"
+                className={`theme-selector-item ${isSelected ? 'active' : ''}`}
+                onClick={() => setSelectedThemeKey(themeItem.key)}
+                style={
+                  isSelected
+                    ? { borderColor: themeItem.color, background: themeItem.bgLight }
+                    : undefined
+                }
+              >
+                <div>
+                  <div className="theme-selector-head">
+                    <span
+                      className="theme-selector-badge"
+                      style={{ background: themeItem.color, color: '#fff' }}
+                    >
+                      {themeItem.badge}
+                    </span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {isEntDefault && (
+                        <span className="badge badge-success" style={{ fontSize: '0.65rem' }}>
+                          Mặc định DN
+                        </span>
+                      )}
+                      {(hasCustomProd || hasCustomEnt) && (
+                        <span className="badge badge-neutral" style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.2)', color: '#a5b4fc' }}>
+                          Đã tùy chỉnh
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="theme-selector-title">{themeItem.shortName}</div>
+                  <div className="theme-selector-sub">{themeItem.subtitle}</div>
                 </div>
-                <div className="template-colors">
-                  <span className="color-dot" style={{background: tmpl.primaryColor}} title="Primary"></span>
-                  <span className="color-dot" style={{background: tmpl.secondaryColor}} title="Secondary"></span>
-                  <span className="color-dot" style={{background: tmpl.backgroundColor}} title="Background"></span>
-                </div>
-                <div className="template-actions">
-                  <button className="btn btn-sm btn-ghost" onClick={() => openEdit(tmpl)}><Edit size={14}/> Sửa</button>
-                  <button className="btn btn-sm btn-ghost" onClick={() => setPreviewTemplate(tmpl)}><Eye size={14}/> Xem</button>
-                  <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(tmpl._id)}><Trash2 size={14}/></button>
-                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Thanh công cụ của Giao diện đang chọn */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          padding: '14px 16px',
+          borderRadius: 12,
+          background: 'rgba(15, 23, 42, 0.55)',
+          border: `1.5px solid ${activeThemeMeta.color}`,
+          marginBottom: 20
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              background: activeThemeMeta.color,
+              display: 'inline-block'
+            }} />
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-primary)' }}>
+                Đang chỉnh sửa: {activeThemeMeta.name}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                Phạm vi lưu:{' '}
+                <strong style={{ color: '#38bdf8' }}>
+                  {targetProduct
+                    ? `Riêng sản phẩm "${targetProduct.name}"`
+                    : `Toàn bộ doanh nghiệp "${targetEnterprise?.name || ''}"`}
+                </strong>
               </div>
             </div>
-          ))
-        )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input
+                type="text"
+                className="input"
+                style={{ paddingLeft: 32, height: 36, width: 210, fontSize: '0.82rem' }}
+                placeholder="Tìm nhanh mục cần sửa..."
+                value={fieldSearch}
+                onChange={(e) => setFieldSearch(e.target.value)}
+              />
+            </div>
+
+            {!selectedProductId && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={setAsDefaultTheme}
+                  onChange={(e) => setSetAsDefaultTheme(e.target.checked)}
+                />
+                <span>Đặt làm giao diện mặc định của DN</span>
+              </label>
+            )}
+
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={handleResetThemeContent}
+              disabled={savingThemeContent}
+              style={{ height: 38, fontSize: '0.82rem', border: '1px solid var(--color-border)' }}
+            >
+              <RotateCcw size={15} /> Khôi phục mặc định
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSaveThemeContent}
+              disabled={savingThemeContent}
+              style={{ height: 38, background: activeThemeMeta.color, borderColor: activeThemeMeta.color }}
+            >
+              <Save size={16} />
+              {savingThemeContent ? 'Đang lưu...' : 'Lưu Nội Dung Giao Diện'}
+            </button>
+          </div>
+        </div>
+
+        {/* Workspace 2 Cột: Cột Trái (Form theo Khối) + Cột Phải (Live Mobile Preview) */}
+        <div className="theme-builder-workspace">
+          <div className="theme-editor-pane">
+            {activeSections.map((sec, secIdx) => {
+              const isCollapsed = Boolean(collapsedSections[`${selectedThemeKey}_${secIdx}`]);
+              return (
+                <div key={sec.title} className="theme-section-box">
+                  <button
+                    type="button"
+                    className="theme-section-header"
+                    onClick={() => toggleSectionCollapse(`${selectedThemeKey}_${secIdx}`)}
+                  >
+                    <span>{sec.title}</span>
+                    {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                  </button>
+
+                  {!isCollapsed && (
+                    <div className="theme-section-body">
+                      {sec.fields.map((field) => {
+                        const isTextarea = field.type === 'textarea';
+                        const val = themeDraft[field.key] ?? '';
+                        const defaultVal = DEFAULT_THEME_CONTENTS[selectedThemeKey]?.[field.key] ?? '';
+                        return (
+                          <div
+                            key={field.key}
+                            className={`input-group ${isTextarea ? 'theme-field-full' : ''}`}
+                            style={{ marginBottom: 0 }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                              <label style={{ margin: 0, fontSize: '0.8rem', fontWeight: 600 }}>
+                                {field.label}
+                              </label>
+                              {val !== defaultVal && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleThemeFieldChange(field.key, defaultVal)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#38bdf8',
+                                    fontSize: '0.72rem',
+                                    cursor: 'pointer',
+                                    padding: 0
+                                  }}
+                                  title="Khôi phục trường này về mặc định"
+                                >
+                                  Mặc định
+                                </button>
+                              )}
+                            </div>
+                            {isTextarea ? (
+                              <textarea
+                                className="input textarea"
+                                rows={3}
+                                value={val}
+                                onChange={(e) => handleThemeFieldChange(field.key, e.target.value)}
+                                placeholder={defaultVal}
+                              />
+                            ) : (
+                              <input
+                                type="text"
+                                className="input"
+                                value={val}
+                                onChange={(e) => handleThemeFieldChange(field.key, e.target.value)}
+                                placeholder={defaultVal}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={handleResetThemeContent}
+                disabled={savingThemeContent}
+              >
+                <RotateCcw size={15} /> Khôi phục mặc định
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveThemeContent}
+                disabled={savingThemeContent}
+                style={{ background: activeThemeMeta.color, borderColor: activeThemeMeta.color }}
+              >
+                <Save size={16} />
+                {savingThemeContent ? 'Đang lưu...' : 'Lưu Nội Dung Giao Diện'}
+              </button>
+            </div>
+          </div>
+
+          {/* Cột Phải: Live Mobile Preview */}
+          <div className="theme-preview-pane">
+            <div className="theme-preview-topbar">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: '0.86rem' }}>
+                <Smartphone size={17} color="#38bdf8" />
+                <span>Xem trước trực tiếp: {activeThemeMeta.shortName}</span>
+              </div>
+              <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>Live Preview</span>
+            </div>
+            <div className="theme-preview-phone">
+              {renderLiveThemePreview()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Danh sách Template Màu sắc & Bố cục tùy chỉnh */}
+      <div style={{ marginTop: 8 }}>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 12 }}>
+          Danh sách Template Màu sắc &amp; Bố cục Lô tem
+        </h3>
+        <div className="templates-grid">
+          {templates.length === 0 ? (
+            <div className="empty-state"><Palette size={60}/><h3>Chưa có template nào</h3></div>
+          ) : (
+            templates.map(tmpl => (
+              <div key={tmpl._id} className="template-card card animate-fade-in-up">
+                {/* Preview */}
+                <div className="template-preview" style={{background: tmpl.backgroundColor, color: tmpl.textColor}}>
+                  <div className="preview-header" style={{background: `linear-gradient(135deg, ${tmpl.primaryColor}, ${tmpl.secondaryColor})`}}>
+                    <CheckCircle size={20}/> <span>{tmpl.contentConfig?.headerTitle2 || 'TEM BẢO HÀNH SẢN PHẨM'}</span>
+                  </div>
+                  <div className="preview-body">
+                    <div className="preview-product-name">{tmpl.contentConfig?.headerTitle1 || 'GIẢI PHÁP QRcode'}</div>
+                    {tmpl.showProductInfo && <div className="preview-info">Sản phẩm &amp; Thông số</div>}
+                    {tmpl.showDistributorInfo && <div className="preview-info">Điểm bán &amp; NSX</div>}
+                    {tmpl.showScanCount && <div className="preview-scan">Đã quét: 5 lần</div>}
+                  </div>
+                </div>
+                <div className="template-info">
+                  <h3>{tmpl.name}</h3>
+                  <div className="template-meta">
+                    <span className="badge badge-neutral">{tmpl.layout}</span>
+                    {tmpl.isDefault && <span className="badge badge-success">Mặc định</span>}
+                  </div>
+                  <div className="template-colors">
+                    <span className="color-dot" style={{background: tmpl.primaryColor}} title="Primary"></span>
+                    <span className="color-dot" style={{background: tmpl.secondaryColor}} title="Secondary"></span>
+                    <span className="color-dot" style={{background: tmpl.backgroundColor}} title="Background"></span>
+                  </div>
+                  <div className="template-actions">
+                    <button className="btn btn-sm btn-ghost" onClick={() => openEdit(tmpl)}><Edit size={14}/> Sửa</button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => setPreviewTemplate(tmpl)}><Eye size={14}/> Xem</button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(tmpl._id)}><Trash2 size={14}/></button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Create/Edit Modal with Content Editor Tabs */}
@@ -441,7 +1159,7 @@ export default function Templates() {
                 className={`tab-btn ${modalTab === 'basic' ? 'active' : ''}`}
                 onClick={() => setModalTab('basic')}
               >
-                <Settings size={16} /> Cấu hình Cơ bản & Màu sắc
+                <Settings size={16} /> Cấu hình Cơ bản &amp; Màu sắc
               </button>
               <button
                 type="button"
@@ -491,9 +1209,9 @@ export default function Templates() {
                       >
                         <option value="">-- Tùy chọn thiết kế mẫu --</option>
                         <option value="baohanh">Tem Bảo Hành Sản Phẩm (PDF Standard - Blue/Emerald)</option>
-                        <option value="duoc">Dược phẩm & Y tế (Xanh Teal, Modern, Light mode)</option>
-                        <option value="mypham">Mỹ phẩm & Làm đẹp (Gold/Rose, Premium, Dark mode)</option>
-                        <option value="nongnghiep">Nông nghiệp & Thực phẩm (Xanh lá, Minimal, Nature)</option>
+                        <option value="duoc">Dược phẩm &amp; Y tế (Xanh Teal, Modern, Light mode)</option>
+                        <option value="mypham">Mỹ phẩm &amp; Làm đẹp (Gold/Rose, Premium, Dark mode)</option>
+                        <option value="nongnghiep">Nông nghiệp &amp; Thực phẩm (Xanh lá, Minimal, Nature)</option>
                       </select>
                     </div>
                     <div className="input-group"><label>Tên Template *</label><input className="input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /></div>
@@ -558,7 +1276,6 @@ export default function Templates() {
                     </div>
                   </>
                 ) : (
-                  /* TAB 2: CONTENT EDITOR - TÙY CHỈNH NỘI DUNG TEM */
                   <div className="content-editor-section">
                     <div className="editor-group-title">1. Tiêu Đề Đầu Trang</div>
                     <div className="input-group-row">
@@ -607,22 +1324,22 @@ export default function Templates() {
                     <div className="editor-group-title" style={{ marginTop: 16 }}>3. Bộ 4 Icon Thông Số Kỹ Thuật</div>
                     <div className="specs-editor-grid">
                       <div className="spec-item-group">
-                        <label className="spec-lbl">Ô 1 (Nhãn & Giá trị)</label>
+                        <label className="spec-lbl">Ô 1 (Nhãn &amp; Giá trị)</label>
                         <input className="input sm" value={form.contentConfig.spec1Label} onChange={e => updateContentField('spec1Label', e.target.value)} placeholder="Nhãn: Dung tích" />
                         <input className="input sm" value={form.contentConfig.spec1Value} onChange={e => updateContentField('spec1Value', e.target.value)} placeholder="Giá trị: 1.8L" />
                       </div>
                       <div className="spec-item-group">
-                        <label className="spec-lbl">Ô 2 (Nhãn & Giá trị)</label>
+                        <label className="spec-lbl">Ô 2 (Nhãn &amp; Giá trị)</label>
                         <input className="input sm" value={form.contentConfig.spec2Label} onChange={e => updateContentField('spec2Label', e.target.value)} placeholder="Nhãn: Công suất" />
                         <input className="input sm" value={form.contentConfig.spec2Value} onChange={e => updateContentField('spec2Value', e.target.value)} placeholder="Giá trị: 1200W" />
                       </div>
                       <div className="spec-item-group">
-                        <label className="spec-lbl">Ô 3 (Nhãn & Giá trị)</label>
+                        <label className="spec-lbl">Ô 3 (Nhãn &amp; Giá trị)</label>
                         <input className="input sm" value={form.contentConfig.spec3Label} onChange={e => updateContentField('spec3Label', e.target.value)} placeholder="Nhãn: Lòng nồi/Vật liệu" />
                         <input className="input sm" value={form.contentConfig.spec3Value} onChange={e => updateContentField('spec3Value', e.target.value)} placeholder="Giá trị: Inox 304" />
                       </div>
                       <div className="spec-item-group">
-                        <label className="spec-lbl">Ô 4 (Nhãn & Giá trị)</label>
+                        <label className="spec-lbl">Ô 4 (Nhãn &amp; Giá trị)</label>
                         <input className="input sm" value={form.contentConfig.spec4Label} onChange={e => updateContentField('spec4Label', e.target.value)} placeholder="Nhãn: Bảo hành" />
                         <input className="input sm" value={form.contentConfig.spec4Value} onChange={e => updateContentField('spec4Value', e.target.value)} placeholder="Giá trị: 24 tháng" />
                       </div>

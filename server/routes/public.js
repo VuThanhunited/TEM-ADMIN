@@ -737,6 +737,38 @@ router.get('/scan/:serial', async (req, res) => {
       });
     }
 
+    // Tổng hợp cấu hình nội dung tùy chỉnh của giao diện (Ưu tiên: Product Override -> Template -> Enterprise ThemeContents)
+    const entThemeMap = enterprise?.displayConfig?.themeContents || {};
+    const prodOverrideMap = label.productId?.themeContentOverride || {};
+    const themeLookupKeys = [responseTheme];
+    if (responseTheme === 'food') themeLookupKeys.push('functional_food');
+    if (responseTheme === 'functional_food') themeLookupKeys.push('food');
+    if (responseTheme === 'vyphyto') themeLookupKeys.push('staycool');
+    if (responseTheme === 'staycool') themeLookupKeys.push('vyphyto');
+    if (responseTheme === 'appliance') themeLookupKeys.push('default', 'warranty_solution');
+    if (responseTheme === 'default') themeLookupKeys.push('appliance');
+
+    let entThemeContent = {};
+    for (const k of themeLookupKeys) {
+      if (entThemeMap[k] && typeof entThemeMap[k] === 'object') {
+        entThemeContent = { ...entThemeMap[k], ...entThemeContent };
+      }
+    }
+    const tmplThemeContent = (template?.themeContent && typeof template.themeContent === 'object')
+      ? template.themeContent
+      : {};
+    let prodThemeContent = {};
+    for (const k of themeLookupKeys) {
+      if (prodOverrideMap[k] && typeof prodOverrideMap[k] === 'object') {
+        prodThemeContent = { ...prodOverrideMap[k], ...prodThemeContent };
+      }
+    }
+    const resolvedThemeContent = {
+      ...entThemeContent,
+      ...tmplThemeContent,
+      ...prodThemeContent
+    };
+
     res.json({
       label: labelOut,
       product: label.productId,
@@ -747,6 +779,7 @@ router.get('/scan/:serial', async (req, res) => {
       isFirstScan,
       firstScanTime,
       theme: responseTheme,
+      themeContent: resolvedThemeContent,
       isActivated,
       locationAlert
     });

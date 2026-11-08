@@ -41,13 +41,17 @@ const templateSchema = new mongoose.Schema({
   },
   layout: {
     type: String,
-    enum: ['default', 'minimal', 'premium', 'modern', 'warranty_solution', 'medical', 'appliance', 'functional_food', 'food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
+    enum: ['default', 'minimal', 'premium', 'modern', 'warranty_solution', 'medical', 'appliance', 'functional_food', 'food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto', 'honey'],
     default: 'default'
   },
   templateType: {
     type: String,
-    enum: ['default', 'minimal', 'premium', 'modern', 'food-agriculture', 'warranty_solution', 'medical', 'appliance', 'functional_food', 'food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto'],
+    enum: ['default', 'minimal', 'premium', 'modern', 'food-agriculture', 'warranty_solution', 'medical', 'appliance', 'functional_food', 'food', 'agriculture', 'cosmetics', 'ocop', 'staycool', 'vyphyto', 'honey'],
     default: 'default'
+  },
+  themeContent: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   },
   extendedConfig: {
     type: String,

@@ -32,6 +32,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  themeContentOverride: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
   name: {
     type: String,
     required: true,

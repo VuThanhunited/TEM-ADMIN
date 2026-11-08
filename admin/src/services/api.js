@@ -155,6 +155,7 @@ class ApiService {
   updateDomain(id, data) { return this.request('PUT', `/enterprises/${id}/domain`, data); }
   updateChatbot(id, data) { return this.request('PUT', `/enterprises/${id}/chatbot`, data); }
   toggleRelatedProducts(id, showRelatedProducts) { return this.request('PATCH', `/enterprises/${id}/toggle-related-products`, { showRelatedProducts }); }
+  saveEnterpriseThemeContent(id, data) { return this.request('PUT', `/enterprises/${id}/theme-content`, data); }
 
   // ── Products ──────────────────────────────────────────────────────────────
   getProducts(params) { return this.request('GET', '/products', null, params); }

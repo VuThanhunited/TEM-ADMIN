@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useDomain } from '../../contexts/DomainContext';
 import userApi from '../../services/api';
+import { getMergedThemeContent, resolveCanonicalThemeKey } from '../../config/themeDefaultContents';
 import './ProductInfo.css';
 
 // 1. Trust Badge cho Tem Đồ gia dụng (Trạng thái Đã kích hoạt)
@@ -285,6 +286,17 @@ export default function ProductInfo() {
     label?.ownerInfo?.activatedAt
   );
 
+  // Merge nội dung tùy chỉnh của giao diện hiện tại (Ưu tiên: Product Override -> Template -> Enterprise ThemeContents -> Default)
+  const canonicalThemeKey = resolveCanonicalThemeKey(activeTheme);
+  const scanThemeCanonical = resolveCanonicalThemeKey(scanData?.theme || activeTheme);
+  const rawCustomThemeContent = {
+    ...(enterprise?.displayConfig?.themeContents?.[canonicalThemeKey] || enterprise?.displayConfig?.themeContents?.[activeTheme] || {}),
+    ...(scanThemeCanonical === canonicalThemeKey ? (scanData?.template?.themeContent || {}) : {}),
+    ...(product?.themeContentOverride?.[canonicalThemeKey] || product?.themeContentOverride?.[activeTheme] || {}),
+    ...(scanThemeCanonical === canonicalThemeKey ? (scanData?.themeContent || {}) : {})
+  };
+  const tc = getMergedThemeContent(canonicalThemeKey, rawCustomThemeContent);
+
   const handleApplianceActivate = async (e) => {
     e.preventDefault();
     const cleanCode = applianceActiveCode.trim();
@@ -484,9 +496,9 @@ export default function ProductInfo() {
           </div>
           <div className="medical-trust-title-wrap">
             <h2 className="medical-trust-title">
-              {product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || 'BỘ Y TẾ XÁC THỰC : TEM DƯỢC PHẨM CHÍNH HÃNG'}
+              {product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || tc.trustBannerTitle}
             </h2>
-            <p className="medical-trust-subtitle">Nguồn gốc chuẩn Y Khoa & Đạt tiêu chuẩn GMP-WHO</p>
+            <p className="medical-trust-subtitle">{tc.trustBannerSubtitle}</p>
           </div>
           <div className="medical-trust-watermark">
             <Stethoscope size={72} color="rgba(0, 137, 123, 0.08)" />
@@ -497,9 +509,9 @@ export default function ProductInfo() {
         <div className="medical-hero-card">
           <div className="medical-rx-badge-row">
             <span className="medical-rx-badge">
-              <Pill size={14} /> THUỐC KÊ ĐƠN / DƯỢC PHẨM CHÍNH HÃNG
+              <Pill size={14} /> {tc.rxBadgeText}
             </span>
-            <span className="medical-gmp-tag">ĐẠT CHUẨN GMP-WHO</span>
+            <span className="medical-gmp-tag">{tc.gmpBadgeText}</span>
           </div>
 
           <div className="medical-hero-body">
@@ -512,32 +524,32 @@ export default function ProductInfo() {
             </div>
             <div className="medical-hero-info">
               <h3 className="medical-product-name">{product?.name || 'Thuốc Paracetamol 500mg (Dược Phẩm)'}</h3>
-              <p className="medical-enterprise-sub">Đơn vị sản xuất: <strong>{enterprise?.name || 'CÔNG TY DƯỢC PHẨM TRUNG ƯƠNG'}</strong></p>
+              <p className="medical-enterprise-sub">{tc.producerPrefix} <strong>{enterprise?.name || 'CÔNG TY DƯỢC PHẨM TRUNG ƯƠNG'}</strong></p>
               
               {/* Crucial Pharma Specs Grid */}
               <div className="medical-specs-grid">
                 <div className="medical-spec-item">
-                  <span className="spec-lbl">Số đăng ký (SĐK):</span>
-                  <strong className="spec-val highlight">{product?.sku || 'VD-35281-21'}</strong>
+                  <span className="spec-lbl">{tc.spec1Label}</span>
+                  <strong className="spec-val highlight">{product?.sku || tc.spec1DefaultVal}</strong>
                 </div>
                 <div className="medical-spec-item">
-                  <span className="spec-lbl">Dạng bào chế:</span>
-                  <strong className="spec-val">Viên nén bao phim</strong>
+                  <span className="spec-lbl">{tc.spec2Label}</span>
+                  <strong className="spec-val">{tc.spec2DefaultVal}</strong>
                 </div>
                 <div className="medical-spec-item">
-                  <span className="spec-lbl">Quy cách đóng gói:</span>
-                  <strong className="spec-val">Hộp 3 vỉ x 10 viên</strong>
+                  <span className="spec-lbl">{tc.spec3Label}</span>
+                  <strong className="spec-val">{tc.spec3DefaultVal}</strong>
                 </div>
                 <div className="medical-spec-item">
-                  <span className="spec-lbl">Số lô & HSD:</span>
-                  <strong className="spec-val">Lô: 240812 | HSD: 12/08/2027</strong>
+                  <span className="spec-lbl">{tc.spec4Label}</span>
+                  <strong className="spec-val">{tc.spec4DefaultVal}</strong>
                 </div>
               </div>
             </div>
           </div>
 
           <button className="medical-details-btn" onClick={() => setActiveModal('product_detail')}>
-            Chi tiết thành phần & liều dùng <ChevronRight size={14} />
+            {tc.detailBtnText} <ChevronRight size={14} />
           </button>
         </div>
 
@@ -547,8 +559,8 @@ export default function ProductInfo() {
             <AlertTriangle size={24} color="#C2410C" />
           </div>
           <div className="medical-warning-text">
-            <h4>LƯU Ý QUAN TRỌNG KHI SỬ DỤNG THUỐC & DƯỢC PHẨM</h4>
-            <p>Đọc kỹ hướng dẫn sử dụng trước khi dùng. Thuốc dùng theo đơn hoặc chỉ định từ Bác sĩ/Dược sĩ chuyên khoa. Để xa tầm tay trẻ em.</p>
+            <h4>{tc.warningTitle}</h4>
+            <p>{tc.warningDesc}</p>
           </div>
         </div>
 
@@ -556,35 +568,35 @@ export default function ProductInfo() {
         <div className="medical-grid-actions">
           <div className="medical-action-card" onClick={() => setActiveModal('tem')}>
             <div className="medical-action-icon"><ShieldCheck size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Mã tem & QR</span>
+            <span className="medical-action-label">{tc.btn1Label}</span>
           </div>
           <div className="medical-action-card" onClick={() => setActiveModal('scan')}>
             <div className="medical-action-icon"><Scan size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Lịch sử quét</span>
+            <span className="medical-action-label">{tc.btn2Label}</span>
           </div>
           <div className="medical-action-card" onClick={() => setActiveModal('mfg')}>
             <div className="medical-action-icon"><Building2 size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Nhà sản xuất GMP</span>
+            <span className="medical-action-label">{tc.btn3Label}</span>
           </div>
           <div className="medical-action-card" onClick={() => setActiveModal('distributor')}>
             <div className="medical-action-icon"><Handshake size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Hệ thống nhà thuốc</span>
+            <span className="medical-action-label">{tc.btn4Label}</span>
           </div>
           <div className="medical-action-card" onClick={() => setActiveModal('ingredients')}>
             <div className="medical-action-icon"><FileCheck size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Thành phần dược chất</span>
+            <span className="medical-action-label">{tc.btn5Label}</span>
           </div>
           <div className="medical-action-card" onClick={() => setActiveModal('dosage')}>
             <div className="medical-action-icon"><Pill size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Chỉ định & Liều dùng</span>
+            <span className="medical-action-label">{tc.btn6Label}</span>
           </div>
           <div className="medical-action-card" onClick={() => setActiveModal('cert')}>
             <div className="medical-action-icon"><Award size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Chứng nhận GMP/Bộ Y Tế</span>
+            <span className="medical-action-label">{tc.btn7Label}</span>
           </div>
           <div className="medical-action-card" onClick={() => setActiveModal('caution')}>
             <div className="medical-action-icon"><ShieldAlert size={26} color="#00897B" /></div>
-            <span className="medical-action-label">Thận trọng & Bảo quản</span>
+            <span className="medical-action-label">{tc.btn8Label}</span>
           </div>
         </div>
 
@@ -592,24 +604,24 @@ export default function ProductInfo() {
         <div className="medical-storage-box">
           <div className="medical-storage-header">
             <FileText size={18} color="#00695C" />
-            <span>THÔNG TIN SẢN XUẤT & BẢO QUẢN DƯỢC PHẨM</span>
+            <span>{tc.storageSectionTitle}</span>
           </div>
           <div className="medical-storage-grid">
             <div className="medical-storage-col">
-              <span className="storage-lbl">Nhiệt độ bảo quản:</span>
-              <strong className="storage-val">Nơi khô ráo, dưới 30°C</strong>
+              <span className="storage-lbl">{tc.storage1Label}</span>
+              <strong className="storage-val">{tc.storage1Val}</strong>
             </div>
             <div className="medical-storage-col">
-              <span className="storage-lbl">Ánh sáng:</span>
-              <strong className="storage-val">Tránh ánh nắng trực tiếp</strong>
+              <span className="storage-lbl">{tc.storage2Label}</span>
+              <strong className="storage-val">{tc.storage2Val}</strong>
             </div>
             <div className="medical-storage-col">
-              <span className="storage-lbl">Hạn sử dụng tem:</span>
+              <span className="storage-lbl">{tc.storage3Label}</span>
               <strong className="storage-val">{formatDate(label?.expiryDate || scanData?.label?.batchId?.expiryDate)}</strong>
             </div>
             <div className="medical-storage-col">
-              <span className="storage-lbl">Tiêu chuẩn áp dụng:</span>
-              <strong className="storage-val">Dược điển Việt Nam V</strong>
+              <span className="storage-lbl">{tc.storage4Label}</span>
+              <strong className="storage-val">{tc.storage4Val}</strong>
             </div>
           </div>
         </div>
@@ -735,9 +747,9 @@ export default function ProductInfo() {
             </div>
             <div className="appliance-trust-title-wrap">
               <h2 className="appliance-trust-title">
-                {product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || 'TRUST : SẢN PHẨM CHÍNH HÃNG'}
+                {product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || tc.verifyTitle || 'TRUST : SẢN PHẨM CHÍNH HÃNG'}
               </h2>
-              <p className="appliance-trust-subtitle">Sản phẩm đã được kích hoạt bảo hành điện tử chính hãng</p>
+              <p className="appliance-trust-subtitle">{tc.warrantyBannerSubtitle}</p>
             </div>
             <div className="appliance-trust-watermark">
               <ShieldCheck size={72} color="rgba(0, 51, 102, 0.07)" />
@@ -749,18 +761,18 @@ export default function ProductInfo() {
             <div className="appliance-activated-header">
               <div className="appliance-activated-badge">
                 <CheckCircle2 size={20} color="#10b981" />
-                <span>ĐÃ KÍCH HOẠT BẢO HÀNH CHÍNH HÃNG</span>
+                <span>{tc.warrantyBadgeText}</span>
               </div>
             </div>
             <div className="appliance-activated-grid">
               <div className="appliance-activated-item highlight">
-                <span className="appliance-activated-label">Mã sở hữu sản phẩm:</span>
+                <span className="appliance-activated-label">{tc.ownerCodeLabel}:</span>
                 <strong className="appliance-activated-value serial-code">
                   {label?.internalCode || label?.ownerCode || label?.ownerInfo?.activatedSerial || label?.serialNumber}
                 </strong>
               </div>
               <div className="appliance-activated-item highlight">
-                <span className="appliance-activated-label">Mã chống giả:</span>
+                <span className="appliance-activated-label">{tc.antiCounterfeitLabel}:</span>
                 <strong className="appliance-activated-value serial-code">
                   {label?.serialNumber || serial}
                 </strong>
@@ -875,33 +887,33 @@ export default function ProductInfo() {
           <div className="appliance-warranty-box">
             <div className="appliance-warranty-header-bar">
               <ShieldCheck size={24} color="#003366" />
-              <span>THÔNG TIN BẢO HÀNH CHÍNH HÃNG</span>
+              <span>{tc.warrantyPolicySectionTitle}</span>
             </div>
             <div className="appliance-warranty-content">
               <div className="appliance-warranty-grid4">
                 <div className="appliance-warranty-col">
                   <div className="appliance-warranty-icon-box"><ShieldCheck size={28} color="#003366" /></div>
-                  <div className="appliance-warranty-label">Thời gian bảo hành</div>
-                  <div className="appliance-warranty-val">24 tháng</div>
+                  <div className="appliance-warranty-label">{tc.warrantyCol1Label}</div>
+                  <div className="appliance-warranty-val">{tc.warrantyCol1Value}</div>
                 </div>
                 <div className="appliance-warranty-col">
                   <div className="appliance-warranty-icon-box"><Wrench size={28} color="#003366" /></div>
-                  <div className="appliance-warranty-label">Hình thức bảo hành</div>
-                  <div className="appliance-warranty-val">Toàn quốc</div>
+                  <div className="appliance-warranty-label">{tc.warrantyCol2Label}</div>
+                  <div className="appliance-warranty-val">{tc.warrantyCol2Value}</div>
                 </div>
                 <div className="appliance-warranty-col">
                   <div className="appliance-warranty-icon-box"><FileText size={28} color="#003366" /></div>
-                  <div className="appliance-warranty-label">Điều kiện bảo hành</div>
-                  <div className="appliance-warranty-val subtext">Sản phẩm còn nguyên tem, không rách, không tẩy xóa</div>
+                  <div className="appliance-warranty-label">{tc.warrantyCol3Label}</div>
+                  <div className="appliance-warranty-val subtext">{tc.warrantyCol3Value}</div>
                 </div>
                 <div className="appliance-warranty-col">
                   <div className="appliance-warranty-icon-box"><Phone size={28} color="#003366" /></div>
-                  <div className="appliance-warranty-label">Hotline hỗ trợ</div>
-                  <div className="appliance-warranty-val hotline">1900 1234</div>
+                  <div className="appliance-warranty-label">{tc.warrantyCol4Label}</div>
+                  <div className="appliance-warranty-val hotline">{tc.warrantyCol4Value}</div>
                 </div>
               </div>
               <p className="appliance-warranty-footer-note">
-                Vui lòng liên hệ trung tâm bảo hành của VINSUMI gần nhất để được hỗ trợ nhanh chóng.
+                {tc.warrantyFooterNote}
               </p>
             </div>
           </div>
@@ -946,8 +958,8 @@ export default function ProductInfo() {
             )}
           </div>
           <div className="exact-tpcn-header-text">
-            <h2>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || 'SẢN PHẨM CHÍNH HÃNG'}</h2>
-            <p>Nguồn gốc minh bạch – An tâm sử dụng</p>
+            <h2>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || tc.headerTitle}</h2>
+            <p>{tc.headerSubtitle}</p>
           </div>
         </div>
 
@@ -958,8 +970,8 @@ export default function ProductInfo() {
               <CheckCircle2 size={24} color="#16a34a" />
             </div>
             <div className="exact-tpcn-banner-text">
-              <h3>Đã kích hoạt mã – Xem đầy đủ thông tin</h3>
-              <p>Sản phẩm đã được kích hoạt hợp lệ, mở khóa Giấy công bố & thông tin Điểm bán</p>
+              <h3>{tc.activatedBannerTitle}</h3>
+              <p>{tc.activatedBannerDesc}</p>
             </div>
             <div className="exact-tpcn-leaf-bg">🌿</div>
           </div>
@@ -975,9 +987,9 @@ export default function ProductInfo() {
               <ShieldAlert size={24} color="#d97706" />
             </div>
             <div className="exact-tpcn-banner-text">
-              <h3 style={{ color: '#92400e' }}>Tem chưa kích hoạt mã</h3>
+              <h3 style={{ color: '#92400e' }}>{tc.unactivatedBannerTitle}</h3>
               <p style={{ color: '#b45309' }}>
-                Bạn hiện chỉ xem được Thông tin sản phẩm. Hãy kích hoạt mã để xem Giấy công bố & đầy đủ thông tin.
+                {tc.unactivatedBannerDesc}
               </p>
             </div>
           </div>
@@ -993,7 +1005,7 @@ export default function ProductInfo() {
             />
           </div>
           <div className="exact-tpcn-product-details">
-            <div className="exact-tpcn-category-tag">THỰC PHẨM CHỨC NĂNG</div>
+            <div className="exact-tpcn-category-tag">{tc.categoryTagText}</div>
             <h1 className="exact-tpcn-title">{productName}</h1>
             <div className="exact-tpcn-divider"></div>
             {/* Chỉ hiển thị 3 dòng đầu, bấm "Chi tiết" để xem thêm */}
@@ -1014,13 +1026,13 @@ export default function ProductInfo() {
                 onClick={() => setActiveModal('product_detail')}
                 style={{ background: 'none', border: 'none', color: '#16a34a', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', padding: '2px 0', textDecoration: 'underline' }}
               >
-                Xem chi tiết sản phẩm →
+                {tc.viewDetailBtnText}
               </button>
             </div>
             {isFoodActivated && (
               <div className="exact-tpcn-maker-row">
                 <Building2 size={16} color="#16a34a" />
-                <span>Nhà sản xuất: <strong>{makerName}</strong></span>
+                <span>{tc.makerPrefixLabel} <strong>{makerName}</strong></span>
               </div>
             )}
           </div>
@@ -1041,11 +1053,11 @@ export default function ProductInfo() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <ShieldCheck size={20} color="#d97706" />
               <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#92400e' }}>
-                KÍCH HOẠT MÃ ĐỂ XEM GIẤY CÔNG BỐ & ĐẦY ĐỦ THÔNG TIN
+                {tc.activateBoxTitle}
               </h4>
             </div>
             <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 12px', lineHeight: 1.45 }}>
-              Hiện tại bạn chỉ xem được thông tin sản phẩm. Vui lòng nhập mã kích hoạt (Serial trên tem) để xem <strong>Giấy công bố sản phẩm</strong> và toàn bộ thông tin truy xuất.
+              {tc.activateBoxDesc}
             </p>
             <form onSubmit={handleApplianceActivate} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -1081,7 +1093,7 @@ export default function ProductInfo() {
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  {isActivatingAppliance ? 'Đang xử lý...' : 'Kích hoạt ngay'}
+                  {isActivatingAppliance ? 'Đang xử lý...' : tc.activateBtnText}
                 </button>
               </div>
               {applianceActivationError && (
@@ -1106,7 +1118,7 @@ export default function ProductInfo() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#166534', fontWeight: 800, fontSize: '0.92rem' }}>
               <Truck size={18} color="#16a34a" />
-              <span>THÔNG TIN ĐIỂM BÁN / PHÂN PHỐI CHÍNH HÃNG</span>
+              <span>{tc.storeSectionTitle}</span>
             </div>
             <div style={{ fontSize: '0.86rem', color: '#1e293b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div><span>Điểm bán:</span> <strong style={{ color: '#15803d' }}>{storeDisplayName}</strong></div>
@@ -1134,7 +1146,7 @@ export default function ProductInfo() {
               style={{ border: '1.5px solid #86efac', background: '#f0fdf4', borderRadius: '12px', padding: !isFoodActivated ? '14px' : undefined }}
             >
               <div className="exact-tpcn-icon-circle"><FileText size={22} color="#16a34a" /></div>
-              <span style={{ fontWeight: 700, color: '#15803d' }}>Thông tin sản phẩm</span>
+              <span style={{ fontWeight: 700, color: '#15803d' }}>{tc.btn1Label}</span>
             </div>
             {isFoodActivated && (
               <>
@@ -1143,28 +1155,28 @@ export default function ProductInfo() {
                   onClick={() => setActiveModal('cert')}
                 >
                   <div className="exact-tpcn-icon-circle"><FileCheck size={22} color="#16a34a" /></div>
-                  <span>Công Bố</span>
+                  <span>{tc.btn2Label}</span>
                 </div>
                 <div
                   className="exact-tpcn-grid-item"
                   onClick={() => setActiveModal('mfg')}
                 >
                   <div className="exact-tpcn-icon-circle"><Building2 size={22} color="#16a34a" /></div>
-                  <span>Nhà Sản Xuất</span>
+                  <span>{tc.btn3Label}</span>
                 </div>
                 <div
                   className="exact-tpcn-grid-item"
                   onClick={() => setActiveModal('distributor')}
                 >
                   <div className="exact-tpcn-icon-circle"><Truck size={22} color="#16a34a" /></div>
-                  <span>Nhà Phân Phối</span>
+                  <span>{tc.btn4Label}</span>
                 </div>
                 <div
                   className="exact-tpcn-grid-item"
                   onClick={() => setActiveModal('tem')}
                 >
                   <div className="exact-tpcn-icon-circle"><ShieldCheck size={22} color="#16a34a" /></div>
-                  <span>Thông tin tem</span>
+                  <span>{tc.btn5Label}</span>
                 </div>
                 {showRelated && (
                   <div
@@ -1172,7 +1184,7 @@ export default function ProductInfo() {
                     onClick={() => setActiveModal('all_products')}
                   >
                     <div className="exact-tpcn-icon-circle"><BookOpen size={22} color="#16a34a" /></div>
-                    <span>Thư Viện SP</span>
+                    <span>{tc.btn6Label}</span>
                   </div>
                 )}
                 <div
@@ -1180,14 +1192,14 @@ export default function ProductInfo() {
                   onClick={() => setActiveModal('brand')}
                 >
                   <div className="exact-tpcn-icon-circle"><Package size={22} color="#16a34a" /></div>
-                  <span>Bao bì</span>
+                  <span>{tc.btn7Label}</span>
                 </div>
                 <div
                   className="exact-tpcn-grid-item"
                   onClick={() => setActiveModal('reward')}
                 >
                   <div className="exact-tpcn-icon-circle"><Gift size={22} color="#16a34a" /></div>
-                  <span>Tích điểm</span>
+                  <span>{tc.btn8Label}</span>
                 </div>
               </>
             )}
@@ -1209,7 +1221,7 @@ export default function ProductInfo() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <FileCheck size={20} color="#15803d" />
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#15803d' }}>
-                GIẤY CÔNG BỐ SẢN PHẨM
+                {tc.certSectionTitle}
               </h3>
             </div>
             {product?.congBoNumber && (
@@ -1237,7 +1249,7 @@ export default function ProductInfo() {
         {isFoodActivated && showRelated && filteredRelated.length > 0 && (
           <div className="exact-tpcn-related-card">
             <div className="exact-tpcn-related-header">
-              <h3>SẢN PHẨM LIÊN QUAN</h3>
+              <h3>{tc.relatedSectionTitle}</h3>
             </div>
             <div className="exact-tpcn-related-grid">
               {filteredRelated.map((p, idx) => (
@@ -1257,12 +1269,12 @@ export default function ProductInfo() {
           <div className="exact-tpcn-support-left">
             <Headphones size={26} color="#16a34a" />
             <div>
-              <h4>TƯ VẤN &amp; HỖ TRỢ</h4>
-              <p>Nếu bạn cần hỗ trợ thêm thông tin về sản phẩm, vui lòng liên hệ</p>
+              <h4>{tc.supportTitle}</h4>
+              <p>{tc.supportDesc}</p>
             </div>
           </div>
           <button className="exact-tpcn-support-btn" onClick={() => setChatOpen(true)}>
-            Liên hệ ngay
+            {tc.supportBtnText}
           </button>
         </div>
 
@@ -1270,7 +1282,7 @@ export default function ProductInfo() {
         <div className="exact-tpcn-footer">
           <div className="exact-tpcn-footer-content">
             <ShieldCheck size={16} color="#4ade80" />
-            <span>Cảm ơn bạn đã tin tưởng sử dụng sản phẩm chính hãng!</span>
+            <span>{tc.footerThankYou}</span>
           </div>
           <div className="exact-tpcn-copyright">
             &copy; {new Date().getFullYear()} {enterprise?.name || 'Nhà sản xuất'}. All rights reserved
@@ -1304,7 +1316,7 @@ export default function ProductInfo() {
       ? rawBanner.toUpperCase()
       : (!isMock && isOcopRelated)
         ? rawVerif.toUpperCase()
-        : 'CHỨNG NHẬN OCOP';
+        : (tc.defaultCertText || 'CHỨNG NHẬN OCOP');
 
     return (
       <div className="exact-ocop-container">
@@ -1348,7 +1360,7 @@ export default function ProductInfo() {
                 <CheckCircle2 size={18} color="#15803d" />
               </div>
               <div>
-                <span className="exact-ocop-sublabel">Sản phẩm đã được cấp:</span>
+                <span className="exact-ocop-sublabel">{tc.certSublabel}</span>
                 <div className="exact-ocop-red-cert">{ocopCertText}</div>
               </div>
             </div>
@@ -1358,7 +1370,7 @@ export default function ProductInfo() {
                 <Building2 size={18} color="#15803d" />
               </div>
               <div>
-                <span className="exact-ocop-sublabel">Đơn vị sở hữu:</span>
+                <span className="exact-ocop-sublabel">{tc.ownerSublabel}</span>
                 <div className="exact-ocop-owner-name">{ownerName}</div>
               </div>
             </div>
@@ -1379,7 +1391,7 @@ export default function ProductInfo() {
             )}
           </div>
           <div className="exact-ocop-owner-details">
-            <h3>THÔNG TIN CHỦ THỂ</h3>
+            <h3>{tc.ownerBoxTitle}</h3>
             <p className="exact-ocop-owner-name-bold">{ownerName}</p>
             <p className="exact-ocop-owner-addr">Địa chỉ: {enterprise?.address?.trim() ? enterprise.address : (isMock ? 'Thôn Lục Sơn, Xã Minh Hòa, Huyện Lục Ngạn, Tỉnh Bắc Giang' : 'Đang cập nhật')}</p>
             <p className="exact-ocop-owner-phone">Điện thoại: {enterprise?.phone?.trim() ? enterprise.phone : (isMock ? '0987 854 321' : 'Đang cập nhật')}</p>
@@ -1392,35 +1404,35 @@ export default function ProductInfo() {
           <div className="exact-ocop-grid-8">
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('product_detail')}>
               <div className="exact-ocop-icon-circle"><FileText size={22} color="#15803d" /></div>
-              <span>Thông tin sản phẩm</span>
+              <span>{tc.btn1Label}</span>
             </div>
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('mfg')}>
               <div className="exact-ocop-icon-circle"><Building2 size={22} color="#15803d" /></div>
-              <span>Thông tin chủ thể</span>
+              <span>{tc.btn2Label}</span>
             </div>
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('cert')}>
               <div className="exact-ocop-icon-circle"><Award size={22} color="#15803d" /></div>
-              <span>Chứng nhận</span>
+              <span>{tc.btn3Label}</span>
             </div>
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('brand')}>
               <div className="exact-ocop-icon-circle"><Ribbon size={22} color="#15803d" /></div>
-              <span>Nhận Diện Thương Hiệu</span>
+              <span>{tc.btn4Label}</span>
             </div>
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('distributor')}>
               <div className="exact-ocop-icon-circle"><ShoppingBag size={22} color="#15803d" /></div>
-              <span>Hệ thống phân phối</span>
+              <span>{tc.btn5Label}</span>
             </div>
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('reward')}>
               <div className="exact-ocop-icon-circle"><Gift size={22} color="#15803d" /></div>
-              <span>Tích điểm</span>
+              <span>{tc.btn6Label}</span>
             </div>
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('scan')}>
               <div className="exact-ocop-icon-circle"><Cpu size={22} color="#15803d" /></div>
-              <span>Quy trình sản xuất</span>
+              <span>{tc.btn7Label}</span>
             </div>
             <div className="exact-ocop-grid-item" onClick={() => setActiveModal('tem')}>
               <div className="exact-ocop-icon-circle"><MapPin size={22} color="#15803d" /></div>
-              <span>Nguồn gốc xuất xứ</span>
+              <span>{tc.btn8Label}</span>
             </div>
           </div>
         </div>
@@ -1451,10 +1463,10 @@ export default function ProductInfo() {
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#15803d' }}>
-                  HỒ SƠ CÔNG BỐ SẢN PHẨM
+                  {tc.congBoSectionTitle}
                 </h3>
                 <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                  Giấy tiếp nhận bản công bố đã được cơ quan có thẩm quyền thẩm định
+                  {tc.congBoSectionSub}
                 </span>
               </div>
             </div>
@@ -1542,7 +1554,7 @@ export default function ProductInfo() {
         {showRelated && filteredRelated.length > 0 && (
           <div className="exact-ocop-related-card">
             <div className="exact-ocop-related-header">
-              <h3>SẢN PHẨM LIÊN QUAN</h3>
+              <h3>{tc.relatedSectionTitle}</h3>
             </div>
             <div className="exact-ocop-related-grid">
               {filteredRelated.map((p, idx) => (
@@ -1563,12 +1575,12 @@ export default function ProductInfo() {
           <div className="exact-ocop-footer-left">
             <ShieldCheck size={26} color="#15803d" />
             <div>
-              <h4>CAM KẾT TỪ CHỦ THỂ</h4>
-              <p>Chúng tôi cam kết sản phẩm đạt chuẩn OCOP, đảm bảo chất lượng, nguồn gốc rõ ràng và an toàn cho người tiêu dùng.</p>
+              <h4>{tc.commitmentTitle}</h4>
+              <p>{tc.commitmentDesc}</p>
             </div>
           </div>
           <button className="exact-ocop-report-btn">
-            <AlertCircle size={16} color="#fff" /> BÁO CÁO VI PHẠM
+            <AlertCircle size={16} color="#fff" /> {tc.reportBtnText}
           </button>
         </div>
       </div>
@@ -1587,7 +1599,7 @@ export default function ProductInfo() {
 
     const distributorName = label?.distributorName || label?.distributorId?.fullName || product?.distributors?.[0]?.name;
     const entName = enterprise?.name || 'VYPHYTO';
-    const defaultBanner = `SẢN PHẨM CỦA ${(distributorName || entName).toUpperCase()} NHẬP KHẨU VÀ PHÂN PHỐI`;
+    const defaultBanner = tc.pillBanner2Text || `SẢN PHẨM CỦA ${(distributorName || entName).toUpperCase()} NHẬP KHẨU VÀ PHÂN PHỐI`;
     const bannerText = product?.distributionBannerText?.trim()
       || enterprise?.displayConfig?.distributionBannerText?.trim()
       || defaultBanner;
@@ -1613,8 +1625,8 @@ export default function ProductInfo() {
         <div className="vyphyto-pill-banner">
           <span>
             {isFoodActivated
-              ? 'SẢN PHẨM CHÍNH HÃNG - ĐÃ KÍCH HOẠT MÃ'
-              : 'THÔNG TIN SẢN PHẨM (CHƯA KÍCH HOẠT MÃ)'}
+              ? tc.pillBanner1Activated
+              : tc.pillBanner1Unactivated}
           </span>
         </div>
 
@@ -1658,11 +1670,11 @@ export default function ProductInfo() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <ShieldAlert size={20} color="#d97706" />
               <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#92400e' }}>
-                TEM CHƯA KÍCH HOẠT MÃ
+                {tc.unactivatedBoxTitle}
               </h4>
             </div>
             <p style={{ fontSize: '0.82rem', color: '#475569', margin: '0 0 12px', lineHeight: 1.45 }}>
-              Hiện tại bạn chỉ xem được <strong>Thông tin sản phẩm</strong>. Vui lòng kích hoạt mã (hoặc để Điểm bán quét xuất hàng) để xem <strong>Giấy công bố sản phẩm</strong> và đầy đủ thông tin truy xuất.
+              {tc.unactivatedBoxDesc}
             </p>
             <form onSubmit={handleApplianceActivate} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -1723,7 +1735,7 @@ export default function ProductInfo() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#c2410c', fontWeight: 800, fontSize: '0.9rem' }}>
               <Truck size={18} color="#ea580c" />
-              <span>THÔNG TIN ĐIỂM BÁN / PHÂN PHỐI CHÍNH HÃNG</span>
+              <span>{tc.storeSectionTitle}</span>
             </div>
             <div style={{ fontSize: '0.85rem', color: '#1e293b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div><span>Điểm bán:</span> <strong style={{ color: '#ea580c' }}>{storeDisplayName}</strong></div>
@@ -1749,21 +1761,21 @@ export default function ProductInfo() {
               <div className="vyphyto-action-icon">
                 <img src="/images/vyphyto_icon_activate.png" alt="Kích hoạt" />
               </div>
-              <span>Kích hoạt</span>
+              <span>{tc.actionPill1Label}</span>
             </div>
 
             <div className="vyphyto-action-pill" onClick={() => setActiveModal('scan')}>
               <div className="vyphyto-action-icon">
                 <img src="/images/vyphyto_icon_verify.png" alt="Kiểm tra" />
               </div>
-              <span>Kiểm tra</span>
+              <span>{tc.actionPill2Label}</span>
             </div>
 
             <div className="vyphyto-action-pill" onClick={() => setActiveModal('reward')}>
               <div className="vyphyto-action-icon">
                 <img src="/images/vyphyto_icon_reward.png" alt="Tích điểm" />
               </div>
-              <span>Tích điểm</span>
+              <span>{tc.actionPill3Label}</span>
             </div>
           </div>
         )}
@@ -1781,7 +1793,7 @@ export default function ProductInfo() {
             <div className="vyphyto-grid-icon">
               <img src="/images/vyphyto_icon_product.png" alt="Thông tin sản phẩm" />
             </div>
-            <span className="vyphyto-grid-label">Thông tin sản phẩm</span>
+            <span className="vyphyto-grid-label">{tc.gridBtn1Label}</span>
           </div>
 
           {isFoodActivated && (
@@ -1790,31 +1802,31 @@ export default function ProductInfo() {
                 <div className="vyphyto-grid-icon">
                   <img src="/images/vyphyto_icon_mfg.png" alt="Nhà sản xuất" />
                 </div>
-                <span className="vyphyto-grid-label">Nhà sản xuất</span>
+                <span className="vyphyto-grid-label">{tc.gridBtn2Label}</span>
               </div>
 
               <div className="vyphyto-grid-item" onClick={() => setActiveModal('distributor')}>
                 <div className="vyphyto-grid-icon">
                   <img src="/images/vyphyto_icon_dist.png" alt="Độc quyền P.Phối" />
                 </div>
-                <span className="vyphyto-grid-label">Độc quyền P.Phối</span>
+                <span className="vyphyto-grid-label">{tc.gridBtn3Label}</span>
               </div>
 
               <div className="vyphyto-grid-item" onClick={() => setActiveModal('tem')}>
                 <div className="vyphyto-grid-icon">
                   <img src="/images/vyphyto_icon_tem.png" alt="Thông tin tem" />
                 </div>
-                <span className="vyphyto-grid-label">Thông tin tem</span>
+                <span className="vyphyto-grid-label">{tc.gridBtn4Label}</span>
               </div>
 
               {/* Nút NHẬN DIỆN THƯƠNG HIỆU */}
               <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('brand')}>
-                <span className="vyphyto-grid-label-bold">NHẬN DIỆN<br />THƯƠNG HIỆU</span>
+                <span className="vyphyto-grid-label-bold" style={{ whiteSpace: 'pre-line' }}>{tc.gridBtn5Label}</span>
               </div>
 
               {/* Nút CÔNG BỐ - chỉ hiển thị khi đã active mã */}
               <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('cert')}>
-                <span className="vyphyto-grid-label-bold">CÔNG BỐ</span>
+                <span className="vyphyto-grid-label-bold">{tc.gridBtn6Label}</span>
               </div>
             </>
           )}
@@ -1835,7 +1847,7 @@ export default function ProductInfo() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <FileCheck size={20} color="#ea580c" />
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
-                GIẤY CÔNG BỐ SẢN PHẨM
+                {tc.certSectionTitle}
               </h3>
             </div>
             {product?.congBoNumber && (
@@ -1903,8 +1915,8 @@ export default function ProductInfo() {
               <MessageSquare size={20} />
             </div>
             <div>
-              <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: '#c2410c' }}>TƯ VẤN SẢN PHẨM TRỰC TUYẾN</h4>
-              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#7c2d12' }}>Chọn câu hỏi để nhận tư vấn tự động từ Chatbot</p>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800, color: '#c2410c' }}>{tc.consultTitle}</h4>
+              <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#7c2d12' }}>{tc.consultDesc}</p>
             </div>
           </div>
           <button
@@ -1922,7 +1934,7 @@ export default function ProductInfo() {
               whiteSpace: 'nowrap'
             }}
           >
-            💬 Tư vấn ngay
+            {tc.consultBtnText}
           </button>
         </div>
 
@@ -1931,7 +1943,7 @@ export default function ProductInfo() {
           <img src="/images/vyphyto_bottom_wave.png" alt="Vyphyto" className="vyphyto-bottom-wave-img" />
           <div className="vyphyto-footer-text">
             <p>&copy; {new Date().getFullYear()} {enterprise?.name || 'StayCool / VYPHYTO'}. All rights reserved.</p>
-            <p className="vyphyto-subnote">Giải Pháp Truy Xuất Nguồn Gốc Thông Minh</p>
+            <p className="vyphyto-subnote">{tc.footerSubnote}</p>
           </div>
         </div>
       </div>
@@ -1956,8 +1968,8 @@ export default function ProductInfo() {
             <AgriTrustBadge />
           )}
           <div className="agri-trust-title-wrap">
-            <h2>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || 'NÔNG SẢN VIỆT CHÍNH HÃNG - TRUY XUẤT NGUỒN GỐC'}</h2>
-            <p>Đạt chuẩn VietGAP / GlobalGAP - Nông nghiệp xanh</p>
+            <h2>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || tc.bannerTitle}</h2>
+            <p>{tc.bannerSubtitle}</p>
           </div>
         </div>
 
@@ -1966,25 +1978,25 @@ export default function ProductInfo() {
           <div className="agri-hero-info">
             <h3>{product?.name || 'Nông sản sạch VietGAP'}</h3>
             <div className="agri-tags-grid">
-              <span className="agri-tag">Mã vùng trồng: <strong>PUC-VN-882</strong></span>
-              <span className="agri-tag">Ngày thu hoạch: <strong>Gần nhất</strong></span>
-              <span className="agri-tag">Hợp tác xã: <strong>{enterprise?.name || 'HTX Nông Nghiệp Xanh'}</strong></span>
+              <span className="agri-tag">{tc.tag1Label} <strong>{tc.tag1Val}</strong></span>
+              <span className="agri-tag">{tc.tag2Label} <strong>{tc.tag2Val}</strong></span>
+              <span className="agri-tag">{tc.tag3Label} <strong>{enterprise?.name || 'HTX Nông Nghiệp Xanh'}</strong></span>
             </div>
           </div>
         </div>
 
         <div className="agri-grid-actions">
-          <div className="agri-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#15803D" /><span>Thông tin tem</span></div>
-          <div className="agri-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#15803D" /><span>Nhật ký quét</span></div>
-          <div className="agri-action-card" onClick={() => setActiveModal('mfg')}><Sprout size={26} color="#15803D" /><span>Vùng trồng/HTX</span></div>
-          <div className="agri-action-card" onClick={() => setActiveModal('cert')}><Award size={26} color="#15803D" /><span>Chứng nhận VietGAP</span></div>
+          <div className="agri-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#15803D" /><span>{tc.btn1Label}</span></div>
+          <div className="agri-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#15803D" /><span>{tc.btn2Label}</span></div>
+          <div className="agri-action-card" onClick={() => setActiveModal('mfg')}><Sprout size={26} color="#15803D" /><span>{tc.btn3Label}</span></div>
+          <div className="agri-action-card" onClick={() => setActiveModal('cert')}><Award size={26} color="#15803D" /><span>{tc.btn4Label}</span></div>
         </div>
 
         {/* Related Products - Agriculture */}
         {showRelated && filteredRelated.length > 0 && (
           <div className="agri-related-section">
             <div className="agri-related-header">
-              <h3><ShoppingBag size={20} color="#15803D" style={{ marginRight: 8 }} />SẢN PHẨM LIÊN QUAN</h3>
+              <h3><ShoppingBag size={20} color="#15803D" style={{ marginRight: 8 }} />{tc.relatedSectionTitle}</h3>
             </div>
             <div className="agri-related-grid">
               {filteredRelated.map((p, idx) => (
@@ -2021,8 +2033,8 @@ export default function ProductInfo() {
             <CosmeticsTrustBadge />
           )}
           <div className="cosmetics-trust-title-wrap">
-            <h2>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || 'MỸ PHẨM CHÍNH HÃNG - BẢO VỆ LÀN DA VIỆT'}</h2>
-            <p>Đã qua kiểm nghiệm da liễu & An toàn cho mọi loại da</p>
+            <h2>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || tc.bannerTitle}</h2>
+            <p>{tc.bannerSubtitle}</p>
           </div>
         </div>
 
@@ -2030,27 +2042,27 @@ export default function ProductInfo() {
           <img src={product?.images?.[0] || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="cosmetics-hero-img" />
           <div className="cosmetics-hero-info">
             <h3>{product?.name || 'Mỹ phẩm chăm sóc da cao cấp'}</h3>
-            <p className="cosmetics-brand">Thương hiệu: <strong>{product?.brand || enterprise?.name || 'Beauty Care'}</strong></p>
+            <p className="cosmetics-brand">{tc.brandPrefix} <strong>{product?.brand || enterprise?.name || 'Beauty Care'}</strong></p>
             <div className="cosmetics-specs">
-              <span>Loại da: <strong>Mọi loại da</strong></span>
-              <span>PAO (Mở nắp): <strong>12 Tháng</strong></span>
-              <span>Số công bố: <strong>CB-8834/22</strong></span>
+              <span>{tc.spec1Label} <strong>{tc.spec1Val}</strong></span>
+              <span>{tc.spec2Label} <strong>{tc.spec2Val}</strong></span>
+              <span>{tc.spec3Label} <strong>{product?.congBoNumber || tc.spec3Val}</strong></span>
             </div>
           </div>
         </div>
 
         <div className="cosmetics-grid-actions">
-          <div className="cosmetics-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#BE185D" /><span>Thông tin tem</span></div>
-          <div className="cosmetics-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#BE185D" /><span>Lịch sử quét</span></div>
-          <div className="cosmetics-action-card" onClick={() => setActiveModal('ingredients')}><Sparkles size={26} color="#BE185D" /><span>Thành phần</span></div>
-          <div className="cosmetics-action-card" onClick={() => setActiveModal('mfg')}><Building2 size={26} color="#BE185D" /><span>Nhà sản xuất</span></div>
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('tem')}><ShieldCheck size={26} color="#BE185D" /><span>{tc.btn1Label}</span></div>
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#BE185D" /><span>{tc.btn2Label}</span></div>
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('ingredients')}><Sparkles size={26} color="#BE185D" /><span>{tc.btn3Label}</span></div>
+          <div className="cosmetics-action-card" onClick={() => setActiveModal('mfg')}><Building2 size={26} color="#BE185D" /><span>{tc.btn4Label}</span></div>
         </div>
 
         {/* Related Products - Cosmetics */}
         {showRelated && filteredRelated.length > 0 && (
           <div className="cosmetics-related-section">
             <div className="cosmetics-related-header">
-              <h3><ShoppingBag size={20} color="#BE185D" style={{ marginRight: 8 }} />SẢN PHẨM LIÊN QUAN</h3>
+              <h3><ShoppingBag size={20} color="#BE185D" style={{ marginRight: 8 }} />{tc.relatedSectionTitle}</h3>
             </div>
             <div className="cosmetics-related-grid">
               {filteredRelated.map((p, idx) => (
@@ -2071,7 +2083,7 @@ export default function ProductInfo() {
       {showRelated && filteredRelated.length > 0 && (
         <div style={{ padding: "16px", marginTop: "16px" }}>
           <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "12px", display: "flex", alignItems: "center", gap: 8 }}>
-            <ShoppingBag size={18} /><span>SẢN PHẨM LIÊN QUAN</span>
+            <ShoppingBag size={18} /><span>{tc.relatedSectionTitle}</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "12px" }}>
             {filteredRelated.map((p, idx) => (
@@ -2105,26 +2117,26 @@ export default function ProductInfo() {
       <div className="product-info-enterprise product-info-owner-card">
         <div className="product-info-enterprise-title owner-card-title">
           <UserCheck size={16} />
-          <span>Thông tin KH sở hữu sản phẩm</span>
+          <span>{tc.ownerCardTitle || 'Thông tin KH sở hữu sản phẩm'}</span>
         </div>
         {ownerInfo?.name && (
           <div className="owner-card-list">
             <div className="owner-card-row">
               <User size={15} className="owner-card-icon" />
-              <span className="owner-card-label">Tên NPP / cá nhân:</span>
+              <span className="owner-card-label">{tc.ownerNameLabel || 'Tên NPP / cá nhân:'}</span>
               <strong className="owner-card-value">{ownerInfo.name}</strong>
             </div>
             {ownerInfo.address && (
               <div className="owner-card-row">
                 <MapPin size={15} className="owner-card-icon" />
-                <span className="owner-card-label">Địa chỉ:</span>
+                <span className="owner-card-label">{tc.ownerAddressLabel || 'Địa chỉ:'}</span>
                 <span className="owner-card-value">{ownerInfo.address}</span>
               </div>
             )}
             {ownerInfo.phone && (
               <div className="owner-card-row">
                 <Phone size={15} className="owner-card-icon" />
-                <span className="owner-card-label">Số ĐT liên hệ:</span>
+                <span className="owner-card-label">{tc.ownerPhoneLabel || 'Số ĐT liên hệ:'}</span>
                 <span className="owner-card-value">{ownerInfo.phone}</span>
               </div>
             )}
@@ -2132,7 +2144,7 @@ export default function ProductInfo() {
         )}
         <div className="owner-card-serial">
           <ShieldCheck size={18} />
-          <span>Serial đã được kích hoạt:</span>
+          <span>{tc.activatedSerialLabel || 'Serial đã được kích hoạt:'}</span>
           <strong>{activatedSerialCode}</strong>
         </div>
       </div>
@@ -2198,13 +2210,13 @@ export default function ProductInfo() {
           <div className="product-info-verify-text">
             {label?.scanCount > 5 ? (
               <>
-                <h3>Cảnh báo lượt quét ({label.scanCount})</h3>
-                <p>Sản phẩm đã được quét nhiều lần. Vui lòng kiểm tra kỹ tem niêm phong và nguồn gốc.</p>
+                <h3>{tc.warningTitlePrefix || 'Cảnh báo lượt quét'} ({label.scanCount})</h3>
+                <p>{tc.warningSubtitle || 'Sản phẩm đã được quét nhiều lần. Vui lòng kiểm tra kỹ tem niêm phong và nguồn gốc.'}</p>
               </>
             ) : (
               <>
-                <h3>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || 'Sản phẩm chính hãng'}</h3>
-                <p>Thông tin truy xuất nguồn gốc đã được xác thực</p>
+                <h3>{product?.distributionBannerText || enterprise?.displayConfig?.distributionBannerText || tc.verifyTitle || 'Sản phẩm chính hãng'}</h3>
+                <p>{tc.verifySubtitle || 'Thông tin truy xuất nguồn gốc đã được xác thực'}</p>
               </>
             )}
           </div>
@@ -2228,14 +2240,14 @@ export default function ProductInfo() {
             <div className="product-info-rows">
               <div className="product-info-row">
                 <div className="product-info-row-icon"><QrCode size={16} /></div>
-                <span className="product-info-row-label">Mã kích hoạt</span>
+                <span className="product-info-row-label">{tc.activationCodeLabel || 'Mã kích hoạt'}</span>
                 {/* Lấy theo ô "Mã sở hữu sản phẩm" NPP/KH nhập khi kích hoạt tem */}
                 <span className="product-info-row-value">{ownerCode || 'Chưa kích hoạt'}</span>
               </div>
               {product?.category && (
                 <div className="product-info-row">
                   <div className="product-info-row-icon"><Hash size={16} /></div>
-                  <span className="product-info-row-label">Danh mục</span>
+                  <span className="product-info-row-label">{tc.categoryLabel || 'Danh mục'}</span>
                   <span className="product-info-row-value">{product.category}</span>
                 </div>
               )}
@@ -2247,13 +2259,13 @@ export default function ProductInfo() {
         <div className="product-info-stats">
           <div className="product-info-stat">
             <span className="product-info-stat-number">{label?.scanCount || 1}</span>
-            <span className="product-info-stat-label">Lần quét</span>
+            <span className="product-info-stat-label">{tc.scanCountLabel || 'Lần quét'}</span>
           </div>
           <div className="product-info-stat">
             <span className="product-info-stat-number" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
               {formatDate(label?.firstScannedAt || scanData?.firstScanTime)}
             </span>
-            <span className="product-info-stat-label">Quét lần đầu</span>
+            <span className="product-info-stat-label">{tc.firstScanLabel || 'Quét lần đầu'}</span>
           </div>
         </div>
 
@@ -2261,7 +2273,7 @@ export default function ProductInfo() {
         <div className="product-info-enterprise product-info-nsx-card">
           <div className="product-info-enterprise-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#166534' }}>
             <Building2 size={16} color="#166534" />
-            <span>Thông tin Nhà sản xuất (NSX)</span>
+            <span>{tc.nsxSectionTitle || 'Thông tin Nhà sản xuất (NSX)'}</span>
           </div>
           <div className="product-info-enterprise-name" style={{ fontSize: '1.05rem', color: '#0f172a' }}>
             {mfgName}
@@ -2291,7 +2303,7 @@ export default function ProductInfo() {
           )}
           {enterprise?.name && enterprise.name !== mfgName && (
             <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed #e2e8f0', fontSize: '0.8rem', color: '#64748b' }}>
-              Chủ sở hữu nhãn hiệu: <strong style={{ color: '#334155' }}>{enterprise.name}</strong>
+              {tc.brandOwnerLabel || 'Chủ sở hữu nhãn hiệu:'} <strong style={{ color: '#334155' }}>{enterprise.name}</strong>
             </div>
           )}
         </div>
@@ -2300,7 +2312,7 @@ export default function ProductInfo() {
         <div className="product-info-enterprise product-info-npp-card">
           <div className="product-info-enterprise-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#1e40af' }}>
             <Truck size={16} color="#1e40af" />
-            <span>Thông tin Nhà phân phối (Nhà PP)</span>
+            <span>{tc.nppSectionTitle || 'Thông tin Nhà phân phối (Nhà PP)'}</span>
           </div>
 
           {distributorName ? (
@@ -2327,7 +2339,7 @@ export default function ProductInfo() {
             </div>
           ) : (
             <div style={{ fontSize: '0.86rem', color: '#475569', padding: '6px 0', lineHeight: 1.5 }}>
-              Sản phẩm chính hãng được phân phối và lưu hành thông qua hệ thống đại lý trên toàn quốc.
+              {tc.nppDefaultText || 'Sản phẩm chính hãng được phân phối và lưu hành thông qua hệ thống đại lý trên toàn quốc.'}
             </div>
           )}
 
@@ -2349,7 +2361,7 @@ export default function ProductInfo() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                      Mã sở hữu sản phẩm
+                      {tc.ownerCodeLabel || 'Mã sở hữu sản phẩm'}
                     </div>
                     <div style={{ fontSize: '1rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
                       {ownerCode}
@@ -2358,7 +2370,7 @@ export default function ProductInfo() {
                   {isWarrantyView && (
                     <div style={{ paddingTop: 6, borderTop: '1px dashed rgba(5, 150, 105, 0.28)' }}>
                       <div style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                        Mã chống giả
+                        {tc.antiCounterfeitLabel || 'Mã chống giả'}
                       </div>
                       <div style={{ fontSize: '0.96rem', fontWeight: 900, color: '#065f46', marginTop: 1 }}>
                         {antiCounterfeitCode}
@@ -2368,12 +2380,12 @@ export default function ProductInfo() {
                 </div>
               </div>
               <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#059669', color: '#fff', padding: '4px 10px', borderRadius: 12, flexShrink: 0 }}>
-                ĐÃ XÁC THỰC
+                {tc.verifiedBadgeText || 'ĐÃ XÁC THỰC'}
               </span>
             </div>
           ) : (
             <div style={{ marginTop: 8, fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>
-              Mã sở hữu sẽ được cập nhật khi đại lý xuất bán cho khách hàng.
+              {tc.unactivatedOwnerNote || 'Mã sở hữu sẽ được cập nhật khi đại lý xuất bán cho khách hàng.'}
             </div>
           )}
         </div>
@@ -2382,7 +2394,7 @@ export default function ProductInfo() {
         <div className="product-info-enterprise product-info-cert-card">
           <div className="product-info-enterprise-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#b45309' }}>
             <FileText size={16} color="#b45309" />
-            <span>Phần giấy tờ & Bản công bố sản phẩm</span>
+            <span>{tc.certSectionTitle || 'Phần giấy tờ & Bản công bố sản phẩm'}</span>
           </div>
 
           {/* Số công bố */}
@@ -2399,7 +2411,7 @@ export default function ProductInfo() {
             }}>
               <div>
                 <div style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 700, textTransform: 'uppercase' }}>
-                  Số tiếp nhận bản công bố
+                  {tc.certNumberLabel || 'Số tiếp nhận bản công bố'}
                 </div>
                 <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#92400e', marginTop: 2 }}>
                   {product.congBoNumber}
@@ -2436,7 +2448,7 @@ export default function ProductInfo() {
           {congBoImagesList.length > 0 ? (
             <div>
               <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: 10 }}>
-                Giấy tiếp nhận bản công bố đã được thẩm định bởi cơ quan có thẩm quyền (nhấn để phóng to):
+                {tc.certGuideText || 'Giấy tiếp nhận bản công bố đã được thẩm định bởi cơ quan có thẩm quyền (nhấn để phóng to):'}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: congBoImagesList.length === 1 ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
                 {congBoImagesList.map((img, idx) => (
@@ -2503,36 +2515,37 @@ export default function ProductInfo() {
   const renderHoneyView = () => {
     const rawProducer = product?.manufacturer || product?.producerInfo || enterprise?.name || '';
     const isGenericTestEnterprise = /^(kimdinhtu|admin|test|demo|vinsumi|staycool)$/i.test(String(rawProducer).trim());
-    const resolvedProducerVi = (!rawProducer || isGenericTestEnterprise)
-      ? 'Hộ Kinh Doanh Hoàng Bách'
-      : rawProducer;
+    const resolvedProducerVi = rawCustomThemeContent.defaultProducerName_vi
+      || ((!rawProducer || isGenericTestEnterprise) ? tc.defaultProducerName_vi : rawProducer);
+
+    const splitBullets = (txt) => String(txt || '').split('\n').map(s => s.trim()).filter(Boolean);
 
     const i18n = {
       vi: {
-        headerTitle: 'TEM TRUY XUẤT NGUỒN GỐC',
-        lblProduct: 'SẢN PHẨM:',
-        lblProducer: 'ĐƠN VỊ SẢN XUẤT:',
-        lblAddress: 'ĐỊA CHỈ:',
-        lblContact: 'LIÊN HỆ:',
-        defaultProductName: product?.name || 'Mật Ong Hoa Bạc Hà',
+        headerTitle: tc.headerTitle_vi,
+        lblProduct: tc.lblProduct_vi,
+        lblProducer: tc.lblProducer_vi,
+        lblAddress: tc.lblAddress_vi,
+        lblContact: tc.lblContact_vi,
+        defaultProductName: rawCustomThemeContent.defaultProductName_vi || product?.name || tc.defaultProductName_vi,
         defaultProducerName: resolvedProducerVi,
-        defaultAddress: product?.mfgAddress || (!isGenericTestEnterprise && enterprise?.address) || 'Thôn Xín Chải, Xã Sơn Vĩ, Tỉnh Tuyên Quang',
-        defaultContact: product?.hotline || (!isGenericTestEnterprise && enterprise?.phone) || '0866.603.589 - 0812.838.589',
+        defaultAddress: rawCustomThemeContent.defaultAddress_vi || product?.mfgAddress || (!isGenericTestEnterprise && enterprise?.address) || tc.defaultAddress_vi,
+        defaultContact: rawCustomThemeContent.defaultContact_vi || product?.hotline || (!isGenericTestEnterprise && enterprise?.phone) || tc.defaultContact_vi,
         serialBadge: 'Mã xác thực QR:',
         scanCountBadge: 'Lượt tra cứu:',
-        verifiedLabel: 'Chính hãng Hoàng Bách',
+        verifiedLabel: tc.verifiedLabel_vi,
         tabs: [
-          { id: 'intro', label: 'Giới thiệu' },
-          { id: 'featured', label: 'Đặc sắc' },
-          { id: 'usage', label: 'Cách dùng' },
-          { id: 'distribution', label: 'Các điểm phân phối' },
-          { id: 'soil', label: 'Thổ nhưỡng' },
-          { id: 'bee_breed', label: 'Giống ong' },
+          { id: 'intro', label: tc.tab1Label_vi },
+          { id: 'featured', label: tc.tab2Label_vi },
+          { id: 'usage', label: tc.tab3Label_vi },
+          { id: 'distribution', label: tc.tab4Label_vi },
+          { id: 'soil', label: tc.tab5Label_vi },
+          { id: 'bee_breed', label: tc.tab6Label_vi },
         ],
         regions: [
-          { id: 'dong_van', label: 'Đồng Văn' },
-          { id: 'meo_vac', label: 'Mèo Vạc' },
-          { id: 'yen_minh', label: 'Yên Minh' },
+          { id: 'dong_van', label: tc.region1Label_vi },
+          { id: 'meo_vac', label: tc.region2Label_vi },
+          { id: 'yen_minh', label: tc.region3Label_vi },
         ],
         distLabels: {
           unitName: 'Tên đơn vị sản xuất:',
@@ -2550,143 +2563,115 @@ export default function ProductInfo() {
         },
         articles: {
           intro: {
-            title: 'GIỚI THIỆU MẬT ONG HOA BẠC HÀ HOÀNG BÁCH',
-            subtitle: 'Tinh hoa mật quý từ Công viên Địa chất Toàn cầu Cao nguyên đá Đồng Văn - Hà Giang',
-            lead: (product?.description && product.description.length > 40)
-              ? product.description
-              : 'Mật Ong Hoa Bạc Hà Hoàng Bách là sản phẩm đặc sản trứ danh được khai thác hoàn toàn tự nhiên từ những cánh rừng hoa bạc hà tím biếc nở rộ trên độ cao 1.000m – 1.600m tại Cao nguyên đá Hà Giang vào dịp cuối thu đầu đông (tháng 10 đến tháng 1 năm sau).',
+            title: tc.introTitle_vi,
+            subtitle: tc.introSubtitle_vi,
+            lead: rawCustomThemeContent.introLead_vi || ((product?.description && product.description.length > 40) ? product.description : tc.introLead_vi),
             sections: [
               {
-                heading: '1. Nguồn gốc thiên nhiên thuần khiết 100%',
-                body: 'Cây bạc hà dại trên Cao nguyên đá là loài thảo dược mọc tự nhiên trên các triền núi đá tai mèo hiểm trở. Mỗi năm hoa chỉ nở duy nhất một vụ kéo dài từ 2,5 đến 3 tháng. Đàn ong nội bản địa hút mật trực tiếp từ nhụy hoa bạc hà tạo nên dòng mật có màu vàng chanh ánh xanh lục đặc trưng, sánh đặc tự nhiên và hương thơm thanh mát dịu nhẹ không lẫn với bất kỳ loại mật nào khác.'
+                heading: tc.introSec1Heading_vi,
+                body: tc.introSec1Body_vi
               },
               {
-                heading: '2. Quy trình khai thác & kiểm định nghiêm ngặt',
-                body: 'Hộ Kinh Doanh Hoàng Bách liên kết trực tiếp với các hợp tác xã và hộ nuôi ong lâu năm tại Đồng Văn, Mèo Vạc, Lũng Cú, Yên Minh. Mật được quay khai thác khi cầu mật đã vít nắp chín tự nhiên tối thiểu 90%, lọc tĩnh loại bỏ sáp vụn hoàn toàn thủ công, không qua xử lý nhiệt công nghiệp nhằm giữ trọn vẹn hệ enzyme, vitamin và khoáng chất quý giá.'
+                heading: tc.introSec2Heading_vi,
+                body: tc.introSec2Body_vi
               },
               {
-                heading: '3. Cam kết chất lượng từ Hoàng Bách',
-                bullets: [
-                  '100% mật ong hoa bạc hà nguyên chất khai thác đúng vụ tại Cao nguyên đá.',
-                  'Không pha trộn đường, không chất bảo quản, không hương liệu hay phẩm màu nhân tạo.',
-                  'Mỗi sản phẩm đều gắn tem QR truy xuất nguồn gốc minh bạch từng lô thu hoạch.',
-                  'Đạt tiêu chuẩn An toàn vệ sinh thực phẩm và chứng nhận đặc sản vùng cao.'
-                ]
+                heading: tc.introSec3Heading_vi,
+                bullets: splitBullets(tc.introSec3Bullets_vi)
               }
             ]
           },
           featured: {
-            title: 'ĐẶC SẮC CỦA MẬT ONG HOA BẠC HÀ',
-            subtitle: 'Những giá trị độc bản tạo nên danh tiếng "Vàng lỏng" vùng Cao nguyên đá',
-            lead: 'Mật ong hoa bạc hà sở hữu sắc - hương - vị và hàm lượng dinh dưỡng vượt trội nhờ sự giao thoa kỳ diệu giữa cây dược liệu bạc hà núi đá và giống ong nội bản địa.',
+            title: tc.featuredTitle_vi,
+            subtitle: tc.featuredSubtitle_vi,
+            lead: tc.featuredLead_vi,
             sections: [
               {
-                heading: '1. Màu sắc & Hương vị độc nhất vô nhị',
-                body: 'Mật có màu vàng chanh óng ả pha chút ánh xanh oliu dịu mắt, độ kết dính cao, khi rót tạo dòng chảy mềm mại không đứt đoạn. Vị ngọt thanh tao, mát dịu nơi đầu lưỡi và đọng lại hậu vị the mát thoảng hương hoa bạc hà rừng tự nhiên, hoàn toàn không ngọt gắt như các loại mật thông thường.'
+                heading: tc.featuredSec1Heading_vi,
+                body: tc.featuredSec1Body_vi
               },
               {
-                heading: '2. Giá trị dược tính & Chăm sóc sức khỏe',
-                bullets: [
-                  'Hỗ trợ làm dịu cổ họng, giảm ho khan, ho có đờm, viêm họng và bảo vệ đường hô hấp hiệu quả khi thời tiết giao mùa.',
-                  'Bồi bổ cơ thể, tăng cường sức đề kháng tự nhiên nhờ hàm lượng cao các axit amin, enzyme tự nhiên (Diastase, Invertase), Vitamin B1, B2, B6, C và khoáng chất (Canxi, Sắt, Kẽm, Magie).',
-                  'Hỗ trợ hệ tiêu hóa khỏe mạnh, làm dịu niêm mạc dạ dày và cải thiện giấc ngủ sâu.',
-                  'Làm đẹp da từ bên trong nhờ hoạt chất chống oxy hóa tự nhiên dồi dào.'
-                ]
+                heading: tc.featuredSec2Heading_vi,
+                bullets: splitBullets(tc.featuredSec2Bullets_vi)
               },
               {
-                heading: '3. Dấu hiệu nhận biết mật ong hoa bạc hà chuẩn Hoàng Bách',
-                body: 'Mật ong hoa bạc hà chuẩn có hàm lượng thủy phần thấp (< 20%), sánh đặc tự nhiên, để lâu năm vẫn giữ hương thơm dịu và màu sắc tươi sáng, không bị chua hay lên ga khi bảo quản đúng cách.'
+                heading: tc.featuredSec3Heading_vi,
+                body: tc.featuredSec3Body_vi
               }
             ]
           },
           usage: {
-            title: 'HƯỚNG DẪN SỬ DỤNG & BẢO QUẢN ĐÚNG CÁCH',
-            subtitle: 'Phát huy tối đa dưỡng chất quý giá từ Mật Ong Hoa Bạc Hà',
-            lead: 'Sử dụng mật ong hoa bạc hà đúng thời điểm và đúng nhiệt độ giúp cơ thể hấp thu trọn vẹn các enzyme sinh học và hoạt chất thảo dược tự nhiên.',
+            title: tc.usageTitle_vi,
+            subtitle: tc.usageSubtitle_vi,
+            lead: tc.usageLead_vi,
             sections: [
               {
-                heading: '1. Cách dùng hàng ngày tốt nhất cho sức khỏe',
-                bullets: [
-                  'Pha uống buổi sáng: Pha 1–2 thìa cà phê (10–15ml) mật ong hoa bạc hà với 150–200ml nước ấm (nhiệt độ lý tưởng 40°C – 50°C, không dùng nước sôi trên 60°C để tránh làm mất enzyme quý). Uống trước bữa sáng 20–30 phút giúp thanh lọc cơ thể và bảo vệ dạ dày.',
-                  'Giảm ho, dịu họng: Ngậm trực tiếp 1 thìa nhỏ mật ong nguyên chất hoặc chưng cách thủy cùng quất (tắc), chanh đào, gừng tươi, lá hẹ dùng 2–3 lần/ngày.',
-                  'Kết hợp thảo dược & ẩm thực: Pha cùng trà hoa cúc, trà thảo mộc, saffron (nhụy hoa nghệ tây), nước cam chanh hoặc dùng kèm sữa chua, bánh mì, salad trái cây.'
-                ]
+                heading: tc.usageSec1Heading_vi,
+                bullets: splitBullets(tc.usageSec1Bullets_vi)
               },
               {
-                heading: '2. Đối tượng sử dụng & Lưu ý quan trọng',
-                bullets: [
-                  'Phù hợp cho người lớn, người cao tuổi, người suy nhược cơ thể, người làm việc căng thẳng và trẻ em trên 1 tuổi.',
-                  'Lưu ý: Không dùng mật ong cho trẻ sơ sinh dưới 12 tháng tuổi.',
-                  'Nên dùng thìa gỗ, sứ hoặc nhựa sạch để lấy mật; hạn chế ngâm thìa kim loại lâu trong hũ mật.'
-                ]
+                heading: tc.usageSec2Heading_vi,
+                bullets: splitBullets(tc.usageSec2Bullets_vi)
               },
               {
-                heading: '3. Hướng dẫn bảo quản',
-                body: 'Đậy kín nắp sau khi sử dụng, đặt ở nơi khô ráo, thoáng mát (nhiệt độ phòng 20°C – 28°C), tránh ánh nắng mặt trời chiếu trực tiếp. Không cần bảo quản trong ngăn mát tủ lạnh vì nhiệt độ thấp dễ làm mật ong tự nhiên kết tinh đường glucose.'
+                heading: tc.usageSec3Heading_vi,
+                body: tc.usageSec3Body_vi
               }
             ]
           },
           soil: {
-            title: 'THỔ NHƯỠNG & KHÍ HẬU VÙNG CAO NGUYÊN ĐÁ',
-            subtitle: 'Hệ sinh thái núi đá vôi hàng trăm triệu năm tuổi tạo nên loài hoa bạc hà độc bản',
-            lead: 'Cao nguyên đá Đồng Văn (bao gồm 4 huyện Quản Bạ, Yên Minh, Đồng Văn, Mèo Vạc) được UNESCO công nhận là Công viên Địa chất Toàn cầu với địa hình hơn 80% là núi đá vôi tai mèo dựng đứng ở độ cao 1.000m – 1.600m so với mực nước biển.',
+            title: tc.soilTitle_vi,
+            subtitle: tc.soilSubtitle_vi,
+            lead: tc.soilLead_vi,
             sections: [
               {
-                heading: '1. Địa chất đá vôi giàu khoáng chất tự nhiên',
-                body: 'Trải qua hàng trăm triệu năm kiến tạo địa chất, lớp đất mùn tích tụ trong các hốc đá tai mèo cực kỳ giàu khoáng chất vi lượng (Canxi, Magie, Kali, Silic). Cây bạc hà dại (Elsholtzia ciliata / Mentha arvensis bản địa) bám rễ sâu vào các khe đá khô cằn để hút dưỡng chất và sương núi, giúp tinh dầu trong cánh hoa và mật hoa đậm đặc gấp nhiều lần vùng đồng bằng.'
+                heading: tc.soilSec1Heading_vi,
+                body: tc.soilSec1Body_vi
               },
               {
-                heading: '2. Khí hậu khắc nghiệt hun đúc tinh hoa',
-                body: 'Vào mùa hoa bạc hà nở (từ tháng 10 đến tháng 12 âm lịch), vùng cao nguyên có biên độ nhiệt ngày và đêm rất lớn: ban ngày nắng hanh vàng rực rỡ, ban đêm sương mù bao phủ và nhiệt độ hạ thấp 8°C – 15°C. Chính sự khắc nghiệt này kích thích cây bạc hà tiết ra lượng mật hoa cô đặc nhất, giàu đường tự nhiên và tinh dầu thơm mát để thu hút đàn ong.'
+                heading: tc.soilSec2Heading_vi,
+                body: tc.soilSec2Body_vi
               },
               {
-                heading: '3. Môi trường sinh thái nguyên sơ',
-                bullets: [
-                  'Hoàn toàn tách biệt khỏi khu công nghiệp, khói bụi đô thị và hóa chất nông nghiệp.',
-                  'Cây bạc hà mọc hoang dã tự nhiên trên sườn núi đá, không sử dụng phân bón hóa học hay thuốc bảo vệ thực vật.',
-                  'Nguồn nước sương núi trong lành tạo nên độ tinh khiết tuyệt đối cho từng giọt mật.'
-                ]
+                heading: tc.soilSec3Heading_vi,
+                bullets: splitBullets(tc.soilSec3Bullets_vi)
               }
             ]
           },
           bee_breed: {
-            title: 'GIỐNG ONG NỘI BẢN ĐỊA CAO NGUYÊN ĐÁ',
-            subtitle: 'Những "nghệ nhân" cần mẫn vượt gió sương núi đá thu lượm mật quý',
-            lead: 'Mật Ong Hoa Bạc Hà Hoàng Bách được tạo nên bởi giống Ong Nội địa bản xứ (Apis cerana) đã thích nghi hàng ngàn năm với địa hình hiểm trở và khí hậu lạnh giá của vùng núi cao cực Bắc.',
+            title: tc.beeTitle_vi,
+            subtitle: tc.beeSubtitle_vi,
+            lead: tc.beeLead_vi,
             sections: [
               {
-                heading: '1. Đặc điểm sinh học vượt trội của giống Ong Nội vùng cao',
-                body: 'Khác với các giống ong ngoại nhập khẩu, ong nội bản địa Cao nguyên đá có kích thước cơ thể nhỏ gọn, đôi cánh khỏe, cực kỳ nhanh nhẹn và có khả năng chịu rét, chịu sương mù xuất sắc. Nhờ vòi hút mật mảnh và sự linh hoạt, ong nội dễ dàng len lỏi sâu vào từng đài hoa bạc hà nhỏ li ti mọc sát vách đá tai mèo để lấy trọn giọt mật tinh túy nhất.'
+                heading: tc.beeSec1Heading_vi,
+                body: tc.beeSec1Body_vi
               },
               {
-                heading: '2. Quá trình luyện mật kỳ công trong tổ',
-                body: 'Mỗi ngày, hàng vạn ong thợ bay hàng cây số qua các triền đá để thu gom mật hoa. Khi mang về tổ, đàn ong truyền mật qua nhau, tiết thêm hệ enzyme tự nhiên từ tuyến hầu và quạt cánh liên tục suốt ngày đêm để làm bay hơi nước tự nhiên. Chỉ khi hàm lượng nước giảm xuống dưới 19–20%, ong mới dùng sáp trắng vít kín nắp lỗ tổ (mật chín tự nhiên).'
+                heading: tc.beeSec2Heading_vi,
+                body: tc.beeSec2Body_vi
               },
               {
-                heading: '3. Phương thức nuôi ong truyền thống bền vững',
-                bullets: [
-                  'Thùng ong được làm từ gỗ tự nhiên khô thoáng, đặt dọc theo các thung lũng và sườn núi đá nơi có thảm hoa bạc hà dày đặc nhất.',
-                  'Tuyệt đối không cho ong ăn đường trong suốt vụ thu hoạch mật hoa bạc hà.',
-                  'Không sử dụng kháng sinh trong mật thương phẩm, bảo tồn quần thể ong bản địa và hệ sinh thái tự nhiên.'
-                ]
+                heading: tc.beeSec3Heading_vi,
+                bullets: splitBullets(tc.beeSec3Bullets_vi)
               }
             ]
           }
         }
       },
       en: {
-        headerTitle: 'ORIGIN TRACEABILITY STAMP',
+        headerTitle: tc.headerTitle_en,
         lblProduct: 'PRODUCT:',
         lblProducer: 'PRODUCER:',
         lblAddress: 'ADDRESS:',
         lblContact: 'CONTACT:',
-        defaultProductName: 'Wild Mint Flower Honey (Mật Ong Hoa Bạc Hà)',
-        defaultProducerName: 'Hoang Bach Business Household',
-        defaultAddress: 'Xin Chai Village, Son Vi Commune, Tuyen Quang Province, Vietnam',
-        defaultContact: '0866.603.589 - 0812.838.589',
+        defaultProductName: tc.defaultProductName_en,
+        defaultProducerName: tc.defaultProducerName_en,
+        defaultAddress: tc.defaultAddress_en,
+        defaultContact: rawCustomThemeContent.defaultContact_vi || tc.defaultContact_vi,
         serialBadge: 'QR Auth Code:',
         scanCountBadge: 'Total Scans:',
-        verifiedLabel: 'Authentic Hoang Bach',
+        verifiedLabel: tc.verifiedLabel_en,
         tabs: [
           { id: 'intro', label: 'Introduction' },
           { id: 'featured', label: 'Highlights' },
@@ -2839,18 +2824,18 @@ export default function ProductInfo() {
         }
       },
       zh: {
-        headerTitle: '原产地溯源防伪标签',
+        headerTitle: tc.headerTitle_zh,
         lblProduct: '产品名称:',
         lblProducer: '生产单位:',
         lblAddress: '生产地址:',
         lblContact: '联系电话:',
-        defaultProductName: '野生薄荷花蜂蜜 (Mật Ong Hoa Bạc Hà)',
-        defaultProducerName: '黄百 (Hoàng Bách) 经营户',
-        defaultAddress: '越南宣光省山尾社新寨村',
-        defaultContact: '0866.603.589 - 0812.838.589',
+        defaultProductName: tc.defaultProductName_zh,
+        defaultProducerName: tc.defaultProducerName_zh,
+        defaultAddress: tc.defaultAddress_zh,
+        defaultContact: rawCustomThemeContent.defaultContact_vi || tc.defaultContact_vi,
         serialBadge: '防伪溯源码:',
         scanCountBadge: '查询次数:',
-        verifiedLabel: '黄百正品认证',
+        verifiedLabel: tc.verifiedLabel_zh,
         tabs: [
           { id: 'intro', label: '产品介绍' },
           { id: 'featured', label: '产品特色' },
@@ -3468,8 +3453,8 @@ export default function ProductInfo() {
             <div className="honey-brand-logo-frame">
               <div className="honey-brand-logo-inner">
                 <img
-                  src="/images/honey/honey_logo_hoang_bach.png"
-                  alt="Hoàng Bách - Mật Ong Hoa Bạc Hà - Cao Nguyên Đá Hà Giang"
+                  src={tc.rightLogoUrl || '/images/honey/honey_logo_hoang_bach.png'}
+                  alt={t.defaultProductName || 'Hoàng Bách - Mật Ong Hoa Bạc Hà'}
                   className="honey-brand-logo-img"
                 />
               </div>
@@ -3521,8 +3506,8 @@ export default function ProductInfo() {
           {/* 4. BANNER PHONG CẢNH CAO NGUYÊN ĐÁ & HŨ MẬT ONG */}
           <div className="honey-hero-banner-wrap">
             <img
-              src="/images/honey/honey_hero_banner.png"
-              alt="Mật Ong Hoa Bạc Hà Cao Nguyên Đá Hà Giang"
+              src={tc.midBannerUrl || '/images/honey/honey_hero_banner.png'}
+              alt={t.defaultProductName || 'Mật Ong Hoa Bạc Hà Cao Nguyên Đá Hà Giang'}
               className="honey-hero-banner-img"
             />
           </div>
@@ -3721,8 +3706,8 @@ export default function ProductInfo() {
           {/* 6. FOOTER ĐẶC SẢN CAO NGUYÊN ĐÁ HÀ GIANG */}
           <div className="honey-footer-banner-wrap">
             <img
-              src="/images/honey/honey_footer_banner.png"
-              alt="Mật Ong Hoa Bạc Hà - Đặc Sản Cao Nguyên Đá Hà Giang"
+              src={tc.footerBannerUrl || '/images/honey/honey_footer_banner.png'}
+              alt={t.defaultProductName || 'Mật Ong Hoa Bạc Hà - Đặc Sản Cao Nguyên Đá Hà Giang'}
               className="honey-footer-banner-img"
             />
           </div>
@@ -3940,7 +3925,7 @@ export default function ProductInfo() {
               {activeModal === 'distributor' && (() => {
                 const isStayCool = activeTheme === 'staycool' || activeTheme === 'vyphyto' || (enterprise?.name || '').toLowerCase().includes('staycool');
                 const distributorName = label?.distributorName || label?.distributorId?.fullName || product?.distributors?.[0]?.name;
-                const entName = enterprise?.name || 'Công ty TNHH StayCool Việt Nam';
+                const entName = enterprise?.name || tc.defaultDistributorName || 'Công ty TNHH StayCool Việt Nam';
                 const mainDistributor = (distributorName || entName).toUpperCase();
 
                 return (
@@ -3954,15 +3939,17 @@ export default function ProductInfo() {
                             </div>
                             <div>
                               <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
-                                ĐẠI DIỆN NHẬP KHẨU & PHÂN PHỐI ĐỘC QUYỀN
+                                {tc.distModalTitle || 'ĐẠI DIỆN NHẬP KHẨU & PHÂN PHỐI ĐỘC QUYỀN'}
                               </h5>
                               <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
-                                Đối tác phân phối độc quyền chính thức tại Việt Nam
+                                {tc.distModalSubtitle || 'Đối tác phân phối độc quyền chính thức tại Việt Nam'}
                               </p>
                             </div>
                           </div>
                           <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
-                            Các sản phẩm chính hãng được nhập khẩu và phân phối độc quyền bởi <strong>{mainDistributor}</strong>, có đầy đủ giấy phép lưu hành và giấy tiếp nhận đăng ký bản công bố của Cục An Toàn Thực Phẩm – Bộ Y Tế Việt Nam.
+                            {tc.distModalLead ? tc.distModalLead : (
+                              <>Các sản phẩm chính hãng được nhập khẩu và phân phối độc quyền bởi <strong>{mainDistributor}</strong>, có đầy đủ giấy phép lưu hành và giấy tiếp nhận đăng ký bản công bố của Cục An Toàn Thực Phẩm – Bộ Y Tế Việt Nam.</>
+                            )}
                           </p>
                         </div>
 
@@ -3973,30 +3960,30 @@ export default function ProductInfo() {
                           </div>
                           <div className="modal-info-item">
                             <span>Thương hiệu phân phối:</span>
-                            <strong>{product?.brand || enterprise?.name || 'VYPHYTO LABORATORIES (France)'}</strong>
+                            <strong>{product?.brand || enterprise?.name || tc.mfgDefaultTitle || 'VYPHYTO LABORATORIES (France)'}</strong>
                           </div>
                           <div className="modal-info-item">
                             <span>Địa chỉ trụ sở:</span>
-                            <strong>{enterprise?.address || '28 Đặng Thuỳ Châm, Phường 13, Quận Bình Thạnh, TP. Hồ Chí Minh'}</strong>
+                            <strong>{enterprise?.address || tc.defaultAddress || '28 Đặng Thuỳ Châm, Phường 13, Quận Bình Thạnh, TP. Hồ Chí Minh'}</strong>
                           </div>
                           <div className="modal-info-item">
                             <span>Hotline hỗ trợ:</span>
-                            <strong>{enterprise?.phone || '1900 636 828 / 0988 567 890'}</strong>
+                            <strong>{enterprise?.phone || tc.defaultHotline || '1900 636 828 / 0988 567 890'}</strong>
                           </div>
                           <div className="modal-info-item">
                             <span>Email liên hệ:</span>
-                            <strong>{enterprise?.email || 'staycool@gmail.com'}</strong>
+                            <strong>{enterprise?.email || tc.defaultEmail || 'staycool@gmail.com'}</strong>
                           </div>
                           <div className="modal-info-item">
                             <span>Website chính thức:</span>
-                            <a href={enterprise?.website ? (enterprise.website.startsWith('http') ? enterprise.website : `https://${enterprise.website}`) : 'https://staycool.vn'} target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>
-                              {enterprise?.website || 'staycool.vn'}
+                            <a href={enterprise?.website ? (enterprise.website.startsWith('http') ? enterprise.website : `https://${enterprise.website}`) : `https://${tc.defaultWebsite || 'staycool.vn'}`} target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>
+                              {enterprise?.website || tc.defaultWebsite || 'staycool.vn'}
                             </a>
                           </div>
                         </div>
 
                         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px dashed #ea580c', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
-                          🛡️ <strong>Cam kết vàng từ {mainDistributor}:</strong> 100% sản phẩm phân phối ra thị trường đều dán tem niêm phong chống giả thông minh tích hợp công nghệ QR Trace. Phát hiện hàng giả cam kết đền bù gấp 10 lần giá trị sản phẩm.
+                          🛡️ <strong>Cam kết vàng từ {mainDistributor}:</strong> {tc.distCommitmentText || '100% sản phẩm phân phối ra thị trường đều dán tem niêm phong chống giả thông minh tích hợp công nghệ QR Trace. Phát hiện hàng giả cam kết đền bù gấp 10 lần giá trị sản phẩm.'}
                         </div>
                       </div>
                     ) : (
@@ -4007,11 +3994,11 @@ export default function ProductInfo() {
                         </div>
                         <div className="modal-info-item">
                           <span>Địa chỉ:</span>
-                          <strong>{label?.distributorAddress || label?.ownerInfo?.address || enterprise?.address || 'Toàn quốc'}</strong>
+                          <strong>{label?.distributorAddress || label?.ownerInfo?.address || enterprise?.address || tc.defaultAddress || 'Toàn quốc'}</strong>
                         </div>
                         <div className="modal-info-item">
                           <span>Điện thoại liên hệ:</span>
-                          <strong>{label?.ownerInfo?.phone || enterprise?.phone || '1900 1234'}</strong>
+                          <strong>{label?.ownerInfo?.phone || enterprise?.phone || tc.defaultHotline || '1900 1234'}</strong>
                         </div>
                         {(label?.distributedAt || label?.ownerInfo?.activatedAt) && (
                           <div className="modal-info-item">
@@ -4036,10 +4023,10 @@ export default function ProductInfo() {
                         </div>
                         <div>
                           <h5 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#c2410c' }}>
-                            TÍCH ĐIỂM ĐỔI QUÀ - TRI ÂN KHÁCH HÀNG
+                            {tc.rewardModalTitle || 'TÍCH ĐIỂM ĐỔI QUÀ - TRI ÂN KHÁCH HÀNG'}
                           </h5>
                           <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
-                            {isStayCool ? 'Chương trình thành viên VIP VYPHYTO Club' : 'Chương trình khách hàng thân thiết'}
+                            {isStayCool ? (tc.rewardClubName || 'Chương trình thành viên VIP VYPHYTO Club') : 'Chương trình khách hàng thân thiết'}
                           </p>
                         </div>
                       </div>
@@ -4159,28 +4146,30 @@ export default function ProductInfo() {
                             </div>
                             <div>
                               <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#c2410c' }}>
-                                VYPHYTO LABORATORIES (FRANCE)
+                                {tc.mfgDefaultTitle || 'VYPHYTO LABORATORIES (FRANCE)'}
                               </h5>
                               <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
-                                Viện Nghiên Cứu & Sản Xuất Dược Phẩm Sinh Học Cộng Hòa Pháp
+                                {tc.mfgDefaultSubtitle || 'Viện Nghiên Cứu & Sản Xuất Dược Phẩm Sinh Học Cộng Hòa Pháp'}
                               </p>
                             </div>
                           </div>
                           <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#334155', margin: '8px 0 0' }}>
-                            <strong>VYPHYTO LABORATORIES</strong> là viện nghiên cứu và sản xuất các dòng thực phẩm bảo vệ sức khỏe, vitamin và khoáng chất hàng đầu tại Pháp, dựa trên công nghệ sinh học và chiết xuất hữu cơ tự nhiên đạt chuẩn Châu Âu.
+                            {tc.mfgDefaultDesc ? tc.mfgDefaultDesc : (
+                              <><strong>VYPHYTO LABORATORIES</strong> là viện nghiên cứu và sản xuất các dòng thực phẩm bảo vệ sức khỏe, vitamin và khoáng chất hàng đầu tại Pháp, dựa trên công nghệ sinh học và chiết xuất hữu cơ tự nhiên đạt chuẩn Châu Âu.</>
+                            )}
                           </p>
                         </div>
 
                         <div className="modal-info-list">
-                          <div className="modal-info-item"><span>Đơn vị sản xuất:</span> <strong style={{ color: '#ea580c' }}>VYPHYTO LABORATORIES</strong></div>
-                          <div className="modal-info-item"><span>Quốc gia xuất xứ:</span> <strong>Cộng hòa Pháp (Made in France) 🇫🇷</strong></div>
-                          <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000, HACCP Châu Âu</strong></div>
-                          <div className="modal-info-item"><span>Định hướng phát triển:</span> <strong>Tinh Hoa Pháp – Sức Khỏe Bạn</strong></div>
-                          <div className="modal-info-item"><span>Website hãng:</span> <a href="https://vyphyto.com" target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>vyphyto.com</a></div>
+                          <div className="modal-info-item"><span>Đơn vị sản xuất:</span> <strong style={{ color: '#ea580c' }}>{tc.mfgDefaultTitle || 'VYPHYTO LABORATORIES'}</strong></div>
+                          <div className="modal-info-item"><span>Quốc gia xuất xứ:</span> <strong>{tc.mfgOriginCountry || 'Cộng hòa Pháp (Made in France) 🇫🇷'}</strong></div>
+                          <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>{tc.mfgStandard || 'cGMP - WHO, ISO 22000, HACCP Châu Âu'}</strong></div>
+                          <div className="modal-info-item"><span>Định hướng phát triển:</span> <strong>{tc.mfgSlogan || 'Tinh Hoa Pháp – Sức Khỏe Bạn'}</strong></div>
+                          <div className="modal-info-item"><span>Website hãng:</span> <a href={`https://${tc.mfgWebsite || 'vyphyto.com'}`} target="_blank" rel="noreferrer" style={{ color: '#ea580c', fontWeight: 700, textDecoration: 'underline' }}>{tc.mfgWebsite || 'vyphyto.com'}</a></div>
                         </div>
 
                         <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
-                          🔬 <strong>Cam kết chất lượng Châu Âu:</strong> 100% nguyên liệu đều trải qua quy trình kiểm nghiệm nghiêm ngặt của Liên minh Châu Âu (EU) trước khi đưa vào sản xuất và đóng gói.
+                          🔬 <strong>Cam kết chất lượng Châu Âu:</strong> {tc.mfgCommitmentText || '100% nguyên liệu đều trải qua quy trình kiểm nghiệm nghiêm ngặt của Liên minh Châu Âu (EU) trước khi đưa vào sản xuất và đóng gói.'}
                         </div>
                       </div>
                     );
@@ -4216,7 +4205,7 @@ export default function ProductInfo() {
                         {mfgAddress && <div className="modal-info-item"><span>Địa chỉ nhà máy:</span> <strong>{mfgAddress}</strong></div>}
                         {mfgPhone && <div className="modal-info-item"><span>Điện thoại:</span> <strong>{mfgPhone}</strong></div>}
                         {mfgEmail && <div className="modal-info-item"><span>Email:</span> <strong>{mfgEmail}</strong></div>}
-                        <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>cGMP - WHO, ISO 22000, HACCP Quốc Tế</strong></div>
+                        <div className="modal-info-item"><span>Tiêu chuẩn nhà máy:</span> <strong style={{ color: '#059669' }}>{tc.mfgStandard || 'cGMP - WHO, ISO 22000, HACCP Quốc Tế'}</strong></div>
                       </div>
 
                       {product?.manufacturerInfo && (
@@ -4244,7 +4233,7 @@ export default function ProductInfo() {
                       )}
 
                       <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px dashed #ea580c', fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
-                        🔬 <strong>Cam kết chất lượng:</strong> 100% quy trình sản xuất và đóng gói được kiểm tra, chứng nhận kiểm định chất lượng nghiêm ngặt trước khi xuất xưởng lưu hành.
+                        🔬 <strong>Cam kết chất lượng:</strong> {tc.mfgCommitmentText || '100% quy trình sản xuất và đóng gói được kiểm tra, chứng nhận kiểm định chất lượng nghiêm ngặt trước khi xuất xưởng lưu hành.'}
                       </div>
                     </div>
                   );
@@ -4265,10 +4254,10 @@ export default function ProductInfo() {
                       </div>
                     )}
                     <div className="modal-info-list">
-                      <div className="modal-info-item"><span>Tên đơn vị:</span> <strong>{mfg?.name || fallbackMfg?.name || 'Doanh nghiệp sản xuất'}</strong></div>
-                      <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{mfg?.address || fallbackMfg?.address || 'Việt Nam'}</strong></div>
-                      {(mfg?.phone || fallbackMfg?.phone) && <div className="modal-info-item"><span>Hotline:</span> <strong>{mfg?.phone || fallbackMfg?.phone}</strong></div>}
-                      {(mfg?.email || fallbackMfg?.email) && <div className="modal-info-item"><span>Email:</span> <strong>{mfg?.email || fallbackMfg?.email}</strong></div>}
+                      <div className="modal-info-item"><span>Tên đơn vị:</span> <strong>{mfg?.name || fallbackMfg?.name || tc.defaultBrandName || 'Doanh nghiệp sản xuất'}</strong></div>
+                      <div className="modal-info-item"><span>Địa chỉ:</span> <strong>{mfg?.address || fallbackMfg?.address || tc.defaultAddress || 'Việt Nam'}</strong></div>
+                      {(mfg?.phone || fallbackMfg?.phone || tc.defaultHotline) && <div className="modal-info-item"><span>Hotline:</span> <strong>{mfg?.phone || fallbackMfg?.phone || tc.defaultHotline}</strong></div>}
+                      {(mfg?.email || fallbackMfg?.email || tc.defaultEmail) && <div className="modal-info-item"><span>Email:</span> <strong>{mfg?.email || fallbackMfg?.email || tc.defaultEmail}</strong></div>}
                     </div>
                     {(mfg?.partnerDetails || fallbackMfg?.partnerDetails) && (
                       <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
@@ -4285,24 +4274,29 @@ export default function ProductInfo() {
                   </div>
                 );
               })()}
+              {activeModal === 'brand' && (
+                <div style={{ padding: '6px 2px', fontSize: '0.9rem', lineHeight: '1.65', color: '#334155', whiteSpace: 'pre-line' }}>
+                  {tc.brandStoryContent || enterprise?.description || 'Thương hiệu cam kết cung cấp sản phẩm chính hãng, minh bạch nguồn gốc xuất xứ.'}
+                </div>
+              )}
               {activeModal === 'ingredients' && (
                 <div className="modal-info-list">
-                  <div className="modal-info-item"><span>Thành phần chính:</span> <strong>Paracetamol (500mg), Phụ liệu vừa đủ 1 viên</strong></div>
-                  <div className="modal-info-item"><span>Tác dụng dược lý:</span> <strong>Giảm đau, hạ sốt nhanh chóng và an toàn</strong></div>
-                  <div className="modal-info-item"><span>Độ tinh khiết:</span> <strong>Đạt 99.8% chuẩn Dược điển VN V</strong></div>
+                  <div className="modal-info-item"><span>{tc.ingredientsLabel1 || 'Thành phần chính:'}</span> <strong>{tc.ingredientsVal1 || 'Paracetamol (500mg), Phụ liệu vừa đủ 1 viên'}</strong></div>
+                  <div className="modal-info-item"><span>{tc.ingredientsLabel2 || 'Tác dụng dược lý:'}</span> <strong>{tc.ingredientsVal2 || 'Giảm đau, hạ sốt nhanh chóng và an toàn'}</strong></div>
+                  <div className="modal-info-item"><span>{tc.ingredientsLabel3 || 'Độ tinh khiết:'}</span> <strong>{tc.ingredientsVal3 || 'Đạt 99.8% chuẩn Dược điển VN V'}</strong></div>
                 </div>
               )}
               {activeModal === 'dosage' && (
                 <div className="modal-info-list">
-                  <div className="modal-info-item"><span>Người lớn:</span> <strong>1-2 viên / lần, mỗi 4-6 giờ (Tối đa 8 viên/ngày)</strong></div>
-                  <div className="modal-info-item"><span>Trẻ em (7-12 tuổi):</span> <strong>1/2 - 1 viên / lần (Theo chỉ định bác sĩ)</strong></div>
-                  <div className="modal-info-item"><span>Cách dùng:</span> <strong>Uống sau khi ăn với 150ml nước lọc</strong></div>
+                  <div className="modal-info-item"><span>{tc.dosageLabel1 || 'Người lớn:'}</span> <strong>{tc.dosageVal1 || '1-2 viên / lần, mỗi 4-6 giờ (Tối đa 8 viên/ngày)'}</strong></div>
+                  <div className="modal-info-item"><span>{tc.dosageLabel2 || 'Trẻ em (7-12 tuổi):'}</span> <strong>{tc.dosageVal2 || '1/2 - 1 viên / lần (Theo chỉ định bác sĩ)'}</strong></div>
+                  <div className="modal-info-item"><span>{tc.dosageLabel3 || 'Cách dùng:'}</span> <strong>{tc.dosageVal3 || 'Uống sau khi ăn với 150ml nước lọc'}</strong></div>
                 </div>
               )}
               {activeModal === 'caution' && (
                 <div className="modal-info-list">
-                  <div className="modal-info-item"><span>Chống chỉ định:</span> <strong>Mẫn cảm với paracetamol, suy gan nặng</strong></div>
-                  <div className="modal-info-item"><span>Bảo quản:</span> <strong>Khu vực khô ráo, dưới 30°C, tránh ánh sáng</strong></div>
+                  <div className="modal-info-item"><span>{tc.cautionLabel1 || 'Chống chỉ định:'}</span> <strong>{tc.cautionVal1 || 'Mẫn cảm với paracetamol, suy gan nặng'}</strong></div>
+                  <div className="modal-info-item"><span>{tc.cautionLabel2 || 'Bảo quản:'}</span> <strong>{tc.cautionVal2 || 'Khu vực khô ráo, dưới 30°C, tránh ánh sáng'}</strong></div>
                 </div>
               )}
               {activeModal === 'cert' && (
