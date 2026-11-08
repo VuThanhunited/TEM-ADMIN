@@ -2611,11 +2611,13 @@ export default function ProductInfo() {
               },
               {
                 heading: tc.usageSec2Heading_vi,
+                body: tc.usageSec2Body_vi,
                 bullets: splitBullets(tc.usageSec2Bullets_vi)
               },
               {
                 heading: tc.usageSec3Heading_vi,
-                body: tc.usageSec3Body_vi
+                body: tc.usageSec3Body_vi,
+                bullets: splitBullets(tc.usageSec3Bullets_vi)
               }
             ]
           },
@@ -2626,14 +2628,17 @@ export default function ProductInfo() {
             sections: [
               {
                 heading: tc.soilSec1Heading_vi,
-                body: tc.soilSec1Body_vi
+                body: tc.soilSec1Body_vi,
+                bullets: splitBullets(tc.soilSec1Bullets_vi)
               },
               {
                 heading: tc.soilSec2Heading_vi,
-                body: tc.soilSec2Body_vi
+                body: tc.soilSec2Body_vi,
+                bullets: splitBullets(tc.soilSec2Bullets_vi)
               },
               {
                 heading: tc.soilSec3Heading_vi,
+                body: tc.soilSec3Body_vi,
                 bullets: splitBullets(tc.soilSec3Bullets_vi)
               }
             ]
@@ -2645,14 +2650,17 @@ export default function ProductInfo() {
             sections: [
               {
                 heading: tc.beeSec1Heading_vi,
-                body: tc.beeSec1Body_vi
+                body: tc.beeSec1Body_vi,
+                bullets: splitBullets(tc.beeSec1Bullets_vi)
               },
               {
                 heading: tc.beeSec2Heading_vi,
-                body: tc.beeSec2Body_vi
+                body: tc.beeSec2Body_vi,
+                bullets: splitBullets(tc.beeSec2Bullets_vi)
               },
               {
                 heading: tc.beeSec3Heading_vi,
+                body: tc.beeSec3Body_vi,
                 bullets: splitBullets(tc.beeSec3Bullets_vi)
               }
             ]
@@ -2701,122 +2709,161 @@ export default function ProductInfo() {
         },
         articles: {
           intro: {
-            title: 'ABOUT HOANG BACH WILD MINT FLOWER HONEY',
-            subtitle: 'Precious Highland Nectar from the Dong Van Karst Plateau UNESCO Global Geopark',
-            lead: 'Hoang Bach Mint Flower Honey is a renowned highland specialty harvested 100% naturally from wild purple mint blossoms thriving at altitudes of 1,000m – 1,600m across the rocky mountains of Ha Giang from late autumn to early winter (October to January).',
+            title: 'INTRODUCTION TO MEO VAC – DONG VAN MINT FLOWER HONEY',
+            subtitle: 'Essence of the Ancient Karst Plateau – Where Earth and Sky Nurture Wild Mint Blossoms',
+            lead: 'Amidst the majestic highlands of Vietnam’s northernmost frontier, Meo Vac – Dong Van (part of the Dong Van Karst Plateau UNESCO Global Geopark) stands as a remarkable natural heritage. Meo Vac – Dong Van Mint Flower Honey is the crystallization of wild mint blossoms, ancient limestone karst ecology, and traditional native beekeeping.',
             sections: [
               {
-                heading: '1. 100% Pure Highland Origin',
-                body: 'Wild highland mint grows naturally along jagged limestone cliffs. Blooming only once a year for under three months, its nectar is gathered by indigenous honeybees to create a signature lemon-yellow honey with a delicate olive-green hue, rich viscosity, and a refreshing herbal aroma.'
+                heading: '1. Essence of the Ancient Karst & Purple Mint Blossom Season',
+                body: 'Over millions of years of geological tectonic evolution, ancient limestone strata formed rugged mountain ranges, sharp karst pinnacles, and hidden valleys at common altitudes of 1,000–1,600 m. In this unique environment, wild mint grows seasonally along rocky slopes. From late autumn to early winter (October to December), purple mint flowers bloom with a gentle fragrance, attracting indigenous honeybees.'
               },
               {
-                heading: '2. Artisanal Harvesting & Strict Quality Control',
-                body: 'Hoang Bach partners directly with traditional beekeeping cooperatives across Dong Van, Meo Vac, Lung Cu, and Yen Minh. Honeycombs are extracted only when at least 90% naturally capped with beeswax, cold-filtered without industrial heat treatment to preserve all natural enzymes, vitamins, and minerals.'
+                heading: '2. Natural Value Chain & Indigenous Beekeeping Heritage',
+                body: 'The value of mint flower honey is formed through an interconnected chain: Geology & Terroir → Wild Mint Flora → Floral Nectar → Native Honeybees (Apis cerana) → Traditional Beekeeping & Harvesting → Mint Honey. Nature provides the floral source, while local highland communities maintain colonies across generations and harvest mature honey under hygienic standards.'
               },
               {
-                heading: '3. Our Quality Commitment',
+                heading: '3. Cultural Heritage, Geographical Indication & Traceability',
                 bullets: [
-                  '100% pure seasonal wild mint blossom honey from the Karst Plateau.',
-                  'Zero added sugar, zero preservatives, and zero artificial flavors or colorings.',
-                  'Full batch-level QR traceability from apiary to jar.',
-                  'Certified food safety and authentic highland specialty standards.'
+                  'The "Meo Vac" Geographical Indication for mint honey was registered in 2013, covering protected areas across Meo Vac, Dong Van, Yen Minh, and Quan Ba.',
+                  'Each honey harvest represents a natural cycle uniting geology, soil, climate, flora, and human craftsmanship.',
+                  'Every product batch maintains verified bee breed records, floral source monitoring, and transparent QR traceability.',
+                  'Supports conservation of wild mint populations, vegetation cover, and sustainable livelihoods for highland ethnic communities.'
                 ]
               }
             ]
           },
           featured: {
-            title: 'SIGNATURE HIGHLIGHTS OF MINT FLOWER HONEY',
-            subtitle: 'Unique sensory and nutritional qualities known as "Liquid Gold" of the Highlands',
-            lead: 'Wild mint honey stands apart thanks to the extraordinary synergy between medicinal mountain mint flowers and indigenous highland honeybees.',
+            title: 'HIGHLIGHTS OF KARST PLATEAU MINT FLOWER HONEY',
+            subtitle: 'Natural lemon-yellow hue, delicate aroma, and authentic highland character',
+            lead: 'From wild mint nectar gathered by indigenous honeybees (Apis cerana) across high-altitude limestone mountains and naturally ripened inside the hive, mint flower honey develops its signature color, aroma, and flavor.',
             sections: [
               {
-                heading: '1. Distinctive Color, Texture & Flavor',
-                body: 'Luminous golden-yellow with a subtle greenish tint and thick, silky consistency. It offers a refined, gentle sweetness on the palate followed by a cool, soothing floral aftertaste without any harsh throat burn.'
+                heading: '1. Natural Color, Texture & Sensory Profile',
+                body: 'Meo Vac – Dong Van mint flower honey is characterized by a natural lemon-yellow color, a thick liquid consistency, or natural crystallization depending on temperature. It carries a distinctive floral aroma linked to wild mint blossoms and a pleasant sweet taste—entirely natural without any added mint essential oils or artificial flavorings.'
               },
               {
-                heading: '2. Wellness & Nutritional Benefits',
+                heading: '2. Signature Values of the Highland Specialty',
                 bullets: [
-                  'Soothes sore throats, relieves coughs, and supports respiratory health during cold seasons.',
-                  'Boosts natural immunity with abundant amino acids, live enzymes (Diastase, Invertase), B-complex vitamins, Vitamin C, and trace minerals (Calcium, Iron, Zinc, Magnesium).',
-                  'Supports healthy digestion, calms the stomach lining, and promotes restful sleep.',
-                  'Rich in natural antioxidants that nourish skin vitality from within.'
+                  'Distinctive Geographical Origin: Formed within the UNESCO Dong Van Karst Plateau Global Geopark at typical elevations of 1,000–1,600 m.',
+                  'Seasonal Blossom Rarity: Harvested during the main wild mint blooming season from October to December each year.',
+                  'Native Bees & Traditional Craft: Combines resilient karst flora with multi-generational beekeeping experience of local communities.',
+                  'Natural Nutritional Energy: Composed primarily of natural fructose and glucose (~21 kcal per teaspoon), providing energy and natural flavor for food and beverages.'
                 ]
               },
               {
-                heading: '3. Authenticity Benchmark',
-                body: 'Naturally low moisture content (< 20%) ensures long-lasting freshness, vibrant color, and stable herbal aroma without fermentation when stored properly.'
+                heading: '3. Quality Factors & Scientific Understanding',
+                body: 'Actual color and state may vary naturally between batches depending on floral sources, weather, harvest timing, honey maturity, and storage conditions. Natural crystallization is a normal physical property of glucose in pure honey and should not be used alone to judge authenticity.'
               }
             ]
           },
           usage: {
-            title: 'HOW TO USE & STORE PROPERLY',
-            subtitle: 'Maximize the natural bio-enzymes and herbal nutrients in every spoonful',
-            lead: 'Using wild mint honey at the right temperature and time of day ensures optimal absorption of its active enzymes and botanical compounds.',
+            title: 'EFFECTIVE WAYS TO USE MINT FLOWER HONEY',
+            subtitle: 'Usage guide for Meo Vac – Dong Van Mint Flower Honey',
+            lead: 'Mint flower honey contains mainly fructose and glucose, providing energy and natural flavor for food and drinks. For optimal use, pay attention to serving size, preparation, timing, and health conditions. Honey is a food product, not a medicine.',
             sections: [
               {
-                heading: '1. Daily Recommended Usage',
+                heading: '1. Recommended Ways to Enjoy Honey',
                 bullets: [
-                  'Morning Wellness Drink: Mix 1–2 teaspoons (10–15ml) of mint honey into 150–200ml of warm water (ideal temperature 40°C – 50°C; avoid boiling water above 60°C to protect live enzymes). Drink 20–30 minutes before breakfast.',
-                  'Throat & Cough Relief: Take 1 teaspoon of pure honey directly or steam-infuse with kumquat, lemon, or fresh ginger 2–3 times daily.',
-                  'Culinary & Herbal Pairing: Stir into chamomile tea, herbal infusions, saffron water, fresh citrus juice, or drizzle over yogurt, toast, and fruit salads.'
+                  'Mix with Warm Water: Dissolve 1–2 teaspoons of honey (about 7–14 g) in 150–200 ml of warm water and stir well. Enjoy in the morning or during the day.',
+                  'Combine with Lemon: Mix 1 teaspoon of honey with 150–200 ml of warm water and add 1–2 slices of lemon for a soothing drink. Those with acid reflux should moderate lemon intake.',
+                  'Combine with Ginger: Steep a few slices of fresh ginger in hot water, let it cool slightly, then stir in 1 teaspoon of honey to taste.',
+                  'Pair with Food: Drizzle 1 teaspoon of honey over unsweetened yogurt, oatmeal, toast, or fresh fruit (count toward your daily sugar intake).',
+                  'Enjoy Pure: Savour a small spoonful directly to experience its signature aroma and aftertaste. For adults and children aged 1 year and older, honey can help soothe cold-related coughs.'
                 ]
               },
               {
-                heading: '2. Suitable Users & Precautions',
+                heading: '2. Suggested Serving Size & Timing',
+                body: 'One teaspoon of honey contains about 6 g of sugar and 21 kcal (counted as free sugars under nutritional guidelines). It can be consumed at any suitable time of day:',
                 bullets: [
-                  'Ideal for adults, seniors, individuals recovering from fatigue, and children over 1 year old.',
-                  'Note: Do not feed honey to infants under 12 months of age.',
-                  'Use clean wooden, ceramic, or food-grade plastic spoons rather than leaving metal spoons submerged.'
+                  'Healthy Adults: 1–2 teaspoons per serving; balance with total daily sugar intake.',
+                  'Active Individuals: Use a small amount as a convenient carbohydrate source during snacks.',
+                  'Seniors: Use moderately according to nutritional needs and health status.',
+                  'Children (1 year and older): Use small amounts while limiting added sugars.',
+                  'Infants under 12 months: Strictly do not feed honey.'
                 ]
               },
               {
-                heading: '3. Storage Instructions',
-                body: 'Keep the lid tightly sealed after each use. Store in a cool, dry place at room temperature (20°C – 28°C) away from direct sunlight. Do not refrigerate, as cold temperatures accelerate natural glucose crystallization.'
+                heading: '3. Important Precautions & Storage (WHO & CDC Guidelines)',
+                body: 'To preserve natural aroma and ensure safe consumption:',
+                bullets: [
+                  'Do not give honey (even diluted) to infants under 12 months of age due to the risk of infant botulism.',
+                  'People with diabetes should count honey toward total carbohydrates and monitor blood glucose.',
+                  'Individuals with known allergies to honey or bee products should exercise caution.',
+                  'Mix with comfortably warm water; avoid prolonged boiling to preserve natural floral aroma.',
+                  'Storage: Keep the lid tightly closed in a cool, dry place away from direct sunlight and moisture.',
+                  'Natural crystallization is not an indicator of adulteration. This product is not a medicine and does not replace medical treatment.'
+                ]
               }
             ]
           },
           soil: {
-            title: 'TERROIR & CLIMATE OF THE KARST PLATEAU',
-            subtitle: 'Hundreds of millions of years of limestone geology shaping a rare botanical ecosystem',
-            lead: 'The Dong Van Karst Plateau (spanning Quan Ba, Yen Minh, Dong Van, and Meo Vac) is a UNESCO Global Geopark characterized by over 80% rugged limestone peaks rising 1,000m – 1,600m above sea level.',
+            title: 'TERROIR & NATURAL CONDITIONS OF THE KARST PLATEAU',
+            subtitle: 'Dong Van – Meo Vac | Ancient Limestone Heritage Nurturing Wild Mint Seasons',
+            lead: 'Located in Vietnam’s northernmost frontier (formerly Ha Giang Province, now Tuyen Quang Province following the 2025 administrative arrangement), Meo Vac and Dong Van form the core of the UNESCO Dong Van Karst Plateau Global Geopark alongside Quan Ba and Yen Minh, featuring ancient limestone karst terrain at 1,000–1,600 m.',
             sections: [
               {
-                heading: '1. Mineral-Rich Limestone Karst',
-                body: 'Organic humus pockets nestled within ancient limestone crevices are naturally enriched with Calcium, Magnesium, Potassium, and Silica. Wild mint roots penetrate deep into the rock fissures, producing blossoms with exceptionally concentrated essential oils and nectar.'
-              },
-              {
-                heading: '2. High-Altitude Microclimate',
-                body: 'During the blooming season (October to December), crisp golden sunshine by day and misty mountain nights (8°C – 15°C) stimulate the wild mint plants to secrete dense, aromatic nectar rich in natural sugars and trace minerals.'
-              },
-              {
-                heading: '3. Untouched Pristine Environment',
+                heading: '1. Ancient Limestone Geology & Diverse Soil Environments',
+                body: 'Formed through long-term carbonate sedimentation, tectonic uplift, and karst weathering, the terrain is deeply dissected by steep slopes, ravines, and jagged limestone. Soil does not form continuous plains but accumulates in distinct micro-environments:',
                 bullets: [
-                  'Completely isolated from industrial zones, urban pollution, and agricultural chemicals.',
-                  '100% wild-growing mint flora with zero chemical fertilizers or pesticides.',
-                  'Nourished solely by pure mountain mist and natural rainfall.'
+                  'Soil on Limestone Bedrock: Influenced by parent carbonate rock weathering; soil depth and chemical properties vary by location.',
+                  'Soil in Rock Crevices & Pockets: Small pockets accumulating fine soil, decaying leaves, and moisture that support herbaceous root systems.',
+                  'Soil on Steep Slopes: Thin soil layers where rainwater drains rapidly through rock fissures or surface runoff.',
+                  'Valley & Shrubland Soil: Thicker soil layers enriched with organic matter and humus from plant roots and leaf litter.'
+                ]
+              },
+              {
+                heading: '2. High-Mountain Climate, Water Resources & Wild Mint Blooming Cycle',
+                body: 'The mountain monsoon climate varies distinctly by altitude and slope orientation. Rainwater percolates through karst fissures into underground streams. Wild mint thrives on well-drained rocky slopes and open habitats following an annual cycle:',
+                bullets: [
+                  'July – September (Warm Rainy Season): Following summer rains, wild mint develops stems, leaves, and biomass.',
+                  'October (Early Autumn – Winter): As temperatures drop, mint populations form buds and begin early blooming.',
+                  'November – December (Peak Season): Main blooming and honey harvesting period across highland foraging zones.',
+                  'Post-Bloom Winter: Mint blossoms wane while beekeepers care for colonies through the cold, misty winter.'
+                ]
+              },
+              {
+                heading: '3. Meo Vac – Dong Van Foraging Zones & Geographical Indication',
+                body: 'Thin soil pockets in limestone crevices, natural drainage, and highland climate shape the habitat of wild mint. The "Meo Vac" Geographical Indication (registered in 2013) encompasses four highland areas—Meo Vac, Dong Van, Yen Minh, and Quan Ba:',
+                bullets: [
+                  'Meo Vac Zone: Rugged limestone peaks, steep slopes, and deep canyons closely associated with the Meo Vac Geographical Indication.',
+                  'Dong Van Zone: Karst plateau interspersed with valleys and rocky fields, experiencing distinct cold seasons and abundant mint habitats.',
+                  'Cultural & Ecological Conservation: Preserves traditional H’Mong and local beekeeping livelihoods alongside wild mint biodiversity.'
                 ]
               }
             ]
           },
           bee_breed: {
-            title: 'INDIGENOUS HIGHLAND HONEYBEE BREED',
-            subtitle: 'Resilient native pollinators braving mountain winds and mist',
-            lead: 'Hoang Bach Mint Flower Honey is crafted by native Eastern honeybees (Apis cerana) that have co-evolved for centuries with the steep terrain and cold climate of Vietnam’s northernmost highlands.',
+            title: 'INDIGENOUS HONEYBEE BREED OF THE KARST PLATEAU',
+            subtitle: 'Dong Van – Meo Vac | Native Apis cerana – Living Heritage of the Stone Highland',
+            lead: 'The traditional honeybee breed associated with mint flower honey in Dong Van – Meo Vac is the indigenous Eastern honeybee, Apis cerana (commonly recorded in Meo Vac honey literature as Apis cerana cerana). Local communities, including the H’Mong people, have cared for these bees across generations.',
             sections: [
               {
-                heading: '1. Superior Adaptation of Native Highland Bees',
-                body: 'Smaller, agile, and remarkably cold-hardy compared to imported lowland bees, native highland bees forage actively even in chilly mountain mist. Their slender proboscis easily reaches deep inside tiny wild mint corollas clinging to limestone cliffs.'
-              },
-              {
-                heading: '2. Natural Hive Ripening Process',
-                body: 'Worker bees fly miles across rocky valleys to collect nectar, enriching it with pharyngeal enzymes and fanning their wings tirelessly until moisture drops below 19–20% before sealing the cells with pure white beeswax.'
-              },
-              {
-                heading: '3. Sustainable Traditional Beekeeping',
+                heading: '1. Identification Profile of the Indigenous Honeybee',
+                body: 'Amidst the limestone mountains of Meo Vac – Dong Van, native honeybees exhibit remarkable adaptation to high-altitude environments and seasonal flora:',
                 bullets: [
-                  'Natural wooden hives placed directly along wild mint valleys and karst slopes.',
-                  'Strictly no sugar-feeding during the mint blossom harvest season.',
-                  'Zero antibiotics in harvested honey, preserving both native bee health and biodiversity.'
+                  'Common Name: Indigenous honeybee / Native Eastern honeybee (Ong nội).',
+                  'Scientific Name: Apis cerana (frequently documented in the region as Apis cerana cerana).',
+                  'Distribution Area: Meo Vac, Dong Van, and neighboring districts of the Karst Plateau.',
+                  'Natural Habitat: High mountains, limestone karst terrain, and seasonally differentiated highland climate.',
+                  'Primary Nectar Source: Wild mint blossoms during the late autumn to early winter flowering season.',
+                  'Beekeeping Method: Raised in wooden hives and managed using traditional local expertise.'
+                ]
+              },
+              {
+                heading: '2. Characteristics & Traditional Value of Native Bees',
+                body: 'The synergy between native flora, karst plateau environment, and traditional beekeeping has built the reputation of Meo Vac – Dong Van mint honey:',
+                bullets: [
+                  'Environmental Adaptation: Well adapted to local highland weather; foraging activity and colony strength depend on seasonal conditions and care.',
+                  'Natural Flora Foraging: During the mint blossom season, colonies actively gather nectar from wild mint and companion mountain flora within their flight range.',
+                  'Traditional Livelihood Heritage: Beekeeping is a time-honored livelihood on the Karst Plateau that shapes the identity of highland mint honey.'
+                ]
+              },
+              {
+                heading: '3. Connection to Mint Honey Quality & Traceability Notes',
+                body: 'Through natural collection, accumulation, and enzymatic transformation inside the hive, wild mint nectar becomes honey with a distinctive lemon-yellow hue and floral aroma.',
+                bullets: [
+                  'Holistic Quality Factors: Beyond bee breed, final honey quality depends on weather, harvest timing, honey maturity, hygiene, and proper storage.',
+                  'Breed Verification & Traceability: Producers verify actual bee breeds and maintain transparent batch-level traceability records.'
                 ]
               }
             ]
@@ -2865,122 +2912,161 @@ export default function ProductInfo() {
         },
         articles: {
           intro: {
-            title: '黄百 (HOÀNG BÁCH) 野生薄荷花蜂蜜介绍',
-            subtitle: '源自河江同文喀斯特高原世界地质公园的珍贵高山蜜源',
-            lead: '黄百薄荷花蜂蜜是采集自海拔 1,000 米至 1,600 米高寒石山野生紫薄荷花海的纯天然高原特产，每年仅在深秋至初冬（农历十月至十二月）盛花期采收一季。',
+            title: '苗旺 – 同文野生薄荷花蜂蜜介绍',
+            subtitle: '古石山高原之精华 —— 天地孕育的野生薄荷花季',
+            lead: '在越南极北边疆雄伟的高山之间，苗旺 – 同文（隶属联合国教科文组织同文喀斯特高原世界地质公园）是一片独特的自然遗产地。苗旺 – 同文薄荷花蜂蜜是天然野生薄荷花源、喀斯特石山生态环境与本土传统养蜂技艺的结晶。',
             sections: [
               {
-                heading: '1. 100% 纯天然高山野生蜜源',
-                body: '高原野生薄荷自然生长在险峻的石灰岩峰丛裂缝间，一年仅开一次花。当地本土中华蜜蜂采集薄荷花蜜酿造出的蜂蜜呈独特的柠檬金黄带微绿光泽，蜜质浓稠醇厚，散发清新淡雅的草本薄荷花香。'
+                heading: '1. 古石山精华与紫薄荷花季',
+                body: '历经数百万年的地质构造演变，古老石灰岩层形成了连绵峰丛、险峻猫耳石壁与幽深山谷（常见海拔 1,000–1,600 米）。野生薄荷顺应季节生长在石山坡地与岩缝间。每年深秋转初冬（10 月至 12 月），紫色薄荷花盛开并散发淡雅清香，吸引本土蜜蜂前来采蜜。'
               },
               {
-                heading: '2. 传统自然成熟采割与严格品控',
-                body: '黄百与同文、苗旺、龙鼓、安明等地资深养蜂合作社紧密合作。坚持只采割自然封盖率达 90% 以上的成熟蜜脾，采用传统物理静置过滤，不经工业高温浓缩，完整保留天然活性酶、维生素与矿物质。'
+                heading: '2. 自然价值链与本土养蜂传统',
+                body: '薄荷花蜂蜜的价值源自紧密相连的自然链条：地质与风土 → 野生薄荷植物 → 花蜜源 → 本土中华蜜蜂（Apis cerana）→ 传统养蜂与采收技艺 → 薄荷花蜂蜜。大自然孕育蜜源，当地世代养蜂人精心护蜂，并在蜂蜜成熟时按卫生标准采收保存。'
               },
               {
-                heading: '3. 黄百品质承诺',
+                heading: '3. 文化价值、地理标志与防伪溯源',
                 bullets: [
-                  '100% 喀斯特石山高原当季纯正野生薄荷花蜜。',
-                  '绝不添加白糖、防腐剂、人工香精或色素。',
-                  '一物一码二维码防伪溯源，批次信息透明可查。',
-                  '符合食品安全卫生标准及高山特色农产品认证。'
+                  '“苗旺（Mèo Vạc）”蜂蜜地理标志于 2013 年注册保护，涵盖苗旺、同文、安明与管簿四大产区。',
+                  '每一季蜂蜜都是地质、土壤、气候、植物与人文传统和谐共生的自然结晶。',
+                  '产品严格核实蜜蜂品种与花源产区，并通过二维码建立透明的批次溯源档案。',
+                  '致力于保护野生薄荷群落与高原植被生态，支持高原多民族社区可持续发展。'
                 ]
               }
             ]
           },
           featured: {
-            title: '薄荷花蜂蜜的独特品质',
-            subtitle: '色、香、味俱佳的高原“液体黄金”',
-            lead: '凭借高山药用野生薄荷与本土耐寒蜜蜂的完美结合，薄荷花蜜展现出与众不同的感官与营养价值。',
+            title: '喀斯特高原薄荷花蜂蜜的独特品质',
+            subtitle: '天然柠檬黄色泽、清雅花香与古石山产区特色',
+            lead: '本土中华蜜蜂（Apis cerana）在高山自然环境中采集野生薄荷花蜜，并在蜂巢内自然转化酿熟，赋予薄荷花蜂蜜独特的色泽、香气与风味。',
             sections: [
               {
-                heading: '1. 独特外观与清润口感',
-                body: '色泽金黄透亮并带有柔和的橄榄绿光晕，质地绵密顺滑。入口清甜细腻而不腻喉，回味带有淡淡的野生薄荷清凉花香。'
+                heading: '1. 天然色泽、状态与感官风味',
+                body: '苗旺 – 同文薄荷花蜂蜜通常呈天然柠檬黄色，质地浓稠或随温度变化自然结晶。蜂蜜具有源于野生薄荷花的清雅香气与柔和甜润口感。这些均为天然感官特征，绝未添加薄荷精油或人工香精。'
               },
               {
-                heading: '2. 养生价值与营养成分',
+                heading: '2. 高原特产的核心价值',
                 bullets: [
-                  '润肺止咳、舒缓咽喉不适，特别适合换季时节呵护呼吸道健康。',
-                  '富含多种氨基酸、天然活性酶（淀粉酶、转化酶）、B族维生素、维生素C及钙、铁、锌、镁等微量元素，增强机体免疫力。',
-                  '温和调理肠胃消化系统，舒缓神经并帮助改善睡眠质量。',
-                  '富含天然抗氧化成分，由内而外滋养肌肤。'
+                  '独特地理产区：产自海拔 1,000–1,600 米的联合国教科文组织同文喀斯特高原世界地质公园。',
+                  '珍贵季节性花期：每年仅在深秋至初冬（10 月至 12 月）野生薄荷盛花期采收。',
+                  '本土蜂种与传统技艺：石山植物的超强适应力结合当地居民世代传承的养蜂经验。',
+                  '天然营养能量：主要含天然果糖与葡萄糖（每茶匙约 21 千卡），为日常饮食补充能量与天然风味。'
                 ]
               },
               {
-                heading: '3. 纯正薄荷蜜鉴别特征',
-                body: '天然波美度高、水分含量低（< 20%），久置依然保持清雅花香与鲜亮色泽，正确保存下不发酸、不胀气。'
+                heading: '3. 品质影响因素与科学鉴别',
+                body: '不同批次蜂蜜的实际色泽与状态会因蜜源植物、天气、采收时间、成熟度及保存条件而自然有所差异。天然结晶属于纯正蜂蜜中葡萄糖的正常物理现象，不应仅凭单一气味、颜色或结晶状态判断真伪。'
               }
             ]
           },
           usage: {
-            title: '科学食用方法与保存指南',
-            subtitle: '充分锁住每一滴薄荷花蜜的天然活性营养',
-            lead: '掌握正确的冲泡水温与饮用时间，有助于人体充分吸收蜂蜜中的生物活性酶与草本精华。',
+            title: '薄荷花蜂蜜科学食用指南',
+            subtitle: '苗旺 – 同文薄荷花蜂蜜使用与保存说明',
+            lead: '薄荷花蜂蜜主要含天然果糖和葡萄糖，可补充能量并为食物增添风味。合理食用需注意用量、冲泡方式、时间及个人健康状况。蜂蜜属于食品，并非治疗疾病的药物。',
             sections: [
               {
-                heading: '1. 日常养生推荐吃法',
+                heading: '1. 推荐食用方法',
                 bullets: [
-                  '晨起温水冲饮：取 1–2 茶匙（10–15ml）薄荷蜂蜜，加入 150–200ml 温开水（适宜水温 40°C – 50°C，切勿使用超过 60°C 的沸水以免破坏活性酶），早餐前 20–30 分钟饮用最佳。',
-                  '润喉护嗓：直接含服一勺纯蜜，或搭配金桔、柠檬、鲜姜片隔水炖服，每日 2–3 次。',
-                  '花草茶与美食搭配：可调入菊花茶、草本茶、藏红花水、鲜榨果汁，或搭配酸奶、吐司面包及水果沙拉。'
+                  '温水冲饮：取 1–2 茶匙蜂蜜（约 7–14 克）加入 150–200 毫升温水中搅拌均匀，可在早晨或日间饮用。',
+                  '搭配柠檬：将 1 茶匙蜂蜜用 150–200 毫升温水冲开，加入 1–2 片柠檬，口感清新并有助于舒缓咽喉（胃酸反流人群请酌情减少柠檬用量）。',
+                  '搭配鲜姜：将几片鲜姜用热水浸泡，待水温稍降后加入 1 茶匙蜂蜜，可根据口味调整姜量。',
+                  '搭配美食：在无糖酸奶、燕麦片、吐司面包或水果上淋一茶匙蜂蜜（需计入每日总糖分摄入量）。',
+                  '直接品尝：直接细品一小勺纯蜜，感受独特花香与回味；1 周岁以上人群食用有助于舒缓感冒引起的咳嗽（不能替代必要的医疗救治）。'
                 ]
               },
               {
-                heading: '2. 适用人群与注意事项',
+                heading: '2. 建议用量与食用时间',
+                body: '一茶匙蜂蜜约含 6 克糖与 21 千卡热量（按营养指南计入游离糖）。可在合适时间食用，无需固定饮用时点：',
                 bullets: [
-                  '适合成年人、中老年人、体虚疲劳人群及 1 周岁以上儿童。',
-                  '注意：未满 12 个月的婴幼儿不宜食用蜂蜜。',
-                  '建议使用干净的木勺、瓷勺或食品级塑料勺取蜜，避免金属勺长时间浸泡在蜜罐中。'
+                  '健康成年人：每次 1–2 茶匙，注意控制全天总糖分摄入。',
+                  '运动人群：可在加餐时少量食用，作为碳水化合物能量补充。',
+                  '中老年人：根据营养需求与身体状况适量食用。',
+                  '1 周岁以上儿童：少量食用，控制添加糖摄入。',
+                  '未满 12 个月婴幼儿：绝对禁止食用蜂蜜。'
                 ]
               },
               {
-                heading: '3. 保存方法',
-                body: '每次食用后请拧紧瓶盖，置于阴凉干燥通风处（室温 20°C – 28°C），避免阳光直射。无需放入冰箱冷藏，低温环境容易导致天然葡萄糖结晶。'
+                heading: '3. 重要注意事项与保存方法（参考 WHO 与 CDC 指南）',
+                body: '为充分品尝天然风味并保障健康安全，请注意：',
+                bullets: [
+                  '严禁给未满 12 个月的婴幼儿食用任何蜂蜜（包括稀释蜂蜜水），以防肉毒杆菌中毒风险。',
+                  '糖尿病患者需将蜂蜜计入总碳水化合物并监测血糖。',
+                  '对蜂蜜或蜂产品有过敏史的人群请谨慎食用。',
+                  '使用适口温水冲泡，避免长时间高温煮沸以保留天然花香。',
+                  '保存方法：使用后拧紧瓶盖，置于阴凉干燥通风处，避免阳光直射及水分进入瓶内。',
+                  '蜂蜜自然结晶并非判断真伪的依据。本品并非药物，不能替代药物治疗。'
+                ]
               }
             ]
           },
           soil: {
-            title: '喀斯特石山高原的风土与气候',
-            subtitle: '数亿年石灰岩地质孕育出的珍稀高山蜜源生态',
-            lead: '同文喀斯特高原（涵盖管簿、安明、同文、苗旺四县）被联合国教科文组织列为世界地质公园，超过 80% 的地表为海拔 1,000 米至 1,600 米的陡峭石灰岩山峰。',
+            title: '喀斯特高原的风土与自然环境',
+            subtitle: '同文 – 苗旺 | 孕育野生薄荷花季的古老石山遗产',
+            lead: '苗旺与同文位于越南极北端（原属河江省，2025 年行政区划调整后隶属宣光省），与管簿、安明共同组成联合国教科文组织同文喀斯特高原世界地质公园，以海拔 1,000–1,600 米的古老石灰岩喀斯特地貌著称。',
             sections: [
               {
-                heading: '1. 富含矿物质的石灰岩风土',
-                body: '历经数亿年地质演变，石缝中沉积的腐殖土富含钙、镁、钾、硅等天然矿物质。野生薄荷根系深扎于岩石缝隙中汲取养分与高山晨露，使花瓣精油与花蜜浓度远高于平原地区。'
-              },
-              {
-                heading: '2. 昼夜温差造就醇厚蜜质',
-                body: '每年花期（农历十月至十二月）高原白天阳光明媚干燥，夜间云雾缭绕、气温降至 8°C – 15°C。巨大的昼夜温差促使野生薄荷分泌出高浓度、富含芳香精油与天然糖分的优质花蜜。'
-              },
-              {
-                heading: '3. 零污染原生生态环境',
+                heading: '1. 古石灰岩地质与多样化土壤微环境',
+                body: '历经漫长的碳酸盐沉积、构造抬升与喀斯特风化，地表被陡坡、深谷与猫耳石强烈切割。土壤并非连续平原，而是零散分布于特定的微生境中：',
                 bullets: [
-                  '远离工业区、城市粉尘与农业化学品污染。',
-                  '野生薄荷自然生长于石山坡地，零化肥、零农药。',
-                  '高山甘露滋养，确保每一滴蜂蜜纯净无暇。'
+                  '石灰岩基岩土壤：受母岩风化物质影响，土层厚度与化学特性随位置而变化。',
+                  '岩缝与石穴土壤：面积虽小但积聚了细土、腐叶与水分，为草本植物根系提供良好的保水微生境。',
+                  '陡坡土壤：土层较薄、坡度大，雨水易通过岩缝快速下渗或沿坡面流失。',
+                  '山谷与灌丛草地土壤：土层相对较厚，由植物根系与落叶不断补充有机质和腐殖质。'
+                ]
+              },
+              {
+                heading: '2. 高山气候、水源与野生薄荷花期规律',
+                body: '高山季风气候随海拔与坡向明显分化。喀斯特地貌中雨水多渗入地下暗河。野生薄荷在土质疏松、排水良好且开阔的石山坡地上按年度周期生长：',
+                bullets: [
+                  '7 月 – 9 月（温暖雨季）：雨水充沛，野生薄荷快速生长茎叶并积累生物量。',
+                  '10 月（深秋初冬）：气温逐渐下降，薄荷群落开始孕蕾并进入初花期。',
+                  '11 月 – 12 月（盛花主产期）：紫色薄荷花盛开，进入各大蜜源区的主要采蜜期。',
+                  '花期结束后：薄荷花源减少，养蜂人继续照料蜂群越冬并管理饲料。'
+                ]
+              },
+              {
+                heading: '3. 苗旺 – 同文产区特征与地理标志保护',
+                body: '石缝薄土、良好排水性与高寒气候共同塑造了野生薄荷的生长环境。“苗旺”蜂蜜地理标志（2013 年注册）保护范围涵盖苗旺、同文、安明与管簿四地：',
+                bullets: [
+                  '苗旺产区：石山险峻、陡坡深谷众多，土壤零星分布于岩缝山脚，与苗旺地理标志核心区紧密相连。',
+                  '同文产区：喀斯特高原与山谷、石地交错，冬季寒冷明显，是薄荷花蜜源的重要组成部分。',
+                  '文化与生态保育：传承赫蒙族等当地居民的石山耕作与传统养蜂智慧，注重保护野生薄荷自然群落。'
                 ]
               }
             ]
           },
           bee_breed: {
-            title: '高原本土中华蜜蜂品种',
-            subtitle: '不畏寒风雾露、穿梭于悬崖石缝间的勤劳采蜜者',
-            lead: '黄百薄荷花蜂蜜由世居极北高寒石山区的本土中华蜜蜂（Apis cerana）采集酿造，千百年来已完美适应高原险峻地形与寒冷气候。',
+            title: '喀斯特高原本土蜜蜂品种',
+            subtitle: '同文 – 苗旺 | 本土中华蜜蜂 Apis cerana —— 古石山的活态遗产',
+            lead: '同文 – 苗旺地区与薄荷花蜂蜜采酿紧密相关的传统蜂种为本土东方蜜蜂（Apis cerana，在苗旺蜜区多篇文献中记录为中华蜜蜂亚种 Apis cerana cerana）。当地赫蒙族等世代居民长期饲养并悉心照料这一本土蜂种。',
             sections: [
               {
-                heading: '1. 高原本土蜜蜂的生物学优势',
-                body: '与外来引进蜂种相比，喀斯特高原本土蜜蜂体型精巧、双翼强健、飞行敏捷，具备极强的耐寒与抗雾能力。其细长的吻部能轻松深入紧贴岩壁生长的微小薄荷花萼中采撷精华。'
-              },
-              {
-                heading: '2. 蜂巢内的自然酿熟过程',
-                body: '成千上万只工蜂每日飞越数公里石山采集花蜜，回巢后通过口口相传混入咽下腺天然活性酶，并昼夜不停振翅扇风使水分自然蒸发。当水分降至 19–20% 以下时，蜜蜂才用洁白蜂蜡将蜜脾完全封盖。'
-              },
-              {
-                heading: '3. 可持续的传统生态养蜂方式',
+                heading: '1. 本土蜜蜂品种识别信息',
+                body: '在苗旺 – 同文雄伟的石灰岩群山之间，本土蜜蜂高度适应高山环境并随季节采集天然花源：',
                 bullets: [
-                  '采用天然原木蜂箱，沿野生薄荷最繁茂的石山谷地分布式摆放。',
-                  '薄荷花采蜜期绝不饲喂白糖。',
-                  '商品蜜零抗生素残留，守护本土蜂群与高原自然生态平衡。'
+                  '常用名称：本土蜜蜂、东方蜜蜂（Ong nội）。',
+                  '学名：Apis cerana（产区文献常记录为 Apis cerana cerana）。',
+                  '分布区域：苗旺、同文及喀斯特高原其他地区。',
+                  '生存环境：高山、石灰岩地貌、季节分明的高寒气候。',
+                  '主要蜜源：深秋转初冬盛开的野生薄荷花。',
+                  '养殖方式：木桶/木箱传统饲养，结合当地世代养蜂经验管理。'
+                ]
+              },
+              {
+                heading: '2. 高原本土蜜蜂的特性与传统价值',
+                body: '本土蜜源、喀斯特高原自然条件与传统养蜂经验的结合，共同铸就了苗旺 – 同文薄荷花蜂蜜的声誉：',
+                bullets: [
+                  '环境适应力：高度适应高原当地气候；采蜜活动与蜂群繁衍受季节、病害防控与管护方式影响。',
+                  '采集天然花源：薄荷花盛开期，蜂群在飞行范围内勤勉采集野生薄荷及伴生山花花蜜。',
+                  '传统生计价值：养蜂业是与喀斯特高原居民世代相伴的重要生计，塑造了薄荷花蜂蜜的独特品格。'
+                ]
+              },
+              {
+                heading: '3. 与薄荷花蜂蜜品质的关系及溯源说明',
+                body: '野生薄荷花蜜经蜜蜂采集、积累并在蜂巢内自然转化，形成了薄荷花蜂蜜标志性的柠檬黄色泽、清香与风味。',
+                bullets: [
+                  '综合品质因素：除蜜蜂品种外，蜂蜜品质还取决于天气、采收时间、蜂蜜成熟度、卫生条件及储存方式。',
+                  '品种核实与溯源档案：生产单位严格核实实际饲养蜂种，并为每一批次产品建立规范的溯源档案。'
                 ]
               }
             ]
@@ -3685,7 +3771,7 @@ export default function ProductInfo() {
                       <div key={idx} className="honey-article-section-card">
                         <h3 className="honey-article-sec-heading">{sec.heading}</h3>
                         {sec.body && <p className="honey-article-paragraph">{sec.body}</p>}
-                        {sec.bullets && (
+                        {sec.bullets && sec.bullets.length > 0 && (
                           <ul className="honey-article-bullet-list">
                             {sec.bullets.map((b, bIdx) => (
                               <li key={bIdx}>
