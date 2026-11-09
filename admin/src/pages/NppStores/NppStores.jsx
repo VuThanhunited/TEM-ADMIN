@@ -113,14 +113,24 @@ export default function NppStores() {
   const [importStoresResult, setImportStoresResult] = useState(null);
   const [importStoresError, setImportStoresError] = useState('');
 
-  // Yêu cầu 4: Modal Import Bảng Excel Phân phối Ma trận (Điểm bán × Sản phẩm × Dải Serial)
+  // Yêu cầu 4: Nhập Serial cho Điểm bán bằng Bảng Excel (Mục 4 trong YEU CAU TRAO DOI.docx)
   const [showImportMatrixModal, setShowImportMatrixModal] = useState(false);
+  const [showInlineMatrixPanel, setShowInlineMatrixPanel] = useState(true);
+  const [importMatrixStoreId, setImportMatrixStoreId] = useState('');
   const [importMatrixFile, setImportMatrixFile] = useState(null);
   const [importMatrixDate, setImportMatrixDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [importingMatrix, setImportingMatrix] = useState(false);
   const [importMatrixResult, setImportMatrixResult] = useState(null);
   const [importMatrixError, setImportMatrixError] = useState('');
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [enterpriseProducts, setEnterpriseProducts] = useState([]);
+
+  useEffect(() => {
+    api.getProducts({ page: 1, limit: 100 }).then((res) => {
+      const list = res?.products || res?.data || [];
+      if (Array.isArray(list)) setEnterpriseProducts(list);
+    }).catch(() => {});
+  }, []);
 
   const loadStores = useCallback(async () => {
     setLoading(true);
@@ -266,27 +276,39 @@ export default function NppStores() {
         return;
       }
 
+      if (type === 'matrix_prefilled' && stores.length > 0) {
+        const storeHeaders = stores.slice(0, 20).map((s) => s.name);
+        const prodNames = enterpriseProducts.length > 0
+          ? enterpriseProducts.map((p) => p.name)
+          : ['Sản phẩm 1', 'Sản phẩm 2', 'Sản phẩm 3'];
+        const wsPrefilledData = [
+          ['Điểm bán --------->', ...storeHeaders],
+          ['Tên sản phẩm', ...storeHeaders.map(() => '')],
+          ...prodNames.map((pName, idx) => [
+            pName,
+            ...storeHeaders.map((_, sIdx) => (idx === 0 && sIdx === 0 ? '00001-000010' : ''))
+          ])
+        ];
+        const wsPrefilled = XLSX.utils.aoa_to_sheet(wsPrefilledData);
+        wsPrefilled['!cols'] = [{ wch: 28 }, ...storeHeaders.map(() => ({ wch: 24 }))];
+        XLSX.utils.book_append_sheet(wb, wsPrefilled, 'Nhap_Serial_Diem_Ban');
+        XLSX.writeFile(wb, 'Mau_Nhap_Serial_Diem_Ban_Hien_Tai.xlsx');
+        return;
+      }
+
+      // Chuẩn Mục 4 trong YEU CAU TRAO DOI.docx (1 Sheet duy nhất đúng cấu trúc khách gửi)
       const wsMatrixData = [
         ['Điểm bán --------->', 'Nhà A', 'Nhà B', 'Nhà C'],
         ['Tên sản phẩm', '', '', ''],
-        ['Sản phẩm 1', '00001-000010', '00011-000020', ''],
-        ['Sản phẩm 2', '00101-000110', '', ''],
+        ['Sản phẩm 1', '00001-000010', '', ''],
+        ['Sản phẩm 2', '00101-001910', '', ''],
         ['Sản phẩm 3', '', '', '']
       ];
       const wsMatrix = XLSX.utils.aoa_to_sheet(wsMatrixData);
       wsMatrix['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 22 }];
-      XLSX.utils.book_append_sheet(wb, wsMatrix, 'Bang_Ma_Tran_Diem_Ban');
+      XLSX.utils.book_append_sheet(wb, wsMatrix, 'Nhap_Serial_Diem_Ban');
 
-      const wsDetailData = [
-        ['STT', 'Tên sản phẩm', 'Mã Serial', 'Điểm bán', 'Địa chỉ điểm bán', 'SĐT điểm bán'],
-        [1, 'Sản phẩm 1', '00001-000010', 'Nhà A', '120 Nguyễn Trãi, Hà Nội', '0912345678'],
-        [2, 'Sản phẩm 1', '00011-000020', 'Nhà B', '45 Hai Bà Trưng, TP.HCM', '0987654321']
-      ];
-      const wsDetail = XLSX.utils.aoa_to_sheet(wsDetailData);
-      wsDetail['!cols'] = [{ wch: 6 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 36 }, { wch: 16 }];
-      XLSX.utils.book_append_sheet(wb, wsDetail, 'Chi_tiet_phan_phoi');
-
-      XLSX.writeFile(wb, 'Mau_Import_Ma_Tran_Diem_Ban_Serial.xlsx');
+      XLSX.writeFile(wb, 'Mau_Nhap_Serial_Cho_Diem_Ban_Muc4.xlsx');
     } catch (err) {
       window.open(api.getRetailStoreTemplateUrl(type), '_blank');
     }
@@ -320,7 +342,7 @@ export default function NppStores() {
   const handleImportMatrixSubmit = async (e) => {
     e.preventDefault();
     if (!importMatrixFile) {
-      setImportMatrixError('Vui lòng chọn file Excel bảng phân phối (Điểm bán × Sản phẩm × Dải Serial).');
+      setImportMatrixError('Vui lòng chọn file Excel nhập Serial cho điểm bán (.xlsx, .xls, .csv).');
       return;
     }
     setImportingMatrix(true);
@@ -333,15 +355,25 @@ export default function NppStores() {
       const res = await api.importDistributionMatrix({
         fileBase64,
         ...(parsedRows ? { rows: parsedRows } : {}),
-        importDate: importDateIso
+        importDate: importDateIso,
+        ...(importMatrixStoreId ? { storeId: importMatrixStoreId } : {})
       });
       setImportMatrixResult(res);
       loadStores(search);
     } catch (err) {
-      setImportMatrixError(err.message || 'Lỗi khi import bảng Excel phân phối');
+      setImportMatrixError(err.message || 'Lỗi khi import bảng Excel nhập Serial cho điểm bán');
     } finally {
       setImportingMatrix(false);
     }
+  };
+
+  const handleOpenImportSerialForStore = (store = null) => {
+    setImportMatrixFile(null);
+    setImportMatrixResult(null);
+    setImportMatrixError('');
+    setImportMatrixDate(new Date().toISOString().slice(0, 10));
+    setImportMatrixStoreId(store?._id || '');
+    setShowImportMatrixModal(true);
   };
 
   const handleExportExcel = async () => {
@@ -382,60 +414,78 @@ export default function NppStores() {
     <div className="distributors-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">
-            <Store size={28} />
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Store size={28} style={{ color: '#4f46e5' }} />
             Quản lý Điểm bán &amp; Thống kê Doanh số
           </h1>
           <p className="page-subtitle">
-            Quản lý các điểm bán địa phương của doanh nghiệp, danh sách Serial đã gán và thống kê Doanh số (Số lượng SP đã gán × Giá 1 sản phẩm) theo Tháng / Quý / Năm
+            Quản lý danh sách Điểm bán, Nhập Serial cho Điểm bán bằng Excel (Mục 4) và thống kê Doanh Thu/Tháng
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
-            className="btn btn-secondary"
-            onClick={handleExportExcel}
-            disabled={exportingExcel}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: '#f59e0b', color: '#fbbf24' }}
-            title="Xuất toàn bộ Danh sách Điểm bán + Bảng Ma trận + Chi tiết Serial ra file Excel"
+            className="btn"
+            onClick={() => handleOpenImportSerialForStore(null)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#059669',
+              color: '#ffffff',
+              fontWeight: 700,
+              boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)'
+            }}
           >
-            <Download size={17} />
-            {exportingExcel ? 'Đang xuất Excel...' : 'Xuất Excel Điểm bán & Phân phối'}
+            <FileSpreadsheet size={18} />
+            Nhập Serial cho Điểm bán (Excel)
           </button>
           <button
             type="button"
-            className="btn btn-secondary"
+            className="btn"
             onClick={() => {
               setImportStoresFile(null);
               setImportStoresResult(null);
               setImportStoresError('');
               setShowImportStoresModal(true);
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: '#3b82f6', color: '#60a5fa' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#eff6ff',
+              border: '1.5px solid #2563eb',
+              color: '#1d4ed8',
+              fontWeight: 700
+            }}
           >
             <Upload size={17} />
             Import DS Điểm bán (Excel)
           </button>
           <button
             type="button"
-            className="btn btn-secondary"
-            onClick={() => {
-              setImportMatrixFile(null);
-              setImportMatrixResult(null);
-              setImportMatrixError('');
-              setImportMatrixDate(new Date().toISOString().slice(0, 10));
-              setShowImportMatrixModal(true);
+            className="btn"
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#fffbeb',
+              border: '1.5px solid #d97706',
+              color: '#b45309',
+              fontWeight: 700
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: '#10b981', color: '#34d399' }}
+            title="Xuất toàn bộ Danh sách Điểm bán + Bảng Ma trận + Chi tiết Serial ra file Excel"
           >
-            <FileSpreadsheet size={17} />
-            Import Excel Phân phối (Ma trận)
+            <Download size={17} />
+            {exportingExcel ? 'Đang xuất Excel...' : 'Xuất Excel Điểm bán & PP'}
           </button>
           <button
             type="button"
-            className="btn btn-secondary"
+            className="btn btn-ghost"
             onClick={() => navigate('/npp/scan')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
           >
             <QrCode size={18} />
             Quét tem cho Điểm bán
@@ -444,7 +494,7 @@ export default function NppStores() {
             type="button"
             className="btn btn-primary"
             onClick={handleOpenAdd}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}
           >
             <Plus size={18} />
             Thêm Điểm bán
@@ -452,9 +502,233 @@ export default function NppStores() {
         </div>
       </div>
 
+      {/* MỤC 4: KHUNG NHẬP SERIAL CHO ĐIỂM BÁN BẰNG FILE EXCEL (HIỂN THỊ TRỰC TIẾP) */}
+      <div
+        className="card"
+        style={{
+          padding: '18px 20px',
+          marginBottom: '18px',
+          background: '#f0fdf4',
+          border: '1.5px solid #86efac',
+          borderLeft: '5px solid #059669'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#059669', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileSpreadsheet size={22} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#065f46' }}>
+                📥 Mục Nhập Serial cho Điểm bán bằng File Excel (Mục 4)
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#047857' }}>
+                Import bảng Excel gán dải Serial cho các Điểm bán theo mẫu: <strong>Điểm bán ---------&gt; | Nhà A | Nhà B | Nhà C</strong> và <strong>Tên sản phẩm</strong> (Ngày import sẽ được tính là ngày bán / gán sản phẩm).
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleDownloadTemplate('matrix')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1.5px solid #059669',
+                background: '#ffffff',
+                color: '#059669',
+                fontWeight: 700,
+                fontSize: '13px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              <Download size={15} />
+              Tải File Excel Mẫu (Mục 4)
+            </button>
+            {stores.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleDownloadTemplate('matrix_prefilled')}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #2563eb',
+                  background: '#ffffff',
+                  color: '#1d4ed8',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                <Download size={15} />
+                Tải Mẫu Có Sẵn Điểm Bán Hiện Tại
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowInlineMatrixPanel((prev) => !prev)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#334155',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              {showInlineMatrixPanel ? 'Thu gọn ▲' : 'Mở khung nhập ▼'}
+            </button>
+          </div>
+        </div>
+
+        {showInlineMatrixPanel && (
+          <form onSubmit={handleImportMatrixSubmit} style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed #86efac' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', alignItems: 'start' }}>
+              {/* Cột trái: Bảng minh họa cấu trúc các trường theo đúng file Word Mục 4 */}
+              <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 14px' }}>
+                <div style={{ fontWeight: 700, fontSize: '13px', color: '#065f46', marginBottom: '8px' }}>
+                  📋 Cấu trúc các trường trong file Excel (Đúng theo Mục 4 file Word):
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', background: '#ffffff' }}>
+                    <tbody>
+                      <tr style={{ background: '#ecfdf5' }}>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#0f172a' }}>Điểm bán ---------&gt;</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà A</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà B</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà C</td>
+                      </tr>
+                      <tr style={{ background: '#f8fafc' }}>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#1d4ed8' }}>Tên sản phẩm</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                      </tr>
+                      <tr>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 1</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00001-000010</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                      </tr>
+                      <tr>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 2</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00101-001910</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                      </tr>
+                      <tr>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 3</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Cột phải: Các trường chọn Ngày import + Chọn file Excel + Nút Import */}
+              <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                      1. Ngày Import (Ngày bán / gán SP) <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      className="input"
+                      value={importMatrixDate}
+                      onChange={(e) => setImportMatrixDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                      2. Áp dụng cho Điểm bán
+                    </label>
+                    <select
+                      className="input select"
+                      value={importMatrixStoreId}
+                      onChange={(e) => setImportMatrixStoreId(e.target.value)}
+                    >
+                      <option value="">Tự động theo cột Điểm bán trong Excel (Nhà A, Nhà B...)</option>
+                      {stores.map((st) => (
+                        <option key={st._id} value={st._id}>
+                          Chỉ gán riêng cho: {st.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                    3. Chọn file Excel Nhập Serial cho Điểm bán (.xlsx, .xls, .csv) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="input"
+                      style={{ flex: 1, minWidth: '220px', padding: '8px 12px' }}
+                      onChange={(e) => setImportMatrixFile(e.target.files?.[0] || null)}
+                    />
+                    <button
+                      type="submit"
+                      className="btn"
+                      disabled={importingMatrix}
+                      style={{
+                        background: '#059669',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        padding: '11px 20px',
+                        borderRadius: '8px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Upload size={17} />
+                      {importingMatrix ? 'Đang xử lý & Gán Serial...' : 'Import & Gán Serial Ngay'}
+                    </button>
+                  </div>
+                </div>
+
+                {importMatrixError && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '13px', fontWeight: 600 }}>
+                    ⚠️ {importMatrixError}
+                  </div>
+                )}
+
+                {importMatrixResult && (
+                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#065f46', fontSize: '13px' }}>
+                    <div style={{ fontWeight: 800 }}>✅ {importMatrixResult.message}</div>
+                    {Array.isArray(importMatrixResult.details) && importMatrixResult.details.length > 0 && (
+                      <div style={{ maxHeight: '120px', overflowY: 'auto', marginTop: '8px', fontSize: '12.5px', color: '#047857' }}>
+                        {importMatrixResult.details.map((d, idx) => (
+                          <div key={idx} style={{ padding: '3px 0', borderBottom: '1px dashed #a7f3d0' }}>
+                            🏪 <strong>{d.storeName}</strong> — {d.productName} ({d.range}): Đã gán <strong>{d.matchedLabels}</strong> serial {d.note ? `(${d.note})` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </form>
+        )}
+      </div>
+
       {/* Bộ lọc Thống kê Doanh số theo Tháng / Quý / Năm */}
       <div
-        className="glass-card"
+        className="card"
         style={{
           padding: '14px 18px',
           marginBottom: '18px',
@@ -467,8 +741,8 @@ export default function NppStores() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Calendar size={17} style={{ color: '#f59e0b' }} />
+          <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Calendar size={17} style={{ color: '#d97706' }} />
             Kỳ thống kê doanh số:
           </span>
           {[
@@ -485,11 +759,11 @@ export default function NppStores() {
                 padding: '6px 14px',
                 borderRadius: '8px',
                 fontSize: '13px',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
-                border: periodType === tab.id ? '1px solid #f59e0b' : '1px solid rgba(255,255,255,0.12)',
-                background: periodType === tab.id ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.04)',
-                color: periodType === tab.id ? '#fbbf24' : 'var(--text-secondary)'
+                border: periodType === tab.id ? '1.5px solid #d97706' : '1px solid #cbd5e1',
+                background: periodType === tab.id ? '#fffbeb' : '#f8fafc',
+                color: periodType === tab.id ? '#b45309' : '#475569'
               }}
             >
               {tab.label}
@@ -501,8 +775,8 @@ export default function NppStores() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {periodType === 'month' && (
               <select
-                className="form-control"
-                style={{ width: 'auto', minWidth: '120px', padding: '6px 12px' }}
+                className="input select"
+                style={{ width: 'auto', minWidth: '120px', padding: '6px 32px 6px 12px' }}
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
               >
@@ -514,8 +788,8 @@ export default function NppStores() {
 
             {periodType === 'quarter' && (
               <select
-                className="form-control"
-                style={{ width: 'auto', minWidth: '140px', padding: '6px 12px' }}
+                className="input select"
+                style={{ width: 'auto', minWidth: '160px', padding: '6px 32px 6px 12px' }}
                 value={selectedQuarter}
                 onChange={(e) => setSelectedQuarter(Number(e.target.value))}
               >
@@ -527,8 +801,8 @@ export default function NppStores() {
             )}
 
             <select
-              className="form-control"
-              style={{ width: 'auto', minWidth: '110px', padding: '6px 12px' }}
+              className="input select"
+              style={{ width: 'auto', minWidth: '115px', padding: '6px 32px 6px 12px' }}
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
@@ -542,43 +816,44 @@ export default function NppStores() {
 
       {/* Thống kê nhanh */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Store size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Tổng số Điểm bán của mình</div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>{stores.length}</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Tổng số Điểm bán</div>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--color-text-primary)' }}>{stores.length}</div>
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Tag size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>SP đã PP ({periodLabel})</div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: '#34d399' }}>{totalPeriodSerials} SP</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>SP đã PP ({periodLabel})</div>
+            <div style={{ fontSize: '24px', fontWeight: 800, color: '#059669' }}>{totalPeriodSerials} SP</div>
           </div>
         </div>
 
-        <div className="glass-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid rgba(245, 158, 11, 0.35)' }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.18)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px', border: '1.5px solid #fcd34d' }}>
+          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <DollarSign size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Doanh Thu/Tháng ({periodLabel})</div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: '#fbbf24' }}>{formatCurrency(totalPeriodRevenue)}</div>
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Doanh Thu/Tháng ({periodLabel})</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, color: '#d97706' }}>{formatCurrency(totalPeriodRevenue)}</div>
           </div>
         </div>
       </div>
 
       {/* Thanh tìm kiếm hỗ trợ gõ không dấu */}
-      <div className="filters-bar glass-card" style={{ marginBottom: '20px', padding: '14px 18px' }}>
+      <div className="card" style={{ marginBottom: '20px', padding: '14px 18px' }}>
         <div className="search-box" style={{ flex: 1, maxWidth: '520px' }}>
-          <Search size={18} />
+          <Search size={18} className="search-icon" />
           <input
             type="text"
+            className="input"
             placeholder="Tìm điểm bán (gõ 1 từ không dấu, VD: 'thanh' sẽ ra Thành, Thánh, Thạnh...)"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -586,8 +861,8 @@ export default function NppStores() {
           {search && (
             <button
               type="button"
+              className="search-clear-btn"
               onClick={() => setSearch('')}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
             >
               <X size={16} />
             </button>
@@ -596,20 +871,20 @@ export default function NppStores() {
       </div>
 
       {/* Bảng quản lý Điểm bán & Doanh số */}
-      <div className="table-container glass-card">
+      <div className="table-container card" style={{ padding: 0 }}>
         {loading ? (
-          <div className="table-loading">
-            <div className="spinner" />
-            <span>Đang tải danh sách điểm bán...</span>
+          <div className="loading-overlay">
+            <div className="loading-spinner" />
+            <span style={{ marginLeft: '10px', color: 'var(--color-text-secondary)' }}>Đang tải danh sách điểm bán...</span>
           </div>
         ) : filteredStores.length === 0 ? (
           <div className="empty-state" style={{ padding: '48px 20px', textAlign: 'center' }}>
             <Store size={48} style={{ opacity: 0.35, marginBottom: '12px' }} />
             <h3>{search ? 'Không tìm thấy Điểm bán phù hợp' : 'Chưa có Điểm bán nào'}</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '18px' }}>
+            <p style={{ color: 'var(--color-text-secondary)', marginBottom: '18px' }}>
               {search
                 ? `Không có điểm bán nào khớp với từ khóa "${search}".`
-                : 'Hãy bấm “Thêm Điểm bán” để tạo danh sách điểm bán (Tên điểm bán, Địa chỉ, Điện thoại liên hệ).'}
+                : 'Hãy bấm “Thêm Điểm bán” hoặc “Import DS Điểm bán (Excel)” để tạo danh sách điểm bán.'}
             </p>
             {!search && (
               <button type="button" className="btn btn-primary" onClick={handleOpenAdd}>
@@ -618,7 +893,7 @@ export default function NppStores() {
             )}
           </div>
         ) : (
-          <table className="data-table">
+          <table className="table">
             <thead>
               <tr>
                 <th style={{ width: '54px' }}>STT</th>
@@ -644,26 +919,26 @@ export default function NppStores() {
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Store size={16} style={{ color: '#6366f1', flexShrink: 0 }} />
+                      <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Store size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />
                         {store.name}
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-                        <MapPin size={14} style={{ marginTop: '3px', flexShrink: 0, color: '#94a3b8' }} />
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', color: 'var(--color-text-secondary)', fontSize: '13.5px' }}>
+                        <MapPin size={14} style={{ marginTop: '3px', flexShrink: 0, color: '#64748b' }} />
                         <span>{store.address || '—'}</span>
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-                        <Phone size={14} style={{ flexShrink: 0, color: '#10b981' }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-secondary)', fontSize: '13.5px' }}>
+                        <Phone size={14} style={{ flexShrink: 0, color: '#059669' }} />
                         <span>{store.phone || '—'}</span>
                       </div>
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <span
-                        className={`badge ${qty > 0 ? 'badge-success' : 'badge-secondary'}`}
+                        className={`badge ${qty > 0 ? 'badge-success' : 'badge-neutral'}`}
                         style={{ fontSize: '13px', padding: '4px 10px', cursor: 'pointer' }}
                         onClick={() => handleViewSerials(store)}
                       >
@@ -675,7 +950,7 @@ export default function NppStores() {
                         {formatCurrency(rev)}
                       </div>
                       {breakdown.length > 0 && (
-                        <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '11.5px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
                           {breakdown.map((b, bIdx) => (
                             <div key={bIdx}>
                               {b.quantity} × {formatCurrency(b.unitPrice)}
@@ -685,29 +960,54 @@ export default function NppStores() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleViewSerials(store)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          padding: '6px 14px',
-                          borderRadius: '8px',
-                          border: '1.5px solid #4f46e5',
-                          background: '#eef2ff',
-                          color: '#4f46e5',
-                          fontWeight: 800,
-                          fontSize: '12.5px',
-                          cursor: 'pointer',
-                          textDecoration: 'underline',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title="Xem chi tiết phân phối (Serial & Doanh thu)"
-                      >
-                        CHI TIẾT
-                      </button>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleViewSerials(store)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #4f46e5',
+                            background: '#eef2ff',
+                            color: '#4f46e5',
+                            fontWeight: 800,
+                            fontSize: '12.5px',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Xem chi tiết phân phối (Serial & Doanh thu)"
+                        >
+                          CHI TIẾT
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenImportSerialForStore(store)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            padding: '6px 10px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #059669',
+                            background: '#ecfdf5',
+                            color: '#059669',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Nhập Serial bằng Excel cho điểm bán này"
+                        >
+                          <FileSpreadsheet size={13} />
+                          Nhập Serial
+                        </button>
+                      </div>
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <div className="action-buttons" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'nowrap' }}>
@@ -716,7 +1016,7 @@ export default function NppStores() {
                           className="btn-icon"
                           title="Quét tem xuất cho điểm bán này"
                           onClick={() => handleScanForStore(store)}
-                          style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.12)' }}
+                          style={{ color: '#059669', background: '#ecfdf5' }}
                         >
                           <QrCode size={16} />
                         </button>
@@ -725,7 +1025,7 @@ export default function NppStores() {
                           className="btn-icon"
                           title="Xem Chi tiết PP & Doanh Thu"
                           onClick={() => handleViewSerials(store)}
-                          style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)' }}
+                          style={{ color: '#2563eb', background: '#eff6ff' }}
                         >
                           <Eye size={16} />
                         </button>
@@ -739,9 +1039,10 @@ export default function NppStores() {
                         </button>
                         <button
                           type="button"
-                          className="btn-icon btn-danger-icon"
+                          className="btn-icon"
                           title="Xóa điểm bán"
                           onClick={() => handleDelete(store)}
+                          style={{ color: '#dc2626' }}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -758,13 +1059,13 @@ export default function NppStores() {
       {/* Modal Thêm / Sửa Điểm bán */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content glass-card" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>
-                <Store size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Store size={20} style={{ color: '#4f46e5' }} />
                 {editingStore ? 'Cập nhật Điểm bán' : 'Thêm Điểm bán mới'}
               </h2>
-              <button type="button" className="modal-close" onClick={() => setShowModal(false)}>
+              <button type="button" className="btn-icon" onClick={() => setShowModal(false)}>
                 <X size={20} />
               </button>
             </div>
@@ -772,16 +1073,16 @@ export default function NppStores() {
             <form onSubmit={handleSave}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {error && (
-                  <div className="alert alert-error" style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', fontSize: '13.5px' }}>
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '13.5px', fontWeight: 600 }}>
                     {error}
                   </div>
                 )}
 
-                <div className="form-group">
+                <div className="input-group">
                   <label>Tên điểm bán <span style={{ color: '#ef4444' }}>*</span></label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="input"
                     placeholder="VD: Nhà thuốc Thành Công / Điểm bán Thành Đạt..."
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -790,22 +1091,22 @@ export default function NppStores() {
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="input-group">
                   <label>Địa chỉ Điểm bán (Dùng để đối chiếu cảnh báo vị trí quét)</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="input"
                     placeholder="VD: Số 120 Nguyễn Trãi, Thanh Xuân, Hà Nội"
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="input-group">
                   <label>Điện thoại liên hệ</label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="input"
                     placeholder="VD: 0912345678"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -813,8 +1114,8 @@ export default function NppStores() {
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>
                   Hủy
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -829,114 +1130,129 @@ export default function NppStores() {
       {/* Modal Xem chi tiết toàn bộ Serial + Doanh số của Điểm bán */}
       {serialModalStore && (
         <div className="modal-overlay" onClick={() => setSerialModalStore(null)}>
-          <div className="modal-content glass-card" style={{ maxWidth: '820px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: '840px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <CheckCircle size={20} style={{ color: '#34d399' }} />
-                  Chi tiết Serial &amp; Doanh số — {serialModalStore.name} ({periodLabel})
+                <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <CheckCircle size={20} style={{ color: '#059669' }} />
+                  Chi tiết Phân phối (Serial &amp; Doanh Thu) — {serialModalStore.name} ({periodLabel})
                 </h2>
-                <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                   Địa chỉ: {serialModalStore.address || '—'} | SĐT: {serialModalStore.phone || '—'}
                 </p>
               </div>
-              <button type="button" className="modal-close" onClick={() => setSerialModalStore(null)}>
+              <button type="button" className="btn-icon" onClick={() => setSerialModalStore(null)}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ maxHeight: '68vh', overflowY: 'auto', marginTop: '12px' }}>
+            <div className="modal-body" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
               {loadingSerials ? (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  Đang tải danh sách serial và doanh số...
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                  Đang tải danh sách serial và doanh thu...
                 </div>
               ) : storeSerials.length === 0 ? (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  Điểm bán này chưa có serial nào được gán trong kỳ ({periodLabel}).
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                  Điểm bán này chưa có serial nào được phân phối trong kỳ ({periodLabel}).
                 </div>
               ) : (
                 <>
                   {/* Tổng hợp doanh số theo sản phẩm */}
                   <div
                     style={{
-                      background: 'rgba(245, 158, 11, 0.08)',
-                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      background: '#fffbeb',
+                      border: '1.5px solid #fcd34d',
                       borderRadius: '10px',
-                      padding: '12px 16px',
-                      marginBottom: '16px'
+                      padding: '12px 16px'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <strong style={{ color: '#fbbf24' }}>📊 Thống kê Doanh số ({periodLabel})</strong>
-                      <span style={{ fontSize: '16px', fontWeight: 800, color: '#fbbf24' }}>
+                      <strong style={{ color: '#b45309' }}>📊 Thống kê Doanh Thu ({periodLabel})</strong>
+                      <span style={{ fontSize: '16px', fontWeight: 800, color: '#d97706' }}>
                         Tổng: {storeSerials.length} SP = {formatCurrency(storeModalRevenue)}
                       </span>
                     </div>
                     {storeBreakdown.map((b, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0', borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
-                        <span>{b.productName}</span>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '5px 0', borderTop: '1px dashed #fde68a', color: '#0f172a' }}>
+                        <span style={{ fontWeight: 600 }}>{b.productName}</span>
                         <span>
-                          <strong>{b.quantity} SP</strong> × {formatCurrency(b.unitPrice)} = <strong style={{ color: '#34d399' }}>{formatCurrency(b.revenue)}</strong>
+                          <strong>{b.quantity} SP</strong> × {formatCurrency(b.unitPrice)} = <strong style={{ color: '#059669' }}>{formatCurrency(b.revenue)}</strong>
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>STT</th>
-                        <th>Mã Serial</th>
-                        <th>Sản phẩm</th>
-                        <th style={{ textAlign: 'right' }}>Giá 1 SP</th>
-                        <th>Thời gian xuất bán</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {storeSerials.map((item, i) => (
-                        <tr key={item.serialNumber + i}>
-                          <td>{i + 1}</td>
-                          <td>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#34d399', fontSize: '14px' }}>
-                              {item.serialNumber}
-                            </span>
-                          </td>
-                          <td>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                              <Package size={14} style={{ color: '#818cf8' }} />
-                              {item.productName || 'Sản phẩm'}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#fbbf24' }}>
-                            {formatCurrency(item.unitPrice)}
-                          </td>
-                          <td>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
-                              <Clock size={14} />
-                              {formatDateTime(item.soldAt)}
-                            </span>
-                          </td>
+                  <div className="table-container">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>STT</th>
+                          <th>Mã Serial</th>
+                          <th>Sản phẩm</th>
+                          <th style={{ textAlign: 'right' }}>Giá 1 SP</th>
+                          <th>Thời gian xuất bán</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {storeSerials.map((item, i) => (
+                          <tr key={item.serialNumber + i}>
+                            <td>{i + 1}</td>
+                            <td>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#059669', fontSize: '14px' }}>
+                                {item.serialNumber}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                                <Package size={14} style={{ color: '#4f46e5' }} />
+                                {item.productName || 'Sản phẩm'}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: '#d97706' }}>
+                              {formatCurrency(item.unitPrice)}
+                            </td>
+                            <td>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-secondary)' }}>
+                                <Clock size={14} />
+                                {formatDateTime(item.soldAt)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </>
               )}
             </div>
 
-            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  const target = serialModalStore;
-                  setSerialModalStore(null);
-                  handleScanForStore(target);
-                }}
-              >
-                <QrCode size={16} /> Quét thêm Serial cho Điểm bán này
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => setSerialModalStore(null)}>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ background: '#059669', color: '#ffffff', fontWeight: 700 }}
+                  onClick={() => {
+                    const target = serialModalStore;
+                    setSerialModalStore(null);
+                    handleOpenImportSerialForStore(target);
+                  }}
+                >
+                  <FileSpreadsheet size={16} /> Nhập Serial bằng Excel cho Điểm bán này
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    const target = serialModalStore;
+                    setSerialModalStore(null);
+                    handleScanForStore(target);
+                  }}
+                >
+                  <QrCode size={16} /> Quét Camera gán Serial
+                </button>
+              </div>
+              <button type="button" className="btn btn-ghost" onClick={() => setSerialModalStore(null)}>
                 Đóng
               </button>
             </div>
@@ -947,21 +1263,21 @@ export default function NppStores() {
       {/* Yêu cầu 2: Modal Import Danh sách Điểm bán từ giải pháp cũ / Excel */}
       {showImportStoresModal && (
         <div className="modal-overlay" onClick={() => setShowImportStoresModal(false)}>
-          <div className="modal-content glass-card" style={{ maxWidth: '560px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: '560px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                <Upload size={20} style={{ color: '#60a5fa' }} />
-                Import Danh sách Điểm bán (Excel)
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Upload size={20} style={{ color: '#2563eb' }} />
+                Import Danh sách Điểm bán (Excel - Mục 2)
               </h2>
-              <button type="button" className="modal-close" onClick={() => setShowImportStoresModal(false)}>
+              <button type="button" className="btn-icon" onClick={() => setShowImportStoresModal(false)}>
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleImportStoresSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-                <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: '6px' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#1e3a8a' }}>
+                  <div style={{ fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>
                     📋 Hỗ trợ đồng bộ danh sách Điểm bán từ giải pháp cũ sang giải pháp mới:
                   </div>
                   <div>• File Excel gồm các cột: <strong>Tên điểm bán</strong>, <strong>Địa chỉ</strong>, <strong>Số điện thoại</strong>.</div>
@@ -970,7 +1286,7 @@ export default function NppStores() {
                     <button
                       type="button"
                       onClick={() => handleDownloadTemplate('stores')}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline', fontSize: '13px' }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#059669', fontWeight: 700, textDecoration: 'underline', fontSize: '13px' }}
                     >
                       <Download size={14} /> Tải file Excel mẫu Danh sách Điểm bán (.xlsx)
                     </button>
@@ -978,36 +1294,36 @@ export default function NppStores() {
                 </div>
 
                 {importStoresError && (
-                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', fontSize: '13.5px' }}>
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '13.5px', fontWeight: 600 }}>
                     {importStoresError}
                   </div>
                 )}
 
                 {importStoresResult && (
-                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#34d399', fontSize: '13.5px' }}>
+                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#065f46', fontSize: '13.5px' }}>
                     <div style={{ fontWeight: 700 }}>{importStoresResult.message}</div>
-                    <div style={{ marginTop: '4px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                    <div style={{ marginTop: '4px', fontSize: '12.5px', color: '#047857' }}>
                       Thêm mới: <strong>{importStoresResult.createdCount || 0}</strong> • Cập nhật: <strong>{importStoresResult.updatedCount || 0}</strong>
                       {importStoresResult.totalAssignedLabels > 0 && (
-                        <> • Đã gán Serial: <strong style={{ color: '#34d399' }}>{importStoresResult.totalAssignedLabels}</strong></>
+                        <> • Đã gán Serial: <strong>{importStoresResult.totalAssignedLabels}</strong></>
                       )}
                     </div>
                   </div>
                 )}
 
-                <div className="form-group">
+                <div className="input-group">
                   <label>Chọn file Excel danh sách Điểm bán (.xlsx, .xls, .csv) *</label>
                   <input
                     type="file"
                     accept=".xlsx,.xls,.csv"
-                    className="form-control"
+                    className="input"
                     onChange={(e) => setImportStoresFile(e.target.files?.[0] || null)}
                   />
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowImportStoresModal(false)}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowImportStoresModal(false)}>
                   Đóng
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={importingStores}>
@@ -1019,82 +1335,103 @@ export default function NppStores() {
         </div>
       )}
 
-      {/* Yêu cầu 4: Modal Import Bảng Excel Phân phối Ma trận (Điểm bán × Sản phẩm × Dải Serial) */}
+      {/* Yêu cầu 4: Modal Nhập Serial cho Điểm bán bằng Bảng Excel (Mục 4 trong YEU CAU TRAO DOI.docx) */}
       {showImportMatrixModal && (
         <div className="modal-overlay" onClick={() => setShowImportMatrixModal(false)}>
-          <div className="modal-content glass-card" style={{ maxWidth: '680px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: '680px', width: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                <FileSpreadsheet size={20} style={{ color: '#34d399' }} />
-                Import Bảng Excel Phân phối (Điểm bán × Sản phẩm × Serial)
+              <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <FileSpreadsheet size={20} style={{ color: '#059669' }} />
+                Nhập Serial cho Điểm bán bằng Excel (Mục 4)
               </h2>
-              <button type="button" className="modal-close" onClick={() => setShowImportMatrixModal(false)}>
+              <button type="button" className="btn-icon" onClick={() => setShowImportMatrixModal(false)}>
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleImportMatrixSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-                <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  <div style={{ fontWeight: 700, color: '#34d399', marginBottom: '6px' }}>
-                    📊 Định dạng Bảng Excel Ma trận Phân phối (Theo mẫu Tổng Kho Vyphyto):
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#065f46' }}>
+                  <div style={{ fontWeight: 800, color: '#047857', marginBottom: '6px' }}>
+                    📊 Cấu trúc các trường trong Bảng Excel Nhập Serial (Theo đúng Mục 4 file Word):
                   </div>
                   <div style={{ overflowX: 'auto', marginBottom: '8px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', background: 'rgba(15,23,42,0.6)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', background: '#ffffff' }}>
                       <tbody>
-                        <tr>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontWeight: 700, color: '#f8fafc' }}>Điểm bán ---------&gt;</td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontWeight: 700, color: '#fbbf24' }}>Nhà A</td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontWeight: 700, color: '#fbbf24' }}>Nhà B</td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontWeight: 700, color: '#fbbf24' }}>Nhà C</td>
+                        <tr style={{ background: '#d1fae5' }}>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#0f172a' }}>Điểm bán ---------&gt;</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà A</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà B</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà C</td>
+                        </tr>
+                        <tr style={{ background: '#f8fafc' }}>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#1d4ed8' }}>Tên sản phẩm</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontWeight: 700, color: '#93c5fd' }}>Tên sản phẩm</td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px' }}></td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px' }}></td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 1</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00001-000010</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontWeight: 600 }}>Sản phẩm 1</td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontFamily: 'monospace', color: '#34d399' }}>00001-000010</td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px', fontFamily: 'monospace', color: '#34d399' }}>000011-000020</td>
-                          <td style={{ border: '1px solid #334155', padding: '5px 8px' }}>...</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 2</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00101-001910</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        </tr>
+                        <tr>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 3</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
                   <div>• Hệ thống tự động nhận diện Điểm bán (tạo mới nếu chưa có), khớp Sản phẩm và gán toàn bộ dải Serial trong ô.</div>
-                  <div>• <strong>Lưu ý quan trọng:</strong> Ngày import được chọn bên dưới sẽ được ghi nhận là <strong>Ngày bán / gán sản phẩm</strong> để tính doanh số Điểm bán.</div>
-                  <div style={{ marginTop: '8px' }}>
+                  <div>• <strong>Lưu ý quan trọng:</strong> Ngày import được chọn bên dưới sẽ được ghi nhận là <strong>Ngày bán / gán sản phẩm</strong> để tính doanh thu Điểm bán.</div>
+                  <div style={{ marginTop: '8px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       onClick={() => handleDownloadTemplate('matrix')}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline', fontSize: '13px' }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#059669', fontWeight: 800, textDecoration: 'underline', fontSize: '13px' }}
                     >
-                      <Download size={14} /> Tải file Excel mẫu Bảng Ma trận &amp; Chi tiết Phân phối (.xlsx)
+                      <Download size={14} /> Tải file Excel mẫu chuẩn Mục 4 (.xlsx)
                     </button>
+                    {stores.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTemplate('matrix_prefilled')}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#1d4ed8', fontWeight: 800, textDecoration: 'underline', fontSize: '13px' }}
+                      >
+                        <Download size={14} /> Tải mẫu có sẵn Điểm bán &amp; SP hiện tại (.xlsx)
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {importMatrixError && (
-                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', fontSize: '13.5px' }}>
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '13.5px', fontWeight: 600 }}>
                     {importMatrixError}
                   </div>
                 )}
 
                 {importMatrixResult && (
-                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#34d399', fontSize: '13.5px' }}>
+                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: '#ecfdf5', border: '1px solid #6ee7b7', color: '#065f46', fontSize: '13.5px' }}>
                     <div style={{ fontWeight: 700 }}>{importMatrixResult.message}</div>
                     {(importMatrixResult.createdCount > 0 || importMatrixResult.updatedCount > 0) && (
-                      <div style={{ marginTop: '4px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      <div style={{ marginTop: '4px', fontSize: '12.5px', color: '#047857' }}>
                         Điểm bán thêm mới: <strong>{importMatrixResult.createdCount || 0}</strong> • Cập nhật: <strong>{importMatrixResult.updatedCount || 0}</strong>
                       </div>
                     )}
                     {Array.isArray(importMatrixResult.details) && importMatrixResult.details.length > 0 && (
-                      <div style={{ maxHeight: '140px', overflowY: 'auto', marginTop: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      <div style={{ maxHeight: '140px', overflowY: 'auto', marginTop: '8px', fontSize: '12px', color: '#047857' }}>
                         {importMatrixResult.details.map((d, idx) => (
-                          <div key={idx} style={{ padding: '3px 0', borderBottom: '1px dashed rgba(255,255,255,0.08)' }}>
-                            🏪 <strong>{d.storeName}</strong> — {d.productName} ({d.range}): Đã gán <strong style={{ color: '#34d399' }}>{d.matchedLabels}</strong> serial
+                          <div key={idx} style={{ padding: '3px 0', borderBottom: '1px dashed #a7f3d0' }}>
+                            🏪 <strong>{d.storeName}</strong> — {d.productName} ({d.range}): Đã gán <strong>{d.matchedLabels}</strong> serial
                           </div>
                         ))}
                       </div>
@@ -1102,33 +1439,49 @@ export default function NppStores() {
                   </div>
                 )}
 
-                <div className="form-group">
+                <div className="input-group">
+                  <label>Áp dụng cho Điểm bán</label>
+                  <select
+                    className="input select"
+                    value={importMatrixStoreId}
+                    onChange={(e) => setImportMatrixStoreId(e.target.value)}
+                  >
+                    <option value="">Tự động nhận diện theo cột Điểm bán trong file Excel (Nhà A, Nhà B...)</option>
+                    {stores.map((st) => (
+                      <option key={st._id} value={st._id}>
+                        Chỉ gán riêng cho Điểm bán: {st.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="input-group">
                   <label>Ngày Import (Ngày bán / gán sản phẩm) *</label>
                   <input
                     type="date"
-                    className="form-control"
+                    className="input"
                     value={importMatrixDate}
                     onChange={(e) => setImportMatrixDate(e.target.value)}
                     required
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Chọn file Excel Bảng phân phối (.xlsx, .xls, .csv) *</label>
+                <div className="input-group">
+                  <label>Chọn file Excel Nhập Serial (.xlsx, .xls, .csv) *</label>
                   <input
                     type="file"
                     accept=".xlsx,.xls,.csv"
-                    className="form-control"
+                    className="input"
                     onChange={(e) => setImportMatrixFile(e.target.files?.[0] || null)}
                   />
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '18px' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowImportMatrixModal(false)}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowImportMatrixModal(false)}>
                   Đóng
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={importingMatrix}>
+                <button type="submit" className="btn" style={{ background: '#059669', color: '#ffffff', fontWeight: 700 }} disabled={importingMatrix}>
                   {importingMatrix ? 'Đang xử lý & gán Serial...' : 'Import & Gán Serial'}
                 </button>
               </div>

@@ -398,12 +398,12 @@ export default function NppStores() {
                 setShowImportMatrixModal(true);
               }}
               style={{
-                background: '#1e293b',
+                background: '#059669',
                 border: '1px solid #10b981',
-                color: '#34d399',
+                color: '#ffffff',
                 borderRadius: '10px',
                 padding: '10px 14px',
-                fontWeight: 700,
+                fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -411,7 +411,7 @@ export default function NppStores() {
               }}
             >
               <FileSpreadsheet size={17} />
-              Import Excel Phân phối
+              Nhập Serial cho Điểm bán (Excel)
             </button>
             <button
               type="button"
@@ -640,27 +640,57 @@ export default function NppStores() {
                         {formatCurrency(rev)}
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleViewSerials(store)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            border: '1px solid #6366f1',
-                            background: 'rgba(99, 102, 241, 0.18)',
-                            color: '#a5b4fc',
-                            fontWeight: 800,
-                            fontSize: '0.8rem',
-                            cursor: 'pointer',
-                            textDecoration: 'underline',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          CHI TIẾT
-                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleViewSerials(store)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              border: '1px solid #6366f1',
+                              background: 'rgba(99, 102, 241, 0.18)',
+                              color: '#a5b4fc',
+                              fontWeight: 800,
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            CHI TIẾT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImportMatrixFile(null);
+                              setImportMatrixResult(null);
+                              setImportMatrixError('');
+                              setImportMatrixDate(new Date().toISOString().slice(0, 10));
+                              setShowImportMatrixModal(true);
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              padding: '6px 10px',
+                              borderRadius: '8px',
+                              border: '1px solid #10b981',
+                              background: 'rgba(16, 185, 129, 0.18)',
+                              color: '#34d399',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <FileSpreadsheet size={13} />
+                            Nhập Serial
+                          </button>
+                        </div>
                       </td>
                       <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'nowrap' }}>

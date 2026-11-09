@@ -1797,7 +1797,7 @@ function buildSmartSerialRangeOr(rawStart, rawEnd, referenceSerial = '') {
         m1[2].length,
         m2[2].length,
         Math.max(m1[2].length, m2[2].length),
-        5, 6, 7, 8,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
         ...(refDigitLen ? [refDigitLen] : [])
       ]);
       for (const padLen of candidateLengths) {
@@ -2381,7 +2381,8 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
     rows: bodyRows,
     fileBase64,
     importDate: rawImportDate,
-    enterpriseId
+    enterpriseId,
+    storeId: targetStoreId
   } = req.body || {};
 
   const isAdminAll = (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) && !enterpriseId;
@@ -2390,6 +2391,14 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
   const entIds = isAdminAll ? [] : await getRelatedEnterpriseIds(user);
   if (!isAdminAll && targetEntId && !entIds.some((id) => String(id) === String(targetEntId))) {
     entIds.push(targetEntId);
+  }
+
+  let fixedStoreDoc = null;
+  if (targetStoreId) {
+    fixedStoreDoc = await RetailStore.findOne({ _id: targetStoreId, ...storeFilter }).lean();
+    if (fixedStoreDoc?.enterpriseId && !entIds.some((id) => String(id) === String(fixedStoreDoc.enterpriseId))) {
+      entIds.push(fixedStoreDoc.enterpriseId);
+    }
   }
 
   const soldAtDate = rawImportDate ? new Date(rawImportDate) : new Date();
@@ -2612,12 +2621,29 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
       const rangeOr = buildSmartSerialRangeOr(sStart, sEnd);
       if (rangeOr.length === 0) continue;
 
+      const scopedEntIds = [];
+      if (storeDoc?.enterpriseId) scopedEntIds.push(storeDoc.enterpriseId);
+      if (matchedProduct?.enterpriseId && !scopedEntIds.some((id) => String(id) === String(matchedProduct.enterpriseId))) {
+        scopedEntIds.push(matchedProduct.enterpriseId);
+      }
+      if (scopedEntIds.length === 0 && entIds.length > 0) {
+        scopedEntIds.push(...entIds);
+      }
+
       const lblQuery = {
-        ...(entIds.length > 0 ? { enterpriseId: { $in: entIds } } : {}),
+        ...(scopedEntIds.length > 0 ? { enterpriseId: { $in: scopedEntIds } } : {}),
         $or: rangeOr
       };
 
-      let rawLabelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId enterpriseId').lean();
+      let rawLabelsInSeg = [];
+      if (matchedProduct?._id) {
+        rawLabelsInSeg = await Label.find({ ...lblQuery, productId: matchedProduct._id })
+          .select('_id serialNumber productId enterpriseId')
+          .lean();
+      }
+      if (rawLabelsInSeg.length === 0) {
+        rawLabelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId enterpriseId').lean();
+      }
       let labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
 
       if (labelsInSeg.length === 0 && (decoded.role === 'ADMIN' || decoded.isAdminImpersonating)) {
@@ -2658,7 +2684,7 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
           status: 'ACTIVE',
           isActive: true
         };
-        if (matchedProduct && !lbl.productId) {
+        if (matchedProduct) {
           setFields.productId = matchedProduct._id;
         }
         return {
@@ -2726,7 +2752,7 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
       for (let r = headerIdx + 1; r < rawRows.length; r++) {
         const row = rawRows[r];
         if (!Array.isArray(row)) continue;
-        const stName = String(row[storeCol] ?? '').trim();
+        const stName = String(row[storeCol] ?? '').trim() || (fixedStoreDoc ? fixedStoreDoc.name : '');
         const sVal = String(row[serialCol] ?? '').trim();
         if (!stName || !sVal) continue;
         const sEndVal = serialEndCol >= 0 ? String(row[serialEndCol] ?? '').trim() : '';
@@ -2735,10 +2761,34 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
         const phoneVal = phoneCol >= 0 ? String(row[phoneCol] ?? '').trim() : '';
         const prodVal = prodCol >= 0 ? String(row[prodCol] ?? '').trim() : '';
 
-        const storeDoc = await getOrCreateStoreDoc(stName, addrVal, phoneVal);
+        const storeDoc = fixedStoreDoc && removeVietnameseTones(stName) === removeVietnameseTones(fixedStoreDoc.name)
+          ? fixedStoreDoc
+          : await getOrCreateStoreDoc(stName, addrVal, phoneVal);
         if (!storeDoc) continue;
         const matchedProduct = matchProductByName(prodVal);
         await assignSerialCellToStore(combinedSerial, storeDoc, matchedProduct, prodVal);
+      }
+      continue;
+    }
+
+    // Nếu người dùng chọn sẵn 1 Điểm bán cụ thể và tải lên file chỉ gồm [Tên sản phẩm | Mã Serial/Dải Serial] hoặc [Mã Serial]
+    if (fixedStoreDoc && totalAssignedLabels === 0) {
+      const rawRows = sItem.rows;
+      for (let r = 0; r < rawRows.length; r++) {
+        const row = rawRows[r];
+        if (!Array.isArray(row)) continue;
+        const cells = row.map((c) => String(c ?? '').trim()).filter(Boolean);
+        if (cells.length === 0) continue;
+        const norm0 = removeVietnameseTones(cells[0]);
+        if (norm0 === 'stt' || norm0.includes('san pham') || norm0.includes('serial') || norm0.includes('seri')) continue;
+        if (cells.length === 1 && isValidSerialToken(cells[0].split(/[-~]/)[0]?.trim())) {
+          await assignSerialCellToStore(cells[0], fixedStoreDoc, null, 'Sản phẩm');
+        } else if (cells.length >= 2) {
+          const lastCell = cells[cells.length - 1];
+          const prevCell = cells[cells.length - 2];
+          const matchedProd = matchProductByName(prevCell) || matchProductByName(cells[0]);
+          await assignSerialCellToStore(lastCell, fixedStoreDoc, matchedProd, prevCell);
+        }
       }
     }
   }
