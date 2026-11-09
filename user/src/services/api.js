@@ -187,6 +187,10 @@ class UserApiService {
     return this.request('POST', '/public/retail-stores/import-matrix', data, {}, true, 0, 120000);
   }
 
+  assignRetailStoreSerials(storeId, data) {
+    return this.request('POST', `/public/retail-stores/${storeId}/assign-serials`, data, {}, true, 0, 60000);
+  }
+
   exportRetailStoresData(params = {}) {
     return this.request('GET', '/public/retail-stores/export-data', null, params, true, 0, 120000);
   }

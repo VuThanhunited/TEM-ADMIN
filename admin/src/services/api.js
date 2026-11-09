@@ -253,6 +253,7 @@ class ApiService {
   deleteRetailStore(id) { return this.request('DELETE', `/public/retail-stores/${id}`); }
   importRetailStores(data) { return this.request('POST', '/public/retail-stores/import-stores', data, {}, 0, 120000); }
   importDistributionMatrix(data) { return this.request('POST', '/public/retail-stores/import-matrix', data, {}, 0, 120000); }
+  assignRetailStoreSerials(storeId, data) { return this.request('POST', `/public/retail-stores/${storeId}/assign-serials`, data, {}, 0, 60000); }
   exportRetailStoresData(params = {}) { return this.request('GET', '/public/retail-stores/export-data', null, params, 0, 120000); }
   getRetailStoreTemplateUrl(type = 'matrix') { return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}`; }
 

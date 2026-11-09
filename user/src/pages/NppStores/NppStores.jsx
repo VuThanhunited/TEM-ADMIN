@@ -84,6 +84,16 @@ export default function NppStores() {
   const [importMatrixResult, setImportMatrixResult] = useState(null);
   const [importMatrixError, setImportMatrixError] = useState('');
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [enterpriseProducts, setEnterpriseProducts] = useState([]);
+
+  // Modal Nhập Serial trực tiếp cho từng Điểm bán (Chọn SP + Nhập "1-10 , 15" + Chọn ngày PP)
+  const [manualSerialStore, setManualSerialStore] = useState(null);
+  const [manualProductId, setManualProductId] = useState('');
+  const [manualSerialInput, setManualSerialInput] = useState('');
+  const [manualDistributedDate, setManualDistributedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [submittingManualSerial, setSubmittingManualSerial] = useState(false);
+  const [manualSerialError, setManualSerialError] = useState('');
+  const [manualSerialResult, setManualSerialResult] = useState(null);
 
   // Bộ lọc thống kê doanh số Điểm bán theo Tháng / Quý / Năm
   const nowDate = new Date();
@@ -105,6 +115,9 @@ export default function NppStores() {
       const res = await userApi.getRetailStores(params);
       setStores(res.stores || res.data || []);
       setSummaryData(res.summary || null);
+      if (Array.isArray(res.products)) {
+        setEnterpriseProducts(res.products);
+      }
     } catch (err) {
       console.error('Lỗi tải danh sách điểm bán:', err);
     } finally {
@@ -259,6 +272,58 @@ export default function NppStores() {
       setImportMatrixError(err.message || 'Lỗi khi import bảng Excel phân phối');
     } finally {
       setImportingMatrix(false);
+    }
+  };
+
+  const handleOpenManualSerialModal = (store) => {
+    setManualSerialStore(store);
+    setManualProductId('');
+    setManualSerialInput('');
+    setManualDistributedDate(new Date().toISOString().slice(0, 10));
+    setManualSerialError('');
+    setManualSerialResult(null);
+  };
+
+  const productsForManualStore = useMemo(() => {
+    if (!manualSerialStore?.enterpriseId) return enterpriseProducts;
+    const storeEntId = String(manualSerialStore.enterpriseId?._id || manualSerialStore.enterpriseId);
+    const matched = enterpriseProducts.filter(
+      (p) => String(p.enterpriseId?._id || p.enterpriseId || '') === storeEntId
+    );
+    return matched.length > 0 ? matched : enterpriseProducts;
+  }, [enterpriseProducts, manualSerialStore]);
+
+  const handleManualSerialSubmit = async (e) => {
+    e.preventDefault();
+    if (!manualSerialStore?._id) return;
+    if (!manualProductId) {
+      setManualSerialError('Vui lòng chọn sản phẩm muốn gán cho điểm bán!');
+      return;
+    }
+    if (!manualSerialInput.trim()) {
+      setManualSerialError('Vui lòng nhập serial gán cho điểm bán này (VD: 1-10 , 15)!');
+      return;
+    }
+    if (!manualDistributedDate) {
+      setManualSerialError('Vui lòng chọn ngày phân phối sản phẩm này!');
+      return;
+    }
+    setSubmittingManualSerial(true);
+    setManualSerialError('');
+    setManualSerialResult(null);
+    try {
+      const res = await userApi.assignRetailStoreSerials(manualSerialStore._id, {
+        productId: manualProductId,
+        serialInput: manualSerialInput.trim(),
+        distributedDate: manualDistributedDate
+      });
+      setManualSerialResult(res);
+      setManualSerialInput('');
+      loadStores();
+    } catch (err) {
+      setManualSerialError(err.message || 'Có lỗi xảy ra khi gán Serial cho điểm bán');
+    } finally {
+      setSubmittingManualSerial(false);
     }
   };
 
@@ -686,6 +751,30 @@ export default function NppStores() {
                               cursor: 'pointer',
                               whiteSpace: 'nowrap'
                             }}
+                            title="Nhập Excel phân phối cho điểm bán này"
+                          >
+                            <FileSpreadsheet size={13} />
+                            Nhập Excel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenManualSerialModal(store)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              padding: '6px 10px',
+                              borderRadius: '8px',
+                              border: '1px solid #10b981',
+                              background: 'rgba(16, 185, 129, 0.18)',
+                              color: '#34d399',
+                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Nhập Serial trực tiếp (dải serial / mã lẻ) cho điểm bán này"
                           >
                             <FileSpreadsheet size={13} />
                             Nhập Serial
@@ -1052,6 +1141,199 @@ export default function NppStores() {
                 >
                   {importingMatrix ? 'Đang xử lý...' : 'Import & Gán Serial'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nhập Serial trực tiếp cho Điểm bán (Chọn sản phẩm + Nhập "1-10 , 15" + Chọn ngày phân phối) */}
+      {manualSerialStore && (
+        <div
+          onClick={() => setManualSerialStore(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.72)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            zIndex: 1100
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              color: '#0f172a',
+              borderRadius: '14px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 20px 50px rgba(15, 23, 42, 0.35)',
+              width: '100%',
+              maxWidth: '720px'
+            }}
+          >
+            <div
+              style={{
+                borderBottom: '1px solid #f1f5f9',
+                padding: '16px 24px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                  Nhập Serial gán cho điểm bán: <span style={{ color: '#1d4ed8' }}>{manualSerialStore.name}</span>
+                </h3>
+                {manualSerialStore.address && (
+                  <div style={{ fontSize: '12.5px', color: '#64748b', marginTop: '2px' }}>
+                    Địa chỉ: {manualSerialStore.address}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setManualSerialStore(null)}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleManualSerialSubmit}>
+              <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                    Vui lòng chọn sản phẩm muốn gán cho điểm bán
+                  </label>
+                  <select
+                    value={manualProductId}
+                    onChange={(e) => setManualProductId(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="">Chọn sản phẩm</option>
+                    {productsForManualStore.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                    Serial gán cho điểm bán này
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={manualSerialInput}
+                    onChange={(e) => setManualSerialInput(e.target.value)}
+                    placeholder="Vui lòng nhập serial bé - serial lớn, trong đó DẤU TRỪ '-' là số lượng serial gán cho, dấu ',' là mã lẻ cách nhau bởi DẤU PHẨY"
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      resize: 'vertical',
+                      outline: 'none',
+                      fontFamily: 'inherit',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                    Vui lòng chọn ngày phân phối sản phẩm này
+                  </label>
+                  <input
+                    type="date"
+                    value={manualDistributedDate}
+                    onChange={(e) => setManualDistributedDate(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {manualSerialError && (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      color: '#dc2626',
+                      fontSize: '13.5px',
+                      fontWeight: 600
+                    }}
+                  >
+                    ⚠️ {manualSerialError}
+                  </div>
+                )}
+
+                {manualSerialResult && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      background: '#ecfdf5',
+                      border: '1px solid #6ee7b7',
+                      color: '#065f46',
+                      fontSize: '13.5px',
+                      fontWeight: 700
+                    }}
+                  >
+                    ✅ {manualSerialResult.message}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
+                  <button
+                    type="submit"
+                    disabled={submittingManualSerial}
+                    style={{
+                      background: '#1d4ed8',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '10px 48px',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      cursor: submittingManualSerial ? 'not-allowed' : 'pointer',
+                      opacity: submittingManualSerial ? 0.75 : 1,
+                      letterSpacing: '0.3px'
+                    }}
+                  >
+                    {submittingManualSerial ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

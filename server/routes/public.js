@@ -1066,12 +1066,12 @@ async function verifyUserPassword(user, rawPassword) {
   return false;
 }
 
-// Helper: Lấy danh sách toàn bộ Enterprise ID liên quan của user (gộp các bản ghi doanh nghiệp trùng tên)
-async function getRelatedEnterpriseIds(user) {
+// Helper: Lấy danh sách toàn bộ Enterprise ID liên quan theo 1 Enterprise ID (gộp các bản ghi doanh nghiệp trùng tên)
+async function getRelatedEnterpriseIdsById(rawEntId, fallbackName = '') {
   const ids = [];
-  const entId = user?.enterpriseId?._id || user?.enterpriseId;
+  const entId = rawEntId?._id || rawEntId;
   if (entId) ids.push(entId);
-  let entName = user?.enterpriseId?.name;
+  let entName = fallbackName || rawEntId?.name;
   if (!entName && entId) {
     const entDoc = await Enterprise.findById(entId).select('name').lean();
     entName = entDoc?.name;
@@ -1089,6 +1089,11 @@ async function getRelatedEnterpriseIds(user) {
     }
   }
   return ids;
+}
+
+// Helper: Lấy danh sách toàn bộ Enterprise ID liên quan của user (gộp các bản ghi doanh nghiệp trùng tên)
+async function getRelatedEnterpriseIds(user) {
+  return getRelatedEnterpriseIdsById(user?.enterpriseId, user?.enterpriseId?.name);
 }
 
 // POST /api/public/npp-login - NSX/NPP/Admin login from user-facing scan page
@@ -1482,10 +1487,21 @@ router.get('/retail-stores', async (req, res) => {
       }
     }
 
+    const isAdminAll = (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) && !enterpriseId && !user?.enterpriseId;
+    const relatedEntIds = isAdminAll
+      ? []
+      : (enterpriseId ? await getRelatedEnterpriseIdsById(enterpriseId) : await getRelatedEnterpriseIds(user));
+    const prodFilter = relatedEntIds.length > 0 ? { enterpriseId: { $in: relatedEntIds } } : {};
+    const products = await Product.find(prodFilter)
+      .select('_id name sku price category enterpriseId')
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.json({
       success: true,
       stores,
       data: stores,
+      products,
       total: stores.length,
       summary: {
         totalStores: stores.length,
@@ -2630,7 +2646,15 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
         scopedEntIds.push(...entIds);
       }
 
+      const validBatchesForScope = await LabelBatch.find(
+        scopedEntIds.length > 0 ? { enterpriseId: { $in: scopedEntIds } } : {}
+      )
+        .select('_id')
+        .lean();
+      const validBatchIdsForScope = validBatchesForScope.map((b) => b._id);
+
       const lblQuery = {
+        ...(validBatchIdsForScope.length > 0 ? { batchId: { $in: validBatchIdsForScope } } : { batchId: null }),
         ...(scopedEntIds.length > 0 ? { enterpriseId: { $in: scopedEntIds } } : {}),
         $or: rangeOr
       };
@@ -2638,18 +2662,13 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
       let rawLabelsInSeg = [];
       if (matchedProduct?._id) {
         rawLabelsInSeg = await Label.find({ ...lblQuery, productId: matchedProduct._id })
-          .select('_id serialNumber productId enterpriseId')
+          .select('_id serialNumber productId enterpriseId batchId')
           .lean();
       }
       if (rawLabelsInSeg.length === 0) {
-        rawLabelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId enterpriseId').lean();
+        rawLabelsInSeg = await Label.find(lblQuery).select('_id serialNumber productId enterpriseId batchId').lean();
       }
       let labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
-
-      if (labelsInSeg.length === 0 && (decoded.role === 'ADMIN' || decoded.isAdminImpersonating)) {
-        rawLabelsInSeg = await Label.find({ $or: rangeOr }).select('_id serialNumber productId enterpriseId').lean();
-        labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
-      }
 
       if (labelsInSeg.length === 0) {
         summaryDetails.push({
@@ -2658,7 +2677,7 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
           range: `${sStart}${sEnd !== sStart ? ' - ' + sEnd : ''}`,
           assignedCount: 0,
           matchedLabels: 0,
-          note: 'Không tìm thấy serial trong kho tem của doanh nghiệp'
+          note: 'Serial không thuộc lô tem của tài khoản'
         });
         continue;
       }
@@ -3037,6 +3056,279 @@ router.post('/retail-stores/import-matrix', async (req, res) => {
     console.error('Import matrix error:', error);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Lỗi máy chủ khi import bảng Excel phân phối: ' + error.message });
+    }
+  }
+});
+
+// POST /api/public/retail-stores/:id/assign-serials - Nhập Serial trực tiếp cho 1 Điểm bán (hỗ trợ dải 1-10, mã lẻ 15)
+// Bắt buộc kiểm tra mọi serial được nhập phải thuộc lô tem (LabelBatch) của tài khoản thì mới cho phép gán
+router.post('/retail-stores/:id/assign-serials', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const storeFilter = await buildRetailStoreFilter(user, decoded);
+    const store = await RetailStore.findOne({ _id: req.params.id, ...storeFilter }).lean();
+    if (!store) {
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán hoặc tài khoản không có quyền thao tác trên điểm bán này!' });
+    }
+
+    const { productId, serialInput, distributedDate } = req.body || {};
+
+    if (!productId) {
+      return res.status(400).json({ error: 'Vui lòng chọn sản phẩm muốn gán cho điểm bán!' });
+    }
+
+    const selectedProduct = await Product.findById(productId)
+      .select('_id name sku price category enterpriseId')
+      .lean();
+    if (!selectedProduct) {
+      return res.status(404).json({ error: 'Không tìm thấy sản phẩm đã chọn!' });
+    }
+
+    const rawInput = String(serialInput || '').trim();
+    if (!rawInput) {
+      return res.status(400).json({
+        error: 'Vui lòng nhập serial gán cho điểm bán này (VD: 1-10 , 15)!'
+      });
+    }
+
+    const parsedDate = distributedDate ? new Date(`${String(distributedDate).slice(0, 10)}T12:00:00`) : new Date();
+    const validSoldDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+
+    // 1. Xác định danh sách Doanh nghiệp (Enterprise) thuộc tài khoản đang thao tác
+    let allowedEntIds = [];
+    if (decoded.role !== 'ADMIN' || decoded.isAdminImpersonating || user?.enterpriseId) {
+      allowedEntIds = await getRelatedEnterpriseIds(user);
+      if (
+        allowedEntIds.length > 0 &&
+        selectedProduct.enterpriseId &&
+        !allowedEntIds.some((id) => String(id) === String(selectedProduct.enterpriseId))
+      ) {
+        return res.status(403).json({
+          error: 'Sản phẩm đã chọn không thuộc tài khoản / doanh nghiệp của bạn!'
+        });
+      }
+    } else {
+      // Trường hợp Admin tổng thao tác: kiểm tra theo doanh nghiệp của Sản phẩm đã chọn & Điểm bán
+      const baseEntId = selectedProduct.enterpriseId || store.enterpriseId;
+      if (baseEntId) {
+        allowedEntIds = await getRelatedEnterpriseIdsById(baseEntId);
+      }
+      if (store.enterpriseId && String(store.enterpriseId) !== String(baseEntId)) {
+        const storeEntIds = await getRelatedEnterpriseIdsById(store.enterpriseId);
+        for (const id of storeEntIds) {
+          if (!allowedEntIds.some((e) => String(e) === String(id))) {
+            allowedEntIds.push(id);
+          }
+        }
+      }
+    }
+
+    // 2. Lấy toàn bộ Lô tem (LabelBatch) thuộc tài khoản / doanh nghiệp
+    const batchQuery = allowedEntIds.length > 0 ? { enterpriseId: { $in: allowedEntIds } } : {};
+    const validBatches = await LabelBatch.find(batchQuery)
+      .select('_id batchCode serialStart serialEnd prefix enterpriseId productId totalLabels')
+      .lean();
+    const validBatchIds = validBatches.map((b) => b._id);
+
+    if (validBatchIds.length === 0) {
+      return res.status(400).json({
+        error: 'Tài khoản chưa có lô tem nào trong hệ thống. Chỉ được phép gán các mã Serial thuộc lô tem của tài khoản!'
+      });
+    }
+
+    // 3. Tách chuỗi serialInput theo dấu phẩy ',' (hoặc ';', xuống dòng)
+    const rawSegments = rawInput
+      .split(/[,;\n\r]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (rawSegments.length === 0) {
+      return res.status(400).json({
+        error: 'Vui lòng nhập serial bé - serial lớn hoặc mã lẻ cách nhau bởi dấu phẩy (VD: 1-10 , 15)!'
+      });
+    }
+
+    const invalidSerialSegments = [];
+    const matchedLabelsMap = new Map();
+    const appliedRangesSummary = [];
+
+    for (const seg of rawSegments) {
+      const parts = seg
+        .split(/\s*(?:->|→|~|–|—|-|\bden\b|\bđến\b)\s*/i)
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      if (parts.length === 0 || parts.length > 2) {
+        return res.status(400).json({
+          error: `Định dạng serial "${seg}" không hợp lệ. Vui lòng nhập dạng "serial bé - serial lớn" hoặc mã lẻ cách nhau bởi dấu phẩy (VD: 1-10 , 15).`
+        });
+      }
+
+      const sStart = parts[0];
+      const sEnd = parts.length > 1 ? resolveEndSerialFromStart(sStart, parts[1]) : sStart;
+
+      if (!isValidSerialToken(sStart) || !isValidSerialToken(sEnd)) {
+        return res.status(400).json({
+          error: `Mã serial "${seg}" không hợp lệ. Vui lòng chỉ nhập số hoặc mã serial hợp lệ (VD: 1-10 , 15).`
+        });
+      }
+
+      const m1 = sStart.match(/^(.*?)(\d+)$/);
+      const m2 = sEnd.match(/^(.*?)(\d+)$/);
+
+      if (parts.length > 1) {
+        if (!m1 || !m2 || m1[1].toUpperCase() !== m2[1].toUpperCase()) {
+          return res.status(400).json({
+            error: `Dải serial "${seg}" không cùng định dạng. Vui lòng nhập theo dạng: 1-10 , 15.`
+          });
+        }
+        const nStart = parseInt(m1[2], 10);
+        const nEnd = parseInt(m2[2], 10);
+        if (nStart > nEnd) {
+          return res.status(400).json({
+            error: `Dải serial "${seg}" không hợp lệ: Serial bé (${sStart}) phải nhỏ hơn hoặc bằng serial lớn (${sEnd})!`
+          });
+        }
+      }
+
+      const rangeOr = buildSmartSerialRangeOr(sStart, sEnd);
+      const lblQuery = {
+        batchId: { $in: validBatchIds },
+        ...(allowedEntIds.length > 0 ? { enterpriseId: { $in: allowedEntIds } } : {}),
+        $or: rangeOr
+      };
+
+      const rawLabelsInSeg = await Label.find(lblQuery)
+        .select('_id serialNumber batchId productId enterpriseId')
+        .lean();
+      const labelsInSeg = filterLabelsInNumericRange(rawLabelsInSeg, sStart, sEnd);
+
+      // Kiểm tra nghiêm ngặt: mọi số serial trong đoạn [sStart, sEnd] đều phải tồn tại trong Lô tem của tài khoản
+      if (m1 && m2 && m1[1].toUpperCase() === m2[1].toUpperCase()) {
+        const nStart = parseInt(m1[2], 10);
+        const nEnd = parseInt(m2[2], 10);
+        const expectedCount = nEnd - nStart + 1;
+
+        const foundNums = new Set();
+        for (const lbl of labelsInSeg) {
+          const lm = String(lbl.serialNumber || '').trim().match(/^(.*?)(\d+)$/);
+          if (lm) {
+            foundNums.add(parseInt(lm[2], 10));
+          }
+        }
+
+        if (foundNums.size === 0) {
+          invalidSerialSegments.push(seg);
+          continue;
+        }
+
+        if (expectedCount <= 200000 && foundNums.size < expectedCount) {
+          let missStart = null;
+          let missPrev = null;
+          for (let num = nStart; num <= nEnd; num++) {
+            if (!foundNums.has(num)) {
+              if (missStart === null) {
+                missStart = num;
+                missPrev = num;
+              } else if (num === missPrev + 1) {
+                missPrev = num;
+              } else {
+                invalidSerialSegments.push(missStart === missPrev ? `${missStart}` : `${missStart}-${missPrev}`);
+                missStart = num;
+                missPrev = num;
+              }
+            }
+          }
+          if (missStart !== null) {
+            invalidSerialSegments.push(missStart === missPrev ? `${missStart}` : `${missStart}-${missPrev}`);
+          }
+          continue;
+        }
+      } else if (labelsInSeg.length === 0) {
+        invalidSerialSegments.push(seg);
+        continue;
+      }
+
+      // Ưu tiên chọn bản ghi tem đã khớp productId nếu có nhiều lô trùng số, hoặc lấy toàn bộ tem hợp lệ trong lô
+      for (const lbl of labelsInSeg) {
+        matchedLabelsMap.set(String(lbl._id), lbl);
+      }
+
+      appliedRangesSummary.push({
+        segment: seg,
+        count: labelsInSeg.length
+      });
+    }
+
+    if (invalidSerialSegments.length > 0) {
+      const batchRangesInfo = validBatches
+        .filter((b) => b.serialStart && b.serialEnd)
+        .slice(0, 5)
+        .map((b) => `${b.batchCode} (${b.serialStart} - ${b.serialEnd})`)
+        .join(', ');
+
+      return res.status(400).json({
+        error: `Serial [${invalidSerialSegments.join(', ')}] không thuộc lô tem nào của tài khoản!${
+          batchRangesInfo ? ` Các lô tem thuộc tài khoản: ${batchRangesInfo}.` : ''
+        } Vui lòng kiểm tra lại!`
+      });
+    }
+
+    const finalLabels = Array.from(matchedLabelsMap.values());
+    if (finalLabels.length === 0) {
+      return res.status(400).json({
+        error: 'Không tìm thấy mã Serial nào thuộc lô tem của tài khoản. Vui lòng kiểm tra lại!'
+      });
+    }
+
+    if (!store.enterpriseId && selectedProduct.enterpriseId) {
+      await RetailStore.updateOne({ _id: store._id }, { $set: { enterpriseId: selectedProduct.enterpriseId } });
+    }
+
+    const bulkOps = finalLabels.map((lbl) => ({
+      updateOne: {
+        filter: { _id: lbl._id },
+        update: {
+          $set: {
+            storeId: store._id,
+            productId: selectedProduct._id,
+            distributorName: store.name,
+            distributorAddress: store.address || '',
+            distributedAt: validSoldDate,
+            ownerCode: lbl.serialNumber,
+            'ownerInfo.name': store.name,
+            'ownerInfo.address': store.address || '',
+            'ownerInfo.phone': store.phone || '',
+            'ownerInfo.activatedSerial': lbl.serialNumber,
+            'ownerInfo.activatedAt': validSoldDate,
+            'ownerInfo.activatedBy': user._id,
+            status: 'ACTIVE',
+            isActive: true
+          }
+        }
+      }
+    }));
+
+    await Label.bulkWrite(bulkOps);
+
+    return res.json({
+      success: true,
+      storeId: store._id,
+      storeName: store.name,
+      productId: selectedProduct._id,
+      productName: selectedProduct.name,
+      totalAssignedLabels: finalLabels.length,
+      distributedDate: validSoldDate,
+      segments: appliedRangesSummary,
+      message: `Đã gán thành công ${finalLabels.length} mã Serial sản phẩm "${selectedProduct.name}" cho điểm bán "${store.name}" (Ngày phân phối: ${validSoldDate.toLocaleDateString('vi-VN')}).`
+    });
+  } catch (error) {
+    console.error('Assign serials to retail store error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Lỗi máy chủ khi gán Serial cho điểm bán: ' + error.message });
     }
   }
 });
