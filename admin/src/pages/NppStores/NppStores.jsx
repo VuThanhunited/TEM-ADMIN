@@ -557,7 +557,7 @@ export default function NppStores() {
             <Tag size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Số lượng SP đã gán ({periodLabel})</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>SP đã PP ({periodLabel})</div>
             <div style={{ fontSize: '24px', fontWeight: 700, color: '#34d399' }}>{totalPeriodSerials} SP</div>
           </div>
         </div>
@@ -567,7 +567,7 @@ export default function NppStores() {
             <DollarSign size={24} />
           </div>
           <div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Tổng Doanh số Điểm bán ({periodLabel})</div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Doanh Thu/Tháng ({periodLabel})</div>
             <div style={{ fontSize: '22px', fontWeight: 800, color: '#fbbf24' }}>{formatCurrency(totalPeriodRevenue)}</div>
           </div>
         </div>
@@ -623,17 +623,16 @@ export default function NppStores() {
               <tr>
                 <th style={{ width: '54px' }}>STT</th>
                 <th>Tên Điểm bán</th>
-                <th>Địa chỉ khai báo</th>
+                <th>Địa chỉ</th>
                 <th>Điện thoại</th>
-                <th style={{ textAlign: 'center' }}>SL đã gán ({periodLabel})</th>
-                <th style={{ textAlign: 'right' }}>Doanh số (SL × Giá SP)</th>
-                <th>Serial vừa bán + Thời gian</th>
+                <th style={{ textAlign: 'center' }}>SP đã PP</th>
+                <th style={{ textAlign: 'center' }}>Doanh Thu/Tháng</th>
+                <th style={{ textAlign: 'center' }}>CHI TIẾT PP</th>
                 <th style={{ textAlign: 'right' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {filteredStores.map((store, idx) => {
-                const recent = store.recentSales || [];
                 const qty = store.periodSerialsCount ?? store.totalSerials ?? 0;
                 const rev = store.periodRevenue ?? store.totalRevenue ?? 0;
                 const breakdown = store.productBreakdown || [];
@@ -665,14 +664,14 @@ export default function NppStores() {
                     <td style={{ textAlign: 'center' }}>
                       <span
                         className={`badge ${qty > 0 ? 'badge-success' : 'badge-secondary'}`}
-                        style={{ fontSize: '13px', padding: '4px 10px', cursor: (store.totalSerials || 0) > 0 ? 'pointer' : 'default' }}
-                        onClick={() => (store.totalSerials || 0) > 0 && handleViewSerials(store)}
+                        style={{ fontSize: '13px', padding: '4px 10px', cursor: 'pointer' }}
+                        onClick={() => handleViewSerials(store)}
                       >
                         {qty} SP
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, color: '#fbbf24', fontSize: '14.5px' }}>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ fontWeight: 800, color: '#d97706', fontSize: '14.5px' }}>
                         {formatCurrency(rev)}
                       </div>
                       {breakdown.length > 0 && (
@@ -685,75 +684,48 @@ export default function NppStores() {
                         </div>
                       )}
                     </td>
-                    <td>
-                      {recent.length === 0 ? (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic' }}>
-                          Chưa có serial nào trong kỳ
-                        </span>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {recent.slice(0, 3).map((item, rIdx) => (
-                            <div
-                              key={item.serialNumber + rIdx}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                background: rIdx === 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.04)',
-                                border: rIdx === 0 ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(255, 255, 255, 0.08)',
-                                borderRadius: '8px',
-                                padding: '5px 10px',
-                                fontSize: '12.5px'
-                              }}
-                            >
-                              <span style={{ fontWeight: 700, fontFamily: 'monospace', color: rIdx === 0 ? '#34d399' : 'var(--text-primary)' }}>
-                                {item.serialNumber}
-                              </span>
-                              <span style={{ color: 'var(--text-muted)' }}>•</span>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
-                                <Clock size={12} />
-                                {formatDateTime(item.soldAt)}
-                              </span>
-                            </div>
-                          ))}
-                          {qty > 3 && (
-                            <button
-                              type="button"
-                              onClick={() => handleViewSerials(store)}
-                              style={{
-                                alignSelf: 'flex-start',
-                                background: 'none',
-                                border: 'none',
-                                color: '#818cf8',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                padding: '2px 0'
-                              }}
-                            >
-                              + Xem toàn bộ {qty} serial &amp; doanh số...
-                            </button>
-                          )}
-                        </div>
-                      )}
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleViewSerials(store)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '6px 14px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #4f46e5',
+                          background: '#eef2ff',
+                          color: '#4f46e5',
+                          fontWeight: 800,
+                          fontSize: '12.5px',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="Xem chi tiết phân phối (Serial & Doanh thu)"
+                      >
+                        CHI TIẾT
+                      </button>
                     </td>
-                    <td>
-                      <div className="action-buttons" style={{ justifyContent: 'flex-end', gap: '6px' }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div className="action-buttons" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'nowrap' }}>
                         <button
                           type="button"
                           className="btn-icon"
                           title="Quét tem xuất cho điểm bán này"
                           onClick={() => handleScanForStore(store)}
-                          style={{ color: '#34d399', background: 'rgba(16, 185, 129, 0.12)' }}
+                          style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.12)' }}
                         >
                           <QrCode size={16} />
                         </button>
                         <button
                           type="button"
                           className="btn-icon"
-                          title="Xem danh sách Serial & Doanh số"
+                          title="Xem Chi tiết PP & Doanh Thu"
                           onClick={() => handleViewSerials(store)}
-                          style={{ color: '#60a5fa', background: 'rgba(59, 130, 246, 0.12)' }}
+                          style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)' }}
                         >
                           <Eye size={16} />
                         </button>

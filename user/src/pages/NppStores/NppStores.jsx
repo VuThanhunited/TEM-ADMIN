@@ -604,15 +604,14 @@ export default function NppStores() {
                   <th style={{ padding: '12px 14px' }}>Tên Điểm bán</th>
                   <th style={{ padding: '12px 14px' }}>Địa chỉ</th>
                   <th style={{ padding: '12px 14px' }}>Điện thoại</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>SL đã gán</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'right' }}>Doanh số (SL × Giá SP)</th>
-                  <th style={{ padding: '12px 14px' }}>Serial vừa bán + Thời gian</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>SP đã PP</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>Doanh Thu/Tháng</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'center' }}>CHI TIẾT PP</th>
                   <th style={{ padding: '12px 14px', textAlign: 'right' }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStores.map((store, idx) => {
-                  const recent = store.recentSales || [];
                   const qty = store.periodSerials ?? store.totalSerials ?? 0;
                   const rev = store.periodRevenue ?? store.totalRevenue ?? 0;
                   return (
@@ -623,7 +622,7 @@ export default function NppStores() {
                       <td style={{ padding: '12px 14px', color: '#34d399' }}>{store.phone || '—'}</td>
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                         <span
-                          onClick={() => (store.totalSerials || 0) > 0 && handleViewSerials(store)}
+                          onClick={() => handleViewSerials(store)}
                           style={{
                             background: qty > 0 ? 'rgba(16,185,129,0.18)' : '#334155',
                             color: qty > 0 ? '#34d399' : '#94a3b8',
@@ -631,32 +630,40 @@ export default function NppStores() {
                             borderRadius: '999px',
                             fontWeight: 700,
                             fontSize: '0.8rem',
-                            cursor: (store.totalSerials || 0) > 0 ? 'pointer' : 'default'
+                            cursor: 'pointer'
                           }}
                         >
                           {qty} SP
                         </span>
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800, color: rev > 0 ? '#fbbf24' : '#64748b' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 800, color: rev > 0 ? '#fbbf24' : '#64748b' }}>
                         {formatCurrency(rev)}
                       </td>
-                      <td style={{ padding: '12px 14px' }}>
-                        {recent.length === 0 ? (
-                          <span style={{ color: '#64748b', fontStyle: 'italic' }}>Chưa có serial</span>
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {recent.slice(0, 3).map((item, rIdx) => (
-                              <div key={item.serialNumber + rIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#34d399' }}>{item.serialNumber}</span>
-                                <span style={{ color: '#64748b' }}>•</span>
-                                <span style={{ color: '#cbd5e1' }}>{formatDateTime(item.soldAt)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleViewSerials(store)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid #6366f1',
+                            background: 'rgba(99, 102, 241, 0.18)',
+                            color: '#a5b4fc',
+                            fontWeight: 800,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          CHI TIẾT
+                        </button>
                       </td>
-                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'nowrap' }}>
                           <button
                             type="button"
                             title="Quét tem cho điểm bán này"
