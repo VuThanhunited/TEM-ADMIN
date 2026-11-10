@@ -166,7 +166,7 @@ router.post('/change-password', auth, async (req, res) => {
 // PUT /api/auth/profile - Update own profile (for ADMIN, NSX, NPP)
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { username, email, fullName, address, phone, details, password } = req.body;
+    const { username, email, fullName, address, phone, details, logo, hasGeographicalIndication, password } = req.body;
     const user = await User.findById(req.user._id);
 
     if (!user) {
@@ -201,6 +201,8 @@ router.put('/profile', auth, async (req, res) => {
     if (address !== undefined) user.address = address;
     if (phone !== undefined) user.phone = phone;
     if (details !== undefined) user.details = details;
+    if (logo !== undefined) user.logo = logo;
+    if (hasGeographicalIndication !== undefined) user.hasGeographicalIndication = Boolean(hasGeographicalIndication);
 
     if (password && req.user.role === 'ADMIN') {
       if (password.length < 6) {
@@ -210,6 +212,20 @@ router.put('/profile', auth, async (req, res) => {
     }
 
     await user.save();
+
+    // Đồng bộ sang Enterprise nếu tài khoản gắn với doanh nghiệp
+    if (user.enterpriseId) {
+      const Enterprise = require('../models/Enterprise');
+      const entUpdates = {};
+      if (address !== undefined) entUpdates.address = address;
+      if (phone !== undefined) entUpdates.phone = phone;
+      if (details !== undefined) entUpdates.partnerDetails = details;
+      if (logo !== undefined) entUpdates.logo = logo;
+      if (hasGeographicalIndication !== undefined) entUpdates.hasGeographicalIndication = Boolean(hasGeographicalIndication);
+      if (Object.keys(entUpdates).length > 0) {
+        await Enterprise.findByIdAndUpdate(user.enterpriseId, entUpdates);
+      }
+    }
 
     const userData = await User.findById(user._id).select('-password').populate('enterpriseId');
     res.json(userData);

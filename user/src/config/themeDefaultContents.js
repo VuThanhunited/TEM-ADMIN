@@ -281,8 +281,9 @@ export const DEFAULT_THEME_CONTENTS = {
     defaultAddress_zh: '越南宣光省山尾社新寨村',
     verifiedLabel_zh: '黄百正品认证',
     rightLogoUrl: '',
-    midBannerUrl: '/images/honey/honey_Banner.png',
-    footerBannerUrl: '/images/honey/honey_footer_banner.png'
+    midBannerUrl: '/images/honey/honey_hero_banner.png',
+    footerBannerUrl: '/images/honey/honey_footer_banner.png',
+    hasGeographicalIndication: false
   },
 
   ocop: {
@@ -396,6 +397,295 @@ export const DEFAULT_THEME_CONTENTS = {
   }
 };
 
+export const DEFAULT_HONEY_DISTRIBUTORS = [
+  {
+    id: 'htx_dong_van',
+    region: 'dong_van',
+    hasGeographicalIndication: true,
+    image: '/images/honey/honey_dist_dong_van.png',
+    vi: {
+      name: 'Hợp tác xã Mật ong Hoa Bạc Hà Đồng Văn',
+      address: 'Thị trấn Đồng Văn, huyện Đồng Văn, tỉnh Hà Giang',
+      phone: '0987 654 321',
+      shortIntro: 'HTX quy tụ các hộ nuôi ong bản địa, khai thác mật ong hoa bạc hà theo phương thức truyền thống trên vùng Cao nguyên đá Đồng Văn.',
+      scale: 'Hơn 45 hộ thành viên — 1.200+ đàn ong nội bản địa',
+      foragingArea: 'Các sườn núi đá vôi Phố Cáo, Sủng Là, Phố Bảng, Thị trấn Đồng Văn (độ cao 1.200m – 1.500m)',
+      cert: 'Chứng nhận OCOP 4 Sao & An toàn thực phẩm Chi cục Quản lý chất lượng Nông lâm sản và Thủy sản',
+      fullStory: [
+        'Hợp tác xã Mật ong Hoa Bạc Hà Đồng Văn là đơn vị nòng cốt trong mạng lưới liên kết sản xuất và phân phối của Hộ Kinh Doanh Hoàng Bách tại khu vực trung tâm Cao nguyên đá Đồng Văn. Được thành lập bởi những nghệ nhân nuôi ong người Mông, Tày, Giáy có truyền thống lâu đời, HTX hiện quản lý hơn 1.200 đàn ong nội đặt tại các thung lũng hoa bạc hà tự nhiên đẹp nhất vùng lõi công viên địa chất.',
+        'Toàn bộ các hộ thành viên trong HTX tuân thủ nghiêm ngặt quy trình nuôi ong sinh thái: chỉ di chuyển đàn ong đến vùng hoa bạc hà tự nhiên từ đầu tháng 10 âm lịch, tuyệt đối không cho ong ăn đường trong mùa khai thác và chỉ quay mật khi cầu ong đã vít nắp sáp trắng chín tự nhiên trên 90%.',
+        'Mật sau khi thu hoạch tại từng điểm trại được kiểm tra độ thủy phần bằng khúc xạ kế chuyên dụng, lọc thô qua lưới inox thực phẩm và đóng can niêm phong chuyển về kho bảo quản tiêu chuẩn, đảm bảo giữ nguyên hương vị the mát đặc trưng và màu vàng chanh ánh xanh nguyên bản của vùng đá Đồng Văn.'
+      ]
+    },
+    en: {
+      name: 'Dong Van Mint Flower Honey Cooperative',
+      address: 'Dong Van Town, Dong Van District, Ha Giang Province',
+      phone: '0987 654 321',
+      shortIntro: 'The cooperative unites indigenous beekeeping households harvesting wild mint flower honey using traditional methods across the Dong Van Karst Plateau.',
+      scale: '45+ member households — 1,200+ native highland bee colonies',
+      foragingArea: 'Limestone valleys of Pho Cao, Sung La, Pho Bang, and Dong Van Town (altitude 1,200m – 1,500m)',
+      cert: '4-Star OCOP Specialty & Certified Food Hygiene and Safety Standard',
+      fullStory: [
+        'Dong Van Mint Flower Honey Cooperative is a cornerstone production and distribution partner of Hoang Bach in the heart of the Dong Van Karst Plateau. Founded by experienced local H’Mong, Tay, and Giay beekeepers, the cooperative manages over 1,200 native bee colonies stationed across pristine wild mint valleys.',
+        'Every member household adheres strictly to ecological beekeeping protocols: zero sugar feeding during the blossom season and harvesting only when honeycombs are over 90% naturally wax-capped.',
+        'Each batch is tested for moisture content via refractometer, cold-filtered through food-grade stainless mesh, and sealed with full origin traceability.'
+      ]
+    },
+    zh: {
+      name: '同文薄荷花蜂蜜合作社 (HTX Mật ong Đồng Văn)',
+      address: '河江省同文县同文镇',
+      phone: '0987 654 321',
+      shortIntro: '合作社汇聚当地世居养蜂农户，在同文喀斯特高原采用传统生态方式采酿纯正野生薄荷花蜂蜜。',
+      scale: '45+ 合作社成员农户 — 1,200+ 群高原本土中华蜜蜂',
+      foragingArea: '副告 (Phố Cáo)、崇喇 (Sủng Là)、副榜 (Phố Bảng) 及同文镇周边海拔 1,200m – 1,500m 石山花谷',
+      cert: 'OCOP 四星级特产认证 & 农林水产品质量安全卫生认证',
+      fullStory: [
+        '同文薄荷花蜂蜜合作社是黄百 (Hoàng Bách) 在同文喀斯特高原核心产区的重要生产与分销网点。合作社由世代养蜂的赫蒙族、岱依族匠人创立，目前管理超过 1,200 群本土蜜蜂，分布在世界地质公园核心区最茂盛的野生薄荷山谷中。',
+        '所有成员农户严格执行生态养蜂规范：花期绝不饲喂白糖，坚持只采割自然封盖率达 90% 以上的成熟蜜脾。',
+        '采收后的原蜜均经过专业折光仪检测波美度与水分含量，采用食品级滤网物理过滤，确保每一滴蜂蜜都保持同文产区标志性的清凉薄荷花香与柠檬黄绿光泽。'
+      ]
+    }
+  },
+  {
+    id: 'ho_lung_cu',
+    region: 'dong_van',
+    hasGeographicalIndication: false,
+    image: '/images/honey/honey_dist_lung_cu.png',
+    vi: {
+      name: 'Hộ sản xuất Mật ong Lũng Cú – Đồng Văn',
+      address: 'Thôn Lũng Cú, xã Lũng Cú, huyện Đồng Văn, tỉnh Hà Giang',
+      phone: '0369 888 568',
+      shortIntro: 'Hộ gia đình có nhiều năm nuôi ong tại Lũng Cú, khai thác mật ong hoa bạc hà tự nhiên, đảm bảo nguyên chất, đậm hương vị vùng cao.',
+      scale: '320 đàn ong nội bản địa đặt quanh chân Cột cờ Lũng Cú & thung lũng Thèn Pả',
+      foragingArea: 'Thôn Lô Lô Chải, Thèn Pả, Séo Lủng – Xã Lũng Cú (độ cao 1.450m – 1.600m)',
+      cert: 'Chứng nhận cơ sở đủ điều kiện An toàn thực phẩm & Truy xuất nguồn gốc QR',
+      fullStory: [
+        'Nằm ngay dưới chân Cột cờ Quốc gia Lũng Cú – điểm cực Bắc thiêng liêng của Tổ quốc ở độ cao gần 1.500m, Hộ sản xuất Mật ong Lũng Cú là một trong những điểm nuôi ong lâu đời và uy tín nhất tại huyện Đồng Văn. Gia đình sinh sống trong ngôi nhà trình tường đất truyền thống với hàng trăm thùng ong gỗ đặt dọc theo sườn núi đá.',
+        'Nhờ vị trí địa lý đặc biệt nơi khí hậu lạnh sâu và sương muối dày vào mùa đông, cây bạc hà dại tại vùng núi đá Lũng Cú có thân thấp, lá dày và hoa tím đậm, tiết ra lượng mật hoa đặc sánh với hàm lượng tinh dầu bạc hà tự nhiên rất cao.',
+        'Du khách khi ghé thăm Lũng Cú có thể trực tiếp trải nghiệm quy trình thăm tổ ong, thưởng thức mật ong hoa bạc hà nguyên sáp ngay tại vườn đá và tra cứu tem QR chính hãng Hoàng Bách trên từng sản phẩm.'
+      ]
+    },
+    en: {
+      name: 'Lung Cu – Dong Van Honey Production Household',
+      address: 'Lung Cu Village, Lung Cu Commune, Dong Van District, Ha Giang Province',
+      phone: '0369 888 568',
+      shortIntro: 'Long-standing family apiary in Lung Cu harvesting pure natural wild mint honey with rich highland character.',
+      scale: '320 native bee colonies around Lung Cu Flag Tower & Then Pa Valley',
+      foragingArea: 'Lo Lo Chai, Then Pa, and Seo Lung Villages – Lung Cu Commune (altitude 1,450m – 1,600m)',
+      cert: 'Certified Food Safety Household & QR Origin Traceability',
+      fullStory: [
+        'Located at the foot of the iconic Lung Cu National Flag Tower at Vietnam’s northernmost point (nearly 1,500m elevation), the Lung Cu Honey Production Household has practiced traditional stone-walled courtyard beekeeping for generations.',
+        'Because of the colder microclimate and dense mountain mist in Lung Cu, wild mint blossoms here develop deep purple petals with highly concentrated aromatic nectar.',
+        'Visitors to Lung Cu can visit the family apiary in person, taste freshly harvested honeycomb, and verify every jar via the Hoang Bach QR traceability stamp.'
+      ]
+    },
+    zh: {
+      name: '龙鼓 (Lũng Cú) – 同文养蜂生产户',
+      address: '河江省同文县龙鼓社龙鼓村',
+      phone: '0369 888 568',
+      shortIntro: '在极北龙鼓地区拥有多年养蜂经验的传统农户，采集纯天然野生薄荷花蜜，高原风味浓郁纯正。',
+      scale: '320 群本土中华蜜蜂，分布于龙鼓国旗台脚下及山谷地带',
+      foragingArea: '倮倮寨 (Lô Lô Chải)、Then Pả、Séo Lủng 村 – 龙鼓社（海拔 1,450m – 1,600m）',
+      cert: '食品安全合格生产户认证 & 二维码原产地溯源',
+      fullStory: [
+        '位于越南极北地标龙鼓国家旗台脚下（海拔近 1,500 米），龙鼓养蜂生产户世代居住在传统的夯土石墙民居中，数百个原木蜂箱整齐排列在石山坡地与花海之间。',
+        '得益于龙鼓高海拔严寒与浓雾气候，这里的野生薄荷植株紧凑、花色深紫，分泌出的花蜜尤为浓稠，天然薄荷精油香气极为浓郁。',
+        '来到龙鼓的游客可以亲临蜂场参观采蜜过程，品尝新鲜成熟巢蜜，并通过黄百 (Hoàng Bách) 防伪溯源二维码查询每一瓶蜂蜜的完整产地信息。'
+      ]
+    }
+  },
+  {
+    id: 'htx_meo_vac',
+    region: 'meo_vac',
+    hasGeographicalIndication: true,
+    image: '/images/honey/honey_dist_dong_van.png',
+    vi: {
+      name: 'Hợp tác xã Ong mật Hoa Bạc Hà Mèo Vạc',
+      address: 'Thị trấn Mèo Vạc, huyện Mèo Vạc, tỉnh Hà Giang',
+      phone: '0866 603 589',
+      shortIntro: 'Đơn vị liên kết khai thác mật ong hoa bạc hà trên các triền núi đá vôi hùng vĩ dọc đèo Mã Pì Lèng và thung lũng Pả Vi, Sín Cái.',
+      scale: '38 hộ nuôi ong liên kết — hơn 950 đàn ong nội bản địa',
+      foragingArea: 'Khu vực đèo Mã Pì Lèng, Pả Vi, Giàng Chu Phìn, Sủng Trà – Huyện Mèo Vạc',
+      cert: 'Chứng nhận Chỉ dẫn địa lý Mật ong Bạc hà Mèo Vạc & OCOP 4 Sao',
+      fullStory: [
+        'Huyện Mèo Vạc từ lâu được mệnh danh là "thủ phủ" của cây hoa bạc hà dại trên Cao nguyên đá với diện tích hoa mọc tự nhiên rộng lớn trải dài dọc theo sườn đèo Mã Pì Lèng, hẻm vực sông Nho Quế và các xã Pả Vi, Giàng Chu Phìn, Sủng Trà.',
+        'Hợp tác xã Ong mật Hoa Bạc Hà Mèo Vạc phối hợp chặt chẽ cùng Hộ Kinh Doanh Hoàng Bách để tuyển chọn những mẻ mật đầu vụ và giữa vụ đạt độ chín hoàn hảo nhất. Mật ong Mèo Vạc nổi tiếng với độ sánh đặc cao, sắc vàng chanh ánh xanh ngọc bích rất đẹp mắt và hương thơm thanh khiết lâu phai.',
+        'Tại điểm phân phối Mèo Vạc, khách hàng được tư vấn trực tiếp cách phân biệt mật ong hoa bạc hà thật – giả, kiểm tra độ đặc sóng sánh và hỗ trợ vận chuyển toàn quốc.'
+      ]
+    },
+    en: {
+      name: 'Meo Vac Mint Flower Honey Cooperative',
+      address: 'Meo Vac Town, Meo Vac District, Ha Giang Province',
+      phone: '0866 603 589',
+      shortIntro: 'Partner cooperative harvesting wild mint honey along the majestic limestone cliffs of Ma Pi Leng Pass and Pa Vi Valley.',
+      scale: '38 partner beekeeping families — 950+ native bee colonies',
+      foragingArea: 'Ma Pi Leng Pass, Pa Vi, Giang Chu Phin, and Sung Tra – Meo Vac District',
+      cert: 'Geographical Indication Certified & 4-Star OCOP Specialty',
+      fullStory: [
+        'Meo Vac District is widely celebrated as the heartland of wild highland mint, with vast natural blossom carpets stretching along Ma Pi Leng Pass and the Nho Que River canyon.',
+        'Meo Vac Mint Flower Honey Cooperative works closely with Hoang Bach to select peak-season honey harvests renowned for their emerald-tinted golden hue, exceptional viscosity, and long-lasting floral bouquet.',
+        'Customers visiting our Meo Vac distribution center can sample authentic mid-season harvests and arrange nationwide delivery.'
+      ]
+    },
+    zh: {
+      name: '苗旺 (Mèo Vạc) 薄荷花蜂蜜合作社',
+      address: '河江省苗旺县苗旺镇',
+      phone: '0866 603 589',
+      shortIntro: '在雄伟的马皮凉 (Mã Pì Lèng) 险峰与帕薇山谷地带合作采酿优质高山野生薄荷花蜜。',
+      scale: '38 户联合养蜂家庭 — 950+ 群本土中华蜜蜂',
+      foragingArea: '马皮凉山口、帕薇 (Pả Vi)、Giàng Chu Phìn、Sủng Trà – 苗旺县产区',
+      cert: '地理标志保护产品认证 & OCOP 四星级标准',
+      fullStory: [
+        '苗旺县素有喀斯特高原“野生薄荷之乡”的美誉，广阔的天然薄荷花海沿着马皮凉大峡谷与儒桂河两岸连绵分布。',
+        '苗旺薄荷花蜂蜜合作社与黄百 (Hoàng Bách) 深度合作，严选盛花期自然封盖成熟蜜。苗旺产区的薄荷蜜以极高的浓稠度、迷人的翠绿金黄光泽和持久幽雅的花香而闻名。',
+        '分销中心提供现场品鉴、真伪鉴别指导及全国安全配送服务。'
+      ]
+    }
+  },
+  {
+    id: 'ho_xin_chai_hoang_bach',
+    region: 'meo_vac',
+    hasGeographicalIndication: true,
+    image: '/images/honey/honey_dist_lung_cu.png',
+    vi: {
+      name: 'Trại Ong Hoàng Bách – Xín Chải, Sơn Vĩ',
+      address: 'Thôn Xín Chải, Xã Sơn Vĩ (Khu vực biên giới Thượng Phùng - Sơn Vĩ)',
+      phone: '0812 838 589',
+      shortIntro: 'Cơ sở sản xuất và đóng gói trung tâm của Hộ Kinh Doanh Hoàng Bách, trực tiếp quản lý đàn ong tại vùng núi cao biên giới.',
+      scale: 'Trụ sở chính & Trại ong trung tâm — hơn 600 đàn ong nội',
+      foragingArea: 'Thôn Xín Chải, Xã Sơn Vĩ và vùng núi đá giáp ranh Mèo Vạc',
+      cert: 'Cơ sở chính chủ Hộ Kinh Doanh Hoàng Bách — Kiểm định chất lượng định kỳ',
+      fullStory: [
+        'Trại Ong Hoàng Bách tại Thôn Xín Chải, Xã Sơn Vĩ là cơ sở sản xuất gốc và trung tâm kiểm soát chất lượng của thương hiệu Mật Ong Hoa Bạc Hà Hoàng Bách. Nằm ở vùng núi cao nguyên sơ nơi thảm thực vật rừng đá còn giữ nguyên vẻ hoang dã, trại ong thu hoạch những giọt mật tinh khiết nhất từ các triền đá vôi biệt lập.',
+        'Mọi lô mật ong trước khi đóng chai thủy tinh và dán tem truy xuất nguồn gốc đều được kiểm tra nghiêm ngặt về độ trong, thủy phần, hương vị và lưu mẫu đối chứng tại cơ sở Xín Chải – Sơn Vĩ.',
+        'Quý khách hàng và đại lý có thể liên hệ trực tiếp qua số hotline 0866.603.589 hoặc 0812.838.589 để đặt hàng chính gốc từ cơ sở sản xuất.'
+      ]
+    },
+    en: {
+      name: 'Hoang Bach Central Apiary – Xin Chai, Son Vi',
+      address: 'Xin Chai Village, Son Vi Commune, Tuyen Quang / Ha Giang Highland Border',
+      phone: '0812 838 589',
+      shortIntro: 'Central production and packaging facility of Hoang Bach Business Household, directly managing highland apiaries.',
+      scale: 'Headquarters & Central Apiary — 600+ native bee colonies',
+      foragingArea: 'Xin Chai Village, Son Vi Commune, and surrounding pristine karst ridges',
+      cert: 'Official Hoang Bach Production Facility — Periodic Lab Quality Testing',
+      fullStory: [
+        'Hoang Bach Central Apiary in Xin Chai Village, Son Vi Commune serves as the primary production base and quality control center for Hoang Bach Mint Flower Honey.',
+        'Every harvested batch undergoes rigorous testing for clarity, moisture level, and floral aroma before bottling and applying the official QR traceability seal.',
+        'Customers and distributors can contact our direct hotline at 0866.603.589 - 0812.838.589 for authentic factory-direct orders.'
+      ]
+    },
+    zh: {
+      name: '黄百 (Hoàng Bách) 中心蜂场 – 新寨村, 山尾社',
+      address: '山尾社新寨村（高山生态核心产区）',
+      phone: '0812 838 589',
+      shortIntro: '黄百经营户核心生产与灌装基地，直接管理高山原生态养蜂场与品质检验中心。',
+      scale: '总部基地与中心蜂场 — 600+ 群本土蜜蜂',
+      foragingArea: '新寨村、山尾社及毗邻苗旺的高山原始石林花海',
+      cert: '黄百官方直营生产基地 — 定期实验室理化指标检测',
+      fullStory: [
+        '位于山尾社新寨村的黄百中心蜂场是“黄百薄荷花蜂蜜”品牌的源头生产基地与质量控制中心。这里地处偏远纯净的高山石林地带，野生薄荷植被茂密且远离人为干扰。',
+        '每一批次蜂蜜在灌装贴标前，均在新寨基地经过波美度、纯净度与感官风味的严格检验，并留存批次样品备查。',
+        '欢迎广大消费者与合作伙伴拨打官方热线 0866.603.589 或 0812.838.589 直接订购源头正品。'
+      ]
+    }
+  },
+  {
+    id: 'htx_yen_minh',
+    region: 'yen_minh',
+    hasGeographicalIndication: true,
+    image: '/images/honey/honey_dist_dong_van.png',
+    vi: {
+      name: 'Tổ hợp tác Nuôi ong Bạc Hà Yên Minh',
+      address: 'Thị trấn Yên Minh, huyện Yên Minh, tỉnh Hà Giang',
+      phone: '0866 603 589',
+      shortIntro: 'Điểm thu hoạch và phân phối mật ong hoa bạc hà tại cửa ngõ Cao nguyên đá Yên Minh – Lao Và Chải – Du Già.',
+      scale: '28 hộ nuôi ong truyền thống — hơn 680 đàn ong nội',
+      foragingArea: 'Xã Lao Và Chải, Na Khê, Bạch Đích, Du Già – Huyện Yên Minh',
+      cert: 'Chứng nhận An toàn vệ sinh thực phẩm & Chuỗi cung ứng Mật ong Cao nguyên đá',
+      fullStory: [
+        'Tổ hợp tác Nuôi ong Bạc Hà Yên Minh phụ trách vùng nguyên liệu phía Tây và phía Nam của Cao nguyên đá, trải dài từ các sườn núi đá vôi Lao Và Chải, Na Khê, Bạch Đích cho tới vùng rừng núi nguyên sinh Du Già.',
+        'Nhờ thảm thực vật phong phú giao thoa giữa rừng thông Yên Minh và các triền đá tai mèo phủ đầy hoa bạc hà tím, mật ong thu hoạch tại khu vực Yên Minh có hương thơm dịu nhẹ quyến rũ, vị ngọt thanh mát rất dễ thưởng thức cho cả người lớn tuổi và trẻ nhỏ.',
+        'Điểm phân phối tại Thị trấn Yên Minh là trạm dừng chân tin cậy cho du khách trên cung đường khám phá Hà Giang muốn mua mật ong hoa bạc hà Hoàng Bách chính hãng có tem truy xuất nguồn gốc rõ ràng.'
+      ]
+    },
+    en: {
+      name: 'Yen Minh Mint Honey Beekeeping Cooperative Group',
+      address: 'Yen Minh Town, Yen Minh District, Ha Giang Province',
+      phone: '0866 603 589',
+      shortIntro: 'Harvesting and distribution hub at the gateway to the Yen Minh – Lao Va Chai – Du Gia karst region.',
+      scale: '28 traditional beekeeping households — 680+ native bee colonies',
+      foragingArea: 'Lao Va Chai, Na Khe, Bach Dich, and Du Gia Communes – Yen Minh District',
+      cert: 'Certified Food Hygiene & Karst Plateau Honey Supply Chain Partner',
+      fullStory: [
+        'The Yen Minh Beekeeping Cooperative Group oversees the western and southern foraging zones of the Karst Plateau, spanning from the limestone slopes of Lao Va Chai and Bach Dich to the pristine valleys of Du Gia.',
+        'Surrounded by highland pine forests and wild mint limestone ridges, honey harvested in Yen Minh features a remarkably gentle floral aroma and smooth, refreshing sweetness.',
+        'Our Yen Minh Town center serves as a trusted stopover for travelers exploring Ha Giang who seek authentic QR-verified Hoang Bach Mint Flower Honey.'
+      ]
+    },
+    zh: {
+      name: '安明 (Yên Minh) 薄荷蜜养蜂合作组',
+      address: '河江省安明县安明镇',
+      phone: '0866 603 589',
+      shortIntro: '位于安明 – 劳瓦寨 (Lao Và Chải) – 游嘉 (Du Già) 喀斯特高原门户产区的采收与分销网点。',
+      scale: '28 户传统养蜂家庭 — 680+ 群高原本土蜜蜂',
+      foragingArea: '劳瓦寨、那溪 (Na Khê)、白迪 (Bạch Đích) 及游嘉自然保护区周边石山',
+      cert: '食品安全卫生认证 & 喀斯特高原蜂蜜标准化供应链成员',
+      fullStory: [
+        '安明薄荷蜜养蜂合作组负责喀斯特高原西南部蜜源产区，涵盖劳瓦寨、那溪、白迪的石灰岩山坡以及游嘉原始生态山谷。',
+        '得益于安明高山松林与石山野生薄荷花海交织的微生态，安明产区的薄荷蜜香气柔美清新，口感温润甘甜，老少皆宜。',
+        '安明镇分销网点是环游河江高原游客信赖的正品驿站，所有产品均贴有黄百 (Hoàng Bách) 防伪溯源二维码标签。'
+      ]
+    }
+  },
+  {
+    id: 'ho_du_gia_yen_minh',
+    region: 'yen_minh',
+    hasGeographicalIndication: false,
+    image: '/images/honey/honey_dist_lung_cu.png',
+    vi: {
+      name: 'Hộ nuôi ong Sinh thái Du Già – Yên Minh',
+      address: 'Xã Du Già, huyện Yên Minh, tỉnh Hà Giang',
+      phone: '0812 838 589',
+      shortIntro: 'Khai thác mật ong hoa bạc hà tự nhiên tại khu vực vùng đệm Vườn Quốc gia Du Già – Cao nguyên đá Đồng Văn.',
+      scale: '250 đàn ong nội bản địa nuôi theo mô hình sinh thái rừng đá',
+      foragingArea: 'Thung lũng Du Già, Đường Thượng, Lũng Hồ – Huyện Yên Minh',
+      cert: 'Sản phẩm OCOP địa phương & Cam kết 100% nguyên chất tự nhiên',
+      fullStory: [
+        'Nằm trong vùng sinh thái trong lành giáp Vườn Quốc gia Du Già và các xã Đường Thượng, Lũng Hồ, Hộ nuôi ong Sinh thái Du Già sở hữu nguồn hoa bạc hà rừng hoàn toàn tự nhiên mọc xen kẽ trên các dãy núi đá vôi hùng vĩ.',
+        'Đàn ong tại đây tận hưởng nguồn nước suối thác tinh khiết và thảm hoa bạc hà nở muộn kéo dài đến tận tháng Chạp âm lịch, tạo nên những giọt mật cuối vụ sánh đặc, giàu khoáng chất và đậm đà hương vị núi rừng.',
+        'Sản phẩm được thu gom, kiểm định chất lượng và phân phối chính thức trong hệ thống Mật Ong Hoa Bạc Hà Hoàng Bách.'
+      ]
+    },
+    en: {
+      name: 'Du Gia Ecological Beekeeping Household – Yen Minh',
+      address: 'Du Gia Commune, Yen Minh District, Ha Giang Province',
+      phone: '0812 838 589',
+      shortIntro: 'Harvesting wild mint honey in the pristine buffer zone of Du Gia National Park – Dong Van Karst Plateau.',
+      scale: '250 native bee colonies managed under forest-karst ecological standards',
+      foragingArea: 'Du Gia, Duong Thuong, and Lung Ho Valleys – Yen Minh District',
+      cert: 'Local OCOP Specialty & 100% Pure Natural Guarantee',
+      fullStory: [
+        'Nestled in the unspoiled valleys bordering Du Gia National Park, Duong Thuong, and Lung Ho, the Du Gia Ecological Beekeeping Household benefits from wild mountain mint thriving alongside crystal-clear waterfall streams.',
+        'Late-season blossoms here yield a rich, mineral-dense honey with a deep herbal aroma, fully inspected and distributed under the Hoang Bach quality seal.'
+      ]
+    },
+    zh: {
+      name: '游嘉 (Du Già) – 安明生态养蜂户',
+      address: '河江省安明县游嘉社',
+      phone: '0812 838 589',
+      shortIntro: '在游嘉国家公园缓冲带与同文喀斯特高原交界处采集纯天然野生薄荷花蜜。',
+      scale: '250 群原生态石林放养本土蜜蜂',
+      foragingArea: '游嘉山谷、Đường Thượng、Lũng Hồ – 安明县生态产区',
+      cert: '地方特色农产品认证 & 100% 纯天然品质保证',
+      fullStory: [
+        '坐落于毗邻游嘉国家公园的原始山谷中，游嘉生态养蜂户依托清澈的高山溪流与绵延的野生薄荷石山，拥有得天独厚的无污染蜜源环境。',
+        '这里的晚花期薄荷蜜质地尤为醇厚、矿物质丰富，经黄百 (Hoàng Bách) 严格检验后统一贴标溯源上市。'
+      ]
+    }
+  }
+];
+
 export function resolveCanonicalThemeKey(rawTheme) {
   const t = String(rawTheme || 'appliance').toLowerCase().trim();
   if (t === 'default' || t === 'appliance' || t === 'warranty' || t === 'warranty_solution') return 'appliance';
@@ -417,7 +707,9 @@ export function getMergedThemeContent(rawTheme, customContent = {}) {
   }
   const merged = { ...baseDefaults };
   for (const [k, v] of Object.entries(customContent)) {
-    if (v !== undefined && v !== null && String(v).trim() !== '') {
+    if (Array.isArray(v) || typeof v === 'boolean') {
+      merged[k] = v;
+    } else if (v !== undefined && v !== null && String(v).trim() !== '') {
       merged[k] = v;
     }
   }

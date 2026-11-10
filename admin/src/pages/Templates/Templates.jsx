@@ -4,11 +4,12 @@ import api from '../../services/api';
 import {
   Palette, Plus, X, Save, Eye, Trash2, CheckCircle, XCircle, FileText,
   Settings, ShieldCheck, Package, RotateCcw, ChevronDown, ChevronUp,
-  Smartphone, Search, Sparkles, Building2, Layers
+  Smartphone, Search, Sparkles, Building2, Layers, Award, MapPin, Phone, Upload
 } from 'lucide-react';
 import {
   THEME_LIST,
   DEFAULT_THEME_CONTENTS,
+  DEFAULT_HONEY_DISTRIBUTORS,
   THEME_EDITOR_SECTIONS,
   resolveCanonicalThemeKey,
   getMergedThemeContent
@@ -67,6 +68,8 @@ export default function Templates() {
   const [fieldSearch, setFieldSearch] = useState('');
   const [collapsedSections, setCollapsedSections] = useState({});
   const [activeSectionFilter, setActiveSectionFilter] = useState('all');
+  const [honeyDistRegionFilter, setHoneyDistRegionFilter] = useState('all');
+  const [expandedHoneyDistIds, setExpandedHoneyDistIds] = useState({});
 
   const [form, setForm] = useState({
     name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0',
@@ -164,6 +167,113 @@ export default function Templates() {
       ...prev,
       [fieldKey]: value
     }));
+  };
+
+  // Chuẩn hóa danh sách đơn vị phân phối Mật Ong trong trình soạn thảo
+  const currentHoneyDistributors = useMemo(() => {
+    const rawList = Array.isArray(themeDraft.honeyDistributors) && themeDraft.honeyDistributors.length > 0
+      ? themeDraft.honeyDistributors
+      : DEFAULT_HONEY_DISTRIBUTORS;
+    return rawList.map((item, idx) => {
+      const vi = item?.vi || {};
+      const fullStoryArr = Array.isArray(item?.fullStory)
+        ? item.fullStory
+        : (Array.isArray(vi.fullStory) ? vi.fullStory : []);
+      return {
+        ...item,
+        id: item?.id || `honey_unit_${idx}`,
+        region: item?.region || 'dong_van',
+        hasGeographicalIndication: item?.hasGeographicalIndication !== undefined
+          ? Boolean(item.hasGeographicalIndication)
+          : Boolean(vi.hasGeographicalIndication),
+        image: item?.image || '/images/honey/honey_dist_dong_van.png',
+        name: item?.name ?? vi.name ?? '',
+        address: item?.address ?? vi.address ?? '',
+        phone: item?.phone ?? vi.phone ?? '',
+        shortIntro: item?.shortIntro ?? vi.shortIntro ?? '',
+        scale: item?.scale ?? vi.scale ?? '',
+        foragingArea: item?.foragingArea ?? vi.foragingArea ?? '',
+        cert: item?.cert ?? vi.cert ?? '',
+        fullStoryText: item?.fullStoryText ?? fullStoryArr.join('\n')
+      };
+    });
+  }, [themeDraft.honeyDistributors]);
+
+  const updateHoneyDistributorItem = (unitId, field, value) => {
+    const updated = currentHoneyDistributors.map(u => {
+      if (u.id !== unitId) return u;
+      const next = { ...u, [field]: value };
+      const fullStoryLines = String(next.fullStoryText || '').split('\n').map(s => s.trim()).filter(Boolean);
+      next.vi = {
+        ...(u.vi || {}),
+        name: next.name,
+        address: next.address,
+        phone: next.phone,
+        shortIntro: next.shortIntro,
+        scale: next.scale,
+        foragingArea: next.foragingArea,
+        cert: next.cert,
+        fullStory: fullStoryLines.length > 0 ? fullStoryLines : [next.shortIntro]
+      };
+      return next;
+    });
+    handleThemeFieldChange('honeyDistributors', updated);
+  };
+
+  const handleAddHoneyDistributor = () => {
+    const targetRegion = honeyDistRegionFilter === 'all' ? 'dong_van' : honeyDistRegionFilter;
+    const newId = `unit_${Date.now()}`;
+    const newUnit = {
+      id: newId,
+      region: targetRegion,
+      hasGeographicalIndication: true,
+      image: '/images/honey/honey_dist_dong_van.png',
+      name: 'Đơn vị sản xuất / Hợp tác xã mới',
+      address: targetRegion === 'meo_vac'
+        ? 'Thị trấn Mèo Vạc, huyện Mèo Vạc, tỉnh Hà Giang'
+        : targetRegion === 'yen_minh'
+          ? 'Thị trấn Yên Minh, huyện Yên Minh, tỉnh Hà Giang'
+          : 'Thị trấn Đồng Văn, huyện Đồng Văn, tỉnh Hà Giang',
+      phone: '0987 654 321',
+      shortIntro: 'Đơn vị nuôi ong và khai thác mật ong hoa bạc hà truyền thống trên vùng Cao nguyên đá.',
+      scale: '30 hộ thành viên — 500+ đàn ong nội bản địa',
+      foragingArea: 'Vùng núi đá vôi Cao nguyên đá (độ cao 1.000m – 1.600m)',
+      cert: 'Sản phẩm được cấp Chỉ dẫn địa lý & An toàn thực phẩm',
+      fullStoryText: 'Đơn vị quy tụ các hộ nuôi ong bản địa, khai thác mật ong hoa bạc hà theo phương thức truyền thống.\nTuân thủ nghiêm ngặt quy trình thu hoạch mật chín tự nhiên và kiểm định chất lượng.',
+      vi: {
+        name: 'Đơn vị sản xuất / Hợp tác xã mới',
+        address: 'Cao nguyên đá Hà Giang',
+        phone: '0987 654 321',
+        shortIntro: 'Đơn vị nuôi ong và khai thác mật ong hoa bạc hà truyền thống trên vùng Cao nguyên đá.',
+        scale: '30 hộ thành viên — 500+ đàn ong nội bản địa',
+        foragingArea: 'Vùng núi đá vôi Cao nguyên đá (độ cao 1.000m – 1.600m)',
+        cert: 'Sản phẩm được cấp Chỉ dẫn địa lý & An toàn thực phẩm',
+        fullStory: [
+          'Đơn vị quy tụ các hộ nuôi ong bản địa, khai thác mật ong hoa bạc hà theo phương thức truyền thống.',
+          'Tuân thủ nghiêm ngặt quy trình thu hoạch mật chín tự nhiên và kiểm định chất lượng.'
+        ]
+      }
+    };
+    handleThemeFieldChange('honeyDistributors', [newUnit, ...currentHoneyDistributors]);
+    setExpandedHoneyDistIds(prev => ({ ...prev, [newId]: true }));
+  };
+
+  const handleRemoveHoneyDistributor = (unitId) => {
+    if (!confirm('Xóa đơn vị này khỏi danh sách điểm phân phối?')) return;
+    const updated = currentHoneyDistributors.filter(u => u.id !== unitId);
+    handleThemeFieldChange('honeyDistributors', updated);
+  };
+
+  const handleUploadImageToField = (e, callback) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        callback(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleSectionCollapse = (idx) => {
@@ -1099,6 +1209,538 @@ export default function Templates() {
         {/* Workspace 2 Cột: Cột Trái (Form theo Khối) + Cột Phải (Live Mobile Preview) */}
         <div className="theme-builder-workspace">
           <div className="theme-editor-pane">
+            {selectedThemeKey === 'honey' && (
+              <div
+                className="theme-section-box"
+                style={{
+                  border: '2px solid #f59e0b',
+                  background: '#fffdf7',
+                  marginBottom: 18,
+                  boxShadow: '0 6px 20px rgba(217, 119, 6, 0.1)'
+                }}
+              >
+                <div
+                  style={{
+                    padding: '14px 18px',
+                    background: 'linear-gradient(135deg, #14532d 0%, #166534 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 12
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Award size={22} color="#fde047" />
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#fef08a' }}>
+                        SOẠN THÔNG TIN CÁC ĐƠN VỊ PHÂN PHỐI (ĐỒNG VĂN • MÈO VẠC • YÊN MINH) & CHỈ DẪN ĐỊA LÝ
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#dcfce7', marginTop: 2 }}>
+                        Chỉnh sửa danh sách các đơn vị ở mục "Các điểm phân phối", tải ảnh Logo chủ thể và tích chọn "Sản phẩm được cấp chỉ dẫn địa lý" cho từng đơn vị.
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveThemeContent}
+                    disabled={savingThemeContent}
+                    style={{
+                      background: '#f59e0b',
+                      borderColor: '#fde047',
+                      color: '#1e293b',
+                      fontWeight: 800,
+                      height: 36,
+                      padding: '0 14px',
+                      fontSize: '0.82rem'
+                    }}
+                  >
+                    <Save size={15} /> {savingThemeContent ? 'Đang lưu...' : 'Lưu Danh Sách Đơn Vị'}
+                  </button>
+                </div>
+
+                <div style={{ padding: '16px 18px' }}>
+                  {/* Khối 1: Tùy chọn nhanh cho Đơn vị chủ thể trên đầu trang */}
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '1.5px solid #fde68a',
+                      borderRadius: 12,
+                      padding: '14px 16px',
+                      marginBottom: 16,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                      gap: 14,
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#14532d', marginBottom: 6 }}>
+                        1. Chứng nhận Chỉ dẫn địa lý của Đơn vị chủ thể (Đầu trang)
+                      </div>
+                      <label
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 9,
+                          padding: '8px 14px',
+                          borderRadius: 10,
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          background: themeDraft.hasGeographicalIndication ? '#fef3c7' : '#f1f5f9',
+                          color: themeDraft.hasGeographicalIndication ? '#92400e' : '#334155',
+                          border: themeDraft.hasGeographicalIndication ? '1.5px solid #f59e0b' : '1.5px solid #cbd5e1'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(themeDraft.hasGeographicalIndication)}
+                          onChange={(e) => handleThemeFieldChange('hasGeographicalIndication', e.target.checked)}
+                          style={{ width: 17, height: 17, accentColor: '#15803d', cursor: 'pointer' }}
+                        />
+                        <Award size={16} color={themeDraft.hasGeographicalIndication ? '#d97706' : '#64748b'} />
+                        <span>Sản phẩm được cấp chỉ dẫn địa lý (Đơn vị chủ thể)</span>
+                      </label>
+                    </div>
+
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#14532d', marginBottom: 6 }}>
+                        2. Logo / Ảnh đại diện khung bên phải của Đơn vị chủ thể
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="Để trống sẽ tự động lấy Logo tài khoản / Ảnh SP..."
+                          value={themeDraft.rightLogoUrl || ''}
+                          onChange={(e) => handleThemeFieldChange('rightLogoUrl', e.target.value)}
+                          style={{ flex: 1, height: 36, fontSize: '0.82rem', background: '#fff', color: '#0f172a' }}
+                        />
+                        <label
+                          className="btn btn-ghost"
+                          style={{
+                            height: 36,
+                            padding: '0 12px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            background: '#f0fdf4',
+                            color: '#15803d',
+                            border: '1px solid #86efac',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          <Upload size={14} /> Tải ảnh
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => handleUploadImageToField(e, (dataUrl) => handleThemeFieldChange('rightLogoUrl', dataUrl))}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Khối 2: Thanh công cụ lọc theo 3 vùng Đồng Văn / Mèo Vạc / Yên Minh + Thêm đơn vị */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 10,
+                      marginBottom: 14
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e293b', marginRight: 4 }}>
+                        Chọn vùng:
+                      </span>
+                      {[
+                        { id: 'all', label: `Tất cả (${currentHoneyDistributors.length})` },
+                        { id: 'dong_van', label: `📍 ${themeDraft.region1Label_vi || 'Đồng Văn'} (${currentHoneyDistributors.filter(d => d.region === 'dong_van').length})` },
+                        { id: 'meo_vac', label: `📍 ${themeDraft.region2Label_vi || 'Mèo Vạc'} (${currentHoneyDistributors.filter(d => d.region === 'meo_vac').length})` },
+                        { id: 'yen_minh', label: `📍 ${themeDraft.region3Label_vi || 'Yên Minh'} (${currentHoneyDistributors.filter(d => d.region === 'yen_minh').length})` }
+                      ].map(rTab => (
+                        <button
+                          key={rTab.id}
+                          type="button"
+                          onClick={() => setHoneyDistRegionFilter(rTab.id)}
+                          style={{
+                            padding: '6px 13px',
+                            borderRadius: 999,
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            border: honeyDistRegionFilter === rTab.id ? '1.5px solid #15803d' : '1.5px solid #cbd5e1',
+                            background: honeyDistRegionFilter === rTab.id ? '#15803d' : '#ffffff',
+                            color: honeyDistRegionFilter === rTab.id ? '#ffffff' : '#334155'
+                          }}
+                        >
+                          {rTab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={handleAddHoneyDistributor}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: 8,
+                          fontSize: '0.82rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          background: '#15803d',
+                          color: '#ffffff',
+                          border: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                      >
+                        <Plus size={15} /> Thêm đơn vị mới
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm('Khôi phục danh sách 6 đơn vị mẫu mặc định của Cao nguyên đá?')) {
+                            handleThemeFieldChange('honeyDistributors', DEFAULT_HONEY_DISTRIBUTORS);
+                          }
+                        }}
+                        style={{
+                          padding: '7px 12px',
+                          borderRadius: 8,
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: '#ffffff',
+                          color: '#475569',
+                          border: '1.5px solid #cbd5e1',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5
+                        }}
+                      >
+                        <RotateCcw size={14} /> Mẫu mặc định
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Danh sách các thẻ đơn vị */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {currentHoneyDistributors
+                      .filter(u => honeyDistRegionFilter === 'all' || u.region === honeyDistRegionFilter)
+                      .map((unit, uIdx) => {
+                        const isExpanded = Boolean(expandedHoneyDistIds[unit.id]);
+                        return (
+                          <div
+                            key={unit.id}
+                            style={{
+                              background: '#ffffff',
+                              border: unit.hasGeographicalIndication ? '2px solid #f59e0b' : '1.5px solid #cbd5e1',
+                              borderRadius: 12,
+                              padding: '14px 16px',
+                              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.05)'
+                            }}
+                          >
+                            {/* Dòng tiêu đề đơn vị + Nút tích Chỉ dẫn địa lý */}
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: 10,
+                                paddingBottom: 10,
+                                marginBottom: 12,
+                                borderBottom: '1px dashed #e2e8f0'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    background: '#14532d',
+                                    color: '#fef08a',
+                                    fontWeight: 800,
+                                    fontSize: '0.75rem',
+                                    padding: '3px 9px',
+                                    borderRadius: 6
+                                  }}
+                                >
+                                  Đơn vị #{uIdx + 1}
+                                </span>
+                                <strong style={{ fontSize: '0.94rem', color: '#0f172a' }}>
+                                  {unit.name || 'Chưa đặt tên đơn vị'}
+                                </strong>
+                                <select
+                                  value={unit.region}
+                                  onChange={(e) => updateHoneyDistributorItem(unit.id, 'region', e.target.value)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    color: '#15803d',
+                                    background: '#f0fdf4'
+                                  }}
+                                >
+                                  <option value="dong_van">📍 Vùng: {themeDraft.region1Label_vi || 'Đồng Văn'}</option>
+                                  <option value="meo_vac">📍 Vùng: {themeDraft.region2Label_vi || 'Mèo Vạc'}</option>
+                                  <option value="yen_minh">📍 Vùng: {themeDraft.region3Label_vi || 'Yên Minh'}</option>
+                                </select>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                {/* NÚT TÍCH SẢN PHẨM ĐƯỢC CẤP CHỈ DẪN ĐỊA LÝ CHO TỪNG ĐƠN VỊ */}
+                                <label
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '6px 12px',
+                                    borderRadius: 999,
+                                    cursor: 'pointer',
+                                    fontWeight: 800,
+                                    fontSize: '0.8rem',
+                                    background: unit.hasGeographicalIndication
+                                      ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                                      : '#f1f5f9',
+                                    color: unit.hasGeographicalIndication ? '#92400e' : '#475569',
+                                    border: unit.hasGeographicalIndication ? '1.5px solid #f59e0b' : '1.5px solid #cbd5e1',
+                                    boxShadow: unit.hasGeographicalIndication ? '0 2px 6px rgba(245, 158, 11, 0.2)' : 'none'
+                                  }}
+                                  title="Tích chọn nếu đơn vị này được cấp chứng nhận Chỉ dẫn địa lý"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(unit.hasGeographicalIndication)}
+                                    onChange={(e) => updateHoneyDistributorItem(unit.id, 'hasGeographicalIndication', e.target.checked)}
+                                    style={{ width: 16, height: 16, accentColor: '#d97706', cursor: 'pointer' }}
+                                  />
+                                  <Award size={15} color={unit.hasGeographicalIndication ? '#d97706' : '#64748b'} />
+                                  <span>Sản phẩm được cấp chỉ dẫn địa lý</span>
+                                </label>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedHoneyDistIds(prev => ({ ...prev, [unit.id]: !isExpanded }))}
+                                  style={{
+                                    padding: '5px 10px',
+                                    borderRadius: 6,
+                                    border: '1px solid #cbd5e1',
+                                    background: '#f8fafc',
+                                    color: '#334155',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {isExpanded ? 'Thu gọn bài viết ▲' : 'Sửa bài viết chi tiết ▼'}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveHoneyDistributor(unit.id)}
+                                  style={{
+                                    padding: '5px 8px',
+                                    borderRadius: 6,
+                                    border: '1px solid #fecaca',
+                                    background: '#fef2f2',
+                                    color: '#dc2626',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Xóa đơn vị này"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 4 Trường hiển thị trực tiếp ngoài thẻ: Tên đơn vị, Liên hệ, Địa chỉ, Ảnh đại diện + Giới thiệu ngắn */}
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                gap: 10
+                              }}
+                            >
+                              <div>
+                                <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                  Tên đơn vị sản xuất:
+                                </label>
+                                <input
+                                  type="text"
+                                  className="input"
+                                  value={unit.name}
+                                  onChange={(e) => updateHoneyDistributorItem(unit.id, 'name', e.target.value)}
+                                  style={{ height: 36, fontSize: '0.84rem', background: '#fff', color: '#0f172a' }}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                  Số điện thoại liên hệ:
+                                </label>
+                                <input
+                                  type="text"
+                                  className="input"
+                                  value={unit.phone}
+                                  onChange={(e) => updateHoneyDistributorItem(unit.id, 'phone', e.target.value)}
+                                  style={{ height: 36, fontSize: '0.84rem', background: '#fff', color: '#0f172a' }}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                  Địa chỉ:
+                                </label>
+                                <input
+                                  type="text"
+                                  className="input"
+                                  value={unit.address}
+                                  onChange={(e) => updateHoneyDistributorItem(unit.id, 'address', e.target.value)}
+                                  style={{ height: 36, fontSize: '0.84rem', background: '#fff', color: '#0f172a' }}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                  Ảnh đại diện đơn vị:
+                                </label>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <input
+                                    type="text"
+                                    className="input"
+                                    value={unit.image}
+                                    onChange={(e) => updateHoneyDistributorItem(unit.id, 'image', e.target.value)}
+                                    style={{ flex: 1, height: 36, fontSize: '0.8rem', background: '#fff', color: '#0f172a' }}
+                                  />
+                                  <label
+                                    style={{
+                                      height: 36,
+                                      padding: '0 10px',
+                                      borderRadius: 6,
+                                      background: '#f0fdf4',
+                                      color: '#15803d',
+                                      border: '1px solid #86efac',
+                                      fontSize: '0.76rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      whiteSpace: 'nowrap'
+                                    }}
+                                  >
+                                    <Upload size={13} /> Ảnh
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      style={{ display: 'none' }}
+                                      onChange={(e) => handleUploadImageToField(e, (dataUrl) => updateHoneyDistributorItem(unit.id, 'image', dataUrl))}
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div style={{ gridColumn: '1 / -1' }}>
+                                <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                  Giới thiệu ngắn (hiển thị ngay trên thẻ):
+                                </label>
+                                <textarea
+                                  className="input textarea"
+                                  rows={2}
+                                  value={unit.shortIntro}
+                                  onChange={(e) => updateHoneyDistributorItem(unit.id, 'shortIntro', e.target.value)}
+                                  style={{ fontSize: '0.84rem', background: '#fff', color: '#0f172a', minHeight: 54 }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Phần mở rộng khi bấm "Sửa bài viết chi tiết ▼" (Hiển thị khi khách bấm nút GIỚI THIỆU >) */}
+                            {isExpanded && (
+                              <div
+                                style={{
+                                  marginTop: 12,
+                                  paddingTop: 12,
+                                  borderTop: '1px solid #e2e8f0',
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                                  gap: 10
+                                }}
+                              >
+                                <div>
+                                  <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                    Quy mô & Sản lượng:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="input"
+                                    value={unit.scale}
+                                    onChange={(e) => updateHoneyDistributorItem(unit.id, 'scale', e.target.value)}
+                                    style={{ height: 36, fontSize: '0.83rem', background: '#fff', color: '#0f172a' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                    Vùng nguyên liệu:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="input"
+                                    value={unit.foragingArea}
+                                    onChange={(e) => updateHoneyDistributorItem(unit.id, 'foragingArea', e.target.value)}
+                                    style={{ height: 36, fontSize: '0.83rem', background: '#fff', color: '#0f172a' }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                    Tiêu chuẩn chất lượng:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="input"
+                                    value={unit.cert}
+                                    onChange={(e) => updateHoneyDistributorItem(unit.id, 'cert', e.target.value)}
+                                    style={{ height: 36, fontSize: '0.83rem', background: '#fff', color: '#0f172a' }}
+                                  />
+                                </div>
+
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                  <label className="theme-field-label" style={{ display: 'block', marginBottom: 4 }}>
+                                    Bài viết giới thiệu chi tiết khi bấm "GIỚI THIỆU &gt;" (Mỗi đoạn 1 dòng):
+                                  </label>
+                                  <textarea
+                                    className="input textarea"
+                                    rows={4}
+                                    value={unit.fullStoryText}
+                                    onChange={(e) => updateHoneyDistributorItem(unit.id, 'fullStoryText', e.target.value)}
+                                    style={{ fontSize: '0.84rem', background: '#fff', color: '#0f172a' }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeSections.map((sec, secIdx) => {
               if (activeSectionFilter !== 'all' && activeSectionFilter !== secIdx && !fieldSearch.trim()) {
                 return null;

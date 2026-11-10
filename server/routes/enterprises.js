@@ -16,7 +16,7 @@ router.get('/manufacturers', auth, async (req, res) => {
       userQuery.enterpriseId = req.user.enterpriseId;
     }
     const userNSXList = await User.find(userQuery)
-      .select('fullName address phone email details logo role enterpriseId')
+      .select('fullName address phone email details logo hasGeographicalIndication role enterpriseId')
       .sort({ fullName: 1 })
       .lean();
 
@@ -28,13 +28,13 @@ router.get('/manufacturers', auth, async (req, res) => {
       entQuery.type = 'NSX';
     }
     let enterpriseNSXList = await Enterprise.find(entQuery)
-      .select('name address phone email logo partnerDetails type')
+      .select('name address phone email logo partnerDetails hasGeographicalIndication type')
       .sort({ name: 1 })
       .lean();
 
     if (enterpriseNSXList.length === 0 && req.user.role === 'ADMIN') {
       enterpriseNSXList = await Enterprise.find({ isActive: true })
-        .select('name address phone email logo partnerDetails type')
+        .select('name address phone email logo partnerDetails hasGeographicalIndication type')
         .sort({ name: 1 })
         .lean();
     }
@@ -48,6 +48,7 @@ router.get('/manufacturers', auth, async (req, res) => {
       email: u.email || '',
       partnerDetails: u.details || '',
       logo: u.logo || null,
+      hasGeographicalIndication: Boolean(u.hasGeographicalIndication),
       source: 'USER_NSX',
       isEnterprise: false
     }));
@@ -60,6 +61,7 @@ router.get('/manufacturers', auth, async (req, res) => {
       email: e.email || '',
       partnerDetails: e.partnerDetails || '',
       logo: e.logo || null,
+      hasGeographicalIndication: Boolean(e.hasGeographicalIndication),
       source: 'ENTERPRISE_NSX',
       isEnterprise: true
     }));
@@ -95,7 +97,7 @@ router.get('/:id', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     if (req.user.role === 'ADMIN') {
-      const enterprises = await Enterprise.find().select('name type address logo bannerImage domain subdomain displayConfig brandConfig phone email website taxCode partnerDetails chatbotConfig isActive').sort({ createdAt: -1 }).lean();
+      const enterprises = await Enterprise.find().select('name type address logo bannerImage domain subdomain displayConfig brandConfig phone email website taxCode partnerDetails hasGeographicalIndication chatbotConfig isActive').sort({ createdAt: -1 }).lean();
       return res.json(enterprises);
     }
     if (req.user.enterpriseId) {
@@ -118,7 +120,7 @@ router.put('/:id', auth, async (req, res) => {
       }
     }
 
-    const { name, type, address, phone, email, website, taxCode, logo, bannerImage, brandConfig, partnerDetails, domain, subdomain, chatbotConfig, displayConfig } = req.body;
+    const { name, type, address, phone, email, website, taxCode, logo, bannerImage, brandConfig, partnerDetails, hasGeographicalIndication, domain, subdomain, chatbotConfig, displayConfig } = req.body;
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
@@ -131,6 +133,7 @@ router.put('/:id', auth, async (req, res) => {
     if (bannerImage !== undefined) updateData.bannerImage = bannerImage;
     if (brandConfig !== undefined) updateData.brandConfig = brandConfig;
     if (partnerDetails !== undefined) updateData.partnerDetails = partnerDetails;
+    if (hasGeographicalIndication !== undefined) updateData.hasGeographicalIndication = Boolean(hasGeographicalIndication);
     if (domain !== undefined) updateData.domain = domain;
     if (subdomain !== undefined) updateData.subdomain = subdomain;
     if (chatbotConfig !== undefined) updateData.chatbotConfig = chatbotConfig;
@@ -152,6 +155,25 @@ router.put('/:id', auth, async (req, res) => {
       { new: true }
     );
     if (!enterprise) return res.status(404).json({ error: 'Không tìm thấy doanh nghiệp' });
+
+    // Đồng bộ địa chỉ, liên hệ, logo, chỉ dẫn địa lý sang tài khoản chủ sở hữu doanh nghiệp
+    try {
+      const User = require('../models/User');
+      const userSync = {};
+      if (address !== undefined) userSync.address = address;
+      if (phone !== undefined) userSync.phone = phone;
+      if (logo !== undefined) userSync.logo = logo;
+      if (hasGeographicalIndication !== undefined) userSync.hasGeographicalIndication = Boolean(hasGeographicalIndication);
+      if (Object.keys(userSync).length > 0) {
+        await User.updateMany(
+          { enterpriseId: enterprise._id, username: { $exists: true, $ne: null } },
+          { $set: userSync }
+        );
+      }
+    } catch (syncErr) {
+      console.error('Sync enterprise to owner user error (non-fatal):', syncErr.message);
+    }
+
     res.json(enterprise);
   } catch (error) {
     console.error('Update enterprise error:', error);

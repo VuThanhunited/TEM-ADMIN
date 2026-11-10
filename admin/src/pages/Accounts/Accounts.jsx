@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import {
   Users, Plus, Search, RefreshCw, Edit, Trash2,
-  X, Clock, CheckCircle, XCircle, Calendar
+  X, Clock, CheckCircle, XCircle, Calendar, Award, Upload, Phone, MapPin
 } from 'lucide-react';
 import './Accounts.css';
 import Pagination from '../../components/Pagination';
@@ -20,10 +20,12 @@ export default function Accounts() {
   const [renewMonths, setRenewMonths] = useState(12);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [enterprises, setEnterprises] = useState([]);
-  const [form, setForm] = useState({
+  const emptyForm = {
     username: '', email: '', password: '', fullName: '',
+    phone: '', address: '', logo: '', hasGeographicalIndication: false,
     role: 'NSX', enterpriseId: '', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true
-  });
+  };
+  const [form, setForm] = useState({ ...emptyForm });
 
   useEffect(() => {
     api.getEnterprises().then(res => {
@@ -59,19 +61,24 @@ export default function Accounts() {
           username: form.username,
           email: form.email,
           fullName: form.fullName,
+          phone: form.phone || '',
+          address: form.address || '',
+          logo: form.logo || '',
+          hasGeographicalIndication: Boolean(form.hasGeographicalIndication),
           role: form.role,
           enterpriseId: form.enterpriseId || undefined,
+          enterpriseName: form.enterpriseName || undefined,
           isActive: form.isActive,
           password: form.password || undefined
         });
         setShowModal(false);
         setEditingAccount(null);
-        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseId: '', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+        setForm({ ...emptyForm });
         loadAccounts();
       } else {
         await api.createAccount(form);
         setShowModal(false);
-        setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseId: '', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+        setForm({ ...emptyForm });
         loadAccounts();
       }
     } catch (err) {
@@ -81,17 +88,22 @@ export default function Accounts() {
 
   const handleOpenEdit = (account) => {
     setEditingAccount(account);
+    const ent = account.enterpriseId && typeof account.enterpriseId === 'object' ? account.enterpriseId : null;
     setForm({
-      username: account.username,
-      email: account.email,
+      username: account.username || '',
+      email: account.email || '',
       password: '',
-      fullName: account.fullName,
-      role: account.role,
-      enterpriseId: account.enterpriseId?._id || account.enterpriseId || '',
-      enterpriseName: account.enterpriseId?.name || '',
-      enterpriseType: account.role,
+      fullName: account.fullName || '',
+      phone: account.phone || ent?.phone || '',
+      address: account.address || ent?.address || '',
+      logo: account.logo || ent?.logo || '',
+      hasGeographicalIndication: Boolean(account.hasGeographicalIndication || ent?.hasGeographicalIndication),
+      role: account.role || 'NSX',
+      enterpriseId: ent?._id || account.enterpriseId || '',
+      enterpriseName: ent?.name || '',
+      enterpriseType: account.role || 'NSX',
       subscriptionMonths: 12,
-      isActive: account.isActive
+      isActive: account.isActive !== false
     });
     setShowModal(true);
   };
@@ -145,7 +157,7 @@ export default function Accounts() {
         </div>
         <button className="btn btn-primary" onClick={() => {
           setEditingAccount(null);
-          setForm({ username: '', email: '', password: '', fullName: '', role: 'NSX', enterpriseName: '', enterpriseType: 'NSX', subscriptionMonths: 12, isActive: true });
+          setForm({ ...emptyForm });
           setShowModal(true);
         }}>
           <Plus size={18} /> Tạo tài khoản
@@ -204,7 +216,26 @@ export default function Accounts() {
                       </div>
                     </div>
                   </td>
-                  <td>{account.enterpriseId?.name || '—'}</td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{account.enterpriseId?.name || '—'}</div>
+                    {(account.address || account.enterpriseId?.address) && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        📍 {account.address || account.enterpriseId?.address}
+                      </div>
+                    )}
+                    {(account.phone || account.enterpriseId?.phone) && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        📞 {account.phone || account.enterpriseId?.phone}
+                      </div>
+                    )}
+                    {(account.hasGeographicalIndication || account.enterpriseId?.hasGeographicalIndication) && (
+                      <div style={{ marginTop: 4 }}>
+                        <span className="badge" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #f59e0b', fontSize: '0.68rem', fontWeight: 700 }}>
+                          🏅 Chỉ dẫn địa lý
+                        </span>
+                      </div>
+                    )}
+                  </td>
                   <td>
                     <span className={`badge badge-dot ${
                       account.role === 'NSX' ? 'badge-success' : 
@@ -289,13 +320,79 @@ export default function Accounts() {
                 </div>
                 <div className="form-row">
                   <div className="input-group">
-                    <label>Họ và tên *</label>
+                    <label>Họ và tên / Tên đơn vị chủ thể *</label>
                     <input className="input" value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} required />
                   </div>
                   <div className="input-group">
                     <label>Mật khẩu {editingAccount ? '(Để trống để giữ nguyên)' : '*'}</label>
                     <input className="input" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required={!editingAccount} />
                   </div>
+                </div>
+                <div className="form-row">
+                  <div className="input-group">
+                    <label>Số điện thoại liên hệ (hiển thị trên tem)</label>
+                    <input className="input" placeholder="VD: 0987.654.321" value={form.phone || ''} onChange={e => setForm({...form, phone: e.target.value})} />
+                  </div>
+                  <div className="input-group">
+                    <label>Địa chỉ đơn vị chủ thể (hiển thị trên tem)</label>
+                    <input className="input" placeholder="Nhập địa chỉ sản xuất / trụ sở..." value={form.address || ''} onChange={e => setForm({...form, address: e.target.value})} />
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label>Logo / Ảnh đại diện đơn vị chủ thể (hiển thị khung phải tem)</label>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input
+                      className="input"
+                      placeholder="Dán link ảnh hoặc bấm Tải ảnh..."
+                      value={form.logo || ''}
+                      onChange={e => setForm({...form, logo: e.target.value})}
+                      style={{ flex: 1 }}
+                    />
+                    <label className="btn btn-ghost" style={{ cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Upload size={15} /> Tải ảnh
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (typeof reader.result === 'string') {
+                              setForm(prev => ({ ...prev, logo: reader.result }));
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="input-group" style={{ marginBottom: 14 }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '9px 14px',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      background: form.hasGeographicalIndication ? 'rgba(245, 158, 11, 0.16)' : 'rgba(255,255,255,0.04)',
+                      border: form.hasGeographicalIndication ? '1.5px solid #f59e0b' : '1px solid rgba(255,255,255,0.12)',
+                      color: form.hasGeographicalIndication ? '#fbbf24' : 'inherit'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.hasGeographicalIndication)}
+                      onChange={e => setForm({...form, hasGeographicalIndication: e.target.checked})}
+                      style={{ width: 17, height: 17, accentColor: '#f59e0b', cursor: 'pointer' }}
+                    />
+                    <Award size={17} />
+                    <span>Sản phẩm được cấp chỉ dẫn địa lý</span>
+                  </label>
                 </div>
                 <div className="form-row">
                   <div className="input-group">

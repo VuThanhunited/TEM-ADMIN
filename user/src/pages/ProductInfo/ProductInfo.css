@@ -5168,6 +5168,102 @@
   display: block;
 }
 
+/* Dynamic Brand Emblem khi chủ thể chưa tải ảnh logo riêng */
+.honey-dynamic-brand-emblem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 14px 12px;
+  width: 100%;
+  min-height: 150px;
+  background: radial-gradient(circle at 50% 25%, #fffef7 0%, #fef9e7 65%, #f9eec8 100%);
+  border-radius: 10px;
+  gap: 6px;
+}
+
+.honey-dynamic-emblem-sun {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.25);
+  border: 2px solid #fffbeb;
+}
+
+.honey-dynamic-emblem-producer {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #14532d;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+  word-break: break-word;
+}
+
+.honey-dynamic-emblem-ribbon {
+  background: linear-gradient(90deg, #b45309 0%, #d97706 50%, #b45309 100%);
+  color: #fffbeb;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);
+  max-width: 95%;
+}
+
+.honey-dynamic-emblem-sub {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #166534;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+/* Huy hiệu Sản phẩm được cấp chỉ dẫn địa lý */
+.honey-dist-gi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border: 1.5px solid #f59e0b;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  margin-bottom: 4px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
+}
+
+.honey-dist-gi-badge svg {
+  color: #d97706;
+  flex-shrink: 0;
+}
+
+.honey-dist-gi-badge-detail {
+  font-size: 0.82rem;
+  padding: 5px 13px;
+  margin-bottom: 8px;
+}
+
+.honey-auth-gi-pill {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e !important;
+  border: 1px solid #f59e0b;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
 /* Responsive tối ưu trên điện thoại di động */
 @media (max-width: 640px) {
   .product-info-page.theme-honey {

@@ -66,7 +66,10 @@ router.get('/distributors', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (req
 // POST /api/accounts/distributors - Create a new NPP / NSX account (distributor/manufacturer)
 router.post('/distributors', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (req, res) => {
   try {
-    const { fullName, address, phone, details, role = 'NPP', username, password } = req.body;
+    const {
+      fullName, address, phone, details, role = 'NPP', username, password,
+      logo, region, shortIntro, scale, foragingArea, cert, hasGeographicalIndication
+    } = req.body;
     const allowedRole = ['NPP', 'NSX'].includes(role) ? role : 'NPP';
 
     if (!fullName || !fullName.trim()) {
@@ -112,6 +115,13 @@ router.post('/distributors', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (re
       phone: phone ? String(phone).trim() : '',
       address: address || '',
       details: details || '',
+      logo: logo || null,
+      region: region || '',
+      shortIntro: shortIntro || '',
+      scale: scale || '',
+      foragingArea: foragingArea || '',
+      cert: cert || '',
+      hasGeographicalIndication: Boolean(hasGeographicalIndication),
       role: allowedRole,
       enterpriseId,
       subscriptionExpiry: enterprise.subscriptionExpiry
@@ -131,7 +141,10 @@ router.post('/distributors', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (re
 // PUT /api/accounts/distributors/:id - Update NPP / NSX account
 router.put('/distributors/:id', auth, requireRole('NSX', 'NPP', 'ADMIN'), async (req, res) => {
   try {
-    const { fullName, address, phone, details, isActive, role, username, password } = req.body;
+    const {
+      fullName, address, phone, details, isActive, role, username, password,
+      logo, region, shortIntro, scale, foragingArea, cert, hasGeographicalIndication
+    } = req.body;
 
     const distributor = await User.findById(req.params.id);
     if (!distributor) {
@@ -170,6 +183,13 @@ router.put('/distributors/:id', auth, requireRole('NSX', 'NPP', 'ADMIN'), async 
     distributor.address = address !== undefined ? address : distributor.address;
     distributor.phone = phone !== undefined ? phone : distributor.phone;
     distributor.details = details !== undefined ? details : distributor.details;
+    if (logo !== undefined) distributor.logo = logo || null;
+    if (region !== undefined) distributor.region = region || '';
+    if (shortIntro !== undefined) distributor.shortIntro = shortIntro || '';
+    if (scale !== undefined) distributor.scale = scale || '';
+    if (foragingArea !== undefined) distributor.foragingArea = foragingArea || '';
+    if (cert !== undefined) distributor.cert = cert || '';
+    if (hasGeographicalIndication !== undefined) distributor.hasGeographicalIndication = Boolean(hasGeographicalIndication);
     distributor.isActive = isActive !== undefined ? isActive : distributor.isActive;
     if (role !== undefined && ['NPP', 'NSX'].includes(role)) {
       distributor.role = role;
@@ -249,7 +269,10 @@ router.get('/', auth, requireRole('ADMIN'), async (req, res) => {
 // POST /api/accounts - Create new account with enterprise
 router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
   try {
-    const { username, email, password, fullName, role, enterpriseId, enterpriseName, enterpriseType, subscriptionMonths = 12 } = req.body;
+    const {
+      username, email, password, fullName, role, enterpriseId, enterpriseName, enterpriseType,
+      subscriptionMonths = 12, phone, address, logo, hasGeographicalIndication
+    } = req.body;
 
     // Check existing
     const existing = await User.findOne({
@@ -276,9 +299,20 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
       enterprise = new Enterprise({
         name: enterpriseName || `${fullName} Enterprise`,
         type: enterpriseType || role,
-        email
+        email,
+        phone: phone ? String(phone).trim() : '',
+        address: address ? String(address).trim() : '',
+        logo: logo || null,
+        hasGeographicalIndication: Boolean(hasGeographicalIndication)
       });
       await enterprise.save();
+    } else {
+      let entChanged = false;
+      if (phone && !enterprise.phone) { enterprise.phone = String(phone).trim(); entChanged = true; }
+      if (address && !enterprise.address) { enterprise.address = String(address).trim(); entChanged = true; }
+      if (logo && !enterprise.logo) { enterprise.logo = logo; entChanged = true; }
+      if (hasGeographicalIndication !== undefined) { enterprise.hasGeographicalIndication = Boolean(hasGeographicalIndication); entChanged = true; }
+      if (entChanged) await enterprise.save();
     }
 
     // Create user
@@ -291,6 +325,10 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
       email: email.trim(),
       password: hashedPassword,
       fullName,
+      phone: phone ? String(phone).trim() : (enterprise?.phone || ''),
+      address: address ? String(address).trim() : (enterprise?.address || ''),
+      logo: logo || enterprise?.logo || null,
+      hasGeographicalIndication: Boolean(hasGeographicalIndication ?? enterprise?.hasGeographicalIndication),
       role,
       enterpriseId: enterprise._id,
       subscriptionExpiry: expiry
@@ -311,7 +349,10 @@ router.post('/', auth, requireRole('ADMIN'), async (req, res) => {
 // PUT /api/accounts/:id - Update account (Admin only)
 router.put('/:id', auth, requireRole('ADMIN'), async (req, res) => {
   try {
-    const { username, email, password, fullName, role, isActive, enterpriseId } = req.body;
+    const {
+      username, email, password, fullName, role, isActive, enterpriseId,
+      enterpriseName, phone, address, logo, hasGeographicalIndication
+    } = req.body;
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -331,6 +372,10 @@ router.put('/:id', auth, requireRole('ADMIN'), async (req, res) => {
     }
 
     if (fullName !== undefined) user.fullName = fullName;
+    if (phone !== undefined) user.phone = String(phone).trim();
+    if (address !== undefined) user.address = String(address).trim();
+    if (logo !== undefined) user.logo = logo || null;
+    if (hasGeographicalIndication !== undefined) user.hasGeographicalIndication = Boolean(hasGeographicalIndication);
     if (role !== undefined) user.role = role;
     if (isActive !== undefined) user.isActive = isActive;
     if (enterpriseId !== undefined && enterpriseId) user.enterpriseId = enterpriseId;
@@ -343,6 +388,20 @@ router.put('/:id', auth, requireRole('ADMIN'), async (req, res) => {
     }
 
     await user.save();
+
+    // Đồng bộ thông tin sang Doanh nghiệp sở hữu của tài khoản (Enterprise)
+    if (user.enterpriseId) {
+      const entUpdate = {};
+      if (enterpriseName && enterpriseName.trim()) entUpdate.name = enterpriseName.trim();
+      else if (fullName && fullName.trim()) entUpdate.name = fullName.trim();
+      if (phone !== undefined) entUpdate.phone = String(phone).trim();
+      if (address !== undefined) entUpdate.address = String(address).trim();
+      if (logo !== undefined) entUpdate.logo = logo || null;
+      if (hasGeographicalIndication !== undefined) entUpdate.hasGeographicalIndication = Boolean(hasGeographicalIndication);
+      if (Object.keys(entUpdate).length > 0) {
+        await Enterprise.findByIdAndUpdate(user.enterpriseId, { $set: entUpdate });
+      }
+    }
 
     const userData = await User.findById(user._id).select('-password').populate('enterpriseId');
     res.json(userData);

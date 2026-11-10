@@ -8,7 +8,7 @@ import {
   Bold, Italic, Underline, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Heading2, Heading3, Code, Eye,
-  Image as ImageIcon, Link2 as LinkIcon, FileText, Upload, FileSpreadsheet
+  Image as ImageIcon, Link2 as LinkIcon, FileText, Upload, FileSpreadsheet, Award
 } from 'lucide-react';
 import './Distributors.css';
 import Pagination from '../../components/Pagination';
@@ -27,10 +27,12 @@ export default function Distributors() {
   const [editingDistributor, setEditingDistributor] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
 
-  // Form state: name, address, phone, details, role, username, password + enterpriseId (for ADMIN)
-  const [form, setForm] = useState({
-    fullName: '', address: '', phone: '', details: '', role: 'NPP', username: '', password: '', enterpriseId: ''
-  });
+  // Form state: name, address, phone, details, role, username, password + enterpriseId (for ADMIN) + honey unit fields
+  const emptyDistForm = {
+    fullName: '', address: '', phone: '', details: '', role: 'NPP', username: '', password: '', enterpriseId: '',
+    logo: '', region: '', shortIntro: '', scale: '', foragingArea: '', cert: '', hasGeographicalIndication: false
+  };
+  const [form, setForm] = useState({ ...emptyDistForm });
 
   // Rich Text Editor
   const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
@@ -83,7 +85,7 @@ export default function Distributors() {
 
   const handleOpenCreate = () => {
     setEditingDistributor(null);
-    setForm({ fullName: '', address: '', phone: '', details: '', role: 'NPP', username: '', password: '', enterpriseId: '' });
+    setForm({ ...emptyDistForm });
     setEditorMode('visual');
     setShowModal(true);
     setTimeout(() => {
@@ -100,7 +102,15 @@ export default function Distributors() {
       details: dist.details || '',
       role: dist.role || 'NPP',
       username: dist.username || '',
-      password: ''
+      password: '',
+      enterpriseId: dist.enterpriseId?._id || dist.enterpriseId || '',
+      logo: dist.logo || '',
+      region: dist.region || '',
+      shortIntro: dist.shortIntro || '',
+      scale: dist.scale || '',
+      foragingArea: dist.foragingArea || '',
+      cert: dist.cert || '',
+      hasGeographicalIndication: Boolean(dist.hasGeographicalIndication)
     });
     setEditorMode('visual');
     setShowModal(true);
@@ -118,6 +128,13 @@ export default function Distributors() {
         phone: form.phone,
         details: form.details,
         role: form.role,
+        logo: form.logo || '',
+        region: form.region || '',
+        shortIntro: form.shortIntro || '',
+        scale: form.scale || '',
+        foragingArea: form.foragingArea || '',
+        cert: form.cert || '',
+        hasGeographicalIndication: Boolean(form.hasGeographicalIndication),
         ...(form.username?.trim() ? { username: form.username.trim() } : {}),
         ...(form.password?.trim() ? { password: form.password.trim() } : {}),
         isActive: editingDistributor ? editingDistributor.isActive : true,
@@ -333,6 +350,18 @@ export default function Distributors() {
                             Có thông tin chi tiết
                           </div>
                         )}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                          {dist.hasGeographicalIndication && (
+                            <span className="badge" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #f59e0b', fontSize: '0.68rem', fontWeight: 700 }}>
+                              🏅 Sản phẩm được cấp chỉ dẫn địa lý
+                            </span>
+                          )}
+                          {dist.region && (
+                            <span className="badge" style={{ background: 'rgba(22, 163, 74, 0.15)', color: '#4ade80', border: '1px solid rgba(22, 163, 74, 0.3)', fontSize: '0.68rem', fontWeight: 700 }}>
+                              📍 Vùng: {dist.region === 'dong_van' ? 'Đồng Văn' : dist.region === 'meo_vac' ? 'Mèo Vạc' : dist.region === 'yen_minh' ? 'Yên Minh' : dist.region}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -462,6 +491,125 @@ export default function Distributors() {
                       onChange={e => setForm({ ...form, phone: e.target.value })}
                       placeholder="Ví dụ: 0912 345 678"
                     />
+                  </div>
+                </div>
+
+                {/* Nút tích Chỉ dẫn địa lý & Vùng phân phối (dành cho giao diện Mật Ong / OCOP) */}
+                <div style={{ padding: 14, borderRadius: 10, background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.25)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '8px 14px',
+                        borderRadius: 999,
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.86rem',
+                        background: form.hasGeographicalIndication ? 'rgba(245, 158, 11, 0.22)' : 'rgba(255,255,255,0.05)',
+                        border: form.hasGeographicalIndication ? '1.5px solid #f59e0b' : '1px solid rgba(255,255,255,0.15)',
+                        color: form.hasGeographicalIndication ? '#fbbf24' : 'inherit'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.hasGeographicalIndication)}
+                        onChange={e => setForm({ ...form, hasGeographicalIndication: e.target.checked })}
+                        style={{ width: 17, height: 17, accentColor: '#f59e0b', cursor: 'pointer' }}
+                      />
+                      <Award size={17} />
+                      <span>Sản phẩm được cấp chỉ dẫn địa lý</span>
+                    </label>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Vùng điểm phân phối (Tem Mật Ong):</span>
+                      <select
+                        className="input select"
+                        style={{ width: 180, height: 36 }}
+                        value={form.region || ''}
+                        onChange={e => setForm({ ...form, region: e.target.value })}
+                      >
+                        <option value="">-- Tự động / Chung --</option>
+                        <option value="dong_van">📍 Đồng Văn</option>
+                        <option value="meo_vac">📍 Mèo Vạc</option>
+                        <option value="yen_minh">📍 Yên Minh</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="input-group" style={{ marginBottom: 0 }}>
+                      <label>Ảnh đại diện / Logo đơn vị</label>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input
+                          className="input"
+                          placeholder="Dán link ảnh hoặc bấm Tải ảnh..."
+                          value={form.logo || ''}
+                          onChange={e => setForm({ ...form, logo: e.target.value })}
+                          style={{ flex: 1 }}
+                        />
+                        <label className="btn btn-ghost" style={{ cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <Upload size={14} /> Ảnh
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                if (typeof reader.result === 'string') {
+                                  setForm(prev => ({ ...prev, logo: reader.result }));
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="input-group" style={{ marginBottom: 0 }}>
+                      <label>Giới thiệu ngắn (hiển thị trên thẻ điểm phân phối)</label>
+                      <input
+                        className="input"
+                        placeholder="VD: HTX quy tụ các hộ nuôi ong bản địa..."
+                        value={form.shortIntro || ''}
+                        onChange={e => setForm({ ...form, shortIntro: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                    <div className="input-group" style={{ marginBottom: 0 }}>
+                      <label>Quy mô & Sản lượng</label>
+                      <input
+                        className="input"
+                        placeholder="VD: 45 hộ — 1.200+ đàn ong"
+                        value={form.scale || ''}
+                        onChange={e => setForm({ ...form, scale: e.target.value })}
+                      />
+                    </div>
+                    <div className="input-group" style={{ marginBottom: 0 }}>
+                      <label>Vùng nguyên liệu</label>
+                      <input
+                        className="input"
+                        placeholder="VD: Phố Cáo, Sủng Là, Đồng Văn"
+                        value={form.foragingArea || ''}
+                        onChange={e => setForm({ ...form, foragingArea: e.target.value })}
+                      />
+                    </div>
+                    <div className="input-group" style={{ marginBottom: 0 }}>
+                      <label>Tiêu chuẩn chất lượng</label>
+                      <input
+                        className="input"
+                        placeholder="VD: OCOP 4 Sao & ATTP"
+                        value={form.cert || ''}
+                        onChange={e => setForm({ ...form, cert: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
 

@@ -249,6 +249,7 @@ export default function Enterprise() {
     logo: '',
     bannerImage: '',
     partnerDetails: '',
+    hasGeographicalIndication: false,
     domain: '',
     subdomain: '',
     brandConfig: { primaryColor: '#6366f1', secondaryColor: '#4f46e5' },
@@ -338,6 +339,7 @@ export default function Enterprise() {
       logo: ent.logo || '',
       bannerImage: ent.bannerImage || ent.displayConfig?.bannerImage || '',
       partnerDetails: ent.partnerDetails || '',
+      hasGeographicalIndication: Boolean(ent.hasGeographicalIndication),
       domain: ent.domain || '',
       subdomain: ent.subdomain || '',
       brandConfig: {
@@ -1010,6 +1012,31 @@ export default function Enterprise() {
                         value={formData.website}
                         onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
                       />
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          background: formData.hasGeographicalIndication ? 'rgba(245, 158, 11, 0.16)' : 'rgba(255,255,255,0.03)',
+                          border: formData.hasGeographicalIndication ? '1.5px solid #f59e0b' : '1px solid rgba(255,255,255,0.12)',
+                          color: formData.hasGeographicalIndication ? '#fbbf24' : 'inherit'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData.hasGeographicalIndication)}
+                          onChange={(e) => setFormData(prev => ({ ...prev, hasGeographicalIndication: e.target.checked }))}
+                          style={{ width: 17, height: 17, accentColor: '#f59e0b', cursor: 'pointer' }}
+                        />
+                        <span>🏅 Sản phẩm được cấp chỉ dẫn địa lý (Hiển thị huy hiệu trên tem truy xuất)</span>
+                      </label>
                     </div>
 
                     {/* Khối Hình ảnh Thương hiệu & Nhận diện trên Client */}

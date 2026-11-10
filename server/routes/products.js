@@ -53,9 +53,9 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 
     if (simple === 'true') {
       // Chế độ gọn nhẹ phục vụ dropdown / select: siêu nhanh (<100ms), không populate manufacturerId nặng
-      findQuery = findQuery.select('name sku price category enterpriseId distributors');
+      findQuery = findQuery.select('name sku price category enterpriseId distributors hasGeographicalIndication');
     } else {
-      findQuery = findQuery.populate('manufacturerId', 'name address phone email');
+      findQuery = findQuery.populate('manufacturerId', 'name address phone email logo hasGeographicalIndication');
       // Không strip dữ liệu quan trọng (images, congBoImages, certifications...) để frontend luôn có đủ 100% dữ liệu
       // Chỉ loại trừ chatbotQA nếu không yêu cầu full
       if (full !== 'true') {
@@ -89,7 +89,7 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
     .populate('enterpriseId', 'name')
-    .populate('manufacturerId', 'name address phone email logo');
+    .populate('manufacturerId', 'name address phone email logo hasGeographicalIndication');
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     res.json(product);
   } catch (error) {
@@ -110,7 +110,7 @@ const normalizeManufacturer = async (product) => {
       // Fallback manual resolution if populate failed
       const User = require('../models/User');
       const Enterprise = require('../models/Enterprise');
-      const u = await User.findById(prod.manufacturerId).select('fullName address phone email details logo').lean();
+      const u = await User.findById(prod.manufacturerId).select('fullName address phone email details logo hasGeographicalIndication').lean();
       if (u) {
         prod.manufacturerId = {
           _id: u._id,
@@ -119,10 +119,11 @@ const normalizeManufacturer = async (product) => {
           phone: u.phone || '',
           email: u.email || '',
           partnerDetails: u.details || '',
-          logo: u.logo || null
+          logo: u.logo || null,
+          hasGeographicalIndication: Boolean(u.hasGeographicalIndication)
         };
       } else {
-        const ent = await Enterprise.findById(prod.manufacturerId).select('name address phone email logo partnerDetails').lean();
+        const ent = await Enterprise.findById(prod.manufacturerId).select('name address phone email logo partnerDetails hasGeographicalIndication').lean();
         if (ent) prod.manufacturerId = ent;
       }
     }
@@ -137,7 +138,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       name, images, description, category, sku, price, barcode, distributors, specifications,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
       chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText,
-      bannerImage, theme
+      bannerImage, theme, hasGeographicalIndication
     } = req.body;
     const enterpriseId = req.user.role === 'ADMIN' ? (req.body.enterpriseId || req.user.enterpriseId) : req.user.enterpriseId;
     if (!enterpriseId) {
@@ -162,6 +163,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       }),
       bannerImage: bannerImage || '',
       theme: theme || '',
+      hasGeographicalIndication: Boolean(hasGeographicalIndication),
       description,
       category,
       sku,
@@ -203,7 +205,7 @@ router.put('/:id', auth, async (req, res) => {
       name, images, description, category, sku, price, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
       chatbotQA, manufacturerId, manufacturerInfo, congBoImages, congBoNumber, distributionBannerText,
-      bannerImage, theme
+      bannerImage, theme, hasGeographicalIndication
     } = req.body;
 
     if (req.user.role !== 'ADMIN') {
@@ -230,6 +232,10 @@ router.put('/:id', auth, async (req, res) => {
       distributionBannerText: distributionBannerText !== undefined ? distributionBannerText : undefined,
       congBoNumber: congBoNumber !== undefined ? congBoNumber : undefined
     };
+
+    if (hasGeographicalIndication !== undefined) {
+      updateData.hasGeographicalIndication = Boolean(hasGeographicalIndication);
+    }
 
     if (price !== undefined && price !== '') {
       updateData.price = Math.max(0, Number(price) || 0);

@@ -93,6 +93,11 @@ const productSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Sản phẩm được cấp chỉ dẫn địa lý (có đơn vị được cấp, có đơn vị không)
+  hasGeographicalIndication: {
+    type: Boolean,
+    default: false
+  },
   // Giữ lại certifications để backward compat với dữ liệu cũ
   certifications: {
     iso: {

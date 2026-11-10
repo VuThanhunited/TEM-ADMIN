@@ -349,6 +349,7 @@ export default function Products() {
   const initialForm = {
     name: '', description: '', category: '', sku: '', price: 0, barcode: '',
     theme: 'auto',
+    hasGeographicalIndication: false,
     images: ['', '', '', '', '', ''], distributors: [], specifications: [], enterpriseId: '',
     verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
     productionProcess: [],
@@ -533,6 +534,7 @@ export default function Products() {
         price: p.price !== undefined && p.price !== null ? p.price : 0,
         barcode: p.barcode || '',
         theme: p.theme || 'auto',
+        hasGeographicalIndication: Boolean(p.hasGeographicalIndication),
         images: imgList,
         distributors: p.distributors || [],
         specifications: specList,
@@ -854,6 +856,30 @@ export default function Products() {
                     <option value="cosmetics">Mỹ phẩm</option>
                     <option value="staycool">StayCool / VYPHYTO</option>
                   </select>
+                </div>
+                <div className="input-group" style={{ marginBottom: 14 }}>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '9px 14px',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      background: form.hasGeographicalIndication ? 'rgba(245, 158, 11, 0.16)' : 'rgba(255,255,255,0.03)',
+                      border: form.hasGeographicalIndication ? '1.5px solid #f59e0b' : '1px solid rgba(255,255,255,0.12)',
+                      color: form.hasGeographicalIndication ? '#fbbf24' : 'inherit'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.hasGeographicalIndication)}
+                      onChange={e => setForm({ ...form, hasGeographicalIndication: e.target.checked })}
+                      style={{ width: 17, height: 17, accentColor: '#f59e0b', cursor: 'pointer' }}
+                    />
+                    <span>🏅 Sản phẩm được cấp chỉ dẫn địa lý</span>
+                  </label>
                 </div>
                 <div className="form-row">
                   <div className="input-group">

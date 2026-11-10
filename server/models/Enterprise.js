@@ -43,6 +43,10 @@ const enterpriseSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  hasGeographicalIndication: {
+    type: Boolean,
+    default: false
+  },
   domain: {
     type: String,
     default: null

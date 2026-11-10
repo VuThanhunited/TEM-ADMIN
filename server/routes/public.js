@@ -309,7 +309,13 @@ async function resolveProductManufacturer(product) {
       phone: m.phone || '',
       email: m.email || '',
       partnerDetails: m.details || m.partnerDetails || '',
-      logo: m.logo || null
+      logo: m.logo || null,
+      hasGeographicalIndication: Boolean(m.hasGeographicalIndication),
+      region: m.region || '',
+      shortIntro: m.shortIntro || '',
+      scale: m.scale || '',
+      foragingArea: m.foragingArea || '',
+      cert: m.cert || ''
     };
     return prod;
   }
@@ -319,7 +325,7 @@ async function resolveProductManufacturer(product) {
     const User = require('../models/User');
     const Enterprise = require('../models/Enterprise');
 
-    const mfgUser = await User.findById(prod.manufacturerId).select('fullName address phone email details logo role').lean();
+    const mfgUser = await User.findById(prod.manufacturerId).select('fullName address phone email details logo role hasGeographicalIndication region shortIntro scale foragingArea cert').lean();
     if (mfgUser) {
       prod.manufacturerId = {
         _id: mfgUser._id,
@@ -328,12 +334,18 @@ async function resolveProductManufacturer(product) {
         phone: mfgUser.phone || '',
         email: mfgUser.email || '',
         partnerDetails: mfgUser.details || '',
-        logo: mfgUser.logo || null
+        logo: mfgUser.logo || null,
+        hasGeographicalIndication: Boolean(mfgUser.hasGeographicalIndication),
+        region: mfgUser.region || '',
+        shortIntro: mfgUser.shortIntro || '',
+        scale: mfgUser.scale || '',
+        foragingArea: mfgUser.foragingArea || '',
+        cert: mfgUser.cert || ''
       };
       return prod;
     }
 
-    const mfgEnt = await Enterprise.findById(prod.manufacturerId).select('name address phone email logo partnerDetails').lean();
+    const mfgEnt = await Enterprise.findById(prod.manufacturerId).select('name address phone email logo partnerDetails hasGeographicalIndication').lean();
     if (mfgEnt) {
       prod.manufacturerId = mfgEnt;
       return prod;
@@ -379,7 +391,7 @@ router.get('/scan/:serial', async (req, res) => {
     const populateLabel = (query) => query
       .populate({
         path: 'productId',
-        populate: { path: 'manufacturerId', select: 'name address phone email logo partnerDetails' }
+        populate: { path: 'manufacturerId', select: 'name address phone email logo partnerDetails hasGeographicalIndication region shortIntro scale foragingArea cert' }
       })
       .populate('enterpriseId');
 
@@ -513,7 +525,7 @@ router.get('/scan/:serial', async (req, res) => {
     if (batch.productId && (!label.productId || String(label.productId._id || label.productId) !== String(batch.productId))) {
       await Label.updateOne({ _id: label._id }, { $set: { productId: batch.productId } });
       const syncedProd = await Product.findById(batch.productId)
-        .populate('manufacturerId', 'name address phone email logo partnerDetails');
+        .populate('manufacturerId', 'name address phone email logo partnerDetails hasGeographicalIndication region shortIntro scale foragingArea cert');
       if (syncedProd) {
         label.productId = await resolveProductManufacturer(syncedProd);
       }
@@ -528,6 +540,58 @@ router.get('/scan/:serial', async (req, res) => {
     const enterprise = label.enterpriseId;
     if (!enterprise || !enterprise.isActive) {
       return res.status(400).json({ error: 'Doanh nghiệp sở hữu tem hiện đang tạm khóa hoặc không tồn tại!' });
+    }
+
+    // Đồng bộ fallback địa chỉ, SĐT, logo, chỉ dẫn địa lý từ tài khoản chủ sở hữu nếu Enterprise chưa điền
+    let enterpriseUnits = [];
+    try {
+      const User = require('../models/User');
+      const ownerUser = await User.findOne({
+        enterpriseId: enterprise._id,
+        username: { $exists: true, $ne: null }
+      }).select('fullName address phone email logo details hasGeographicalIndication').lean();
+
+      if (ownerUser) {
+        if (!enterprise.address && ownerUser.address) enterprise.address = ownerUser.address;
+        if (!enterprise.phone && ownerUser.phone) enterprise.phone = ownerUser.phone;
+        if (!enterprise.logo && ownerUser.logo) enterprise.logo = ownerUser.logo;
+        if (!enterprise.email && ownerUser.email) enterprise.email = ownerUser.email;
+        if (!enterprise.partnerDetails && ownerUser.details) enterprise.partnerDetails = ownerUser.details;
+        if (!enterprise.hasGeographicalIndication && ownerUser.hasGeographicalIndication) {
+          enterprise.hasGeographicalIndication = true;
+        }
+      }
+
+      // Lấy danh sách đơn vị sản xuất / điểm phân phối thuộc doanh nghiệp (tạo từ Quản lý Nhà phân phối)
+      const rawUnits = await User.find({
+        enterpriseId: enterprise._id,
+        role: { $in: ['NSX', 'NPP'] },
+        isActive: { $ne: false },
+        $or: [
+          { username: { $exists: false } },
+          { username: null },
+          { region: { $nin: ['', null] } }
+        ]
+      }).select('fullName address phone email details logo role region shortIntro scale foragingArea cert hasGeographicalIndication').sort({ createdAt: 1 }).lean();
+
+      enterpriseUnits = (rawUnits || []).map(u => ({
+        _id: u._id,
+        name: u.fullName || '',
+        address: u.address || '',
+        phone: u.phone || '',
+        email: u.email || '',
+        details: u.details || '',
+        logo: u.logo || '',
+        role: u.role || 'NPP',
+        region: u.region || '',
+        shortIntro: u.shortIntro || u.details || '',
+        scale: u.scale || '',
+        foragingArea: u.foragingArea || '',
+        cert: u.cert || '',
+        hasGeographicalIndication: Boolean(u.hasGeographicalIndication)
+      }));
+    } catch (unitErr) {
+      console.error('Load enterprise owner/units fallback error (non-fatal):', unitErr.message);
     }
 
     if (enterprise.subscriptionExpiry && new Date() > new Date(enterprise.subscriptionExpiry)) {
@@ -783,6 +847,7 @@ router.get('/scan/:serial', async (req, res) => {
       label: labelOut,
       product: label.productId,
       enterprise,
+      enterpriseUnits,
       template,
       relatedProducts,
       showRelated,

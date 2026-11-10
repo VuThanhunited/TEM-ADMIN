@@ -67,6 +67,34 @@ const userSchema = new mongoose.Schema({
   details: {
     type: String,
     default: ''
+  },
+  logo: {
+    type: String,
+    default: null
+  },
+  region: {
+    type: String,
+    default: ''
+  },
+  shortIntro: {
+    type: String,
+    default: ''
+  },
+  scale: {
+    type: String,
+    default: ''
+  },
+  foragingArea: {
+    type: String,
+    default: ''
+  },
+  cert: {
+    type: String,
+    default: ''
+  },
+  hasGeographicalIndication: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
