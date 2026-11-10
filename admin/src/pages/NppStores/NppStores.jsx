@@ -105,6 +105,8 @@ export default function NppStores() {
   const [storeBreakdown, setStoreBreakdown] = useState([]);
   const [storeModalRevenue, setStoreModalRevenue] = useState(0);
   const [loadingSerials, setLoadingSerials] = useState(false);
+  const [serialSearchInput, setSerialSearchInput] = useState('');
+  const [serialSearchQuery, setSerialSearchQuery] = useState('');
 
   // Yêu cầu 2: Modal Import Danh sách Điểm bán từ giải pháp cũ / Excel
   const [showImportStoresModal, setShowImportStoresModal] = useState(false);
@@ -124,6 +126,7 @@ export default function NppStores() {
   const [importMatrixError, setImportMatrixError] = useState('');
   const [exportingExcel, setExportingExcel] = useState(false);
   const [enterpriseProducts, setEnterpriseProducts] = useState([]);
+  const [enterpriseBatches, setEnterpriseBatches] = useState([]);
 
   // Modal Nhập Serial trực tiếp cho từng Điểm bán (Chọn SP + Nhập dải/lẻ "1-10 , 15" + Chọn ngày PP)
   const [manualSerialStore, setManualSerialStore] = useState(null);
@@ -155,6 +158,9 @@ export default function NppStores() {
       setSummary(res.summary || null);
       if (Array.isArray(res.products) && res.products.length > 0) {
         setEnterpriseProducts(res.products);
+      }
+      if (Array.isArray(res.batches)) {
+        setEnterpriseBatches(res.batches);
       }
     } catch (err) {
       console.error('Lỗi tải danh sách điểm bán:', err);
@@ -244,6 +250,8 @@ export default function NppStores() {
     setStoreSerials([]);
     setStoreBreakdown([]);
     setStoreModalRevenue(0);
+    setSerialSearchInput('');
+    setSerialSearchQuery('');
     try {
       const res = await api.getRetailStoreSerials(store._id, {
         periodType,
@@ -405,6 +413,40 @@ export default function NppStores() {
     );
     return matched.length > 0 ? matched : enterpriseProducts;
   }, [enterpriseProducts, manualSerialStore]);
+
+  const batchesForSelectedManualProduct = useMemo(() => {
+    if (!manualProductId) return [];
+    return enterpriseBatches.filter(
+      (b) => String(b.productId?._id || b.productId || '') === String(manualProductId)
+    );
+  }, [enterpriseBatches, manualProductId]);
+
+  const filteredStoreSerials = useMemo(() => {
+    const indexed = storeSerials.map((item, idx) => ({ ...item, _origIndex: idx + 1 }));
+    const qRaw = String(serialSearchQuery || '').trim();
+    if (!qRaw) return indexed;
+    const qNorm = removeVietnameseTones(qRaw);
+    const rangeMatch = qRaw.match(/^(\D*?)(\d+)\s*-\s*(\D*?)(\d+)$/);
+    if (rangeMatch && rangeMatch[1].toLowerCase() === rangeMatch[3].toLowerCase()) {
+      const pref = rangeMatch[1].toLowerCase();
+      const n1 = parseInt(rangeMatch[2], 10);
+      const n2 = parseInt(rangeMatch[4], 10);
+      const minN = Math.min(n1, n2);
+      const maxN = Math.max(n1, n2);
+      return indexed.filter((item) => {
+        const sm = String(item.serialNumber || '').trim().match(/^(\D*?)(\d+)$/);
+        if (!sm || sm[1].toLowerCase() !== pref) return false;
+        const val = parseInt(sm[2], 10);
+        return val >= minN && val <= maxN;
+      });
+    }
+    return indexed.filter((item) => {
+      const serialNorm = removeVietnameseTones(item.serialNumber || '');
+      const prodNorm = removeVietnameseTones(item.productName || '');
+      const batchNorm = removeVietnameseTones(item.batchCode || '');
+      return serialNorm.includes(qNorm) || prodNorm.includes(qNorm) || batchNorm.includes(qNorm);
+    });
+  }, [storeSerials, serialSearchQuery]);
 
   const handleManualSerialSubmit = async (e) => {
     e.preventDefault();
@@ -1269,43 +1311,151 @@ export default function NppStores() {
                     ))}
                   </div>
 
+                  {/* Thanh Tìm kiếm Serial trong modal Chi tiết Phân phối */}
+                  <div
+                    style={{
+                      background: '#eff6ff',
+                      border: '1.5px solid #bfdbfe',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      marginTop: '12px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontWeight: 800,
+                        color: '#1e40af',
+                        fontSize: '13.5px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <Search size={15} style={{ color: '#2563eb' }} />
+                      Tìm kiếm Serial:
+                    </span>
+                    <input
+                      type="text"
+                      value={serialSearchInput}
+                      onChange={(e) => {
+                        setSerialSearchInput(e.target.value);
+                        setSerialSearchQuery(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          setSerialSearchQuery(serialSearchInput);
+                        }
+                      }}
+                      placeholder="Nhập mã Serial cần tìm..."
+                      style={{
+                        flex: 1,
+                        minWidth: '180px',
+                        padding: '7px 12px',
+                        borderRadius: '7px',
+                        border: '1px solid #93c5fd',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '13.5px',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSerialSearchQuery(serialSearchInput)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        background: '#2563eb',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '7px',
+                        padding: '7px 14px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <Search size={14} /> Tìm kiếm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSerialSearchInput('');
+                        setSerialSearchQuery('');
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        background: '#ffffff',
+                        color: '#475569',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '7px',
+                        padding: '7px 12px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      ↺ Đặt lại
+                    </button>
+                  </div>
+
                   <div className="table-container">
                     <table className="table">
                       <thead>
                         <tr>
                           <th>STT</th>
-                          <th>Mã Serial</th>
+                          <th>Serial</th>
                           <th>Sản phẩm</th>
-                          <th style={{ textAlign: 'right' }}>Giá 1 SP</th>
-                          <th>Thời gian xuất bán</th>
+                          <th style={{ textAlign: 'right' }}>Đơn giá</th>
+                          <th>Thời gian phân phối</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {storeSerials.map((item, i) => (
-                          <tr key={item.serialNumber + i}>
-                            <td>{i + 1}</td>
-                            <td>
-                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#059669', fontSize: '14px' }}>
-                                {item.serialNumber}
-                              </span>
-                            </td>
-                            <td>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                                <Package size={14} style={{ color: '#4f46e5' }} />
-                                {item.productName || 'Sản phẩm'}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: '#d97706' }}>
-                              {formatCurrency(item.unitPrice)}
-                            </td>
-                            <td>
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-secondary)' }}>
-                                <Clock size={14} />
-                                {formatDateTime(item.soldAt)}
-                              </span>
+                        {filteredStoreSerials.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-secondary)' }}>
+                              Không tìm thấy mã Serial nào khớp với từ khóa &ldquo;{serialSearchQuery}&rdquo;.
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          filteredStoreSerials.map((item, i) => (
+                            <tr key={item.serialNumber + '_' + i}>
+                              <td>{item._origIndex || i + 1}</td>
+                              <td>
+                                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#059669', fontSize: '14px' }}>
+                                  {item.serialNumber}
+                                </span>
+                              </td>
+                              <td>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                                  <Package size={14} style={{ color: '#4f46e5' }} />
+                                  {item.productName || 'Sản phẩm'}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: '#d97706' }}>
+                                {formatCurrency(item.unitPrice)}
+                              </td>
+                              <td>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-secondary)' }}>
+                                  <Clock size={14} />
+                                  {formatDateTime(item.soldAt)}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1658,6 +1808,24 @@ export default function NppStores() {
                       </option>
                     ))}
                   </select>
+                  {manualProductId && batchesForSelectedManualProduct.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '6px',
+                        fontSize: '12.5px',
+                        color: '#1e40af'
+                      }}
+                    >
+                      <strong>📦 Lô tem thuộc sản phẩm này:</strong>{' '}
+                      {batchesForSelectedManualProduct
+                        .map((b) => `${b.batchCode} (${b.serialStart || '?'} - ${b.serialEnd || '?'})`)
+                        .join(' • ')}
+                    </div>
+                  )}
                 </div>
 
                 <div>

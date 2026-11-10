@@ -509,6 +509,16 @@ router.get('/scan/:serial', async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy lô tem tương ứng!' });
     }
 
+    // Đồng bộ sản phẩm của serial với sản phẩm của lô tem nếu bị lệch
+    if (batch.productId && (!label.productId || String(label.productId._id || label.productId) !== String(batch.productId))) {
+      await Label.updateOne({ _id: label._id }, { $set: { productId: batch.productId } });
+      const syncedProd = await Product.findById(batch.productId)
+        .populate('manufacturerId', 'name address phone email logo partnerDetails');
+      if (syncedProd) {
+        label.productId = await resolveProductManufacturer(syncedProd);
+      }
+    }
+
     // Check expiry of the batch
     if (batch.expiryDate && new Date() > new Date(batch.expiryDate)) {
       return res.status(400).json({ error: 'Lô tem này đã hết hạn sử dụng!' });
@@ -1370,8 +1380,13 @@ router.get('/retail-stores', async (req, res) => {
         ]
       })
         .populate('productId', 'name price sku category')
+        .populate({
+          path: 'batchId',
+          select: 'batchCode productId',
+          populate: { path: 'productId', select: 'name price sku category' }
+        })
         .sort({ distributedAt: -1, updatedAt: -1 })
-        .select('serialNumber productId storeId enterpriseId distributorName ownerCode distributedAt ownerInfo updatedAt warehouseLocation')
+        .select('serialNumber productId batchId storeId enterpriseId distributorName ownerCode distributedAt ownerInfo updatedAt warehouseLocation')
         .lean();
 
       const byStoreId = new Map();
@@ -1427,7 +1442,8 @@ router.get('/retail-stores', async (req, res) => {
         const breakdownMap = new Map();
 
         for (const lbl of allLabels) {
-          const unitPrice = Number(lbl.productId?.price) || 0;
+          const effectiveProd = lbl.batchId?.productId || lbl.productId;
+          const unitPrice = Number(effectiveProd?.price) || 0;
           allTimeRevenue += unitPrice;
 
           const soldAtDate = new Date(lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt);
@@ -1436,11 +1452,11 @@ router.get('/retail-stores', async (req, res) => {
             (!periodRange.end || soldAtDate <= periodRange.end);
           if (inPeriod) {
             periodLabels.push(lbl);
-            const pKey = String(lbl.productId?._id || lbl.productId?.name || 'unknown');
-            const pName = lbl.productId?.name || 'Sản phẩm';
+            const pKey = String(effectiveProd?._id || effectiveProd?.name || 'unknown');
+            const pName = effectiveProd?.name || 'Sản phẩm';
             if (!breakdownMap.has(pKey)) {
               breakdownMap.set(pKey, {
-                productId: lbl.productId?._id || null,
+                productId: effectiveProd?._id || null,
                 productName: pName,
                 unitPrice,
                 quantity: 0,
@@ -1454,16 +1470,22 @@ router.get('/retail-stores', async (req, res) => {
         }
 
         const periodSerialsCount = periodLabels.length;
-        const periodRevenue = periodLabels.reduce((sum, l) => sum + (Number(l.productId?.price) || 0), 0);
+        const periodRevenue = periodLabels.reduce((sum, l) => {
+          const effP = l.batchId?.productId || l.productId;
+          return sum + (Number(effP?.price) || 0);
+        }, 0);
 
-        const recentSales = periodLabels.slice(0, 10).map((lbl) => ({
-          _id: lbl._id,
-          serialNumber: lbl.serialNumber,
-          productName: lbl.productId?.name || 'Sản phẩm',
-          unitPrice: Number(lbl.productId?.price) || 0,
-          ownerCode: lbl.ownerCode || lbl.serialNumber,
-          soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
-        }));
+        const recentSales = periodLabels.slice(0, 10).map((lbl) => {
+          const effP = lbl.batchId?.productId || lbl.productId;
+          return {
+            _id: lbl._id,
+            serialNumber: lbl.serialNumber,
+            productName: effP?.name || 'Sản phẩm',
+            unitPrice: Number(effP?.price) || 0,
+            ownerCode: lbl.ownerCode || lbl.serialNumber,
+            soldAt: lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt
+          };
+        });
 
         return {
           ...store,
@@ -1492,16 +1514,23 @@ router.get('/retail-stores', async (req, res) => {
       ? []
       : (enterpriseId ? await getRelatedEnterpriseIdsById(enterpriseId) : await getRelatedEnterpriseIds(user));
     const prodFilter = relatedEntIds.length > 0 ? { enterpriseId: { $in: relatedEntIds } } : {};
-    const products = await Product.find(prodFilter)
-      .select('_id name sku price category enterpriseId')
-      .sort({ createdAt: -1 })
-      .lean();
+    const [products, batches] = await Promise.all([
+      Product.find(prodFilter)
+        .select('_id name sku price category enterpriseId')
+        .sort({ createdAt: -1 })
+        .lean(),
+      LabelBatch.find(prodFilter)
+        .select('_id batchCode productId serialStart serialEnd totalLabels enterpriseId')
+        .sort({ createdAt: -1 })
+        .lean()
+    ]);
 
     res.json({
       success: true,
       stores,
       data: stores,
       products,
+      batches,
       total: stores.length,
       summary: {
         totalStores: stores.length,
@@ -1545,9 +1574,13 @@ router.get('/retail-stores/:id/serials', async (req, res) => {
 
     const labels = await Label.find(labelQuery)
       .populate('productId', 'name sku price category')
-      .populate('batchId', 'batchCode')
+      .populate({
+        path: 'batchId',
+        select: 'batchCode productId',
+        populate: { path: 'productId', select: 'name sku price category' }
+      })
       .sort({ distributedAt: -1, updatedAt: -1 })
-      .limit(1000)
+      .limit(50000)
       .lean();
 
     const filteredLabels = labels.filter((lbl) => {
@@ -1559,12 +1592,13 @@ router.get('/retail-stores/:id/serials', async (req, res) => {
 
     const breakdownMap = new Map();
     const serials = filteredLabels.map((lbl) => {
-      const unitPrice = Number(lbl.productId?.price) || 0;
-      const pKey = String(lbl.productId?._id || lbl.productId?.name || 'unknown');
-      const pName = lbl.productId?.name || 'Sản phẩm';
+      const effectiveProd = lbl.batchId?.productId?._id ? lbl.batchId.productId : lbl.productId;
+      const unitPrice = Number(effectiveProd?.price ?? lbl.productId?.price) || 0;
+      const pKey = String(effectiveProd?._id || effectiveProd?.name || 'unknown');
+      const pName = effectiveProd?.name || 'Sản phẩm';
       if (!breakdownMap.has(pKey)) {
         breakdownMap.set(pKey, {
-          productId: lbl.productId?._id || null,
+          productId: effectiveProd?._id || null,
           productName: pName,
           unitPrice,
           quantity: 0,
@@ -2649,9 +2683,10 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
       const validBatchesForScope = await LabelBatch.find(
         scopedEntIds.length > 0 ? { enterpriseId: { $in: scopedEntIds } } : {}
       )
-        .select('_id')
+        .select('_id batchCode productId')
         .lean();
       const validBatchIdsForScope = validBatchesForScope.map((b) => b._id);
+      const batchByIdMap = new Map(validBatchesForScope.map((b) => [String(b._id), b]));
 
       const lblQuery = {
         ...(validBatchIdsForScope.length > 0 ? { batchId: { $in: validBatchIdsForScope } } : { batchId: null }),
@@ -2688,6 +2723,8 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
       }
 
       const bulkOps = labelsInSeg.map((lbl) => {
+        const bDoc = lbl.batchId ? batchByIdMap.get(String(lbl.batchId)) : null;
+        const batchProductId = bDoc?.productId || null;
         const setFields = {
           storeId: storeDoc._id,
           distributorName: storeDoc.name,
@@ -2703,7 +2740,9 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
           status: 'ACTIVE',
           isActive: true
         };
-        if (matchedProduct) {
+        if (batchProductId) {
+          setFields.productId = batchProductId;
+        } else if (matchedProduct) {
           setFields.productId = matchedProduct._id;
         }
         return {
@@ -3129,9 +3168,11 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
     // 2. Lấy toàn bộ Lô tem (LabelBatch) thuộc tài khoản / doanh nghiệp
     const batchQuery = allowedEntIds.length > 0 ? { enterpriseId: { $in: allowedEntIds } } : {};
     const validBatches = await LabelBatch.find(batchQuery)
+      .populate('productId', 'name')
       .select('_id batchCode serialStart serialEnd prefix enterpriseId productId totalLabels')
       .lean();
     const validBatchIds = validBatches.map((b) => b._id);
+    const batchById = new Map(validBatches.map((b) => [String(b._id), b]));
 
     if (validBatchIds.length === 0) {
       return res.status(400).json({
@@ -3152,7 +3193,9 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
     }
 
     const invalidSerialSegments = [];
+    const wrongProductErrors = [];
     const matchedLabelsMap = new Map();
+    const unmappedBatchIdsToSync = new Set();
     const appliedRangesSummary = [];
 
     for (const seg of rawSegments) {
@@ -3252,7 +3295,26 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
         continue;
       }
 
-      // Ưu tiên chọn bản ghi tem đã khớp productId nếu có nhiều lô trùng số, hoặc lấy toàn bộ tem hợp lệ trong lô
+      // Kiểm tra Lô tem chứa serial này có đúng là của Sản phẩm đang chọn hay không (tránh lệch sản phẩm giữa Lô tem và Serial!)
+      let segHasWrongProduct = false;
+      for (const lbl of labelsInSeg) {
+        const bDoc = batchById.get(String(lbl.batchId));
+        const bProdId = bDoc?.productId?._id || bDoc?.productId || null;
+        if (bProdId && String(bProdId) !== String(selectedProduct._id)) {
+          const bProdName = bDoc?.productId?.name || 'sản phẩm khác';
+          const errText = `Serial [${seg}] thuộc lô tem "${bDoc.batchCode}" (${bDoc.serialStart} - ${bDoc.serialEnd}) của sản phẩm "${bProdName}", không khớp với sản phẩm đang chọn ("${selectedProduct.name}")`;
+          if (!wrongProductErrors.includes(errText)) {
+            wrongProductErrors.push(errText);
+          }
+          segHasWrongProduct = true;
+          break;
+        }
+        if (bDoc && !bProdId) {
+          unmappedBatchIdsToSync.add(String(bDoc._id));
+        }
+      }
+      if (segHasWrongProduct) continue;
+
       for (const lbl of labelsInSeg) {
         matchedLabelsMap.set(String(lbl._id), lbl);
       }
@@ -3266,14 +3328,29 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
     if (invalidSerialSegments.length > 0) {
       const batchRangesInfo = validBatches
         .filter((b) => b.serialStart && b.serialEnd)
-        .slice(0, 5)
-        .map((b) => `${b.batchCode} (${b.serialStart} - ${b.serialEnd})`)
+        .slice(0, 6)
+        .map((b) => `${b.batchCode} (${b.serialStart} - ${b.serialEnd}${b.productId?.name ? ` - ${b.productId.name}` : ''})`)
         .join(', ');
 
       return res.status(400).json({
         error: `Serial [${invalidSerialSegments.join(', ')}] không thuộc lô tem nào của tài khoản!${
           batchRangesInfo ? ` Các lô tem thuộc tài khoản: ${batchRangesInfo}.` : ''
         } Vui lòng kiểm tra lại!`
+      });
+    }
+
+    if (wrongProductErrors.length > 0) {
+      const matchingBatchesForSelectedProd = validBatches
+        .filter((b) => String(b.productId?._id || b.productId || '') === String(selectedProduct._id))
+        .map((b) => `${b.batchCode} (${b.serialStart} - ${b.serialEnd})`)
+        .join(', ');
+
+      return res.status(400).json({
+        error: `${wrongProductErrors.join('; ')}!${
+          matchingBatchesForSelectedProd
+            ? ` Các lô tem của "${selectedProduct.name}" là: ${matchingBatchesForSelectedProd}.`
+            : ''
+        } Vui lòng chọn đúng sản phẩm của lô tem hoặc nhập dải serial thuộc sản phẩm "${selectedProduct.name}"!`
       });
     }
 
@@ -3286,6 +3363,19 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
 
     if (!store.enterpriseId && selectedProduct.enterpriseId) {
       await RetailStore.updateOne({ _id: store._id }, { $set: { enterpriseId: selectedProduct.enterpriseId } });
+    }
+
+    // Nếu lô tem chưa được gắn sản phẩm trước đó, đồng bộ sản phẩm cho cả Lô tem và toàn bộ tem trong lô để không bao giờ lệch giữa Lô tem & Serial
+    if (unmappedBatchIdsToSync.size > 0) {
+      const batchIdsArr = Array.from(unmappedBatchIdsToSync);
+      await LabelBatch.updateMany(
+        { _id: { $in: batchIdsArr }, productId: null },
+        { $set: { productId: selectedProduct._id, status: 'ACTIVE' } }
+      );
+      await Label.updateMany(
+        { batchId: { $in: batchIdsArr }, productId: null },
+        { $set: { productId: selectedProduct._id, status: 'ACTIVE', isActive: true } }
+      );
     }
 
     const bulkOps = finalLabels.map((lbl) => ({

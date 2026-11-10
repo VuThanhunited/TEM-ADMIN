@@ -158,10 +158,12 @@ router.get('/export-all', auth, requireOwnership, async (req, res) => {
       }).select('_id').lean();
       const productIds = matchingProducts.map(p => p._id);
 
-      // 2. Tìm các lô tem có mã lô khớp
-      const matchingBatches = await LabelBatch.find({
-        batchCode: { $regex: cleanSearch, $options: 'i' }
-      }).select('_id').lean();
+      // 2. Tìm các lô tem có mã lô khớp hoặc có productId thuộc danh sách sản phẩm khớp
+      const batchOr = [{ batchCode: { $regex: cleanSearch, $options: 'i' } }];
+      if (productIds.length > 0) {
+        batchOr.push({ productId: { $in: productIds } });
+      }
+      const matchingBatches = await LabelBatch.find({ $or: batchOr }).select('_id').lean();
       const batchIds = matchingBatches.map(b => b._id);
 
       const orConditions = [
@@ -781,23 +783,23 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
 
     if (!batch) return res.status(404).json({ error: 'Không tìm thấy lô tem' });
 
+    // 1. Update productId trên toàn bộ label trong lô đồng bộ ngay trước khi trả response
+    if (productId !== undefined) {
+      const targetProductId = productId || null;
+      const labelUpdate = { productId: targetProductId };
+      if (targetProductId) {
+        labelUpdate.status = 'ACTIVE';
+        labelUpdate.isActive = true;
+      }
+      await Label.updateMany({ batchId: batch._id }, labelUpdate);
+    }
+
     // ── Respond ngay để tránh gateway/proxy timeout (30s limit trên Render/Vercel) ──
     res.json(batch);
 
-    // ── Background job: Cập nhật labels (fire-and-forget sau khi đã respond) ──────
+    // ── Background job: Cập nhật qrUrl nếu customDomain thay đổi ──────
     setImmediate(async () => {
       try {
-        // 1. Update productId trên toàn bộ label trong lô nếu có thay đổi
-        if (productId !== undefined) {
-          const targetProductId = productId || null;
-          const labelUpdate = { productId: targetProductId };
-          if (targetProductId) {
-            labelUpdate.status = 'ACTIVE';
-            labelUpdate.isActive = true;
-          }
-          await Label.updateMany({ batchId: batch._id }, labelUpdate);
-        }
-
         // 2. Update qrUrl của toàn bộ label nếu customDomain thay đổi
         if (customDomain !== undefined) {
           const labels = await Label.find({ batchId: batch._id }).lean();
@@ -1220,10 +1222,12 @@ router.get('/', auth, requireOwnership, async (req, res) => {
       }).select('_id').lean();
       const productIds = matchingProducts.map(p => p._id);
 
-      // 2. Tìm các lô tem có mã lô khớp
-      const matchingBatches = await LabelBatch.find({
-        batchCode: { $regex: cleanSearch, $options: 'i' }
-      }).select('_id').lean();
+      // 2. Tìm các lô tem có mã lô khớp hoặc có productId thuộc danh sách sản phẩm khớp
+      const batchOr = [{ batchCode: { $regex: cleanSearch, $options: 'i' } }];
+      if (productIds.length > 0) {
+        batchOr.push({ productId: { $in: productIds } });
+      }
+      const matchingBatches = await LabelBatch.find({ $or: batchOr }).select('_id').lean();
       const batchIds = matchingBatches.map(b => b._id);
 
       const orConditions = [
@@ -1303,12 +1307,47 @@ router.get('/', auth, requireOwnership, async (req, res) => {
       }
     }
 
-    const labels = await Label.find(query)
+    const rawLabels = await Label.find(query)
       .populate('productId', 'name')
-      .populate('batchId', 'batchCode')
+      .populate({
+        path: 'batchId',
+        select: 'batchCode productId',
+        populate: { path: 'productId', select: 'name' }
+      })
       .sort({ serialNumber: 1 })
       .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean();
+
+    const outOfSyncLabelIds = [];
+    const labels = rawLabels.map((lbl) => {
+      const batchProd = lbl.batchId?.productId;
+      if (batchProd && batchProd._id && String(lbl.productId?._id || lbl.productId || '') !== String(batchProd._id)) {
+        outOfSyncLabelIds.push({ labelId: lbl._id, productId: batchProd._id });
+        return {
+          ...lbl,
+          productId: batchProd
+        };
+      }
+      return lbl;
+    });
+
+    if (outOfSyncLabelIds.length > 0) {
+      setImmediate(async () => {
+        try {
+          await Label.bulkWrite(
+            outOfSyncLabelIds.map((item) => ({
+              updateOne: {
+                filter: { _id: item.labelId },
+                update: { $set: { productId: item.productId } }
+              }
+            }))
+          );
+        } catch (e) {
+          console.error('Auto-sync label productId error:', e);
+        }
+      });
+    }
 
     res.json({
       data: labels,
@@ -1450,15 +1489,14 @@ router.post('/bulk-map', auth, async (req, res) => {
 
     const result = await Label.updateMany(query, updateData);
 
-    // If productId was changed, set it as default if not set, and auto-activate the batch status to ACTIVE
+    // If productId was changed, keep batch.productId and all labels in the batch synchronized
     if (productId) {
-      if (!batch.productId) {
-        batch.productId = productId;
-      }
+      batch.productId = productId;
       if (batch.status === 'INACTIVE') {
         batch.status = 'ACTIVE';
       }
       await batch.save();
+      await Label.updateMany({ batchId: batch._id }, { $set: { productId } });
     }
 
     res.json({
