@@ -16,6 +16,7 @@ export default function ScanChoice() {
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [error, setError] = useState('');
   const [scanData, setScanData] = useState(null);
+  const [unactivatedNotice, setUnactivatedNotice] = useState('');
 
 
   useEffect(() => {
@@ -59,7 +60,40 @@ export default function ScanChoice() {
     }
   };
 
+  const product = scanData?.product;
+  const enterprise = scanData?.enterprise;
+  const label = scanData?.label;
+
+  const nonWarrantyThemes = [
+    'functional_food', 'food', 'staycool', 'vyphyto',
+    'honey', 'mint_honey', 'hoang_bach',
+    'ocop', 'medical', 'agriculture', 'cosmetics'
+  ];
+  const resolvedTheme =
+    product?.theme ||
+    label?.batchId?.theme ||
+    scanData?.theme ||
+    enterprise?.displayConfig?.defaultTheme ||
+    'default';
+
+  const isWarrantyTheme =
+    resolvedTheme === 'default' ||
+    resolvedTheme === 'appliance' ||
+    resolvedTheme === 'warranty' ||
+    resolvedTheme === 'warranty_solution' ||
+    !nonWarrantyThemes.includes(resolvedTheme);
+
+  const isWarrantyActivated = Boolean(
+    (label?.ownerInfo?.name && String(label.ownerInfo.name).trim()) ||
+    (label?.ownerCode && String(label.ownerCode).trim()) ||
+    (label?.internalCode && String(label.internalCode).trim())
+  );
+
   const handleViewInfo = () => {
+    if (isWarrantyTheme && !isWarrantyActivated) {
+      setUnactivatedNotice('Tem chưa được kích hoạt sở hữu , Vui lòng kích hoạt');
+      return;
+    }
     // Guest: navigate to product info page (no login needed)
     navigate('/product-info', {
       state: { scanData, serial: code }
@@ -67,7 +101,8 @@ export default function ScanChoice() {
   };
 
   const handleNppEntry = () => {
-    // Form bổ sung thông tin KH sở hữu / Chọn Điểm bán – luôn mang theo mã tem trên URL để không phải quét lại
+    setUnactivatedNotice('');
+    // Form kích hoạt sở hữu sản phẩm / Chọn Điểm bán – luôn mang theo mã tem trên URL để không phải quét lại
     const hasActiveStore = Boolean(localStorage.getItem('npp_active_store_session'));
     const target = `/select-store?code=${encodeURIComponent(code)}${hasActiveStore ? '&autoAssign=1' : ''}`;
     if (!isLoggedIn || !['NPP', 'NSX', 'ADMIN'].includes(user?.role)) {
@@ -85,32 +120,13 @@ export default function ScanChoice() {
   const handleBack = () => {
     // Khách hàng yêu cầu: nút back luôn về giao diện tem, TUYỆT ĐỐI không về trang chủ giải pháp
     if (scanData) {
-      handleViewInfo();
+      navigate('/product-info', {
+        state: { scanData, serial: code }
+      });
     } else {
       window.history.length > 1 ? navigate(-1) : window.location.reload();
     }
   };
-
-  const product = scanData?.product;
-  const enterprise = scanData?.enterprise;
-  const label = scanData?.label;
-
-  const isWarrantyTheme =
-    scanData?.theme === 'appliance' ||
-    scanData?.theme === 'warranty' ||
-    scanData?.theme === 'warranty_solution' ||
-    product?.theme === 'appliance' ||
-    product?.theme === 'warranty' ||
-    enterprise?.displayConfig?.defaultTheme === 'appliance' ||
-    enterprise?.displayConfig?.defaultTheme === 'warranty' ||
-    label?.batchId?.theme === 'appliance' ||
-    label?.batchId?.theme === 'warranty';
-
-  const isWarrantyActivated = Boolean(
-    (label?.internalCode && String(label.internalCode).trim()) ||
-    (label?.ownerCode && String(label.ownerCode).trim())
-  );
-  const hideProductPreview = isWarrantyTheme && !isWarrantyActivated;
 
   return (
     <div className="scan-choice-page">
@@ -151,37 +167,74 @@ export default function ScanChoice() {
         {/* Success – show product + 2 choices */}
         {!loading && !error && scanData && (
           <>
-            {/* Product preview (ẩn nếu là giao diện bảo hành chưa kích hoạt) */}
-            {!hideProductPreview && (
-              <div className="scan-choice-product">
-                {product?.images?.[0] ? (
-                  <img src={product.images[0]} alt={product.name} className="scan-choice-product-img" />
-                ) : (
-                  <div className="scan-choice-product-placeholder">
-                    <Package size={24} />
+            {/* Product preview */}
+            <div className="scan-choice-product">
+              {product?.images?.[0] ? (
+                <img src={product.images[0]} alt={product.name} className="scan-choice-product-img" />
+              ) : (
+                <div className="scan-choice-product-placeholder">
+                  <Package size={24} />
+                </div>
+              )}
+              <div className="scan-choice-product-info">
+                <div className="scan-choice-product-name">
+                  {product?.name || 'Sản phẩm'}
+                </div>
+                <div className="scan-choice-product-serial">
+                  SERIAL chống làm giả: {label?.serialNumber || code}
+                </div>
+                {enterprise?.name && (
+                  <div className="scan-choice-product-enterprise">
+                    {enterprise.name}
                   </div>
                 )}
-                <div className="scan-choice-product-info">
-                  <div className="scan-choice-product-name">
-                    {product?.name || 'Sản phẩm'}
-                  </div>
-                  <div className="scan-choice-product-serial">
-                    SERIAL chống làm giả: {label?.serialNumber || code}
-                  </div>
-                  {enterprise?.name && (
-                    <div className="scan-choice-product-enterprise">
-                      {enterprise.name}
-                    </div>
-                  )}
-                </div>
               </div>
-            )}
+            </div>
 
             {/* Choice prompt */}
             <div className="scan-choice-prompt">
-              <h2>Bạn muốn làm gì?</h2>
-              <p>Chọn một trong hai hành động bên dưới</p>
+              <h2>Vui lòng chọn hành động muốn thực hiện :</h2>
             </div>
+
+            {/* Thông báo khi tem chưa được kích hoạt sở hữu */}
+            {unactivatedNotice && (
+              <div
+                role="alert"
+                style={{
+                  background: '#fef2f2',
+                  border: '1.5px solid #ef4444',
+                  borderRadius: '12px',
+                  padding: '14px 16px',
+                  marginBottom: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  boxShadow: '0 4px 14px rgba(239, 68, 68, 0.12)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#dc2626', fontWeight: 800, fontSize: '0.96rem' }}>
+                  <AlertCircle size={20} style={{ flexShrink: 0 }} />
+                  <span>{unactivatedNotice}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleNppEntry}
+                  style={{
+                    background: '#0052cc',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start'
+                  }}
+                >
+                  Kích hoạt sở hữu sản phẩm ngay →
+                </button>
+              </div>
+            )}
 
             {/* 2 Options */}
             <div className="scan-choice-options">
@@ -202,13 +255,13 @@ export default function ScanChoice() {
                 <ChevronRight size={20} className="scan-choice-card-arrow" />
               </div>
 
-              {/* Option 2: NPP – bổ sung thông tin khách hàng sở hữu */}
+              {/* Option 2: Kích hoạt sở hữu sản phẩm */}
               <div className="scan-choice-card" onClick={handleNppEntry}>
                 <div className="scan-choice-card-icon scan-choice-card-icon--npp">
                   <Store size={24} />
                 </div>
                 <div className="scan-choice-card-body">
-                  <div className="scan-choice-card-title">Bổ sung thông tin KH sở hữu</div>
+                  <div className="scan-choice-card-title">Kích hoạt sở hữu sản phẩm</div>
                   <div className="scan-choice-card-desc">
                     Dành cho Nhà phân phối: ghi nhận đại lý / khách hàng đã mua sản phẩm này
                   </div>

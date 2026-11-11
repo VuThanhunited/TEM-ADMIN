@@ -151,9 +151,9 @@ export default function SelectStore() {
     fetchStores();
   }, []);
 
-  // Nếu đang trong phiên "Quét tiếp" cho 1 điểm bán đã chọn trước đó -> điền sẵn điểm bán đó
+  // Nếu đang trong phiên "Quét tiếp" cho 1 điểm bán đã chọn trước đó -> điền sẵn điểm bán đó (chỉ áp dụng cho TPCN)
   useEffect(() => {
-    if (activeStoreSession && activeStoreSession.name) {
+    if (isFoodTheme && activeStoreSession && activeStoreSession.name) {
       setSelectedStore(activeStoreSession);
       setStoreSearch(activeStoreSession.name);
       setForm(prev => ({
@@ -163,7 +163,7 @@ export default function SelectStore() {
         phone: activeStoreSession.phone || ''
       }));
     }
-  }, [activeStoreSession]);
+  }, [activeStoreSession, isFoodTheme]);
 
   useEffect(() => {
     if (!stateScanData && !codeParam) {
@@ -186,10 +186,30 @@ export default function SelectStore() {
   }, [label?.serialNumber, serial, codeParam]);
 
   useEffect(() => {
-    if (label?.internalCode || label?.ownerCode) {
-      setOwnerCode(label.internalCode || label.ownerCode);
+    if (isFoodTheme) {
+      if (label?.internalCode || label?.ownerCode) {
+        setOwnerCode(label.internalCode || label.ownerCode);
+      }
+    } else {
+      // Giao diện Bảo hành: chỉ điền sẵn nếu con tem đã có thông tin sở hữu thực sự và Mã kích hoạt là số
+      if (label?.ownerInfo?.name) {
+        setForm(prev => ({
+          ...prev,
+          name: prev.name || label.ownerInfo.name || '',
+          address: prev.address || label.ownerInfo.address || '',
+          phone: prev.phone || label.ownerInfo.phone || ''
+        }));
+        const existingCode = String(label?.ownerCode || label?.internalCode || '').trim();
+        if (/^\d+$/.test(existingCode)) {
+          setOwnerCode(existingCode);
+        } else {
+          setOwnerCode('');
+        }
+      } else {
+        setOwnerCode('');
+      }
     }
-  }, [label?.internalCode, label?.ownerCode]);
+  }, [label?.internalCode, label?.ownerCode, label?.ownerInfo?.name, isFoodTheme]);
 
   const loadScanData = async () => {
     setLoading(true);
@@ -344,7 +364,7 @@ export default function SelectStore() {
     }
   };
 
-  // Hàm thực thi gán Serial (hoặc SERI ĐOẠN) cho Điểm bán
+  // Hàm thực thi gán Serial (hoặc SERI ĐOẠN) cho Điểm bán / Khai báo sở hữu Bảo hành
   const executeAssignSerial = async (storeOverride = null) => {
     const targetStore = storeOverride || selectedStore;
     const storeName = (targetStore?.name || form.name || storeSearch || '').trim();
@@ -355,6 +375,21 @@ export default function SelectStore() {
       if (isFoodTheme && !storeName) {
         setFormError('Vui lòng chọn hoặc nhập tên Điểm bán trước khi bấm OK.');
         return;
+      }
+      if (!isFoodTheme) {
+        if (!storeName) {
+          setFormError('Vui lòng nhập tên khách hàng.');
+          return;
+        }
+        const rawActivationCode = ownerCode.trim();
+        if (!rawActivationCode) {
+          setFormError('Vui lòng nhập Mã kích hoạt (mã nội bộ có trên con tem).');
+          return;
+        }
+        if (!/^\d+$/.test(rawActivationCode)) {
+          setFormError('Mã kích hoạt phải là số, không được phép điền chữ!');
+          return;
+        }
       }
       const validationError = validate();
       if (validationError) {
@@ -367,13 +402,15 @@ export default function SelectStore() {
     setFormError('');
     try {
       const serialNumber = label?.serialNumber || serial || codeParam;
-      const cleanOwnerCode = ownerCode.trim() || label?.internalCode || serialNumber;
+      const cleanOwnerCode = isFoodTheme
+        ? (ownerCode.trim() || label?.internalCode || serialNumber)
+        : ownerCode.trim();
       const cleanEndSerial = isFoodTheme && !storeOverride ? endSerial.trim() : '';
 
       const res = await userApi.submitSingleEntry({
         serialNumber,
         endSerial: cleanEndSerial || undefined,
-        storeId: targetStore?._id || null,
+        storeId: isFoodTheme ? (targetStore?._id || null) : null,
         distributorName: storeName,
         distributorAddress: storeAddress,
         ownerName: storeName,
@@ -381,6 +418,7 @@ export default function SelectStore() {
         ownerPhone: storePhone,
         activatedSerial: label?.serialNumber || form.serial.trim() || detectedSerial,
         ownerCode: cleanOwnerCode,
+        isWarrantyFlow: !isFoodTheme,
         warehouseLocation: {
           address: user?.address || storeAddress || '',
           lat: warehouseCoords?.lat ?? null,
@@ -390,7 +428,7 @@ export default function SelectStore() {
 
       const soldAtTime = res?.distributedAt || new Date().toISOString();
       const resolvedStoreId = res?.storeId || targetStore?._id || null;
-      const finalStoreName = storeName || user?.fullName || user?.username || 'Điểm bán';
+      const finalStoreName = storeName || user?.fullName || user?.username || 'Khách hàng';
       const isRangeAssigned = Boolean(res?.isRange && res?.assignedCount > 1);
       const displaySerialLabel = isRangeAssigned
         ? `${res.serialStart} → ${res.serialEnd} (${res.assignedCount} mã)`
@@ -451,6 +489,7 @@ export default function SelectStore() {
         storeName: finalStoreName,
         storeAddress,
         storePhone,
+        ownerCode: cleanOwnerCode,
         soldAt: soldAtTime
       });
     } catch (err) {
@@ -514,7 +553,9 @@ export default function SelectStore() {
         <button className="store-header-back" onClick={handleBack} aria-label="Quay lại">
           <ArrowLeft size={22} />
         </button>
-        <span className="store-header-title">Chọn Điểm bán & Kích hoạt Serial</span>
+        <span className="store-header-title">
+          {isFoodTheme ? 'Chọn Điểm bán & Kích hoạt Serial' : 'Tra cứu nguồn gốc'}
+        </span>
       </div>
 
       {/* Loading */}
@@ -534,8 +575,126 @@ export default function SelectStore() {
         </div>
       )}
 
-      {/* MÀN HÌNH SAU KHI GÁN SERIAL CHO ĐIỂM BÁN -> 2 HƯỚNG: QUÉT TIẾP / DỪNG (Bước 4) */}
-      {!loading && !loadError && scanData && assignedSuccess && (
+      {/* MÀN HÌNH SAU KHI KÍCH HOẠT SỞ HỮU (BẢO HÀNH) */}
+      {!loading && !loadError && scanData && assignedSuccess && !isFoodTheme && (
+        <div className="owner-form" style={{ paddingBottom: '32px' }}>
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1.5px solid #0052cc',
+              borderRadius: '14px',
+              padding: '22px 18px',
+              marginBottom: '16px',
+              textAlign: 'center',
+              boxShadow: '0 6px 20px rgba(0, 82, 204, 0.1)'
+            }}
+          >
+            <div
+              style={{
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                background: '#0052cc',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px'
+              }}
+            >
+              <CheckCircle size={30} />
+            </div>
+            <h3 style={{ margin: '0 0 6px', fontSize: '1.12rem', fontWeight: 800, color: '#0f172a' }}>
+              Kích hoạt sở hữu sản phẩm thành công!
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: '#475569' }}>
+              Thông tin người sở hữu đã được ghi nhận trên hệ thống
+            </p>
+
+            <div
+              style={{
+                marginTop: '14px',
+                background: '#f8fafc',
+                borderRadius: '10px',
+                padding: '14px',
+                textAlign: 'left',
+                border: '1px solid #e2e8f0',
+                fontSize: '0.9rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#64748b' }}>Tên khách hàng:</span>
+                <strong style={{ color: '#0f172a', textAlign: 'right' }}>{assignedSuccess.storeName}</strong>
+              </div>
+              {assignedSuccess.storeAddress && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Địa chỉ:</span>
+                  <span style={{ color: '#334155', textAlign: 'right' }}>{assignedSuccess.storeAddress}</span>
+                </div>
+              )}
+              {assignedSuccess.storePhone && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Điện thoại:</span>
+                  <span style={{ color: '#334155', textAlign: 'right' }}>{assignedSuccess.storePhone}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: '#64748b' }}>Serial chống giả:</span>
+                <strong style={{ color: '#0052cc', fontFamily: 'monospace' }}>{assignedSuccess.serialNumber}</strong>
+              </div>
+              {assignedSuccess.ownerCode && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Mã kích hoạt:</span>
+                  <strong style={{ color: '#059669', fontFamily: 'monospace' }}>{assignedSuccess.ownerCode}</strong>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+              <button
+                type="button"
+                onClick={() => goToProductInfo(scanData)}
+                style={{
+                  width: '100%',
+                  padding: '13px 18px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: '#0052cc',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.96rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Xem thông tin chi tiết
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/trace/${encodeURIComponent(label?.qrCode || label?.serialNumber || serial)}`, { replace: true })}
+                style={{
+                  width: '100%',
+                  padding: '11px 18px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#334155',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ← Quay lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MÀN HÌNH SAU KHI GÁN SERIAL CHO ĐIỂM BÁN -> 2 HƯỚNG: QUÉT TIẾP / DỪNG (Bước 4 - TPCN) */}
+      {!loading && !loadError && scanData && assignedSuccess && isFoodTheme && (
         <div className="owner-form" style={{ paddingBottom: '32px' }}>
           <div
             style={{
@@ -815,32 +974,34 @@ export default function SelectStore() {
       {/* FORM CHỌN ĐIỂM BÁN & KÍCH HOẠT SERIAL (Bước 3) */}
       {!loading && !loadError && scanData && !assignedSuccess && (
         <form className="owner-form" onSubmit={handleSubmit} noValidate>
-          {/* Product info bar */}
-          <div className="store-product-bar">
-            {product?.images?.[0] ? (
-              <img src={product.images[0]} alt={product.name} className="store-product-img" />
-            ) : (
-              <div className="store-product-img-placeholder">
-                <Package size={20} />
-              </div>
-            )}
-            <div className="store-product-info">
-              <div className="store-product-name">{product?.name || 'Sản phẩm'}</div>
-              <div className="store-product-serial">
-                <QrCode size={12} />
-                SERIAL chống làm giả: <strong>{label?.serialNumber || serial}</strong>
-              </div>
-              {user && (
-                <div className="store-product-serial">
-                  <Store size={12} />
-                  NPP thực hiện: <strong>{user.fullName || user.username}</strong>
+          {/* Product info bar (chỉ hiển thị cho TPCN) */}
+          {isFoodTheme && (
+            <div className="store-product-bar">
+              {product?.images?.[0] ? (
+                <img src={product.images[0]} alt={product.name} className="store-product-img" />
+              ) : (
+                <div className="store-product-img-placeholder">
+                  <Package size={20} />
                 </div>
               )}
+              <div className="store-product-info">
+                <div className="store-product-name">{product?.name || 'Sản phẩm'}</div>
+                <div className="store-product-serial">
+                  <QrCode size={12} />
+                  SERIAL chống làm giả: <strong>{label?.serialNumber || serial}</strong>
+                </div>
+                {user && (
+                  <div className="store-product-serial">
+                    <Store size={12} />
+                    NPP thực hiện: <strong>{user.fullName || user.username}</strong>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Thông báo nếu đang trong phiên Quét tiếp cho 1 điểm bán */}
-          {activeStoreSession?.name && (
+          {/* Thông báo nếu đang trong phiên Quét tiếp cho 1 điểm bán (TPCN) */}
+          {isFoodTheme && activeStoreSession?.name && (
             <div
               style={{
                 background: '#eff6ff',
@@ -887,8 +1048,8 @@ export default function SelectStore() {
             </div>
           )}
 
-          {/* Tem đã được kích hoạt trước đó */}
-          {isActivated && (
+          {/* Tem đã được kích hoạt trước đó (TPCN) */}
+          {isFoodTheme && isActivated && (
             <div className="owner-activated-box">
               <div className="owner-activated-title">
                 <UserCheck size={16} />
@@ -1337,38 +1498,112 @@ export default function SelectStore() {
             </>
           )}
 
-          {/* GIAO DIỆN MẶC ĐỊNH CHO CÁC THEME KHÁC (Bảo hành Gia dụng, OCOP, Nông nghiệp...): Giữ nguyên form Bổ sung thông tin KH sở hữu */}
-          {!isLocked && !isBarcode && !isFoodTheme && (
+          {/* GIAO DIỆN KÍCH HOẠT SỞ HỮU SẢN PHẨM CHO BẢO HÀNH & CÁC THEME KHÁC (Theo mẫu image4) */}
+          {!isBarcode && !isFoodTheme && (
             <>
-              <div className="store-manual-section" style={{ marginBottom: '14px' }}>
-                <div className="store-manual-form">
-                  <div className="owner-form-title">
-                    <User size={18} color="#059669" />
-                    <span>Bổ sung thông tin Khách hàng sở hữu</span>
+              {/* 1. Thông tin chung */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 10px rgba(15, 23, 42, 0.05)',
+                  marginBottom: '16px'
+                }}
+              >
+                <div
+                  style={{
+                    background: '#0052cc',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.96rem',
+                    padding: '12px 16px'
+                  }}
+                >
+                  1. Thông tin chung
+                </div>
+                <div style={{ padding: '4px 16px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 0',
+                      borderBottom: '1px solid #f1f5f9',
+                      gap: '12px'
+                    }}
+                  >
+                    <span style={{ color: '#64748b', fontSize: '0.92rem' }}>Tên sản phẩm</span>
+                    <strong style={{ color: '#0f172a', fontSize: '0.93rem', fontWeight: 700, textAlign: 'right' }}>
+                      {product?.name || 'Sản phẩm'}
+                    </strong>
                   </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 0',
+                      gap: '12px'
+                    }}
+                  >
+                    <span style={{ color: '#64748b', fontSize: '0.92rem' }}>Serial chống giả</span>
+                    <strong style={{ color: '#0052cc', fontSize: '0.96rem', fontWeight: 800, textAlign: 'right' }}>
+                      {label?.serialNumber || serial}
+                    </strong>
+                  </div>
+                </div>
+              </div>
 
-                  <div className="store-field-group">
-                    <label className="store-field-label" htmlFor="owner-name-std">
-                      <span className="owner-field-index">1</span>
-                      <User size={15} />
-                      <span>Tên Khách hàng / Đại lý sở hữu</span>
+              {/* 2. Khai báo thông tin sở hữu */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 10px rgba(15, 23, 42, 0.05)',
+                  marginBottom: '18px'
+                }}
+              >
+                <div
+                  style={{
+                    background: '#0052cc',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.96rem',
+                    padding: '12px 16px'
+                  }}
+                >
+                  2. Khai báo thông tin sở hữu
+                </div>
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div className="store-field-group" style={{ marginBottom: 0 }}>
+                    <label
+                      htmlFor="owner-name-std"
+                      style={{ display: 'block', fontWeight: 700, fontSize: '0.88rem', color: '#1e293b', marginBottom: '6px' }}
+                    >
+                      Tên khách hàng
                     </label>
                     <input
                       id="owner-name-std"
                       type="text"
                       className="store-field-input"
-                      placeholder="Nhập họ tên khách hàng hoặc đại lý"
+                      placeholder="Nhập tên khách hàng"
                       value={form.name}
                       onChange={handleChange('name')}
                       maxLength={200}
+                      autoComplete="off"
                     />
                   </div>
 
-                  <div className="store-field-group">
-                    <label className="store-field-label" htmlFor="owner-address-std">
-                      <span className="owner-field-index">2</span>
-                      <MapPin size={15} />
-                      <span>Địa chỉ</span>
+                  <div className="store-field-group" style={{ marginBottom: 0 }}>
+                    <label
+                      htmlFor="owner-address-std"
+                      style={{ display: 'block', fontWeight: 700, fontSize: '0.88rem', color: '#1e293b', marginBottom: '6px' }}
+                    >
+                      Địa chỉ
                     </label>
                     <input
                       id="owner-address-std"
@@ -1378,14 +1613,16 @@ export default function SelectStore() {
                       value={form.address}
                       onChange={handleChange('address')}
                       maxLength={500}
+                      autoComplete="off"
                     />
                   </div>
 
-                  <div className="store-field-group">
-                    <label className="store-field-label" htmlFor="owner-phone-std">
-                      <span className="owner-field-index">3</span>
-                      <Phone size={15} />
-                      <span>Số điện thoại</span>
+                  <div className="store-field-group" style={{ marginBottom: 0 }}>
+                    <label
+                      htmlFor="owner-phone-std"
+                      style={{ display: 'block', fontWeight: 700, fontSize: '0.88rem', color: '#1e293b', marginBottom: '6px' }}
+                    >
+                      Điện thoại
                     </label>
                     <input
                       id="owner-phone-std"
@@ -1396,29 +1633,33 @@ export default function SelectStore() {
                       value={form.phone}
                       onChange={handleChange('phone')}
                       maxLength={20}
+                      autoComplete="off"
                     />
                   </div>
-                </div>
-              </div>
 
-              <div className="store-owner-code-card">
-                <div className="store-field-group">
-                  <div className="store-owner-code-header">
-                    <label className="store-field-label" style={{ marginBottom: 0 }}>
-                      <ShieldCheck size={16} color="#059669" />
-                      <span style={{ fontWeight: 800, color: '#065f46' }}>Mã nội bộ / Mã sở hữu sản phẩm</span>
+                  <div className="store-field-group" style={{ marginBottom: 0 }}>
+                    <label
+                      htmlFor="owner-code-std"
+                      style={{ display: 'block', fontWeight: 700, fontSize: '0.88rem', color: '#1e293b', marginBottom: '6px' }}
+                    >
+                      Mã kích hoạt
                     </label>
-                    <span className="store-owner-badge">
-                      {label?.internalCode ? `Mã nội bộ đã import: ${label.internalCode}` : 'Tự động nhận Serial nếu để trống'}
-                    </span>
+                    <input
+                      id="owner-code-std"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="store-field-input"
+                      placeholder="Nhập mã nội bộ có trên con tem"
+                      value={ownerCode}
+                      onChange={(e) => {
+                        const digitsOnly = e.target.value.replace(/\D/g, '');
+                        setOwnerCode(digitsOnly);
+                        setFormError('');
+                      }}
+                      autoComplete="off"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    className="store-field-input store-owner-input"
-                    placeholder={`Mặc định: ${label?.internalCode || label?.serialNumber || serial}`}
-                    value={ownerCode}
-                    onChange={(e) => setOwnerCode(e.target.value)}
-                  />
                 </div>
               </div>
 
@@ -1433,10 +1674,22 @@ export default function SelectStore() {
                 <button
                   id="store-confirm-btn"
                   type="submit"
-                  className="store-confirm-btn"
                   disabled={submitting}
+                  style={{
+                    width: '100%',
+                    padding: '14px 20px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: '#0052cc',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    opacity: submitting ? 0.75 : 1,
+                    boxShadow: '0 4px 12px rgba(0, 82, 204, 0.25)'
+                  }}
                 >
-                  {submitting ? 'Đang lưu thông tin...' : 'Xác nhận lưu thông tin'}
+                  {submitting ? 'Đang xử lý...' : 'Xác Nhận'}
                 </button>
               </div>
             </>

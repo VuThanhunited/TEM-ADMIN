@@ -1379,7 +1379,7 @@ router.put('/:id/map', auth, async (req, res) => {
   }
 });
 
-// PUT /api/labels/:id/owner - Admin/NSX chỉnh sửa thông số sở hữu của tem
+// PUT /api/labels/:id/owner - Admin/NSX chỉnh sửa thông tin sở hữu của tem
 router.put('/:id/owner', auth, async (req, res) => {
   try {
     const { ownerName, ownerAddress, ownerPhone, activatedSerial, ownerCode, internalCode, clearOwnerInfo } = req.body;
@@ -1396,30 +1396,45 @@ router.put('/:id/owner', auth, async (req, res) => {
         activatedBy: null
       };
       label.ownerCode = null;
+      label.internalCode = null;
       label.distributorName = null;
       label.distributorAddress = null;
+      label.storeId = null;
+      label.distributedAt = null;
     } else {
+      const rawCode = (ownerCode !== undefined ? ownerCode : internalCode);
+      const cleanCode = (rawCode && typeof rawCode === 'string') ? rawCode.trim() : '';
+      if (cleanCode && !/^\d+$/.test(cleanCode)) {
+        return res.status(400).json({ error: 'Mã kích hoạt phải là số, không được phép điền chữ!' });
+      }
+
       if (!label.ownerInfo) label.ownerInfo = {};
       if (ownerName !== undefined) {
         const cleanName = (ownerName && typeof ownerName === 'string') ? ownerName.trim() : null;
         label.ownerInfo.name = cleanName;
-        if (cleanName) label.distributorName = cleanName;
+        label.distributorName = cleanName;
       }
       if (ownerAddress !== undefined) {
         const cleanAddr = (ownerAddress && typeof ownerAddress === 'string') ? ownerAddress.trim() : null;
         label.ownerInfo.address = cleanAddr;
-        if (cleanAddr) label.distributorAddress = cleanAddr;
+        label.distributorAddress = cleanAddr;
       }
       if (ownerPhone !== undefined) label.ownerInfo.phone = (ownerPhone && typeof ownerPhone === 'string') ? ownerPhone.trim() : null;
-      if (activatedSerial !== undefined) label.ownerInfo.activatedSerial = (activatedSerial && typeof activatedSerial === 'string') ? activatedSerial.trim() : null;
-      if (ownerCode !== undefined) label.ownerCode = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : null;
-      if (internalCode !== undefined) label.internalCode = (internalCode && typeof internalCode === 'string') ? internalCode.trim() : null;
+      if (activatedSerial !== undefined) {
+        label.ownerInfo.activatedSerial = (activatedSerial && typeof activatedSerial === 'string') ? activatedSerial.trim() : label.serialNumber;
+      } else if (!label.ownerInfo.activatedSerial) {
+        label.ownerInfo.activatedSerial = label.serialNumber;
+      }
+      if (ownerCode !== undefined || internalCode !== undefined) {
+        label.ownerCode = cleanCode || null;
+        label.internalCode = cleanCode || null;
+      }
 
-      // Nếu có mã sở hữu (mã kích hoạt), đánh dấu thời gian kích hoạt; nếu xóa mã thì bỏ trạng thái kích hoạt
-      if (label.ownerCode || label.internalCode) {
+      // Nếu có mã sở hữu (mã kích hoạt) hoặc tên người sở hữu, đánh dấu thời gian kích hoạt
+      if (label.ownerCode || label.internalCode || label.ownerInfo.name) {
         if (!label.ownerInfo.activatedAt) label.ownerInfo.activatedAt = new Date();
         label.ownerInfo.activatedBy = req.user?.id || req.user?._id;
-      } else if (ownerCode !== undefined && !label.ownerCode) {
+      } else if (ownerCode !== undefined && !label.ownerCode && !label.ownerInfo.name) {
         label.ownerInfo.activatedAt = null;
       }
     }
@@ -1432,7 +1447,7 @@ router.put('/:id/owner', auth, async (req, res) => {
     res.json(updated);
   } catch (error) {
     console.error('Update label owner error:', error);
-    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật thông số sở hữu' });
+    res.status(500).json({ error: 'Lỗi máy chủ khi cập nhật thông tin sở hữu' });
   }
 });
 

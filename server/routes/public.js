@@ -563,16 +563,18 @@ router.get('/scan/:serial', async (req, res) => {
       }
 
       // Lấy danh sách đơn vị sản xuất / điểm phân phối thuộc doanh nghiệp (tạo từ Quản lý Nhà phân phối)
-      const rawUnits = await User.find({
+      const allEntUnits = await User.find({
         enterpriseId: enterprise._id,
         role: { $in: ['NSX', 'NPP'] },
-        isActive: { $ne: false },
-        $or: [
-          { username: { $exists: false } },
-          { username: null },
-          { region: { $nin: ['', null] } }
-        ]
-      }).select('fullName address phone email details logo role region shortIntro scale foragingArea cert hasGeographicalIndication').sort({ createdAt: 1 }).lean();
+        isActive: { $ne: false }
+      }).select('username fullName address phone email details logo role region shortIntro scale foragingArea cert hasGeographicalIndication').sort({ createdAt: 1 }).lean();
+
+      const rawUnits = (allEntUnits || []).filter(u => {
+        if (!ownerUser || String(u._id) !== String(ownerUser._id)) return true;
+        // Nếu tài khoản chủ sở hữu có khai báo vùng hoặc thông tin giới thiệu điểm phân phối thì vẫn giữ
+        if (u.region || u.shortIntro || u.scale || u.foragingArea) return true;
+        return false;
+      });
 
       enterpriseUnits = (rawUnits || []).map(u => ({
         _id: u._id,
@@ -584,7 +586,7 @@ router.get('/scan/:serial', async (req, res) => {
         logo: u.logo || '',
         role: u.role || 'NPP',
         region: u.region || '',
-        shortIntro: u.shortIntro || u.details || '',
+        shortIntro: u.shortIntro || '',
         scale: u.scale || '',
         foragingArea: u.foragingArea || '',
         cert: u.cert || '',
@@ -3569,8 +3571,10 @@ router.post('/distributor-entry-single', async (req, res) => {
       ? ownerPhone.trim()
       : (linkedStore ? linkedStore.phone : '');
 
-    // Nếu chưa có linkedStore nhưng người dùng có nhập tên Điểm bán -> tìm hoặc tự động thêm vào bảng Điểm bán
-    if (!linkedStore && inputStoreName) {
+    const isWarrantyFlow = Boolean(req.body.isWarrantyFlow);
+
+    // Nếu chưa có linkedStore nhưng người dùng có nhập tên Điểm bán -> tìm hoặc tự động thêm vào bảng Điểm bán (chỉ áp dụng cho luồng Điểm bán TPCN)
+    if (!linkedStore && inputStoreName && !isWarrantyFlow) {
       const storeFilter = await buildRetailStoreFilter(user, decoded);
       linkedStore = await RetailStore.findOne({
         ...storeFilter,
@@ -3739,23 +3743,27 @@ router.post('/distributor-entry-single', async (req, res) => {
       }
 
       const rawOwnerCodeInput = (ownerCode && typeof ownerCode === 'string') ? ownerCode.trim() : '';
+      if (isWarrantyFlow && rawOwnerCodeInput && !/^\d+$/.test(rawOwnerCodeInput)) {
+        return res.status(400).json({ error: 'Mã kích hoạt phải là số, không được phép điền chữ!' });
+      }
+
       const hasPreimportedInternalCode = Boolean(label.internalCode && String(label.internalCode).trim());
-      const finalOwnerCode = hasPreimportedInternalCode && (!rawOwnerCodeInput || isSerialMatch(rawOwnerCodeInput, label.serialNumber))
-        ? String(label.internalCode).trim()
-        : (rawOwnerCodeInput
-            ? rawOwnerCodeInput
-            : ((linkedStore || name) ? (hasPreimportedInternalCode ? String(label.internalCode).trim() : label.serialNumber) : null));
+      const finalOwnerCode = rawOwnerCodeInput
+        ? rawOwnerCodeInput
+        : (hasPreimportedInternalCode
+            ? String(label.internalCode).trim()
+            : ((linkedStore || name) ? label.serialNumber : null));
 
       label.ownerInfo = {
         name: name || null,
         address: address || null,
         phone: phone || null,
-        activatedSerial: (hasPreimportedInternalCode ? String(label.internalCode).trim() : finalOwnerCode) || label.serialNumber,
+        activatedSerial: label.serialNumber,
         activatedAt: (finalOwnerCode || name) ? now : null,
         activatedBy: user._id
       };
       label.ownerCode = finalOwnerCode;
-      if (!hasPreimportedInternalCode && rawOwnerCodeInput && !isSerialMatch(rawOwnerCodeInput, label.serialNumber)) {
+      if (rawOwnerCodeInput) {
         label.internalCode = rawOwnerCodeInput;
       }
     }

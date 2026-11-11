@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import * as XLSX from 'xlsx';
 import {
-  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer, ChevronDown, Building2, UserCheck, FileSpreadsheet
+  Tag, Plus, Search, RefreshCw, ArrowRight, Link2, Upload, Clock, CheckCircle, XCircle, X, ToggleLeft, ToggleRight, Package, MapPin, Calendar, ExternalLink, Download, Trash2, ShieldCheck, Edit, Filter, RotateCcw, Printer, ChevronDown, Building2, UserCheck, FileSpreadsheet, Lock
 } from 'lucide-react';
 import './Labels.css';
 import Pagination from '../../components/Pagination';
@@ -1314,14 +1314,28 @@ export default function Labels() {
     setOwnerTargetLabel(label);
     setOwnerModalError('');
     setOwnerForm({
-      ownerName: label.ownerInfo?.name || '',
-      ownerAddress: label.ownerInfo?.address || '',
+      ownerName: label.ownerInfo?.name || label.distributorName || '',
+      ownerAddress: label.ownerInfo?.address || label.distributorAddress || '',
       ownerPhone: label.ownerInfo?.phone || '',
-      activatedSerial: label.ownerInfo?.activatedSerial || label.serialNumber || '',
+      activatedSerial: label.serialNumber || label.ownerInfo?.activatedSerial || '',
       ownerCode: label.ownerCode || label.internalCode || '',
       internalCode: label.internalCode || label.ownerCode || ''
     });
     setShowOwnerModal(true);
+  };
+
+  // Xóa / Reset nhanh thông tin sở hữu trực tiếp từ bảng
+  const handleQuickResetOwner = async (label) => {
+    if (!label) return;
+    if (!window.confirm('bạn chắc chắn muốn RESET Sở hữu con tem này chứ')) {
+      return;
+    }
+    try {
+      await api.updateLabelOwner(label._id, { clearOwnerInfo: true });
+      loadLabels();
+    } catch (err) {
+      alert(err.message || 'Lỗi khi reset thông tin sở hữu');
+    }
   };
 
   // Lưu thông số sở hữu tem (Admin)
@@ -1331,25 +1345,31 @@ export default function Labels() {
     setOwnerModalError('');
     try {
       if (clear) {
-        if (!window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ thông tin sở hữu của tem ${ownerTargetLabel.serialNumber} không?`)) {
+        if (!window.confirm('bạn chắc chắn muốn RESET Sở hữu con tem này chứ')) {
           setSavingOwner(false);
           return;
         }
         await api.updateLabelOwner(ownerTargetLabel._id, { clearOwnerInfo: true });
       } else {
+        const cleanCode = String(ownerForm.internalCode || ownerForm.ownerCode || '').trim();
+        if (cleanCode && !/^\d+$/.test(cleanCode)) {
+          setOwnerModalError('Mã kích hoạt chỉ được phép nhập số (0-9), không chứa chữ cái');
+          setSavingOwner(false);
+          return;
+        }
         await api.updateLabelOwner(ownerTargetLabel._id, {
           ownerName: ownerForm.ownerName,
           ownerAddress: ownerForm.ownerAddress,
           ownerPhone: ownerForm.ownerPhone,
-          activatedSerial: ownerForm.activatedSerial,
-          ownerCode: ownerForm.ownerCode || ownerForm.internalCode,
-          internalCode: ownerForm.internalCode || ownerForm.ownerCode
+          activatedSerial: ownerTargetLabel.serialNumber || ownerForm.activatedSerial,
+          ownerCode: cleanCode,
+          internalCode: cleanCode
         });
       }
       setShowOwnerModal(false);
       loadLabels();
     } catch (err) {
-      setOwnerModalError(err.message || 'Lỗi cập nhật thông số sở hữu');
+      setOwnerModalError(err.message || 'Lỗi cập nhật thông tin sở hữu');
     } finally {
       setSavingOwner(false);
     }
@@ -1969,7 +1989,7 @@ export default function Labels() {
                 <th>Serial</th>
                 <th>Lô tem</th>
                 <th>Sản phẩm</th>
-                <th>Điểm bán</th>
+                <th>Người sở hữu</th>
                 <th>Mã sở hữu</th>
                 <th>Trạng thái</th>
                 <th>Lượt quét</th>
@@ -1996,9 +2016,34 @@ export default function Labels() {
                               {label.ownerInfo?.address || label.distributorAddress}
                             </div>
                           )}
+                          {label.ownerInfo?.phone && (
+                            <div style={{ fontSize: '0.73rem', color: 'var(--color-text-muted)' }}>
+                              📞 {label.ownerInfo.phone}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => handleOpenEditOwner(label)}
+                              style={{ padding: '2px 6px', fontSize: '0.72rem', color: '#7c3aed', border: '1px solid rgba(124, 58, 237, 0.25)' }}
+                              title="Chỉnh sửa thông tin sở hữu"
+                            >
+                              <Edit size={11} /> Sửa
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => handleQuickResetOwner(label)}
+                              style={{ padding: '2px 6px', fontSize: '0.72rem', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)' }}
+                              title="Xóa / Reset sở hữu con tem này"
+                            >
+                              <Trash2 size={11} /> Xóa
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <span className="text-muted">—</span>
+                        <span className="text-muted">Chưa kích hoạt</span>
                       )}
                     </td>
                     <td>
@@ -2006,7 +2051,7 @@ export default function Labels() {
                         <div>
                           <strong style={{ color: '#059669', fontSize: '0.86rem' }}>{label.internalCode || label.ownerCode}</strong>
                           {label.internalCode && (
-                            <span className="badge badge-info" style={{ marginLeft: 6, fontSize: '0.68rem', padding: '1px 5px' }}>Mã nội bộ</span>
+                            <span className="badge badge-info" style={{ marginLeft: 6, fontSize: '0.68rem', padding: '1px 5px' }}>Mã kích hoạt</span>
                           )}
                         </div>
                       ) : (
@@ -2031,11 +2076,21 @@ export default function Labels() {
                         <button
                           className="btn btn-sm btn-ghost"
                           onClick={() => handleOpenEditOwner(label)}
-                          title="Edit thông số sở hữu (Quyền Admin)"
-                          style={{ color: label.ownerInfo?.name || label.ownerCode ? '#059669' : 'inherit' }}
+                          title="Chỉnh sửa thông tin sở hữu"
+                          style={{ color: label.ownerInfo?.name || label.ownerCode || label.internalCode ? '#059669' : 'inherit' }}
                         >
                           <UserCheck size={16} />
                         </button>
+                        {(label.ownerInfo?.name || label.distributorName || label.ownerCode || label.internalCode) && (
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => handleQuickResetOwner(label)}
+                            title="Reset sở hữu con tem này"
+                            style={{ color: '#ef4444' }}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                         <button className="btn btn-sm btn-ghost" onClick={() => {
                           setModalError(null);
                           setBulkForm({
@@ -2979,21 +3034,17 @@ export default function Labels() {
       {/* Modal Chỉnh sửa thông số sở hữu (Quyền Admin) */}
       {showOwnerModal && ownerTargetLabel && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !savingOwner && setShowOwnerModal(false)}>
-          <div className="modal" style={{ maxWidth: 520 }}>
+          <div className="modal" style={{ maxWidth: 540 }}>
             <div className="modal-header">
               <div>
-                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-primary)' }}>
-                  <ShieldCheck size={20} color="var(--color-accent)" />
-                  Chỉnh sửa thông số sở hữu
+                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text-primary)', fontSize: '1.15rem', fontWeight: 700 }}>
+                  Chỉnh sửa thông tin sở hữu
                 </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                  Serial tem: <strong style={{ color: 'var(--color-accent)' }}>{ownerTargetLabel.serialNumber}</strong> | Lô: {ownerTargetLabel.batchId?.batchCode || '—'}
-                </p>
               </div>
               <button className="btn-icon" onClick={() => !savingOwner && setShowOwnerModal(false)}><X size={20} /></button>
             </div>
 
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {ownerModalError && (
                 <div className="modal-error animate-fade-in" style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: 12,
@@ -3004,83 +3055,134 @@ export default function Labels() {
                 </div>
               )}
 
-              <div className="input-group">
-                <label>1. Tên NPP hoặc cá nhân đã mua sản phẩm *</label>
-                <input
-                  className="input"
-                  placeholder="VD: Nhà pum / Đại lý Tuấn Hưng / Nguyễn Văn A"
-                  value={ownerForm.ownerName}
-                  onChange={e => setOwnerForm({ ...ownerForm, ownerName: e.target.value })}
-                />
+              {/* 1. Thông tin tem */}
+              <div style={{
+                background: '#f5f3ff',
+                border: '1px solid #ddd6fe',
+                borderRadius: 10,
+                padding: '14px 16px'
+              }}>
+                <div style={{ fontWeight: 700, color: '#6d28d9', fontSize: '0.92rem', marginBottom: 10 }}>
+                  1. Thông tin tem
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', rowGap: 6, fontSize: '0.88rem' }}>
+                  <span style={{ color: '#6b7280' }}>Mã kích hoạt:</span>
+                  <strong style={{ color: '#111827' }}>{ownerForm.internalCode || ownerForm.ownerCode || ownerTargetLabel.internalCode || ownerTargetLabel.ownerCode || '—'}</strong>
+
+                  <span style={{ color: '#6b7280' }}>Mã chống giả:</span>
+                  <strong style={{ color: '#111827' }}>{ownerTargetLabel.serialNumber}</strong>
+
+                  <span style={{ color: '#6b7280' }}>Lô tem:</span>
+                  <strong style={{ color: '#111827' }}>{ownerTargetLabel.batchId?.batchCode || '—'}</strong>
+
+                  <span style={{ color: '#6b7280' }}>Sản phẩm:</span>
+                  <strong style={{ color: '#111827' }}>{ownerTargetLabel.productId?.name || '—'}</strong>
+                </div>
               </div>
 
-              <div className="input-group">
-                <label>2. Địa chỉ NPP hoặc cá nhân mua *</label>
-                <input
-                  className="input"
-                  placeholder="VD: 123 Giải Phóng, Phương Mai, Hà Nội"
-                  value={ownerForm.ownerAddress}
-                  onChange={e => setOwnerForm({ ...ownerForm, ownerAddress: e.target.value })}
-                />
-              </div>
+              {/* 2. Thông tin sở hữu */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', fontSize: '0.95rem' }}>
+                  2. Thông tin sở hữu
+                </div>
 
-              <div className="input-group">
-                <label>3. Số điện thoại liên hệ *</label>
-                <input
-                  className="input"
-                  placeholder="VD: 0984848894"
-                  value={ownerForm.ownerPhone}
-                  onChange={e => setOwnerForm({ ...ownerForm, ownerPhone: e.target.value })}
-                />
-              </div>
+                <div className="input-group">
+                  <label>Tên tập thể / cá nhân đã mua <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    className="input"
+                    placeholder="Nhập tên người mua"
+                    value={ownerForm.ownerName}
+                    onChange={e => setOwnerForm({ ...ownerForm, ownerName: e.target.value })}
+                  />
+                </div>
 
-              <div className="input-group">
-                <label>4. Serial chống giả</label>
-                <input
-                  className="input"
-                  placeholder="VD: 307362"
-                  value={ownerForm.activatedSerial}
-                  onChange={e => setOwnerForm({ ...ownerForm, activatedSerial: e.target.value })}
-                />
-                <p style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                  Serial chống giả trích xuất từ con tem đã quét.
-                </p>
-              </div>
+                <div className="input-group">
+                  <label>Địa chỉ <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    className="input"
+                    placeholder="Nhập địa chỉ"
+                    value={ownerForm.ownerAddress}
+                    onChange={e => setOwnerForm({ ...ownerForm, ownerAddress: e.target.value })}
+                  />
+                </div>
 
-              <div className="input-group" style={{ background: 'rgba(16, 185, 129, 0.06)', padding: '12px', borderRadius: 8, border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
-                <label style={{ color: '#047857', fontWeight: 700 }}>5. Mã nội bộ / Mã sở hữu sản phẩm (Cột 2)</label>
-                <input
-                  className="input"
-                  placeholder="VD: 00066"
-                  value={ownerForm.internalCode || ownerForm.ownerCode}
-                  onChange={e => setOwnerForm({ ...ownerForm, internalCode: e.target.value, ownerCode: e.target.value })}
-                  style={{ fontWeight: 700, color: '#065f46', borderColor: '#86efac' }}
-                />
-                <p style={{ fontSize: '0.75rem', color: '#059669', margin: '4px 0 0' }}>
-                  Giá trị này sẽ hiển thị ở mục "Mã sở hữu sản phẩm" và dòng "Serial đã được kích hoạt" trên trang tra cứu Bảo hành.
-                </p>
+                <div className="input-group">
+                  <label>Điện thoại <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input
+                    className="input"
+                    placeholder="Nhập số điện thoại"
+                    value={ownerForm.ownerPhone}
+                    onChange={e => setOwnerForm({ ...ownerForm, ownerPhone: e.target.value })}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label>Serial chống giả</label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      className="input"
+                      value={ownerTargetLabel.serialNumber}
+                      readOnly
+                      disabled
+                      style={{
+                        backgroundColor: '#f3f4f6',
+                        color: '#6b7280',
+                        cursor: 'not-allowed',
+                        paddingRight: 36,
+                        width: '100%'
+                      }}
+                    />
+                    <Lock size={15} style={{ position: 'absolute', right: 12, color: '#9ca3af', pointerEvents: 'none' }} />
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '4px 0 0' }}>
+                    Lấy tự động từ hệ thống.
+                  </p>
+                </div>
+
+                <div className="input-group">
+                  <label>Mã kích hoạt</label>
+                  <input
+                    className="input"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Nhập mã kích hoạt (chỉ nhập số)"
+                    value={ownerForm.internalCode || ownerForm.ownerCode}
+                    onChange={e => {
+                      const digitsOnly = e.target.value.replace(/\D/g, '');
+                      setOwnerForm({ ...ownerForm, internalCode: digitsOnly, ownerCode: digitsOnly });
+                    }}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: '#10b981', margin: '4px 0 0' }}>
+                    Mã đã dùng để kích hoạt.
+                  </p>
+                </div>
               </div>
             </div>
 
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                {(ownerTargetLabel.ownerInfo?.name || ownerTargetLabel.ownerCode || ownerTargetLabel.internalCode) && (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => handleSaveOwner(true)}
-                    disabled={savingOwner}
-                    style={{ color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.3)' }}
-                    title="Xóa thông tin sở hữu để tem về trạng thái chưa kích hoạt"
-                  >
-                    <Trash2 size={14} /> Xóa thông số sở hữu
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => handleSaveOwner(true)}
+                  disabled={savingOwner}
+                  style={{ color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.35)', background: '#fff5f5' }}
+                  title="Xóa thông tin sở hữu để tem về trạng thái chưa kích hoạt"
+                >
+                  <Trash2 size={14} /> Xóa thông tin sở hữu
+                </button>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setShowOwnerModal(false)} disabled={savingOwner}>Hủy</button>
-                <button type="button" className="btn btn-primary" onClick={() => handleSaveOwner(false)} disabled={savingOwner}>
-                  <CheckCircle size={16} /> {savingOwner ? 'Đang lưu...' : 'Lưu thông số sở hữu'}
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleSaveOwner(false)}
+                  disabled={savingOwner}
+                  style={{ background: '#7c3aed', borderColor: '#7c3aed' }}
+                >
+                  {savingOwner ? 'Đang lưu...' : 'Lưu thông tin sở hữu'}
                 </button>
               </div>
             </div>

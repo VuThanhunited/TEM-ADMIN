@@ -4580,6 +4580,80 @@
   text-decoration: underline;
 }
 
+.honey-meta-row-about {
+  width: 100%;
+  background: linear-gradient(90deg, rgba(255, 253, 244, 0.92) 0%, rgba(250, 232, 175, 0.45) 100%);
+  border: none;
+  border-top: 1px solid rgba(201, 158, 64, 0.35);
+  border-bottom: none;
+  border-radius: 8px;
+  padding: 6px 6px;
+  margin-top: 3px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.honey-meta-row-about:hover,
+.honey-meta-row-about.active {
+  background: linear-gradient(90deg, #fff6cf 0%, #f5cd5b 100%);
+  box-shadow: 0 2px 8px rgba(180, 130, 20, 0.2);
+}
+
+.honey-meta-about-text {
+  flex: 1;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.honey-about-us-label {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: 0.2px;
+}
+
+.honey-about-us-arrow {
+  color: #155224;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.honey-meta-row-about:hover .honey-about-us-arrow {
+  transform: translateX(3px);
+}
+
+.honey-about-us-rich-content {
+  font-size: 0.88rem;
+  color: #1f2937;
+  line-height: 1.62;
+  word-break: break-word;
+}
+
+.honey-about-us-rich-content p {
+  margin: 0 0 10px;
+}
+
+.honey-about-us-rich-content ul,
+.honey-about-us-rich-content ol {
+  margin: 0 0 10px 18px;
+  padding: 0;
+}
+
+.honey-about-us-rich-content li {
+  margin-bottom: 6px;
+}
+
+.honey-about-us-rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
 /* Khung viền kép mạ vàng cho Logo Hoàng Bách */
 .honey-brand-logo-frame {
   background: linear-gradient(145deg, #e7c972 0%, #c89b32 50%, #e5c66b 100%);
