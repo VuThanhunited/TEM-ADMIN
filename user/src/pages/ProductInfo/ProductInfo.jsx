@@ -3197,13 +3197,33 @@ const renderHoneyView = () => {
   if (customHoneyDists) {
     mergedDistList = [...customHoneyDists];
     for (const dbU of dbEnterpriseUnits) {
-      const exists = mergedDistList.some(
+      const existingIdx = mergedDistList.findIndex(
         d => String(d.id) === String(dbU.id) || d.vi.name.toLowerCase() === dbU.vi.name.toLowerCase()
       );
-      if (!exists) mergedDistList.push(dbU);
+      if (existingIdx !== -1) {
+        const prev = mergedDistList[existingIdx];
+        mergedDistList[existingIdx] = {
+          ...prev,
+          ...dbU,
+          region: dbU.region || prev.region,
+          image: (dbU.image && !dbU.image.includes('honey_dist_dong_van')) ? dbU.image : (prev.image || dbU.image),
+          vi: {
+            ...prev.vi,
+            ...dbU.vi,
+            productName: dbU.vi.productName || prev.vi.productName || '',
+            detailsHtml: dbU.vi.detailsHtml || prev.vi.detailsHtml || ''
+          }
+        };
+      } else {
+        mergedDistList.unshift(dbU);
+      }
     }
   } else if (dbEnterpriseUnits.length > 0) {
     mergedDistList = [...dbEnterpriseUnits];
+    for (const defItem of DEFAULT_HONEY_DISTRIBUTORS.map((d, i) => normalizeDistItem(d, i))) {
+      const exists = mergedDistList.some(d => d.vi.name.toLowerCase() === defItem.vi.name.toLowerCase());
+      if (!exists) mergedDistList.push(defItem);
+    }
   } else {
     mergedDistList = DEFAULT_HONEY_DISTRIBUTORS.map((d, i) => normalizeDistItem(d, i));
   }

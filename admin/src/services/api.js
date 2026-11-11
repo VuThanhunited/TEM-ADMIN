@@ -148,6 +148,8 @@ class ApiService {
   // ── Enterprises ───────────────────────────────────────────────────────────
   getEnterprises() { return this.request('GET', '/enterprises'); }
   getManufacturers() { return this.request('GET', '/enterprises/manufacturers'); }
+  getRegionUnits() { return this.request('GET', '/enterprises/region-units'); }
+  assignUnitRegion(data) { return this.request('POST', '/enterprises/assign-region', data); }
   getEnterprise(id) { return this.request('GET', `/enterprises/${id}`); }
   createEnterprise(data) { return this.request('POST', '/enterprises', data); }
   updateEnterprise(id, data) { return this.request('PUT', `/enterprises/${id}`, data); }
@@ -254,6 +256,7 @@ class ApiService {
   importRetailStores(data) { return this.request('POST', '/public/retail-stores/import-stores', data, {}, 0, 120000); }
   importDistributionMatrix(data) { return this.request('POST', '/public/retail-stores/import-matrix', data, {}, 0, 120000); }
   assignRetailStoreSerials(storeId, data) { return this.request('POST', `/public/retail-stores/${storeId}/assign-serials`, data, {}, 0, 60000); }
+  unassignRetailStoreSerial(storeId, data) { return this.request('POST', `/public/retail-stores/${storeId}/unassign-serial`, data); }
   exportRetailStoresData(params = {}) { return this.request('GET', '/public/retail-stores/export-data', null, params, 0, 120000); }
   getRetailStoreTemplateUrl(type = 'matrix') { return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}`; }
 

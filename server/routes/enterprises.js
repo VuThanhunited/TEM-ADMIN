@@ -74,6 +74,196 @@ router.get('/manufacturers', auth, async (req, res) => {
   }
 });
 
+// Helper: Lấy danh sách đầy đủ các Đơn vị (Doanh nghiệp + NSX/NPP) kèm sản phẩm đại diện để ghép vùng phân phối
+async function buildRegionUnitsList() {
+  const User = require('../models/User');
+  const Product = require('../models/Product');
+
+  const [enterprises, users, products] = await Promise.all([
+    Enterprise.find({ isActive: true })
+      .select('name type address phone email logo partnerDetails hasGeographicalIndication region')
+      .sort({ createdAt: -1 })
+      .lean(),
+    User.find({ isActive: { $ne: false } })
+      .select('username fullName role address phone email details logo hasGeographicalIndication region shortIntro scale foragingArea cert enterpriseId')
+      .sort({ createdAt: -1 })
+      .lean(),
+    Product.find({})
+      .select('name images description enterpriseId manufacturerId hasGeographicalIndication theme category')
+      .sort({ createdAt: -1 })
+      .lean()
+  ]);
+
+  const ownerByEntId = new Map();
+  for (const u of users) {
+    if (u.enterpriseId && u.username && !ownerByEntId.has(String(u.enterpriseId))) {
+      ownerByEntId.set(String(u.enterpriseId), u);
+    }
+  }
+
+  const productByEntId = new Map();
+  const productByMfgId = new Map();
+  for (const p of products) {
+    if (p.enterpriseId && !productByEntId.has(String(p.enterpriseId))) {
+      productByEntId.set(String(p.enterpriseId), p);
+    }
+    if (p.manufacturerId && !productByMfgId.has(String(p.manufacturerId))) {
+      productByMfgId.set(String(p.manufacturerId), p);
+    }
+  }
+
+  const resultUnits = [];
+  const seenEntNames = new Set();
+
+  for (const ent of enterprises) {
+    const owner = ownerByEntId.get(String(ent._id));
+    const prod = productByEntId.get(String(ent._id)) || productByMfgId.get(String(ent._id));
+    const unitName = (ent.name || owner?.fullName || '').trim();
+    if (!unitName) continue;
+    seenEntNames.add(unitName.toLowerCase());
+
+    const rawDetails = ent.partnerDetails || owner?.details || prod?.description || '';
+    const stripHtml = (html) => String(html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+    const cleanText = stripHtml(rawDetails);
+
+    resultUnits.push({
+      id: String(ent._id),
+      _id: ent._id,
+      unitSource: 'ENTERPRISE',
+      name: unitName,
+      productName: prod?.name || '',
+      address: ent.address || owner?.address || '',
+      phone: ent.phone || owner?.phone || '',
+      email: ent.email || owner?.email || '',
+      image: prod?.images?.[0] || ent.logo || owner?.logo || '/images/honey/honey_dist_dong_van.png',
+      logo: ent.logo || owner?.logo || prod?.images?.[0] || '',
+      partnerDetails: rawDetails,
+      details: rawDetails,
+      shortIntro: owner?.shortIntro || (cleanText ? (cleanText.length > 180 ? `${cleanText.slice(0, 180)}...` : cleanText) : ''),
+      scale: owner?.scale || 'Cơ sở nuôi ong & khai thác tiêu chuẩn',
+      foragingArea: owner?.foragingArea || ent.address || owner?.address || '',
+      cert: owner?.cert || '',
+      hasGeographicalIndication: Boolean(ent.hasGeographicalIndication || owner?.hasGeographicalIndication || prod?.hasGeographicalIndication),
+      region: ent.region || owner?.region || ''
+    });
+  }
+
+  for (const u of users) {
+    if (!['NSX', 'NPP'].includes(u.role)) continue;
+    const unitName = (u.fullName || u.username || '').trim();
+    if (!unitName) continue;
+    // Nếu trùng tên với Doanh nghiệp chủ sở hữu và là chủ tài khoản của doanh nghiệp đó thì gộp vào Enterprise ở trên
+    if (u.username && seenEntNames.has(unitName.toLowerCase())) continue;
+
+    const prod = productByMfgId.get(String(u._id)) || (u.enterpriseId ? productByEntId.get(String(u.enterpriseId)) : null);
+    const rawDetails = u.details || prod?.description || '';
+    const stripHtml = (html) => String(html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+    const cleanText = stripHtml(rawDetails);
+
+    resultUnits.push({
+      id: String(u._id),
+      _id: u._id,
+      unitSource: 'USER',
+      name: unitName,
+      productName: prod?.name || '',
+      address: u.address || '',
+      phone: u.phone || '',
+      email: u.email || '',
+      image: u.logo || prod?.images?.[0] || '/images/honey/honey_dist_dong_van.png',
+      logo: u.logo || prod?.images?.[0] || '',
+      partnerDetails: rawDetails,
+      details: rawDetails,
+      shortIntro: u.shortIntro || (cleanText ? (cleanText.length > 180 ? `${cleanText.slice(0, 180)}...` : cleanText) : ''),
+      scale: u.scale || 'Cơ sở nuôi ong & khai thác tiêu chuẩn',
+      foragingArea: u.foragingArea || u.address || '',
+      cert: u.cert || '',
+      hasGeographicalIndication: Boolean(u.hasGeographicalIndication || prod?.hasGeographicalIndication),
+      region: u.region || ''
+    });
+  }
+
+  return resultUnits;
+}
+
+// GET /api/enterprises/region-units - Lấy danh sách các đơn vị để ghép vùng phân phối (Khối 7)
+router.get('/region-units', auth, async (req, res) => {
+  try {
+    const units = await buildRegionUnitsList();
+    res.json({ success: true, units, data: units });
+  } catch (error) {
+    console.error('Get region units error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách đơn vị ghép vùng' });
+  }
+});
+
+// POST /api/enterprises/assign-region - Ghép đơn vị vào vùng phân phối (Đồng Văn | Mèo Vạc | Yên Minh)
+router.post('/assign-region', auth, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const { unitId, unitSource, region, hasGeographicalIndication } = req.body || {};
+    if (!unitId) {
+      return res.status(400).json({ error: 'Vui lòng chọn đơn vị ghép vùng!' });
+    }
+
+    const cleanRegion = ['dong_van', 'meo_vac', 'yen_minh', ''].includes(String(region || '').trim())
+      ? String(region || '').trim()
+      : '';
+
+    const updateFields = { region: cleanRegion };
+    if (hasGeographicalIndication !== undefined) {
+      updateFields.hasGeographicalIndication = Boolean(hasGeographicalIndication);
+    }
+
+    let updated = false;
+    if (unitSource === 'ENTERPRISE') {
+      const ent = await Enterprise.findByIdAndUpdate(unitId, { $set: updateFields }, { new: true });
+      if (ent) {
+        updated = true;
+        await User.updateMany(
+          { enterpriseId: ent._id, username: { $exists: true, $ne: null } },
+          { $set: updateFields }
+        );
+      }
+    } else if (unitSource === 'USER') {
+      const u = await User.findByIdAndUpdate(unitId, { $set: updateFields }, { new: true });
+      if (u) updated = true;
+    }
+
+    if (!updated) {
+      const ent = await Enterprise.findByIdAndUpdate(unitId, { $set: updateFields }, { new: true });
+      if (ent) {
+        updated = true;
+        await User.updateMany(
+          { enterpriseId: ent._id, username: { $exists: true, $ne: null } },
+          { $set: updateFields }
+        );
+      } else {
+        const u = await User.findByIdAndUpdate(unitId, { $set: updateFields }, { new: true });
+        if (u) updated = true;
+      }
+    }
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Không tìm thấy đơn vị đã chọn!' });
+    }
+
+    const units = await buildRegionUnitsList();
+    const matchedUnit = units.find(u => String(u.id) === String(unitId)) || null;
+
+    res.json({
+      success: true,
+      unit: matchedUnit,
+      units,
+      message: cleanRegion
+        ? `Đã ghép đơn vị "${matchedUnit?.name || ''}" vào vùng thành công!`
+        : `Đã huỷ ghép vùng cho đơn vị "${matchedUnit?.name || ''}"!`
+    });
+  } catch (error) {
+    console.error('Assign region error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi ghép vùng phân phối: ' + error.message });
+  }
+});
+
 // GET /api/enterprises/:id
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -97,7 +287,7 @@ router.get('/:id', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     if (req.user.role === 'ADMIN') {
-      const enterprises = await Enterprise.find().select('name type address logo bannerImage domain subdomain displayConfig brandConfig phone email website taxCode partnerDetails hasGeographicalIndication chatbotConfig isActive').sort({ createdAt: -1 }).lean();
+      const enterprises = await Enterprise.find().select('name type address logo bannerImage domain subdomain displayConfig brandConfig phone email website taxCode partnerDetails hasGeographicalIndication region chatbotConfig isActive').sort({ createdAt: -1 }).lean();
       return res.json(enterprises);
     }
     if (req.user.enterpriseId) {
@@ -120,7 +310,7 @@ router.put('/:id', auth, async (req, res) => {
       }
     }
 
-    const { name, type, address, phone, email, website, taxCode, logo, bannerImage, brandConfig, partnerDetails, hasGeographicalIndication, domain, subdomain, chatbotConfig, displayConfig } = req.body;
+    const { name, type, address, phone, email, website, taxCode, logo, bannerImage, brandConfig, partnerDetails, hasGeographicalIndication, region, domain, subdomain, chatbotConfig, displayConfig } = req.body;
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
@@ -134,6 +324,7 @@ router.put('/:id', auth, async (req, res) => {
     if (brandConfig !== undefined) updateData.brandConfig = brandConfig;
     if (partnerDetails !== undefined) updateData.partnerDetails = partnerDetails;
     if (hasGeographicalIndication !== undefined) updateData.hasGeographicalIndication = Boolean(hasGeographicalIndication);
+    if (region !== undefined) updateData.region = String(region || '').trim();
     if (domain !== undefined) updateData.domain = domain;
     if (subdomain !== undefined) updateData.subdomain = subdomain;
     if (chatbotConfig !== undefined) updateData.chatbotConfig = chatbotConfig;

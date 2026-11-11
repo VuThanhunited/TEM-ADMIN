@@ -71,6 +71,12 @@ export default function Templates() {
   const [honeyDistRegionFilter, setHoneyDistRegionFilter] = useState('all');
   const [expandedHoneyDistIds, setExpandedHoneyDistIds] = useState({});
 
+  // State cho Khối 7: Khối vùng phân phối (Ghép đơn vị vào Đồng Văn / Mèo Vạc / Yên Minh)
+  const [regionUnitsList, setRegionUnitsList] = useState([]);
+  const [selectedPairingUnitKey, setSelectedPairingUnitKey] = useState('');
+  const [selectedPairingRegion, setSelectedPairingRegion] = useState('dong_van');
+  const [assigningRegionLoading, setAssigningRegionLoading] = useState(false);
+
   const [form, setForm] = useState({
     name: '', primaryColor: '#0d47a1', secondaryColor: '#1565c0',
     backgroundColor: '#f0f4f8', textColor: '#0f172a', layout: 'warranty_solution',
@@ -81,12 +87,30 @@ export default function Templates() {
 
   useEffect(() => {
     loadTemplates();
+    loadRegionUnits();
     if (isAdmin) {
       loadEnterprises();
     } else if (enterpriseId) {
       loadCurrentEnterprise();
     }
   }, [isAdmin, enterpriseId]);
+
+  const loadRegionUnits = async () => {
+    try {
+      const res = await api.getRegionUnits();
+      const list = Array.isArray(res?.units) ? res.units : (Array.isArray(res) ? res : []);
+      setRegionUnitsList(list);
+      if (list.length > 0 && !selectedPairingUnitKey) {
+        const first = list[0];
+        setSelectedPairingUnitKey(`${first.unitSource}:::${first.id}`);
+        if (first.region && ['dong_van', 'meo_vac', 'yen_minh'].includes(first.region)) {
+          setSelectedPairingRegion(first.region);
+        }
+      }
+    } catch (e) {
+      console.error('Load region units error:', e);
+    }
+  };
 
   const loadTemplates = async () => {
     try { const data = await api.getTemplates(); setTemplates(data); }
@@ -262,6 +286,106 @@ export default function Templates() {
     if (!confirm('Xóa đơn vị này khỏi danh sách điểm phân phối?')) return;
     const updated = currentHoneyDistributors.filter(u => u.id !== unitId);
     handleThemeFieldChange('honeyDistributors', updated);
+  };
+
+  // Xử lý xác nhận ghép đơn vị vào vùng phân phối (7. Khối vùng phân phối)
+  const handleConfirmAssignRegion = async (customUnitKey, customRegion, customGI) => {
+    const keyToUse = customUnitKey !== undefined ? customUnitKey : selectedPairingUnitKey;
+    const regionToUse = customRegion !== undefined ? customRegion : selectedPairingRegion;
+    if (!keyToUse) {
+      alert('Vui lòng chọn đơn vị ghép vùng!');
+      return;
+    }
+    const [unitSource, unitId] = String(keyToUse).split(':::');
+    if (!unitId) {
+      alert('Đơn vị đã chọn không hợp lệ!');
+      return;
+    }
+
+    setAssigningRegionLoading(true);
+    try {
+      const payload = {
+        unitId,
+        unitSource: unitSource || 'ENTERPRISE',
+        region: regionToUse === '__unassign__' ? '' : regionToUse
+      };
+      if (customGI !== undefined) {
+        payload.hasGeographicalIndication = Boolean(customGI);
+      }
+
+      const res = await api.assignUnitRegion(payload);
+      if (Array.isArray(res?.units)) {
+        setRegionUnitsList(res.units);
+      } else {
+        await loadRegionUnits();
+      }
+
+      // Đồng bộ luôn vào danh sách honeyDistributors trong trình soạn thảo nếu có trả về unit
+      if (res?.unit) {
+        const u = res.unit;
+        if (payload.region) {
+          const existingList = [...currentHoneyDistributors];
+          const idx = existingList.findIndex(
+            item => String(item.id) === String(u.id) || String(item.name || '').toLowerCase() === String(u.name || '').toLowerCase()
+          );
+          const mappedItem = {
+            id: String(u.id),
+            region: payload.region,
+            hasGeographicalIndication: Boolean(u.hasGeographicalIndication),
+            image: u.image || u.logo || '/images/honey/honey_dist_dong_van.png',
+            name: u.name || '',
+            productName: u.productName || '',
+            address: u.address || 'Đang cập nhật',
+            phone: u.phone || 'Đang cập nhật',
+            shortIntro: u.shortIntro || 'Đơn vị liên kết sản xuất và phân phối chính hãng.',
+            scale: u.scale || 'Cơ sở nuôi ong & khai thác tiêu chuẩn',
+            foragingArea: u.foragingArea || u.address || '',
+            cert: u.cert || (u.hasGeographicalIndication ? 'Sản phẩm được cấp Chỉ dẫn địa lý & An toàn thực phẩm' : 'Chứng nhận An toàn thực phẩm'),
+            fullStoryText: u.partnerDetails || u.details || u.shortIntro || '',
+            details: u.partnerDetails || u.details || '',
+            vi: {
+              name: u.name || '',
+              productName: u.productName || '',
+              address: u.address || 'Đang cập nhật',
+              phone: u.phone || 'Đang cập nhật',
+              shortIntro: u.shortIntro || 'Đơn vị liên kết sản xuất và phân phối chính hãng.',
+              scale: u.scale || 'Cơ sở nuôi ong & khai thác tiêu chuẩn',
+              foragingArea: u.foragingArea || u.address || '',
+              cert: u.cert || '',
+              fullStory: [u.shortIntro || 'Đơn vị liên kết sản xuất và phân phối chính hãng.'],
+              detailsHtml: u.partnerDetails || u.details || ''
+            }
+          };
+          if (idx !== -1) {
+            existingList[idx] = { ...existingList[idx], ...mappedItem };
+          } else {
+            existingList.unshift(mappedItem);
+          }
+          handleThemeFieldChange('honeyDistributors', existingList);
+        } else {
+          const filtered = currentHoneyDistributors.filter(
+            item => String(item.id) !== String(u.id) && String(item.name || '').toLowerCase() !== String(u.name || '').toLowerCase()
+          );
+          handleThemeFieldChange('honeyDistributors', filtered);
+        }
+      }
+
+      const regionLabelMap = {
+        dong_van: 'Đồng Văn',
+        meo_vac: 'Mèo Vạc',
+        yen_minh: 'Yên Minh'
+      };
+      const rName = regionLabelMap[payload.region] || '';
+      showToast(
+        payload.region
+          ? `Đã ghép đơn vị "${res?.unit?.name || ''}" vào vùng "${rName}" thành công!`
+          : `Đã huỷ ghép vùng cho đơn vị "${res?.unit?.name || ''}"!`
+      );
+    } catch (err) {
+      alert(err.message || 'Lỗi khi ghép vùng phân phối');
+    } finally {
+      setAssigningRegionLoading(false);
+    }
   };
 
   const handleUploadImageToField = (e, callback) => {
@@ -1175,6 +1299,18 @@ export default function Templates() {
                   {sec.title.split(':')[0]}
                 </button>
               ))}
+              <button
+                type="button"
+                className={`theme-sec-pill ${activeSectionFilter === 'region_pairing' ? 'active' : ''}`}
+                onClick={() => setActiveSectionFilter('region_pairing')}
+                style={
+                  activeSectionFilter === 'region_pairing'
+                    ? { background: '#14532d', borderColor: '#14532d', color: '#fff', fontWeight: 800 }
+                    : { borderColor: '#0f172a', color: '#0f172a', fontWeight: 800 }
+                }
+              >
+                7. Khối vùng phân phối
+              </button>
             </div>
 
             {activeSectionFilter === 'all' && (
@@ -1209,6 +1345,348 @@ export default function Templates() {
         {/* Workspace 2 Cột: Cột Trái (Form theo Khối) + Cột Phải (Live Mobile Preview) */}
         <div className="theme-builder-workspace">
           <div className="theme-editor-pane">
+            {/* 7. KHỐI VÙNG PHÂN PHỐI (GHÉP ĐƠN VỊ VÀO ĐỒNG VĂN • MÈO VẠC • YÊN MINH) */}
+            {(activeSectionFilter === 'all' || activeSectionFilter === 'region_pairing') && (
+              <div
+                className="theme-section-box"
+                style={{
+                  border: '2px solid #0f172a',
+                  background: '#ffffff',
+                  marginBottom: 18,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  boxShadow: '0 6px 20px rgba(15, 23, 42, 0.08)'
+                }}
+              >
+                <div
+                  style={{
+                    padding: '12px 18px',
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 10
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <MapPin size={20} color="#fde047" />
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#ffffff' }}>
+                        7. Khối vùng phân phối
+                      </div>
+                      <div style={{ fontSize: '0.77rem', color: '#cbd5e1', marginTop: 2 }}>
+                        Chọn đơn vị sản xuất / doanh nghiệp và ghép vào vùng phân phối (Đồng Văn • Mèo Vạc • Yên Minh)
+                      </div>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: 20,
+                      background: 'rgba(253, 224, 71, 0.16)',
+                      color: '#fde047',
+                      border: '1px solid rgba(253, 224, 71, 0.35)'
+                    }}
+                  >
+                    Đã ghép: {regionUnitsList.filter(u => ['dong_van', 'meo_vac', 'yen_minh'].includes(u.region)).length} đơn vị
+                  </span>
+                </div>
+
+                <div style={{ padding: '20px 22px', background: '#f8fafc' }}>
+                  {/* Hàng 1: 2 ô SELECT song song theo đúng bản vẽ của khách hàng */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                      gap: 20,
+                      marginBottom: 18
+                    }}
+                  >
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontWeight: 800,
+                          fontSize: '0.95rem',
+                          color: '#0f172a',
+                          marginBottom: 8,
+                          textAlign: 'center'
+                        }}
+                      >
+                        Vui lòng chọn đơn vị ghép vùng
+                      </label>
+                      <select
+                        className="input"
+                        value={selectedPairingUnitKey}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSelectedPairingUnitKey(val);
+                          const [src, id] = String(val).split(':::');
+                          const found = regionUnitsList.find(
+                            u => String(u.id) === String(id) && String(u.unitSource) === String(src)
+                          );
+                          if (found?.region && ['dong_van', 'meo_vac', 'yen_minh'].includes(found.region)) {
+                            setSelectedPairingRegion(found.region);
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          height: 44,
+                          fontSize: '0.92rem',
+                          fontWeight: 700,
+                          background: '#ffffff',
+                          color: '#0f172a',
+                          border: '1.5px solid #94a3b8',
+                          borderRadius: 10,
+                          padding: '0 12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">-- Chọn đơn vị ghép vùng --</option>
+                        {regionUnitsList.map((u) => {
+                          const rLabel =
+                            u.region === 'dong_van'
+                              ? ' [Đã ghép: Đồng Văn]'
+                              : u.region === 'meo_vac'
+                                ? ' [Đã ghép: Mèo Vạc]'
+                                : u.region === 'yen_minh'
+                                  ? ' [Đã ghép: Yên Minh]'
+                                  : '';
+                          const prodSuffix = u.productName ? ` — SP: ${u.productName}` : '';
+                          return (
+                            <option key={`${u.unitSource}:::${u.id}`} value={`${u.unitSource}:::${u.id}`}>
+                              {u.name}{prodSuffix}{rLabel}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontWeight: 800,
+                          fontSize: '0.95rem',
+                          color: '#0f172a',
+                          marginBottom: 8,
+                          textAlign: 'center'
+                        }}
+                      >
+                        Vui lòng chọn vùng
+                      </label>
+                      <select
+                        className="input"
+                        value={selectedPairingRegion}
+                        onChange={(e) => setSelectedPairingRegion(e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: 44,
+                          fontSize: '0.92rem',
+                          fontWeight: 700,
+                          background: '#ffffff',
+                          color: '#0f172a',
+                          border: '1.5px solid #94a3b8',
+                          borderRadius: 10,
+                          padding: '0 12px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="dong_van">📍 Đồng Văn</option>
+                        <option value="meo_vac">📍 Mèo Vạc</option>
+                        <option value="yen_minh">📍 Yên Minh</option>
+                        <option value="__unassign__">-- Huỷ ghép vùng --</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Nút xác nhận OK ở chính giữa */}
+                  <div style={{ textAlign: 'center', marginBottom: 18 }}>
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        fontSize: '0.95rem',
+                        color: '#0f172a',
+                        marginBottom: 8
+                      }}
+                    >
+                      Vui lòng xác nhận
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmAssignRegion()}
+                      disabled={assigningRegionLoading || !selectedPairingUnitKey}
+                      style={{
+                        minWidth: 260,
+                        height: 42,
+                        borderRadius: 10,
+                        border: '1.5px solid #0f172a',
+                        background: assigningRegionLoading ? '#94a3b8' : 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '0.96rem',
+                        cursor: assigningRegionLoading ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 4px 12px rgba(21, 128, 61, 0.25)',
+                        letterSpacing: '0.5px'
+                      }}
+                    >
+                      {assigningRegionLoading ? 'Đang xử lý...' : 'OK'}
+                    </button>
+                  </div>
+
+                  {/* Danh sách các đơn vị đã ghép theo 3 vùng */}
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 12,
+                      padding: '14px 16px'
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#1e293b', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                      <span>DANH SÁCH CÁC ĐƠN VỊ ĐÃ GHÉP VÙNG PHÂN PHỐI:</span>
+                      <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>
+                        Khi quét QR, khách bấm vào đơn vị sẽ hiển thị Sản phẩm, Địa chỉ, Liên hệ &amp; "Về chúng tôi" của đơn vị đó
+                      </span>
+                    </div>
+
+                    {regionUnitsList.filter(u => ['dong_van', 'meo_vac', 'yen_minh'].includes(u.region)).length === 0 ? (
+                      <div style={{ padding: '14px', textAlign: 'center', color: '#64748b', fontSize: '0.84rem', background: '#f8fafc', borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+                        Chưa có đơn vị nào được ghép vùng. Hãy chọn đơn vị ở trên, chọn vùng (Đồng Văn / Mèo Vạc / Yên Minh) và bấm <strong>OK</strong>.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {regionUnitsList
+                          .filter(u => ['dong_van', 'meo_vac', 'yen_minh'].includes(u.region))
+                          .map((u) => {
+                            const uKey = `${u.unitSource}:::${u.id}`;
+                            const rBadge =
+                              u.region === 'dong_van'
+                                ? { text: 'Đồng Văn', bg: '#dcfce7', color: '#166534', border: '#86efac' }
+                                : u.region === 'meo_vac'
+                                  ? { text: 'Mèo Vạc', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' }
+                                  : { text: 'Yên Minh', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' };
+                            return (
+                              <div
+                                key={uKey}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  flexWrap: 'wrap',
+                                  gap: 10,
+                                  padding: '10px 12px',
+                                  borderRadius: 10,
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 220 }}>
+                                  {u.image && (
+                                    <img
+                                      src={u.image}
+                                      alt={u.name}
+                                      style={{ width: 42, height: 42, borderRadius: 8, objectFit: 'cover', border: '1px solid #cbd5e1', background: '#fff', flexShrink: 0 }}
+                                    />
+                                  )}
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                      <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>{u.name}</strong>
+                                      <span
+                                        style={{
+                                          fontSize: '0.74rem',
+                                          fontWeight: 800,
+                                          padding: '2px 8px',
+                                          borderRadius: 6,
+                                          background: rBadge.bg,
+                                          color: rBadge.color,
+                                          border: `1px solid ${rBadge.border}`
+                                        }}
+                                      >
+                                        📍 {rBadge.text}
+                                      </span>
+                                      {u.productName && (
+                                        <span style={{ fontSize: '0.76rem', color: '#047857', fontWeight: 700 }}>
+                                          • SP: {u.productName}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: 2 }}>
+                                      {u.address || 'Chưa cập nhật địa chỉ'} {u.phone ? `| SĐT: ${u.phone}` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <label
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 5,
+                                      padding: '4px 10px',
+                                      borderRadius: 8,
+                                      cursor: 'pointer',
+                                      fontSize: '0.76rem',
+                                      fontWeight: 700,
+                                      background: u.hasGeographicalIndication ? '#fef3c7' : '#f1f5f9',
+                                      color: u.hasGeographicalIndication ? '#92400e' : '#475569',
+                                      border: u.hasGeographicalIndication ? '1px solid #f59e0b' : '1px solid #cbd5e1'
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(u.hasGeographicalIndication)}
+                                      onChange={(e) => handleConfirmAssignRegion(uKey, u.region, e.target.checked)}
+                                      style={{ width: 14, height: 14, accentColor: '#15803d', cursor: 'pointer' }}
+                                    />
+                                    <span>Chỉ dẫn địa lý</span>
+                                  </label>
+
+                                  <select
+                                    className="input"
+                                    value={u.region}
+                                    onChange={(e) => handleConfirmAssignRegion(uKey, e.target.value, u.hasGeographicalIndication)}
+                                    style={{ height: 32, fontSize: '0.78rem', fontWeight: 700, padding: '0 8px', width: 125, background: '#fff', color: '#0f172a' }}
+                                  >
+                                    <option value="dong_van">Đồng Văn</option>
+                                    <option value="meo_vac">Mèo Vạc</option>
+                                    <option value="yen_minh">Yên Minh</option>
+                                  </select>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleConfirmAssignRegion(uKey, '__unassign__', u.hasGeographicalIndication)}
+                                    title="Huỷ ghép vùng cho đơn vị này"
+                                    style={{
+                                      width: 30,
+                                      height: 30,
+                                      borderRadius: 6,
+                                      border: '1px solid #fca5a5',
+                                      background: '#fef2f2',
+                                      color: '#dc2626',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer',
+                                      fontWeight: 800
+                                    }}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {selectedThemeKey === 'honey' && (
               <div
                 className="theme-section-box"

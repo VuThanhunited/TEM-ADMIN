@@ -47,6 +47,10 @@ const enterpriseSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  region: {
+    type: String,
+    default: ''
+  },
   domain: {
     type: String,
     default: null

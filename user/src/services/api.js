@@ -191,6 +191,10 @@ class UserApiService {
     return this.request('POST', `/public/retail-stores/${storeId}/assign-serials`, data, {}, true, 0, 60000);
   }
 
+  unassignRetailStoreSerial(storeId, data) {
+    return this.request('POST', `/public/retail-stores/${storeId}/unassign-serial`, data);
+  }
+
   exportRetailStoresData(params = {}) {
     return this.request('GET', '/public/retail-stores/export-data', null, params, true, 0, 120000);
   }

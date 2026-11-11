@@ -549,7 +549,7 @@ router.get('/scan/:serial', async (req, res) => {
       const ownerUser = await User.findOne({
         enterpriseId: enterprise._id,
         username: { $exists: true, $ne: null }
-      }).select('fullName address phone email logo details hasGeographicalIndication').lean();
+      }).select('fullName address phone email logo details hasGeographicalIndication region').lean();
 
       if (ownerUser) {
         if (!enterprise.address && ownerUser.address) enterprise.address = ownerUser.address;
@@ -560,38 +560,130 @@ router.get('/scan/:serial', async (req, res) => {
         if (!enterprise.hasGeographicalIndication && ownerUser.hasGeographicalIndication) {
           enterprise.hasGeographicalIndication = true;
         }
+        if (!enterprise.region && ownerUser.region) {
+          enterprise.region = ownerUser.region;
+        }
       }
 
-      // Lấy danh sách đơn vị sản xuất / điểm phân phối thuộc doanh nghiệp (tạo từ Quản lý Nhà phân phối)
+      // 1. Lấy các Doanh nghiệp (Enterprise) đã được ghép vùng phân phối (Đồng Văn | Mèo Vạc | Yên Minh)
+      const pairedEnterprises = await Enterprise.find({
+        isActive: true,
+        region: { $in: ['dong_van', 'meo_vac', 'yen_minh'] }
+      }).select('name address phone email logo partnerDetails hasGeographicalIndication region').sort({ createdAt: 1 }).lean();
+
+      // 2. Lấy danh sách đơn vị sản xuất / điểm phân phối thuộc doanh nghiệp hoặc đã ghép vùng (tạo từ Quản lý Nhà phân phối)
       const allEntUnits = await User.find({
-        enterpriseId: enterprise._id,
-        role: { $in: ['NSX', 'NPP'] },
-        isActive: { $ne: false }
-      }).select('username fullName address phone email details logo role region shortIntro scale foragingArea cert hasGeographicalIndication').sort({ createdAt: 1 }).lean();
+        isActive: { $ne: false },
+        $or: [
+          { enterpriseId: enterprise._id, role: { $in: ['NSX', 'NPP'] } },
+          { region: { $in: ['dong_van', 'meo_vac', 'yen_minh'] } }
+        ]
+      }).select('username fullName address phone email details logo role region shortIntro scale foragingArea cert hasGeographicalIndication enterpriseId').sort({ createdAt: 1 }).lean();
 
-      const rawUnits = (allEntUnits || []).filter(u => {
-        if (!ownerUser || String(u._id) !== String(ownerUser._id)) return true;
-        // Nếu tài khoản chủ sở hữu có khai báo vùng hoặc thông tin giới thiệu điểm phân phối thì vẫn giữ
-        if (u.region || u.shortIntro || u.scale || u.foragingArea) return true;
-        return false;
-      });
+      // Lấy thông tin sản phẩm đại diện (Tên sản phẩm & Ảnh sản phẩm) của các đơn vị đã ghép vùng
+      const relatedEntIds = [
+        enterprise._id,
+        ...pairedEnterprises.map(e => e._id),
+        ...allEntUnits.map(u => u.enterpriseId).filter(Boolean)
+      ];
+      const relatedUserIds = allEntUnits.map(u => u._id);
 
-      enterpriseUnits = (rawUnits || []).map(u => ({
-        _id: u._id,
-        name: u.fullName || '',
-        address: u.address || '',
-        phone: u.phone || '',
-        email: u.email || '',
-        details: u.details || '',
-        logo: u.logo || '',
-        role: u.role || 'NPP',
-        region: u.region || '',
-        shortIntro: u.shortIntro || '',
-        scale: u.scale || '',
-        foragingArea: u.foragingArea || '',
-        cert: u.cert || '',
-        hasGeographicalIndication: Boolean(u.hasGeographicalIndication)
-      }));
+      const unitProducts = await Product.find({
+        $or: [
+          { enterpriseId: { $in: relatedEntIds } },
+          { manufacturerId: { $in: [...relatedEntIds, ...relatedUserIds] } }
+        ]
+      }).select('name images description enterpriseId manufacturerId hasGeographicalIndication').sort({ createdAt: -1 }).lean();
+
+      const prodByEntId = new Map();
+      const prodByMfgId = new Map();
+      for (const p of unitProducts) {
+        if (p.enterpriseId && !prodByEntId.has(String(p.enterpriseId))) {
+          prodByEntId.set(String(p.enterpriseId), p);
+        }
+        if (p.manufacturerId && !prodByMfgId.has(String(p.manufacturerId))) {
+          prodByMfgId.set(String(p.manufacturerId), p);
+        }
+      }
+
+      const ownerUsersOfPairedEnts = pairedEnterprises.length > 0
+        ? await User.find({
+            enterpriseId: { $in: pairedEnterprises.map(e => e._id) },
+            username: { $exists: true, $ne: null }
+          }).select('enterpriseId fullName address phone email logo details shortIntro scale foragingArea cert hasGeographicalIndication').lean()
+        : [];
+      const ownerByEntMap = new Map();
+      for (const ou of ownerUsersOfPairedEnts) {
+        if (ou.enterpriseId && !ownerByEntMap.has(String(ou.enterpriseId))) {
+          ownerByEntMap.set(String(ou.enterpriseId), ou);
+        }
+      }
+
+      const seenUnitNames = new Set();
+      const combinedUnits = [];
+
+      for (const pEnt of pairedEnterprises) {
+        const unitName = (pEnt.name || '').trim();
+        if (!unitName) continue;
+        seenUnitNames.add(unitName.toLowerCase());
+        const ou = ownerByEntMap.get(String(pEnt._id));
+        const prod = prodByEntId.get(String(pEnt._id)) || prodByMfgId.get(String(pEnt._id));
+        const rawDetails = pEnt.partnerDetails || ou?.details || prod?.description || '';
+        combinedUnits.push({
+          _id: pEnt._id,
+          id: String(pEnt._id),
+          name: unitName,
+          productName: prod?.name || '',
+          address: pEnt.address || ou?.address || '',
+          phone: pEnt.phone || ou?.phone || '',
+          email: pEnt.email || ou?.email || '',
+          details: rawDetails,
+          partnerDetails: rawDetails,
+          image: prod?.images?.[0] || pEnt.logo || ou?.logo || '',
+          logo: pEnt.logo || ou?.logo || prod?.images?.[0] || '',
+          role: 'NSX',
+          region: pEnt.region || '',
+          shortIntro: ou?.shortIntro || '',
+          scale: ou?.scale || '',
+          foragingArea: ou?.foragingArea || '',
+          cert: ou?.cert || '',
+          hasGeographicalIndication: Boolean(pEnt.hasGeographicalIndication || ou?.hasGeographicalIndication || prod?.hasGeographicalIndication)
+        });
+      }
+
+      for (const u of (allEntUnits || [])) {
+        const uName = (u.fullName || u.username || '').trim();
+        if (!uName) continue;
+        if (seenUnitNames.has(uName.toLowerCase())) continue;
+        if (ownerUser && String(u._id) === String(ownerUser._id)) {
+          if (!u.region && !u.shortIntro && !u.scale && !u.foragingArea) continue;
+        }
+        seenUnitNames.add(uName.toLowerCase());
+        const prod = prodByMfgId.get(String(u._id)) || (u.enterpriseId ? prodByEntId.get(String(u.enterpriseId)) : null);
+        const rawDetails = u.details || prod?.description || '';
+        combinedUnits.push({
+          _id: u._id,
+          id: String(u._id),
+          name: uName,
+          productName: prod?.name || '',
+          address: u.address || '',
+          phone: u.phone || '',
+          email: u.email || '',
+          details: rawDetails,
+          partnerDetails: rawDetails,
+          image: u.logo || prod?.images?.[0] || '',
+          logo: u.logo || prod?.images?.[0] || '',
+          role: u.role || 'NPP',
+          region: u.region || '',
+          shortIntro: u.shortIntro || '',
+          scale: u.scale || '',
+          foragingArea: u.foragingArea || '',
+          cert: u.cert || '',
+          hasGeographicalIndication: Boolean(u.hasGeographicalIndication || prod?.hasGeographicalIndication)
+        });
+      }
+
+      enterpriseUnits = combinedUnits;
     } catch (unitErr) {
       console.error('Load enterprise owner/units fallback error (non-fatal):', unitErr.message);
     }
@@ -2487,6 +2579,38 @@ function extractStoresFromObjectArray(objArray = []) {
   return extractStoresFromRawRows(twoDRows);
 }
 
+// Helper: Chuẩn hóa Ngày + Giờ gán sản phẩm (nếu chỉ chọn ngày YYYY-MM-DD hoặc T12:00:00 cũ thì ghép với giờ-phút hiện tại theo múi giờ Việt Nam +07:00)
+function resolveDistributedDateTime(rawDate, rawTime) {
+  const now = new Date();
+  if (!rawDate && !rawTime) return now;
+  const strDate = String(rawDate || '').trim();
+  const datePartMatch = strDate.match(/^(\d{4}-\d{2}-\d{2})/);
+  const cleanTimeMatch = String(rawTime || '').trim().match(/^(\d{1,2}):(\d{2})/);
+
+  if (datePartMatch) {
+    const ymd = datePartMatch[1];
+    if (cleanTimeMatch) {
+      const hh = cleanTimeMatch[1].padStart(2, '0');
+      const mm = cleanTimeMatch[2].padStart(2, '0');
+      const d = new Date(`${ymd}T${hh}:${mm}:00+07:00`);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    if (strDate.includes('T') && !strDate.includes('T12:00:00') && !strDate.includes('T05:00:00')) {
+      const d = new Date(strDate);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+    const vnNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const hh = String(vnNow.getUTCHours()).padStart(2, '0');
+    const mm = String(vnNow.getUTCMinutes()).padStart(2, '0');
+    const ss = String(vnNow.getUTCSeconds()).padStart(2, '0');
+    const combined = new Date(`${ymd}T${hh}:${mm}:${ss}+07:00`);
+    if (!Number.isNaN(combined.getTime())) return combined;
+  }
+
+  const fallback = new Date(strDate);
+  return Number.isNaN(fallback.getTime()) ? now : fallback;
+}
+
 // Helper dùng chung: Xử lý đồng thời Import Danh sách Điểm bán & Import Bảng Phân phối (Ma trận / Chi tiết)
 async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
   const authCtx = await verifyNppOrAdminRequest(req, res);
@@ -2498,6 +2622,7 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
     rows: bodyRows,
     fileBase64,
     importDate: rawImportDate,
+    importTime: rawImportTime,
     enterpriseId,
     storeId: targetStoreId
   } = req.body || {};
@@ -2518,8 +2643,7 @@ async function handleUnifiedRetailStoreImport(req, res, mode = 'stores') {
     }
   }
 
-  const soldAtDate = rawImportDate ? new Date(rawImportDate) : new Date();
-  const validSoldDate = Number.isNaN(soldAtDate.getTime()) ? new Date() : soldAtDate;
+  const validSoldDate = resolveDistributedDateTime(rawImportDate, rawImportTime);
 
   // 1. Đọc toàn bộ các Sheet từ fileBase64 hoặc từ mảng fallback (bodyStores / bodyRows)
   const allSheetsRows = [];
@@ -3180,7 +3304,7 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy điểm bán hoặc tài khoản không có quyền thao tác trên điểm bán này!' });
     }
 
-    const { productId, serialInput, distributedDate } = req.body || {};
+    const { productId, serialInput, distributedDate, distributedTime } = req.body || {};
 
     if (!productId) {
       return res.status(400).json({ error: 'Vui lòng chọn sản phẩm muốn gán cho điểm bán!' });
@@ -3200,8 +3324,7 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
       });
     }
 
-    const parsedDate = distributedDate ? new Date(`${String(distributedDate).slice(0, 10)}T12:00:00`) : new Date();
-    const validSoldDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    const validSoldDate = resolveDistributedDateTime(distributedDate, distributedTime);
 
     // 1. Xác định danh sách Doanh nghiệp (Enterprise) thuộc tài khoản đang thao tác
     let allowedEntIds = [];
@@ -3487,6 +3610,79 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: 'Lỗi máy chủ khi gán Serial cho điểm bán: ' + error.message });
     }
+  }
+});
+
+// POST /api/public/retail-stores/:id/unassign-serial - Huỷ bán / Huỷ gán 1 mã Serial khỏi Điểm bán
+router.post('/retail-stores/:id/unassign-serial', async (req, res) => {
+  try {
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const storeFilter = await buildRetailStoreFilter(user, decoded);
+    const store = await RetailStore.findOne({ _id: req.params.id, ...storeFilter }).lean();
+    if (!store) {
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán hoặc không có quyền thao tác!' });
+    }
+
+    const { serialNumber, labelId } = req.body || {};
+    const cleanSerial = String(serialNumber || '').trim();
+    if (!cleanSerial && !labelId) {
+      return res.status(400).json({ error: 'Thiếu thông tin mã Serial cần huỷ gán!' });
+    }
+
+    const storeNameRegex = store.name ? new RegExp(`^${escapeRegex(store.name.trim())}$`, 'i') : null;
+    const storeMatchOr = [
+      { storeId: store._id },
+      ...(storeNameRegex ? [{ distributorName: storeNameRegex }, { 'ownerInfo.name': storeNameRegex }] : [])
+    ];
+
+    const labelQuery = {
+      $and: [
+        { $or: storeMatchOr },
+        labelId
+          ? { $or: [{ _id: labelId }, ...(cleanSerial ? [{ serialNumber: cleanSerial }] : [])] }
+          : { serialNumber: cleanSerial }
+      ]
+    };
+
+    const label = await Label.findOne(labelQuery);
+    if (!label) {
+      return res.status(404).json({
+        error: `Không tìm thấy mã Serial "${cleanSerial || labelId}" thuộc điểm bán "${store.name}"!`
+      });
+    }
+
+    await Label.updateOne(
+      { _id: label._id },
+      {
+        $set: {
+          storeId: null,
+          distributorName: null,
+          distributorAddress: null,
+          distributedAt: null,
+          ownerCode: null,
+          'ownerInfo.name': null,
+          'ownerInfo.address': null,
+          'ownerInfo.phone': null,
+          'ownerInfo.activatedSerial': null,
+          'ownerInfo.activatedAt': null,
+          'ownerInfo.activatedBy': null
+        }
+      }
+    );
+
+    return res.json({
+      success: true,
+      serialNumber: label.serialNumber,
+      labelId: label._id,
+      storeId: store._id,
+      message: `Đã huỷ gán mã Serial "${label.serialNumber}" khỏi điểm bán "${store.name}" thành công!`
+    });
+  } catch (error) {
+    console.error('Unassign serial from retail store error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi huỷ gán Serial: ' + error.message });
   }
 });
 

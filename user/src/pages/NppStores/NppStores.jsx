@@ -19,7 +19,8 @@ import {
   ArrowLeft,
   Upload,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Calendar
 } from 'lucide-react';
 
 const readFileAsBase64 = (file) =>
@@ -52,6 +53,39 @@ const formatDateTime = (dateStr) => {
   });
 };
 
+const formatTimeOnly = (dateStr) => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+};
+
+const toDateKeyYYYYMMDD = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const formatDateOnlyVN = (ymdStr) => {
+  if (!ymdStr) return '';
+  const parts = String(ymdStr).split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return ymdStr;
+};
+
+const getCurrentTimeHHMM = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
 export default function NppStores() {
   const navigate = useNavigate();
   const [stores, setStores] = useState([]);
@@ -70,6 +104,9 @@ export default function NppStores() {
   const [loadingSerials, setLoadingSerials] = useState(false);
   const [serialSearchInput, setSerialSearchInput] = useState('');
   const [serialSearchQuery, setSerialSearchQuery] = useState('');
+  const [serialDateInput, setSerialDateInput] = useState(() => new Date().toISOString().slice(0, 10));
+  const [serialDateFilter, setSerialDateFilter] = useState('');
+  const [unassigningSerialKey, setUnassigningSerialKey] = useState('');
 
   // Yêu cầu 2: Modal Import Danh sách Điểm bán (Excel)
   const [showImportStoresModal, setShowImportStoresModal] = useState(false);
@@ -94,6 +131,7 @@ export default function NppStores() {
   const [manualProductId, setManualProductId] = useState('');
   const [manualSerialInput, setManualSerialInput] = useState('');
   const [manualDistributedDate, setManualDistributedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [manualDistributedTime, setManualDistributedTime] = useState(() => getCurrentTimeHHMM());
   const [submittingManualSerial, setSubmittingManualSerial] = useState(false);
   const [manualSerialError, setManualSerialError] = useState('');
   const [manualSerialResult, setManualSerialResult] = useState(null);
@@ -212,19 +250,43 @@ export default function NppStores() {
     setStoreSerialStats(null);
     setSerialSearchInput('');
     setSerialSearchQuery('');
+    setSerialDateFilter('');
+    setSerialDateInput(new Date().toISOString().slice(0, 10));
     try {
       const res = await userApi.getRetailStoreSerials(store._id, {
-        periodType,
-        year: selectedYear,
-        month: selectedMonth,
-        quarter: selectedQuarter
+        periodType: 'all'
       });
-      setStoreSerials(res.serials || res.data || []);
+      const list = res.serials || res.data || [];
+      setStoreSerials(list);
       setStoreSerialStats(res);
+      if (list.length > 0 && list[0].soldAt) {
+        const latestYmd = toDateKeyYYYYMMDD(list[0].soldAt);
+        if (latestYmd) setSerialDateInput(latestYmd);
+      }
     } catch (err) {
       console.error('Lỗi tải danh sách serial của điểm bán:', err);
     } finally {
       setLoadingSerials(false);
+    }
+  };
+
+  const handleUnassignSerial = async (item) => {
+    if (!serialModalStore?._id || !item?.serialNumber) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn huỷ bán (huỷ gán) mã Serial "${item.serialNumber}" khỏi điểm bán "${serialModalStore.name}" không?`)) {
+      return;
+    }
+    setUnassigningSerialKey(item.serialNumber);
+    try {
+      await userApi.unassignRetailStoreSerial(serialModalStore._id, {
+        serialNumber: item.serialNumber,
+        labelId: item._id
+      });
+      setStoreSerials((prev) => prev.filter((s) => s.serialNumber !== item.serialNumber));
+      loadStores();
+    } catch (err) {
+      alert(err.message || 'Lỗi khi huỷ gán mã Serial khỏi điểm bán');
+    } finally {
+      setUnassigningSerialKey('');
     }
   };
 
@@ -270,9 +332,11 @@ export default function NppStores() {
     setImportMatrixResult(null);
     try {
       const fileBase64 = await readFileAsBase64(importMatrixFile);
+      const nowTime = getCurrentTimeHHMM();
       const res = await userApi.importDistributionMatrix({
         fileBase64,
-        importDate: importMatrixDate ? new Date(`${importMatrixDate}T12:00:00`).toISOString() : new Date().toISOString()
+        importDate: importMatrixDate ? new Date(`${importMatrixDate}T${nowTime}:00`).toISOString() : new Date().toISOString(),
+        importTime: nowTime
       });
       setImportMatrixResult(res);
       loadStores(search);
@@ -288,6 +352,7 @@ export default function NppStores() {
     setManualProductId('');
     setManualSerialInput('');
     setManualDistributedDate(new Date().toISOString().slice(0, 10));
+    setManualDistributedTime(getCurrentTimeHHMM());
     setManualSerialError('');
     setManualSerialResult(null);
   };
@@ -309,9 +374,12 @@ export default function NppStores() {
   }, [enterpriseBatches, manualProductId]);
 
   const filteredStoreSerials = useMemo(() => {
-    const indexed = storeSerials.map((item, idx) => ({ ...item, _origIndex: idx + 1 }));
+    let baseList = storeSerials.map((item, idx) => ({ ...item, _origIndex: idx + 1 }));
+    if (serialDateFilter) {
+      baseList = baseList.filter((item) => toDateKeyYYYYMMDD(item.soldAt) === serialDateFilter);
+    }
     const qRaw = String(serialSearchQuery || '').trim();
-    if (!qRaw) return indexed;
+    if (!qRaw) return baseList;
     const qNorm = removeVietnameseTones(qRaw);
     const rangeMatch = qRaw.match(/^(\D*?)(\d+)\s*-\s*(\D*?)(\d+)$/);
     if (rangeMatch && rangeMatch[1].toLowerCase() === rangeMatch[3].toLowerCase()) {
@@ -320,20 +388,46 @@ export default function NppStores() {
       const n2 = parseInt(rangeMatch[4], 10);
       const minN = Math.min(n1, n2);
       const maxN = Math.max(n1, n2);
-      return indexed.filter((item) => {
+      return baseList.filter((item) => {
         const sm = String(item.serialNumber || '').trim().match(/^(\D*?)(\d+)$/);
         if (!sm || sm[1].toLowerCase() !== pref) return false;
         const val = parseInt(sm[2], 10);
         return val >= minN && val <= maxN;
       });
     }
-    return indexed.filter((item) => {
+    return baseList.filter((item) => {
       const serialNorm = removeVietnameseTones(item.serialNumber || '');
       const prodNorm = removeVietnameseTones(item.productName || '');
       const batchNorm = removeVietnameseTones(item.batchCode || '');
       return serialNorm.includes(qNorm) || prodNorm.includes(qNorm) || batchNorm.includes(qNorm);
     });
-  }, [storeSerials, serialSearchQuery]);
+  }, [storeSerials, serialSearchQuery, serialDateFilter]);
+
+  const { displayedBreakdown, displayedRevenue } = useMemo(() => {
+    const map = new Map();
+    let rev = 0;
+    for (const item of filteredStoreSerials) {
+      const pName = item.productName || 'Sản phẩm';
+      const uPrice = Number(item.unitPrice) || 0;
+      const key = `${pName}|||${uPrice}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          productName: pName,
+          unitPrice: uPrice,
+          quantity: 0,
+          revenue: 0
+        });
+      }
+      const b = map.get(key);
+      b.quantity += 1;
+      b.revenue += uPrice;
+      rev += uPrice;
+    }
+    return {
+      displayedBreakdown: Array.from(map.values()),
+      displayedRevenue: rev
+    };
+  }, [filteredStoreSerials]);
 
   const handleManualSerialSubmit = async (e) => {
     e.preventDefault();
@@ -354,10 +448,12 @@ export default function NppStores() {
     setManualSerialError('');
     setManualSerialResult(null);
     try {
+      const timeToUse = manualDistributedTime || getCurrentTimeHHMM();
       const res = await userApi.assignRetailStoreSerials(manualSerialStore._id, {
         productId: manualProductId,
         serialInput: manualSerialInput.trim(),
-        distributedDate: manualDistributedDate
+        distributedDate: manualDistributedDate,
+        distributedTime: timeToUse
       });
       setManualSerialResult(res);
       setManualSerialInput('');
@@ -946,42 +1042,45 @@ export default function NppStores() {
       {serialModalStore && (
         <div
           onClick={() => setSerialModalStore(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 1000 }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '640px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            style={{ background: '#ffffff', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px 22px', width: '100%', maxWidth: '820px', maxHeight: '86vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.35)' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
               <div>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <CheckCircle size={18} color="#34d399" />
-                  Serial đã bán — {serialModalStore.name}
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                  Chi tiết Phân phối (Serial &amp; Doanh Thu)
                 </h3>
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
+                  <CheckCircle size={17} color="#059669" />
+                  <span>{serialModalStore.name}</span>
+                </div>
+                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
                   Địa chỉ: {serialModalStore.address || '—'} | SĐT: {serialModalStore.phone || '—'}
                 </div>
               </div>
-              <button type="button" onClick={() => setSerialModalStore(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setSerialModalStore(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {loadingSerials ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>Đang tải danh sách serial...</div>
+                <div style={{ padding: '28px', textAlign: 'center', color: '#64748b' }}>Đang tải danh sách serial và doanh thu...</div>
               ) : storeSerials.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>Chưa có serial nào được quét.</div>
+                <div style={{ padding: '28px', textAlign: 'center', color: '#64748b' }}>Điểm bán này chưa có serial nào được phân phối.</div>
               ) : (
                 <>
-                  {/* Thanh Tìm kiếm Serial */}
+                  {/* Thanh 1: Tìm kiếm Serial */}
                   <div
                     style={{
                       background: '#eff6ff',
                       border: '1.5px solid #bfdbfe',
                       borderRadius: '10px',
                       padding: '10px 14px',
-                      marginBottom: '12px',
+                      marginBottom: '10px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '10px',
@@ -1053,6 +1152,7 @@ export default function NppStores() {
                       onClick={() => {
                         setSerialSearchInput('');
                         setSerialSearchQuery('');
+                        setSerialDateFilter('');
                       }}
                       style={{
                         display: 'inline-flex',
@@ -1073,31 +1173,182 @@ export default function NppStores() {
                     </button>
                   </div>
 
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                  {/* Thanh 2: Bộ lọc Ngày gán serial + nút XEM */}
+                  <div
+                    style={{
+                      background: '#eff6ff',
+                      border: '1.5px solid #bfdbfe',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontWeight: 800,
+                        color: '#1e40af',
+                        fontSize: '13.5px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <Calendar size={15} style={{ color: '#2563eb' }} />
+                      Ngày gán serial:
+                    </span>
+                    <input
+                      type="date"
+                      value={serialDateInput}
+                      onChange={(e) => setSerialDateInput(e.target.value)}
+                      style={{
+                        minWidth: '175px',
+                        padding: '6px 12px',
+                        borderRadius: '7px',
+                        border: '1px solid #93c5fd',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSerialDateFilter(serialDateInput)}
+                      style={{
+                        background: '#2563eb',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '7px',
+                        padding: '7px 20px',
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        letterSpacing: '0.4px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      XEM
+                    </button>
+                    {serialDateFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setSerialDateFilter('')}
+                        style={{
+                          background: '#ffffff',
+                          color: '#1e40af',
+                          border: '1px solid #93c5fd',
+                          borderRadius: '7px',
+                          padding: '6px 12px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        Tất cả ngày ({storeSerials.length} serial)
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Khung vàng: Thống kê ngày / Doanh thu */}
+                  <div
+                    style={{
+                      background: '#fffbeb',
+                      border: '1.5px solid #fcd34d',
+                      borderRadius: '10px',
+                      padding: '12px 16px',
+                      marginBottom: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                      <strong style={{ color: '#b45309', fontSize: '14.5px' }}>
+                        📊 {serialDateFilter ? `Thống kê ngày ${formatDateOnlyVN(serialDateFilter)}` : `Thống kê Doanh Thu (${periodLabel})`}
+                      </strong>
+                      <span style={{ fontSize: '15.5px', fontWeight: 800, color: '#d97706' }}>
+                        {filteredStoreSerials.length} serial • {formatCurrency(displayedRevenue)}
+                      </span>
+                    </div>
+                    {displayedBreakdown.map((b, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px', padding: '6px 0', borderTop: '1px dashed #fde68a', color: '#0f172a' }}>
+                        <span style={{ fontWeight: 800 }}>{b.productName}</span>
+                        <span>
+                          <strong>{b.quantity} SP</strong> × {formatCurrency(b.unitPrice)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
                     <thead>
-                      <tr style={{ background: '#0f172a', color: '#94a3b8', textAlign: 'left' }}>
-                        <th style={{ padding: '10px' }}>STT</th>
-                        <th style={{ padding: '10px' }}>Serial</th>
-                        <th style={{ padding: '10px' }}>Sản phẩm</th>
-                        <th style={{ padding: '10px', textAlign: 'right' }}>Đơn giá</th>
-                        <th style={{ padding: '10px' }}>Thời gian phân phối</th>
+                      <tr style={{ background: '#eff6ff', color: '#1e3a8a', textAlign: 'left', borderBottom: '1.5px solid #bfdbfe' }}>
+                        <th style={{ padding: '10px 12px', fontWeight: 800 }}>STT</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 800 }}>Serial</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 800 }}>Sản phẩm</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800 }}>Đơn giá</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 800 }}>Giờ gán</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800 }}>Huỷ bán</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredStoreSerials.length === 0 ? (
                         <tr>
-                          <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>
-                            Không tìm thấy mã Serial nào khớp với từ khóa &ldquo;{serialSearchQuery}&rdquo;.
+                          <td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                            {serialDateFilter
+                              ? `Không có mã Serial nào được gán trong ngày ${formatDateOnlyVN(serialDateFilter)}${serialSearchQuery ? ` khớp với "${serialSearchQuery}"` : ''}.`
+                              : `Không tìm thấy mã Serial nào khớp với từ khóa "${serialSearchQuery}".`}
                           </td>
                         </tr>
                       ) : (
                         filteredStoreSerials.map((item, i) => (
-                          <tr key={item.serialNumber + '_' + i} style={{ borderTop: '1px solid #334155' }}>
-                            <td style={{ padding: '10px' }}>{item._origIndex || i + 1}</td>
-                            <td style={{ padding: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#34d399' }}>{item.serialNumber}</td>
-                            <td style={{ padding: '10px' }}>{item.productName || 'Sản phẩm'}</td>
-                            <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#fbbf24' }}>{formatCurrency(item.unitPrice)}</td>
-                            <td style={{ padding: '10px', color: '#cbd5e1' }}>{formatDateTime(item.soldAt)}</td>
+                          <tr key={item.serialNumber + '_' + i} style={{ borderTop: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>{i + 1}</td>
+                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: 800, color: '#059669', fontSize: '14px' }}>{item.serialNumber}</td>
+                            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <Package size={14} color="#4f46e5" />
+                                {item.productName || 'Sản phẩm'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, color: '#d97706' }}>{formatCurrency(item.unitPrice)}</td>
+                            <td style={{ padding: '10px 12px', color: '#334155', fontWeight: 600 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                <Clock size={14} color="#64748b" />
+                                {serialDateFilter
+                                  ? formatTimeOnly(item.soldAt)
+                                  : `${formatTimeOnly(item.soldAt)} - ${formatDateOnlyVN(toDateKeyYYYYMMDD(item.soldAt))}`}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleUnassignSerial(item)}
+                                disabled={unassigningSerialKey === item.serialNumber}
+                                title={`Huỷ bán / Xoá gán mã Serial ${item.serialNumber} khỏi điểm bán`}
+                                style={{
+                                  width: '28px',
+                                  height: '26px',
+                                  borderRadius: '6px',
+                                  border: '1.5px solid #ef4444',
+                                  background: '#ffffff',
+                                  color: '#dc2626',
+                                  fontWeight: 800,
+                                  fontSize: '13px',
+                                  cursor: unassigningSerialKey === item.serialNumber ? 'wait' : 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: 0
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -1430,27 +1681,51 @@ export default function NppStores() {
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-                    Vui lòng chọn ngày phân phối sản phẩm này
-                  </label>
-                  <input
-                    type="date"
-                    value={manualDistributedDate}
-                    onChange={(e) => setManualDistributedDate(e.target.value)}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: '6px',
-                      border: '1px solid #cbd5e1',
-                      background: '#ffffff',
-                      color: '#0f172a',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                      Vui lòng chọn ngày phân phối sản phẩm này
+                    </label>
+                    <input
+                      type="date"
+                      value={manualDistributedDate}
+                      onChange={(e) => setManualDistributedDate(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                      Giờ gán sản phẩm
+                    </label>
+                    <input
+                      type="time"
+                      value={manualDistributedTime}
+                      onChange={(e) => setManualDistributedTime(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '14px',
+                        outline: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {manualSerialError && (
