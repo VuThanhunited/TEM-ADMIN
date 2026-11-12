@@ -32,17 +32,10 @@ router.get('/', auth, requireOwnership, async (req, res) => {
     }
     if (category) query.category = category;
 
-    const parsedLimit = Math.min(Math.max(parseInt(limit) || 20, 1), 1000);
+    const parsedLimit = Math.min(Math.max(parseInt(limit) || (simple === 'true' ? 1000 : 100), 1), 5000);
     const parsedPage = Math.max(parseInt(page) || 1, 1);
 
-    const entKey = req.user.role === 'ADMIN' ? (req.query.enterpriseId || 'ADMIN_ALL') : (req.user.enterpriseId || 'NONE');
-    const cacheKey = `${entKey}_${parsedPage}_${parsedLimit}_${search}_${category}_${full}_${simple}`;
-
-    // Kiểm tra cache RAM — nếu có sẵn thì trả về tức thì (0ms truy vấn database)
-    const cached = productsCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
-      return res.json(cached.payload);
-    }
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
 
     let findQuery = Product.find(query)
       .populate('enterpriseId', 'name')
@@ -53,7 +46,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 
     if (simple === 'true') {
       // Chế độ gọn nhẹ phục vụ dropdown / select: siêu nhanh (<100ms), không populate manufacturerId nặng
-      findQuery = findQuery.select('name sku price category enterpriseId distributors hasGeographicalIndication');
+      findQuery = findQuery.select('name sku price category enterpriseId distributors hasGeographicalIndication createdAt');
     } else {
       findQuery = findQuery.populate('manufacturerId', 'name address phone email logo hasGeographicalIndication');
       // Không strip dữ liệu quan trọng (images, congBoImages, certifications...) để frontend luôn có đủ 100% dữ liệu
@@ -70,12 +63,9 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 
     const payload = {
       data: products,
+      products,
       pagination: { total, page: parsedPage, limit: parsedLimit, totalPages: Math.ceil(total / parsedLimit) }
     };
-
-    // Giới hạn kích thước cache RAM an toàn (<200 mục)
-    if (productsCache.size > 200) productsCache.clear();
-    productsCache.set(cacheKey, { payload, timestamp: Date.now() });
 
     res.json(payload);
   } catch (error) {

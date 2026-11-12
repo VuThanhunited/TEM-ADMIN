@@ -390,7 +390,7 @@ export default function Products() {
     setError(null);
 
     try {
-      const result = await api.getProducts({ page: pagination.page, search: debouncedSearch, limit: 12 });
+      const result = await api.getProducts({ page: pagination.page, search: debouncedSearch, limit: 100 });
       if (result && Array.isArray(result.data)) {
         setProducts(result.data);
         setPagination(prev => ({ ...prev, ...(result.pagination || {}) }));

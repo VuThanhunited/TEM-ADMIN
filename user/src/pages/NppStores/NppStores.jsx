@@ -366,23 +366,31 @@ export default function NppStores() {
     setManualDistributedTime(getCurrentTimeHHMM());
     setManualSerialError('');
     setManualSerialResult(null);
+    userApi.getRetailStores({ includeStats: '0' }).then((res) => {
+      if (Array.isArray(res?.products) && res.products.length > 0) {
+        setEnterpriseProducts(res.products);
+      }
+      if (Array.isArray(res?.batches) && res.batches.length > 0) {
+        setEnterpriseBatches(res.batches);
+      }
+    }).catch(() => {});
   };
 
   const productsForManualStore = useMemo(() => {
-    if (!manualSerialStore?.enterpriseId) return enterpriseProducts;
-    const storeEntId = String(manualSerialStore.enterpriseId?._id || manualSerialStore.enterpriseId);
-    const matched = enterpriseProducts.filter(
-      (p) => String(p.enterpriseId?._id || p.enterpriseId || '') === storeEntId
-    );
-    return matched.length > 0 ? matched : enterpriseProducts;
-  }, [enterpriseProducts, manualSerialStore]);
+    return enterpriseProducts;
+  }, [enterpriseProducts]);
 
   const batchesForSelectedManualProduct = useMemo(() => {
     if (!manualProductId) return [];
-    return enterpriseBatches.filter(
-      (b) => String(b.productId?._id || b.productId || '') === String(manualProductId)
-    );
-  }, [enterpriseBatches, manualProductId]);
+    const selProd = enterpriseProducts.find((p) => String(p._id) === String(manualProductId));
+    const selNorm = selProd ? removeVietnameseTones(selProd.name || '') : '';
+    return enterpriseBatches.filter((b) => {
+      const bProdId = String(b.productId?._id || b.productId || '');
+      if (bProdId === String(manualProductId)) return true;
+      const bProdName = removeVietnameseTones(b.productId?.name || '');
+      return Boolean(selNorm && bProdName && selNorm === bProdName);
+    });
+  }, [enterpriseBatches, enterpriseProducts, manualProductId]);
 
   const filteredStoreSerials = useMemo(() => {
     let baseList = storeSerials.map((item, idx) => ({ ...item, _origIndex: idx + 1 }));

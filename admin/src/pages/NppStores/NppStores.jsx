@@ -178,12 +178,32 @@ export default function NppStores() {
   const [manualSerialError, setManualSerialError] = useState('');
   const [manualSerialResult, setManualSerialResult] = useState(null);
 
-  useEffect(() => {
-    api.getProducts({ page: 1, limit: 200 }).then((res) => {
-      const list = res?.products || res?.data || [];
-      if (Array.isArray(list) && list.length > 0) setEnterpriseProducts(list);
-    }).catch(() => {});
+  const mergeProductsList = useCallback((incoming = []) => {
+    if (!Array.isArray(incoming) || incoming.length === 0) return;
+    setEnterpriseProducts((prev) => {
+      const map = new Map();
+      for (const p of incoming) {
+        if (p && p._id) map.set(String(p._id), p);
+      }
+      for (const p of prev) {
+        if (p && p._id && !map.has(String(p._id))) {
+          map.set(String(p._id), p);
+        }
+      }
+      return Array.from(map.values());
+    });
   }, []);
+
+  const fetchAllProductsForDropdown = useCallback(() => {
+    api.getProducts({ page: 1, limit: 1000, simple: 'true' }).then((res) => {
+      const list = res?.products || res?.data || [];
+      mergeProductsList(list);
+    }).catch(() => {});
+  }, [mergeProductsList]);
+
+  useEffect(() => {
+    fetchAllProductsForDropdown();
+  }, [fetchAllProductsForDropdown]);
 
   const loadStores = useCallback(async () => {
     setLoading(true);
@@ -198,7 +218,7 @@ export default function NppStores() {
       setStores(res.stores || res.data || []);
       setSummary(res.summary || null);
       if (Array.isArray(res.products) && res.products.length > 0) {
-        setEnterpriseProducts(res.products);
+        mergeProductsList(res.products);
       }
       if (Array.isArray(res.batches)) {
         setEnterpriseBatches(res.batches);
@@ -208,7 +228,7 @@ export default function NppStores() {
     } finally {
       setLoading(false);
     }
-  }, [periodType, selectedYear, selectedMonth, selectedQuarter]);
+  }, [periodType, selectedYear, selectedMonth, selectedQuarter, mergeProductsList]);
 
   useEffect(() => {
     loadStores();
@@ -480,23 +500,32 @@ export default function NppStores() {
     setManualDistributedTime(getCurrentTimeHHMM());
     setManualSerialError('');
     setManualSerialResult(null);
+    fetchAllProductsForDropdown();
+    api.getRetailStores({ includeStats: '0' }).then((res) => {
+      if (Array.isArray(res?.products) && res.products.length > 0) {
+        mergeProductsList(res.products);
+      }
+      if (Array.isArray(res?.batches) && res.batches.length > 0) {
+        setEnterpriseBatches(res.batches);
+      }
+    }).catch(() => {});
   };
 
   const productsForManualStore = useMemo(() => {
-    if (!manualSerialStore?.enterpriseId) return enterpriseProducts;
-    const storeEntId = String(manualSerialStore.enterpriseId?._id || manualSerialStore.enterpriseId);
-    const matched = enterpriseProducts.filter(
-      (p) => String(p.enterpriseId?._id || p.enterpriseId || '') === storeEntId
-    );
-    return matched.length > 0 ? matched : enterpriseProducts;
-  }, [enterpriseProducts, manualSerialStore]);
+    return enterpriseProducts;
+  }, [enterpriseProducts]);
 
   const batchesForSelectedManualProduct = useMemo(() => {
     if (!manualProductId) return [];
-    return enterpriseBatches.filter(
-      (b) => String(b.productId?._id || b.productId || '') === String(manualProductId)
-    );
-  }, [enterpriseBatches, manualProductId]);
+    const selProd = enterpriseProducts.find((p) => String(p._id) === String(manualProductId));
+    const selNorm = selProd ? removeVietnameseTones(selProd.name || '') : '';
+    return enterpriseBatches.filter((b) => {
+      const bProdId = String(b.productId?._id || b.productId || '');
+      if (bProdId === String(manualProductId)) return true;
+      const bProdName = removeVietnameseTones(b.productId?.name || '');
+      return Boolean(selNorm && bProdName && selNorm === bProdName);
+    });
+  }, [enterpriseBatches, enterpriseProducts, manualProductId]);
 
   const filteredStoreSerials = useMemo(() => {
     let baseList = storeSerials.map((item, idx) => ({ ...item, _origIndex: idx + 1 }));

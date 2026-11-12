@@ -14,9 +14,11 @@ const getRelatedEnterpriseIds = async (enterpriseId) => {
       entName = ent?.name;
     }
     if (entName && String(entName).trim()) {
-      const sameNameEnts = await Enterprise.find({
-        name: { $regex: new RegExp(`^${escapeRegex(entName.trim())}$`, 'i') }
-      }).select('_id').lean();
+      const isStaycool = String(entName).toLowerCase().includes('staycool');
+      const nameFilter = isStaycool
+        ? { name: { $regex: /staycool/i } }
+        : { name: { $regex: new RegExp(`^${escapeRegex(entName.trim())}$`, 'i') } };
+      const sameNameEnts = await Enterprise.find(nameFilter).select('_id').lean();
       for (const e of sameNameEnts) {
         if (!ids.some(id => String(id) === String(e._id))) {
           ids.push(e._id);

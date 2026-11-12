@@ -1675,18 +1675,20 @@ router.get('/retail-stores', async (req, res) => {
       }
     }
 
-    const isAdminAll = (decoded.role === 'ADMIN' || decoded.isAdminImpersonating) && !enterpriseId && !user?.enterpriseId;
-    const relatedEntIds = isAdminAll
-      ? []
-      : (enterpriseId ? await getRelatedEnterpriseIdsById(enterpriseId) : await getRelatedEnterpriseIds(user));
-    const prodFilter = relatedEntIds.length > 0 ? { enterpriseId: { $in: relatedEntIds } } : {};
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+    const prodFilter = enterpriseId
+      ? { enterpriseId: { $in: await getRelatedEnterpriseIdsById(enterpriseId) } }
+      : {};
     const [products, batches] = await Promise.all([
       Product.find(prodFilter)
-        .select('_id name sku price category enterpriseId')
+        .populate('enterpriseId', 'name')
+        .select('_id name sku price category enterpriseId createdAt')
         .sort({ createdAt: -1 })
         .lean(),
       LabelBatch.find(prodFilter)
-        .select('_id batchCode productId serialStart serialEnd totalLabels enterpriseId')
+        .populate('productId', 'name')
+        .select('_id batchCode productId serialStart serialEnd totalLabels enterpriseId createdAt')
         .sort({ createdAt: -1 })
         .lean()
     ]);
@@ -3411,38 +3413,8 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
 
     const validSoldDate = resolveDistributedDateTime(distributedDate, distributedTime);
 
-    // 1. Xác định danh sách Doanh nghiệp (Enterprise) thuộc tài khoản đang thao tác
-    let allowedEntIds = [];
-    if (decoded.role !== 'ADMIN' || decoded.isAdminImpersonating || user?.enterpriseId) {
-      allowedEntIds = await getRelatedEnterpriseIds(user);
-      if (
-        allowedEntIds.length > 0 &&
-        selectedProduct.enterpriseId &&
-        !allowedEntIds.some((id) => String(id) === String(selectedProduct.enterpriseId))
-      ) {
-        return res.status(403).json({
-          error: 'Sản phẩm đã chọn không thuộc tài khoản / doanh nghiệp của bạn!'
-        });
-      }
-    } else {
-      // Trường hợp Admin tổng thao tác: kiểm tra theo doanh nghiệp của Sản phẩm đã chọn & Điểm bán
-      const baseEntId = selectedProduct.enterpriseId || store.enterpriseId;
-      if (baseEntId) {
-        allowedEntIds = await getRelatedEnterpriseIdsById(baseEntId);
-      }
-      if (store.enterpriseId && String(store.enterpriseId) !== String(baseEntId)) {
-        const storeEntIds = await getRelatedEnterpriseIdsById(store.enterpriseId);
-        for (const id of storeEntIds) {
-          if (!allowedEntIds.some((e) => String(e) === String(id))) {
-            allowedEntIds.push(id);
-          }
-        }
-      }
-    }
-
-    // 2. Lấy toàn bộ Lô tem (LabelBatch) thuộc tài khoản / doanh nghiệp
-    const batchQuery = allowedEntIds.length > 0 ? { enterpriseId: { $in: allowedEntIds } } : {};
-    const validBatches = await LabelBatch.find(batchQuery)
+    // 1. Lấy toàn bộ Lô tem (LabelBatch) trong hệ thống để cho phép gán bất kỳ sản phẩm nào có trong danh sách
+    const validBatches = await LabelBatch.find({})
       .populate('productId', 'name')
       .select('_id batchCode serialStart serialEnd prefix enterpriseId productId totalLabels')
       .lean();
@@ -3451,7 +3423,7 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
 
     if (validBatchIds.length === 0) {
       return res.status(400).json({
-        error: 'Tài khoản chưa có lô tem nào trong hệ thống. Chỉ được phép gán các mã Serial thuộc lô tem của tài khoản!'
+        error: 'Chưa có lô tem nào trong hệ thống. Chỉ được phép gán các mã Serial thuộc lô tem hợp lệ!'
       });
     }
 
@@ -3515,7 +3487,6 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
       const rangeOr = buildSmartSerialRangeOr(sStart, sEnd);
       const lblQuery = {
         batchId: { $in: validBatchIds },
-        ...(allowedEntIds.length > 0 ? { enterpriseId: { $in: allowedEntIds } } : {}),
         $or: rangeOr
       };
 
@@ -3575,9 +3546,15 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
       for (const lbl of labelsInSeg) {
         const bDoc = batchById.get(String(lbl.batchId));
         const bProdId = bDoc?.productId?._id || bDoc?.productId || null;
-        if (bProdId && String(bProdId) !== String(selectedProduct._id)) {
-          const bProdName = bDoc?.productId?.name || 'sản phẩm khác';
-          const errText = `Serial [${seg}] thuộc lô tem "${bDoc.batchCode}" (${bDoc.serialStart} - ${bDoc.serialEnd}) của sản phẩm "${bProdName}", không khớp với sản phẩm đang chọn ("${selectedProduct.name}")`;
+        const bProdName = bDoc?.productId?.name || '';
+        const isSameProductById = bProdId && String(bProdId) === String(selectedProduct._id);
+        const isSameProductByName =
+          bProdName &&
+          selectedProduct.name &&
+          removeVietnameseTones(bProdName) === removeVietnameseTones(selectedProduct.name);
+
+        if (bProdId && !isSameProductById && !isSameProductByName) {
+          const errText = `Serial [${seg}] thuộc lô tem "${bDoc.batchCode}" (${bDoc.serialStart} - ${bDoc.serialEnd}) của sản phẩm "${bProdName || 'sản phẩm khác'}", không khớp với sản phẩm đang chọn ("${selectedProduct.name}")`;
           if (!wrongProductErrors.includes(errText)) {
             wrongProductErrors.push(errText);
           }

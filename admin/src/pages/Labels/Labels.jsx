@@ -241,7 +241,8 @@ export default function Labels() {
   const getFilteredProducts = (targetEntId) => {
     if (!targetEntId) return products;
     const entIdStr = getEntIdStr(targetEntId);
-    return products.filter(p => getEntIdStr(p.enterpriseId) === entIdStr);
+    const matched = products.filter(p => getEntIdStr(p.enterpriseId) === entIdStr);
+    return matched.length > 0 ? matched : products;
   };
 
   const getFilteredTemplates = (targetEntId) => {
