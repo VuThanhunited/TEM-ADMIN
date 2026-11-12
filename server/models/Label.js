@@ -39,6 +39,11 @@ const labelSchema = new mongoose.Schema({
     ref: 'RetailStore',
     default: null
   },
+  customerCode: {
+    type: String,
+    default: '',
+    trim: true
+  },
   distributorName: {
     type: String,
     default: null
@@ -130,6 +135,7 @@ labelSchema.index({ smsCode: 1 });
 labelSchema.index({ ownerCode: 1 });
 labelSchema.index({ internalCode: 1 });
 labelSchema.index({ storeId: 1 });
+labelSchema.index({ customerCode: 1 });
 labelSchema.index({ distributorName: 1 });
 labelSchema.index({ 'ownerInfo.name': 1 });
 labelSchema.index({ 'ownerInfo.activatedBy': 1 });

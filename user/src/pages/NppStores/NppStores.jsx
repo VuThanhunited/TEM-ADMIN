@@ -94,7 +94,7 @@ export default function NppStores() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingStore, setEditingStore] = useState(null);
-  const [form, setForm] = useState({ name: '', address: '', phone: '' });
+  const [form, setForm] = useState({ customerCode: '', name: '', address: '', phone: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -104,6 +104,8 @@ export default function NppStores() {
   const [loadingSerials, setLoadingSerials] = useState(false);
   const [serialSearchInput, setSerialSearchInput] = useState('');
   const [serialSearchQuery, setSerialSearchQuery] = useState('');
+  const [mkhSearchInput, setMkhSearchInput] = useState('');
+  const [mkhSearchQuery, setMkhSearchQuery] = useState('');
   const [serialDateInput, setSerialDateInput] = useState(() => new Date().toISOString().slice(0, 10));
   const [serialDateFilter, setSerialDateFilter] = useState('');
   const [unassigningSerialKey, setUnassigningSerialKey] = useState('');
@@ -129,6 +131,7 @@ export default function NppStores() {
   // Modal Nhập Serial trực tiếp cho từng Điểm bán (Chọn SP + Nhập "1-10 , 15" + Chọn ngày PP)
   const [manualSerialStore, setManualSerialStore] = useState(null);
   const [manualProductId, setManualProductId] = useState('');
+  const [manualCustomerCode, setManualCustomerCode] = useState('');
   const [manualSerialInput, setManualSerialInput] = useState('');
   const [manualDistributedDate, setManualDistributedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [manualDistributedTime, setManualDistributedTime] = useState(() => getCurrentTimeHHMM());
@@ -177,16 +180,18 @@ export default function NppStores() {
     const q = removeVietnameseTones(search);
     if (!q) return stores;
     return stores.filter((s) => {
+      const codeNorm = removeVietnameseTones(s.customerCode || '');
       const nameNorm = removeVietnameseTones(s.name || '');
       const addrNorm = removeVietnameseTones(s.address || '');
       const phoneNorm = removeVietnameseTones(s.phone || '');
-      return nameNorm.includes(q) || addrNorm.includes(q) || phoneNorm.includes(q);
+      const hasMatchedSaleCode = Array.isArray(s.recentSales) && s.recentSales.some((rs) => removeVietnameseTones(rs.customerCode || '').includes(q));
+      return codeNorm.includes(q) || nameNorm.includes(q) || addrNorm.includes(q) || phoneNorm.includes(q) || hasMatchedSaleCode;
     });
   }, [stores, search]);
 
   const handleOpenAdd = () => {
     setEditingStore(null);
-    setForm({ name: '', address: '', phone: '' });
+    setForm({ customerCode: '', name: '', address: '', phone: '' });
     setError('');
     setShowModal(true);
   };
@@ -194,6 +199,7 @@ export default function NppStores() {
   const handleOpenEdit = (store) => {
     setEditingStore(store);
     setForm({
+      customerCode: store.customerCode || '',
       name: store.name || '',
       address: store.address || '',
       phone: store.phone || ''
@@ -213,12 +219,14 @@ export default function NppStores() {
     try {
       if (editingStore) {
         await userApi.updateRetailStore(editingStore._id, {
+          customerCode: (form.customerCode || '').trim(),
           name: form.name.trim(),
           address: form.address.trim(),
           phone: form.phone.trim()
         });
       } else {
         await userApi.createRetailStore({
+          customerCode: (form.customerCode || '').trim(),
           name: form.name.trim(),
           address: form.address.trim(),
           phone: form.phone.trim()
@@ -250,6 +258,8 @@ export default function NppStores() {
     setStoreSerialStats(null);
     setSerialSearchInput('');
     setSerialSearchQuery('');
+    setMkhSearchInput('');
+    setMkhSearchQuery('');
     setSerialDateFilter('');
     setSerialDateInput(new Date().toISOString().slice(0, 10));
     try {
@@ -350,6 +360,7 @@ export default function NppStores() {
   const handleOpenManualSerialModal = (store) => {
     setManualSerialStore(store);
     setManualProductId('');
+    setManualCustomerCode(store?.customerCode || '');
     setManualSerialInput('');
     setManualDistributedDate(new Date().toISOString().slice(0, 10));
     setManualDistributedTime(getCurrentTimeHHMM());
@@ -378,6 +389,14 @@ export default function NppStores() {
     if (serialDateFilter) {
       baseList = baseList.filter((item) => toDateKeyYYYYMMDD(item.soldAt) === serialDateFilter);
     }
+    const mkhRaw = String(mkhSearchQuery || '').trim();
+    if (mkhRaw) {
+      const mkhNorm = removeVietnameseTones(mkhRaw);
+      baseList = baseList.filter((item) => {
+        const itemMkh = removeVietnameseTones(item.customerCode || serialModalStore?.customerCode || '');
+        return itemMkh.includes(mkhNorm);
+      });
+    }
     const qRaw = String(serialSearchQuery || '').trim();
     if (!qRaw) return baseList;
     const qNorm = removeVietnameseTones(qRaw);
@@ -399,9 +418,10 @@ export default function NppStores() {
       const serialNorm = removeVietnameseTones(item.serialNumber || '');
       const prodNorm = removeVietnameseTones(item.productName || '');
       const batchNorm = removeVietnameseTones(item.batchCode || '');
-      return serialNorm.includes(qNorm) || prodNorm.includes(qNorm) || batchNorm.includes(qNorm);
+      const codeNorm = removeVietnameseTones(item.customerCode || serialModalStore?.customerCode || '');
+      return serialNorm.includes(qNorm) || prodNorm.includes(qNorm) || batchNorm.includes(qNorm) || codeNorm.includes(qNorm);
     });
-  }, [storeSerials, serialSearchQuery, serialDateFilter]);
+  }, [storeSerials, serialSearchQuery, mkhSearchQuery, serialDateFilter, serialModalStore]);
 
   const { displayedBreakdown, displayedRevenue } = useMemo(() => {
     const map = new Map();
@@ -453,7 +473,8 @@ export default function NppStores() {
         productId: manualProductId,
         serialInput: manualSerialInput.trim(),
         distributedDate: manualDistributedDate,
-        distributedTime: timeToUse
+        distributedTime: timeToUse,
+        customerCode: manualCustomerCode.trim()
       });
       setManualSerialResult(res);
       setManualSerialInput('');
@@ -764,7 +785,7 @@ export default function NppStores() {
           <Search size={18} color="#94a3b8" />
           <input
             type="text"
-            placeholder="Tìm điểm bán (VD: gõ 'thanh' sẽ ra Thành, Thánh, Thạnh...)"
+            placeholder="Tìm theo mã khách hàng (VD: KH0001), tên điểm bán, địa chỉ, SĐT..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{ flex: 1, background: 'transparent', border: 'none', color: '#f8fafc', fontSize: '0.92rem', outline: 'none' }}
@@ -787,7 +808,7 @@ export default function NppStores() {
               <p style={{ color: '#94a3b8', fontSize: '0.88rem', marginBottom: '16px' }}>
                 {search
                   ? `Không có điểm bán nào khớp với từ khóa "${search}".`
-                  : 'Bấm “Thêm Điểm bán” để thêm Tên điểm bán, Địa chỉ và Điện thoại liên hệ.'}
+                  : 'Bấm “Thêm Điểm bán” để thêm Mã khách hàng, Tên điểm bán, Địa chỉ và Điện thoại liên hệ.'}
               </p>
               {!search && (
                 <button
@@ -804,6 +825,7 @@ export default function NppStores() {
               <thead>
                 <tr style={{ background: '#0f172a', color: '#94a3b8', textAlign: 'left' }}>
                   <th style={{ padding: '12px 14px' }}>STT</th>
+                  <th style={{ padding: '12px 14px' }}>Mã KH</th>
                   <th style={{ padding: '12px 14px' }}>Tên Điểm bán</th>
                   <th style={{ padding: '12px 14px' }}>Địa chỉ</th>
                   <th style={{ padding: '12px 14px' }}>Điện thoại</th>
@@ -820,6 +842,7 @@ export default function NppStores() {
                   return (
                     <tr key={store._id} style={{ borderTop: '1px solid #334155' }}>
                       <td style={{ padding: '12px 14px', fontWeight: 700, color: '#818cf8' }}>#{idx + 1}</td>
+                      <td style={{ padding: '12px 14px', fontWeight: 700, color: '#e2e8f0' }}>{store.customerCode || '—'}</td>
                       <td style={{ padding: '12px 14px', fontWeight: 700 }}>{store.name}</td>
                       <td style={{ padding: '12px 14px', color: '#cbd5e1' }}>{store.address || '—'}</td>
                       <td style={{ padding: '12px 14px', color: '#34d399' }}>{store.phone || '—'}</td>
@@ -987,6 +1010,16 @@ export default function NppStores() {
                 </div>
               )}
               <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Mã khách hàng (MKH)</label>
+                <input
+                  type="text"
+                  value={form.customerCode || ''}
+                  onChange={(e) => setForm({ ...form, customerCode: e.target.value })}
+                  placeholder="VD: KH0001"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #475569', background: '#0f172a', color: '#fff', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
                 <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '6px', color: '#cbd5e1' }}>Tên điểm bán *</label>
                 <input
                   type="text"
@@ -1058,6 +1091,7 @@ export default function NppStores() {
                   <span>{serialModalStore.name}</span>
                 </div>
                 <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                  {serialModalStore.customerCode ? <>Mã KH: <strong style={{ color: '#0f172a' }}>{serialModalStore.customerCode}</strong> | </> : null}
                   Địa chỉ: {serialModalStore.address || '—'} | SĐT: {serialModalStore.phone || '—'}
                 </div>
               </div>
@@ -1152,6 +1186,8 @@ export default function NppStores() {
                       onClick={() => {
                         setSerialSearchInput('');
                         setSerialSearchQuery('');
+                        setMkhSearchInput('');
+                        setMkhSearchQuery('');
                         setSerialDateFilter('');
                       }}
                       style={{
@@ -1173,7 +1209,80 @@ export default function NppStores() {
                     </button>
                   </div>
 
-                  {/* Thanh 2: Bộ lọc Ngày gán serial + nút XEM */}
+                  {/* Thanh 2: Tìm theo mã khách hàng + nút Tìm MKH */}
+                  <div
+                    style={{
+                      background: '#eff6ff',
+                      border: '1.5px solid #bfdbfe',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      marginBottom: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontWeight: 800,
+                        color: '#1e40af',
+                        fontSize: '13.5px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <Search size={15} style={{ color: '#2563eb' }} />
+                      Tìm theo mã khách hàng:
+                    </span>
+                    <input
+                      type="text"
+                      value={mkhSearchInput}
+                      onChange={(e) => {
+                        setMkhSearchInput(e.target.value);
+                        setMkhSearchQuery(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          setMkhSearchQuery(mkhSearchInput);
+                        }
+                      }}
+                      placeholder="Nhập mã khách hàng"
+                      style={{
+                        flex: 1,
+                        minWidth: '180px',
+                        padding: '7px 12px',
+                        borderRadius: '7px',
+                        border: '1px solid #93c5fd',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '13.5px',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMkhSearchQuery(mkhSearchInput)}
+                      style={{
+                        background: '#2563eb',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '7px',
+                        padding: '7px 18px',
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Tìm MKH
+                    </button>
+                  </div>
+
+                  {/* Thanh 3: Bộ lọc Ngày gán serial + nút XEM */}
                   <div
                     style={{
                       background: '#eff6ff',
@@ -1204,7 +1313,11 @@ export default function NppStores() {
                     <input
                       type="date"
                       value={serialDateInput}
-                      onChange={(e) => setSerialDateInput(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSerialDateInput(val);
+                        setSerialDateFilter(val);
+                      }}
                       style={{
                         minWidth: '175px',
                         padding: '6px 12px',
@@ -1256,32 +1369,56 @@ export default function NppStores() {
                     )}
                   </div>
 
-                  {/* Khung vàng: Thống kê ngày / Doanh thu */}
+                  {/* Khung vàng: Thống kê ngày / Tổng doanh số theo ngày */}
                   <div
                     style={{
                       background: '#fffbeb',
                       border: '1.5px solid #fcd34d',
                       borderRadius: '10px',
                       padding: '12px 16px',
-                      marginBottom: '12px'
+                      marginBottom: '12px',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr auto',
+                      gap: '16px',
+                      alignItems: 'center'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                      <strong style={{ color: '#b45309', fontSize: '14.5px' }}>
-                        📊 {serialDateFilter ? `Thống kê ngày ${formatDateOnlyVN(serialDateFilter)}` : `Thống kê Doanh Thu (${periodLabel})`}
-                      </strong>
-                      <span style={{ fontSize: '15.5px', fontWeight: 800, color: '#d97706' }}>
-                        {filteredStoreSerials.length} serial • {formatCurrency(displayedRevenue)}
-                      </span>
-                    </div>
-                    {displayedBreakdown.map((b, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13.5px', padding: '6px 0', borderTop: '1px dashed #fde68a', color: '#0f172a' }}>
-                        <span style={{ fontWeight: 800 }}>{b.productName}</span>
-                        <span>
-                          <strong>{b.quantity} SP</strong> × {formatCurrency(b.unitPrice)}
-                        </span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ marginBottom: '6px' }}>
+                        <strong style={{ color: '#b45309', fontSize: '15px' }}>
+                          📊 {serialDateFilter ? `Thống kê ngày ${formatDateOnlyVN(serialDateFilter)}` : `Thống kê Doanh Thu (${periodLabel})`}
+                        </strong>
                       </div>
-                    ))}
+                      {displayedBreakdown.length === 0 ? (
+                        <div style={{ fontSize: '13.5px', color: '#92400e', paddingTop: '4px', borderTop: '1px dashed #fde68a' }}>
+                          Chưa có sản phẩm trong bộ lọc này
+                        </div>
+                      ) : (
+                        displayedBreakdown.map((b, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', padding: '6px 0 2px', borderTop: '1px dashed #fde68a', color: '#0f172a', gap: '12px' }}>
+                            <span style={{ fontWeight: 800 }}>{b.productName}</span>
+                            <span style={{ whiteSpace: 'nowrap' }}>
+                              <strong>{b.quantity} SP</strong> × {formatCurrency(b.unitPrice)}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        borderLeft: '1.5px solid #fcd34d',
+                        paddingLeft: '20px',
+                        textAlign: 'center',
+                        minWidth: '185px'
+                      }}
+                    >
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#b45309', marginBottom: '4px' }}>
+                        {serialDateFilter ? 'Tổng doanh số theo ngày' : 'Tổng doanh số'}
+                      </div>
+                      <div style={{ fontSize: '21px', fontWeight: 900, color: '#0f172a', letterSpacing: '0.2px' }}>
+                        {formatCurrency(displayedRevenue)}
+                      </div>
+                    </div>
                   </div>
 
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
@@ -1289,6 +1426,7 @@ export default function NppStores() {
                       <tr style={{ background: '#eff6ff', color: '#1e3a8a', textAlign: 'left', borderBottom: '1.5px solid #bfdbfe' }}>
                         <th style={{ padding: '10px 12px', fontWeight: 800 }}>STT</th>
                         <th style={{ padding: '10px 12px', fontWeight: 800 }}>Serial</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 800 }}>MKH</th>
                         <th style={{ padding: '10px 12px', fontWeight: 800 }}>Sản phẩm</th>
                         <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800 }}>Đơn giá</th>
                         <th style={{ padding: '10px 12px', fontWeight: 800 }}>Giờ gán</th>
@@ -1298,10 +1436,10 @@ export default function NppStores() {
                     <tbody>
                       {filteredStoreSerials.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan={7} style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
                             {serialDateFilter
-                              ? `Không có mã Serial nào được gán trong ngày ${formatDateOnlyVN(serialDateFilter)}${serialSearchQuery ? ` khớp với "${serialSearchQuery}"` : ''}.`
-                              : `Không tìm thấy mã Serial nào khớp với từ khóa "${serialSearchQuery}".`}
+                              ? `Không có mã Serial nào được gán trong ngày ${formatDateOnlyVN(serialDateFilter)}${serialSearchQuery ? ` khớp với "${serialSearchQuery}"` : ''}${mkhSearchQuery ? ` (MKH: "${mkhSearchQuery}")` : ''}.`
+                              : `Không tìm thấy mã Serial nào khớp với bộ lọc hiện tại.`}
                           </td>
                         </tr>
                       ) : (
@@ -1309,6 +1447,9 @@ export default function NppStores() {
                           <tr key={item.serialNumber + '_' + i} style={{ borderTop: '1px solid #e2e8f0' }}>
                             <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>{i + 1}</td>
                             <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: 800, color: '#059669', fontSize: '14px' }}>{item.serialNumber}</td>
+                            <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>
+                              {item.customerCode || serialModalStore?.customerCode || '—'}
+                            </td>
                             <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                                 <Package size={14} color="#4f46e5" />
@@ -1383,7 +1524,7 @@ export default function NppStores() {
 
             <form onSubmit={handleImportStoresSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '10px', padding: '12px', fontSize: '0.84rem', color: '#cbd5e1' }}>
-                <div>• File Excel gồm các cột: <strong>Tên điểm bán</strong>, <strong>Địa chỉ</strong>, <strong>Số điện thoại</strong>.</div>
+                <div>• File Excel gồm các cột: <strong>Mã khách hàng</strong>, <strong>Tên điểm bán</strong>, <strong>Địa chỉ</strong>, <strong>Số điện thoại</strong>.</div>
                 <div style={{ marginTop: '6px' }}>
                   <a
                     href={userApi.getRetailStoreTemplateUrl('stores')}
@@ -1653,6 +1794,29 @@ export default function NppStores() {
                         .join(' • ')}
                     </div>
                   )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                    Mã khách hàng (MKH)
+                  </label>
+                  <input
+                    type="text"
+                    value={manualCustomerCode}
+                    onChange={(e) => setManualCustomerCode(e.target.value)}
+                    placeholder="VD: KH0001 (có thể nhập tay hoặc để mặc định theo điểm bán)"
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
                 </div>
 
                 <div>

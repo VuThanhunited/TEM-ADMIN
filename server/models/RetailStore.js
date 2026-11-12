@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const retailStoreSchema = new mongoose.Schema({
+  customerCode: {
+    type: String,
+    default: '',
+    trim: true,
+    maxlength: 100
+  },
   name: {
     type: String,
     required: true,
@@ -40,6 +46,7 @@ const retailStoreSchema = new mongoose.Schema({
 retailStoreSchema.index({ ownerUserId: 1, createdAt: -1 });
 retailStoreSchema.index({ enterpriseId: 1, createdAt: -1 });
 retailStoreSchema.index({ name: 1 });
+retailStoreSchema.index({ customerCode: 1 });
 
 module.exports = mongoose.model('RetailStore', retailStoreSchema);
 
