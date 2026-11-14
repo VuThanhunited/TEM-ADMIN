@@ -10,6 +10,147 @@ const { requireRole, requireOwnership } = require('../middleware/rbac');
 const router = express.Router();
 const ADMIN_URL = process.env.ADMIN_URL || 'https://giaiphapqrcode.vn';
 
+function escapeRegex(str = '') {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Helper: Xây dựng truy vấn tìm kiếm tem thông minh (tránh trả về thừa khi gõ đúng số serial)
+async function buildLabelSearchOrConditions(rawSearch = '') {
+  const cleanSearch = String(rawSearch || '').trim();
+  if (!cleanSearch) return null;
+
+  const escapedSearch = escapeRegex(cleanSearch);
+
+  // 1. Trường hợp tìm kiếm theo dải Serial (VD: 305620-305626 hoặc 00305620 - 00305626)
+  const rangeMatch = cleanSearch.match(/^([A-Za-z._-]*?)(\d+)\s*-\s*([A-Za-z._-]*?)(\d+)$/);
+  if (rangeMatch && rangeMatch[1].toLowerCase() === rangeMatch[3].toLowerCase()) {
+    const pref = rangeMatch[1];
+    const n1 = parseInt(rangeMatch[2], 10);
+    const n2 = parseInt(rangeMatch[4], 10);
+    if (!Number.isNaN(n1) && !Number.isNaN(n2) && Math.abs(n2 - n1) <= 50000) {
+      const minN = Math.min(n1, n2);
+      const maxN = Math.max(n1, n2);
+      const escPref = escapeRegex(pref);
+      const padLengths = new Set([rangeMatch[2].length, rangeMatch[4].length, 6, 7, 8, 9, 10]);
+      const orConditions = [];
+      for (const padLen of padLengths) {
+        if (padLen >= String(maxN).length) {
+          const pStart = `${pref}${String(minN).padStart(padLen, '0')}`;
+          const pEnd = `${pref}${String(maxN).padStart(padLen, '0')}`;
+          orConditions.push({
+            serialNumber: {
+              $gte: pStart,
+              $lte: pEnd,
+              $regex: new RegExp(`^${escPref}\\d{${padLen}}$`, 'i')
+            }
+          });
+        }
+      }
+      const matchingProducts = await Product.find({ name: { $regex: escapedSearch, $options: 'i' } }).select('_id').lean();
+      const productIds = matchingProducts.map(p => p._id);
+      const batchOr = [{ batchCode: { $regex: escapedSearch, $options: 'i' } }];
+      if (productIds.length > 0) batchOr.push({ productId: { $in: productIds } });
+      const matchingBatches = await LabelBatch.find({ $or: batchOr }).select('_id').lean();
+      const batchIds = matchingBatches.map(b => b._id);
+      if (productIds.length > 0) orConditions.push({ productId: { $in: productIds } });
+      if (batchIds.length > 0) orConditions.push({ batchId: { $in: batchIds } });
+      return orConditions;
+    }
+  }
+
+  // 2. Trường hợp tìm kiếm thuần chữ số (VD: 305626, 00305626, 30562) -> khớp chính xác giá trị số của mã
+  if (/^\d+$/.test(cleanSearch)) {
+    const strippedNum = cleanSearch.replace(/^0+/, '') || '0';
+    const exactNumericSerialRegex = new RegExp(`^(?:[A-Za-z._-]*?)0*${strippedNum}$`, 'i');
+    const exactCodeRegex = new RegExp(`^0*${strippedNum}$`, 'i');
+    const orConditions = [
+      { serialNumber: { $regex: exactNumericSerialRegex } },
+      { internalCode: { $regex: exactCodeRegex } },
+      { ownerCode: { $regex: exactCodeRegex } },
+      { 'ownerInfo.activatedSerial': { $regex: exactNumericSerialRegex } },
+      { activeCode: { $regex: exactCodeRegex } },
+      { smsCode: { $regex: exactCodeRegex } }
+    ];
+    if (cleanSearch.length >= 9) {
+      orConditions.push({ 'ownerInfo.phone': { $regex: escapedSearch, $options: 'i' } });
+    }
+    if (cleanSearch.length >= 3) {
+      const exactTextRegex = new RegExp(`^${escapedSearch}$`, 'i');
+      const [matchingProducts, matchingBatches] = await Promise.all([
+        Product.find({ name: { $regex: exactTextRegex } }).select('_id').lean(),
+        LabelBatch.find({ batchCode: { $regex: exactTextRegex } }).select('_id').lean()
+      ]);
+      if (matchingProducts.length > 0) {
+        orConditions.push({ productId: { $in: matchingProducts.map(p => p._id) } });
+      }
+      if (matchingBatches.length > 0) {
+        orConditions.push({ batchId: { $in: matchingBatches.map(b => b._id) } });
+      }
+    }
+    return orConditions;
+  }
+
+  // 3. Trường hợp Tiền tố + Số (VD: SP00305626, TB01)
+  const prefNumMatch = cleanSearch.match(/^([A-Za-z._-]+?)0*(\d+)$/);
+  if (prefNumMatch) {
+    const escPref = escapeRegex(prefNumMatch[1]);
+    const strippedNum = prefNumMatch[2].replace(/^0+/, '') || '0';
+    const exactPrefNumRegex = new RegExp(`^${escPref}0*${strippedNum}$`, 'i');
+
+    const matchingProducts = await Product.find({
+      name: { $regex: escapedSearch, $options: 'i' }
+    }).select('_id').lean();
+    const productIds = matchingProducts.map(p => p._id);
+
+    const batchOr = [{ batchCode: { $regex: escapedSearch, $options: 'i' } }];
+    if (productIds.length > 0) batchOr.push({ productId: { $in: productIds } });
+    const matchingBatches = await LabelBatch.find({ $or: batchOr }).select('_id').lean();
+    const batchIds = matchingBatches.map(b => b._id);
+
+    const orConditions = [
+      { serialNumber: { $regex: exactPrefNumRegex } },
+      { internalCode: { $regex: exactPrefNumRegex } },
+      { ownerCode: { $regex: exactPrefNumRegex } },
+      { 'ownerInfo.activatedSerial': { $regex: exactPrefNumRegex } },
+      { activeCode: { $regex: exactPrefNumRegex } },
+      { smsCode: { $regex: exactPrefNumRegex } }
+    ];
+    if (productIds.length > 0) orConditions.push({ productId: { $in: productIds } });
+    if (batchIds.length > 0) orConditions.push({ batchId: { $in: batchIds } });
+    return orConditions;
+  }
+
+  // 4. Tìm kiếm văn bản chung (Tên sản phẩm, Mã lô, Điểm bán, Tên người sở hữu...)
+  const matchingProducts = await Product.find({
+    name: { $regex: escapedSearch, $options: 'i' }
+  }).select('_id').lean();
+  const productIds = matchingProducts.map(p => p._id);
+
+  const batchOr = [{ batchCode: { $regex: escapedSearch, $options: 'i' } }];
+  if (productIds.length > 0) {
+    batchOr.push({ productId: { $in: productIds } });
+  }
+  const matchingBatches = await LabelBatch.find({ $or: batchOr }).select('_id').lean();
+  const batchIds = matchingBatches.map(b => b._id);
+
+  const orConditions = [
+    { serialNumber: { $regex: escapedSearch, $options: 'i' } },
+    { internalCode: { $regex: escapedSearch, $options: 'i' } },
+    { distributorName: { $regex: escapedSearch, $options: 'i' } },
+    { distributorAddress: { $regex: escapedSearch, $options: 'i' } },
+    { 'ownerInfo.name': { $regex: escapedSearch, $options: 'i' } },
+    { 'ownerInfo.phone': { $regex: escapedSearch, $options: 'i' } },
+    { ownerCode: { $regex: escapedSearch, $options: 'i' } },
+    { activeCode: { $regex: escapedSearch, $options: 'i' } },
+    { smsCode: { $regex: escapedSearch, $options: 'i' } }
+  ];
+
+  if (productIds.length > 0) orConditions.push({ productId: { $in: productIds } });
+  if (batchIds.length > 0) orConditions.push({ batchId: { $in: batchIds } });
+
+  return orConditions;
+}
+
 // Helper to generate a random secure alphanumeric string (8 chars, readable uppercase + digits)
 function generateRandomCode(length = 8) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -150,36 +291,10 @@ router.get('/export-all', auth, requireOwnership, async (req, res) => {
     if (enterpriseId && req.user.role === 'ADMIN') query.enterpriseId = enterpriseId;
 
     if (search) {
-      const cleanSearch = String(search).trim();
-
-      // 1. Tìm các sản phẩm có tên khớp với từ khóa
-      const matchingProducts = await Product.find({
-        name: { $regex: cleanSearch, $options: 'i' }
-      }).select('_id').lean();
-      const productIds = matchingProducts.map(p => p._id);
-
-      // 2. Tìm các lô tem có mã lô khớp hoặc có productId thuộc danh sách sản phẩm khớp
-      const batchOr = [{ batchCode: { $regex: cleanSearch, $options: 'i' } }];
-      if (productIds.length > 0) {
-        batchOr.push({ productId: { $in: productIds } });
+      const orConditions = await buildLabelSearchOrConditions(search);
+      if (orConditions && orConditions.length > 0) {
+        query.$or = orConditions;
       }
-      const matchingBatches = await LabelBatch.find({ $or: batchOr }).select('_id').lean();
-      const batchIds = matchingBatches.map(b => b._id);
-
-      const orConditions = [
-        { serialNumber: { $regex: cleanSearch, $options: 'i' } },
-        { internalCode: { $regex: cleanSearch, $options: 'i' } },
-        { ownerCode: { $regex: cleanSearch, $options: 'i' } },
-        { distributorName: { $regex: cleanSearch, $options: 'i' } },
-        { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
-        { activeCode: { $regex: cleanSearch, $options: 'i' } },
-        { smsCode: { $regex: cleanSearch, $options: 'i' } }
-      ];
-
-      if (productIds.length > 0) orConditions.push({ productId: { $in: productIds } });
-      if (batchIds.length > 0) orConditions.push({ batchId: { $in: batchIds } });
-
-      query.$or = orConditions;
     }
 
     // Use lean cursor for memory-efficient streaming
@@ -418,31 +533,51 @@ router.get('/batches', auth, requireOwnership, async (req, res) => {
 
     if (search) {
       const cleanSearch = String(search).trim();
+      const escapedSearch = escapeRegex(cleanSearch);
+      const isPureDigits = /^\d+$/.test(cleanSearch);
 
       // 1. Tìm các sản phẩm có tên khớp với từ khóa tìm kiếm
-      const matchingProducts = await Product.find({
-        name: { $regex: cleanSearch, $options: 'i' }
-      }).select('_id').lean();
+      const productNameFilter = isPureDigits
+        ? { name: { $regex: `^${escapedSearch}$`, $options: 'i' } }
+        : { name: { $regex: escapedSearch, $options: 'i' } };
+      const matchingProducts = await Product.find(productNameFilter).select('_id').lean();
       const productIds = matchingProducts.map(p => p._id);
 
       // 2. Tìm doanh nghiệp / NPP có tên khớp
       const matchingEnterprises = await Enterprise.find({
-        name: { $regex: cleanSearch, $options: 'i' }
+        name: { $regex: escapedSearch, $options: 'i' }
       }).select('_id').lean();
       const entIds = matchingEnterprises.map(e => e._id);
 
-      // 3. Tìm xem có tem nhãn nào có serial khớp với từ khóa không (để tìm ra Lô chứa serial đó)
-      const matchingLabels = await Label.find({
-        serialNumber: { $regex: cleanSearch, $options: 'i' }
-      }).select('batchId').limit(50).lean();
+      // 3. Tìm xem có tem nhãn nào có serial khớp với từ khóa không (khớp chính xác số nếu là thuần chữ số)
+      let labelSerialCondition;
+      if (isPureDigits) {
+        const strippedNum = cleanSearch.replace(/^0+/, '') || '0';
+        const exactNumericSerialRegex = new RegExp(`^(?:[A-Za-z._-]*?)0*${strippedNum}$`, 'i');
+        labelSerialCondition = { serialNumber: { $regex: exactNumericSerialRegex } };
+      } else {
+        labelSerialCondition = { serialNumber: { $regex: escapedSearch, $options: 'i' } };
+      }
+      const matchingLabels = await Label.find(labelSerialCondition).select('batchId').limit(50).lean();
       const batchIdsFromLabels = [...new Set(matchingLabels.map(l => String(l.batchId)))];
 
       const orConditions = [
-        { batchCode: { $regex: cleanSearch, $options: 'i' } },
-        { serialStart: { $regex: cleanSearch, $options: 'i' } },
-        { serialEnd: { $regex: cleanSearch, $options: 'i' } },
-        { notes: { $regex: cleanSearch, $options: 'i' } }
+        { batchCode: isPureDigits ? { $regex: `^${escapedSearch}$`, $options: 'i' } : { $regex: escapedSearch, $options: 'i' } }
       ];
+      if (!isPureDigits) {
+        orConditions.push(
+          { serialStart: { $regex: escapedSearch, $options: 'i' } },
+          { serialEnd: { $regex: escapedSearch, $options: 'i' } },
+          { notes: { $regex: escapedSearch, $options: 'i' } }
+        );
+      } else {
+        const strippedNum = cleanSearch.replace(/^0+/, '') || '0';
+        const exactNumericSerialRegex = new RegExp(`^(?:[A-Za-z._-]*?)0*${strippedNum}$`, 'i');
+        orConditions.push(
+          { serialStart: { $regex: exactNumericSerialRegex } },
+          { serialEnd: { $regex: exactNumericSerialRegex } }
+        );
+      }
 
       if (productIds.length > 0) {
         orConditions.push({ productId: { $in: productIds } });
@@ -1214,38 +1349,10 @@ router.get('/', auth, requireOwnership, async (req, res) => {
     if (enterpriseId && req.user.role === 'ADMIN') query.enterpriseId = enterpriseId;
 
     if (search) {
-      const cleanSearch = String(search).trim();
-
-      // 1. Tìm các sản phẩm có tên khớp với từ khóa
-      const matchingProducts = await Product.find({
-        name: { $regex: cleanSearch, $options: 'i' }
-      }).select('_id').lean();
-      const productIds = matchingProducts.map(p => p._id);
-
-      // 2. Tìm các lô tem có mã lô khớp hoặc có productId thuộc danh sách sản phẩm khớp
-      const batchOr = [{ batchCode: { $regex: cleanSearch, $options: 'i' } }];
-      if (productIds.length > 0) {
-        batchOr.push({ productId: { $in: productIds } });
+      const orConditions = await buildLabelSearchOrConditions(search);
+      if (orConditions && orConditions.length > 0) {
+        query.$or = orConditions;
       }
-      const matchingBatches = await LabelBatch.find({ $or: batchOr }).select('_id').lean();
-      const batchIds = matchingBatches.map(b => b._id);
-
-      const orConditions = [
-        { serialNumber: { $regex: cleanSearch, $options: 'i' } },
-        { internalCode: { $regex: cleanSearch, $options: 'i' } },
-        { distributorName: { $regex: cleanSearch, $options: 'i' } },
-        { distributorAddress: { $regex: cleanSearch, $options: 'i' } },
-        { 'ownerInfo.name': { $regex: cleanSearch, $options: 'i' } },
-        { 'ownerInfo.phone': { $regex: cleanSearch, $options: 'i' } },
-        { ownerCode: { $regex: cleanSearch, $options: 'i' } },
-        { activeCode: { $regex: cleanSearch, $options: 'i' } },
-        { smsCode: { $regex: cleanSearch, $options: 'i' } }
-      ];
-
-      if (productIds.length > 0) orConditions.push({ productId: { $in: productIds } });
-      if (batchIds.length > 0) orConditions.push({ batchId: { $in: batchIds } });
-
-      query.$or = orConditions;
     }
 
     let total = await Label.countDocuments(query);

@@ -422,6 +422,16 @@ export default function NppStores() {
         return val >= minN && val <= maxN;
       });
     }
+    if (/^\d+$/.test(qRaw)) {
+      const targetNum = qRaw.replace(/^0+/, '') || '0';
+      return baseList.filter((item) => {
+        const rawSerial = String(item.serialNumber || '').trim();
+        const sm = rawSerial.match(/^[A-Za-z._-]*?(\d+)$/);
+        const itemSerialNum = sm ? (sm[1].replace(/^0+/, '') || '0') : '';
+        const rawCode = String(item.customerCode || serialModalStore?.customerCode || '').trim().toLowerCase();
+        return itemSerialNum === targetNum || rawCode === qRaw.toLowerCase();
+      });
+    }
     return baseList.filter((item) => {
       const serialNorm = removeVietnameseTones(item.serialNumber || '');
       const prodNorm = removeVietnameseTones(item.productName || '');
@@ -1532,7 +1542,7 @@ export default function NppStores() {
 
             <form onSubmit={handleImportStoresSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '10px', padding: '12px', fontSize: '0.84rem', color: '#cbd5e1' }}>
-                <div>• File Excel gồm các cột: <strong>Mã khách hàng</strong>, <strong>Tên điểm bán</strong>, <strong>Địa chỉ</strong>, <strong>Số điện thoại</strong>.</div>
+                <div>• File Excel gồm 5 cột: <strong>STT</strong>, <strong>MÃ KH</strong>, <strong>TÊN ĐIỂM BÁN</strong>, <strong>ĐỊA CHỈ</strong>, <strong>ĐIỆN THOẠI</strong> (STT mặc định tăng dần, 4 trường còn lại biến đổi theo từng điểm bán).</div>
                 <div style={{ marginTop: '6px' }}>
                   <a
                     href={userApi.getRetailStoreTemplateUrl('stores')}
@@ -1540,7 +1550,7 @@ export default function NppStores() {
                     rel="noopener noreferrer"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
                   >
-                    <Download size={14} /> Tải file Excel mẫu Danh sách Điểm bán
+                    <Download size={14} /> Tải file Excel mẫu Danh sách Điểm bán (5 cột có MÃ KH)
                   </a>
                 </div>
               </div>
@@ -1616,18 +1626,16 @@ export default function NppStores() {
 
             <form onSubmit={handleImportMatrixSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', padding: '12px', fontSize: '0.84rem', color: '#cbd5e1' }}>
-                <div>• Dòng 1: <strong>Điểm bán ---------&gt;</strong> | <strong>Nhà A</strong> | <strong>Nhà B</strong> | <strong>Nhà C</strong> ...</div>
-                <div>• Dòng 2: <strong>Tên sản phẩm</strong></div>
-                <div>• Dòng 3+: <strong>Sản phẩm 1</strong> | <code>00001-000010</code> | <code>000011-000020</code> ...</div>
-                <div>• <strong>Ngày import</strong> bên dưới sẽ là <strong>Ngày bán / gán sản phẩm</strong>.</div>
+                <div>• Mẫu Excel Điểm bán chuẩn gồm 5 cột: <strong>STT</strong> | <strong>MÃ KH</strong> | <strong>TÊN ĐIỂM BÁN</strong> | <strong>ĐỊA CHỈ</strong> | <strong>ĐIỆN THOẠI</strong> (STT mặc định, 4 trường sau biến đổi theo dữ liệu).</div>
+                <div>• Hệ thống vẫn hỗ trợ nhập cả file danh sách Điểm bán 5 cột lẫn file phân phối dải Serial theo Điểm bán &amp; Sản phẩm (<strong>Ngày import</strong> sẽ là <strong>Ngày bán / gán sản phẩm</strong>).</div>
                 <div style={{ marginTop: '6px' }}>
                   <a
-                    href={userApi.getRetailStoreTemplateUrl('matrix')}
+                    href={userApi.getRetailStoreTemplateUrl('stores')}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
                   >
-                    <Download size={14} /> Tải file Excel mẫu Bảng Ma trận Phân phối
+                    <Download size={14} /> Tải file Excel mẫu Điểm bán có MÃ KH (.xlsx)
                   </a>
                 </div>
               </div>

@@ -2073,41 +2073,41 @@ function resolveEndSerialFromStart(startSerial, rawEndSerial) {
   return cleanEnd;
 }
 
-// GET /api/public/retail-stores/template-excel - Tải file Excel mẫu (stores hoặc matrix) cho doanh nghiệp TPCN
+// GET /api/public/retail-stores/template-excel - Tải file Excel mẫu Điểm bán chuẩn 5 cột (STT | MÃ KH | TÊN ĐIỂM BÁN | ĐỊA CHỈ | ĐIỆN THOẠI)
 router.get('/retail-stores/template-excel', async (req, res) => {
   try {
-    const { type = 'matrix' } = req.query;
+    const { type = 'stores' } = req.query;
     const wb = XLSX.utils.book_new();
 
-    if (type === 'stores') {
+    if (type === 'matrix_legacy') {
       const wsData = [
-        ['STT', 'Mã khách hàng', 'Tên điểm bán', 'Địa chỉ', 'Số điện thoại'],
-        [1, 'KH0001', 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
-        [2, 'KH0002', 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321'],
-        [3, 'KH0003', 'Quầy Thuốc An Khang', '88 Trần Phú, Hải Châu, Đà Nẵng', '0905112233']
+        ['Điểm bán --------->', 'Nhà A', 'Nhà B', 'Nhà C'],
+        ['Tên sản phẩm', '', '', ''],
+        ['Sản phẩm 1', '00001-000010', '', ''],
+        ['Sản phẩm 2', '00101-001910', '', ''],
+        ['Sản phẩm 3', '', '', '']
       ];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 42 }, { wch: 18 }];
-      XLSX.utils.book_append_sheet(wb, ws, 'Danh_sach_diem_ban');
+      ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 22 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Phan_phoi_diem_ban');
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-      res.setHeader('Content-Disposition', 'attachment; filename="Mau_Import_Danh_Sach_Diem_Ban.xlsx"');
+      res.setHeader('Content-Disposition', 'attachment; filename="Mau_Import_Ma_Tran_Diem_Ban_Serial.xlsx"');
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       return res.send(buf);
     }
 
-    // Mặc định type === 'matrix': Mẫu bảng Excel ma trận Điểm bán ---------> | Nhà A | Nhà B | Nhà C
+    // Mẫu mặc định (cho cả 'stores' và mặc định): đúng 5 cột STT | MÃ KH | TÊN ĐIỂM BÁN | ĐỊA CHỈ | ĐIỆN THOẠI
     const wsData = [
-      ['Điểm bán --------->', 'Nhà A', 'Nhà B', 'Nhà C'],
-      ['Tên sản phẩm', '', '', ''],
-      ['Sản phẩm 1', '00001-000010', '', ''],
-      ['Sản phẩm 2', '00101-001910', '', ''],
-      ['Sản phẩm 3', '', '', '']
+      ['STT', 'MÃ KH', 'TÊN ĐIỂM BÁN', 'ĐỊA CHỈ', 'ĐIỆN THOẠI'],
+      [1, 'KH0001', 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
+      [2, 'KH0002', 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321'],
+      [3, 'KH0003', 'Quầy Thuốc An Khang', '88 Trần Phú, Hải Châu, Đà Nẵng', '0905112233']
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 22 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'Phan_phoi_diem_ban');
+    ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 42 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh_sach_diem_ban');
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    res.setHeader('Content-Disposition', 'attachment; filename="Mau_Import_Ma_Tran_Diem_Ban_Serial.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="Mau_Import_Danh_Sach_Diem_Ban.xlsx"');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     return res.send(buf);
   } catch (error) {
@@ -2516,14 +2516,27 @@ function extractStoresFromRawRows(rawRows = [], sheetName = '') {
 
   let startRowIdx = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
   if (nameIdx === -1) {
-    // Không có dòng tiêu đề rõ ràng -> tự động nhận diện cột STT và cột Tên điểm bán
+    // Không có dòng tiêu đề rõ ràng -> tự động nhận diện cột STT và cột Mã KH / Tên điểm bán
     const sampleRow =
       rawRows.find((r) => Array.isArray(r) && r.filter((c) => String(c ?? '').trim() !== '').length >= 2) || rawRows[0];
     const firstCol0 = removeVietnameseTones(String(sampleRow?.[0] ?? ''));
     if (firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' || /^\d+$/.test(firstCol0)) {
-      nameIdx = 1;
-      addrIdx = 2;
-      phoneIdx = 3;
+      const col1Str = String(sampleRow?.[1] ?? '').trim();
+      const col2Str = String(sampleRow?.[2] ?? '').trim();
+      const col4Phone = String(sampleRow?.[4] ?? '').replace(/[\s.-]/g, '').trim();
+      const looksLikeFiveColLayout =
+        (sampleRow && sampleRow.length >= 5 && col1Str && !/\s/.test(col1Str) && col2Str) ||
+        /^(\+84|0|\d)\d{7,11}$/.test(col4Phone);
+      if (looksLikeFiveColLayout) {
+        codeIdx = 1;
+        nameIdx = 2;
+        addrIdx = 3;
+        phoneIdx = 4;
+      } else {
+        nameIdx = 1;
+        addrIdx = 2;
+        phoneIdx = 3;
+      }
       startRowIdx = firstCol0 === 'stt' || firstCol0 === 'tt' || firstCol0 === '#' ? 1 : 0;
     } else {
       nameIdx = 0;
@@ -3281,10 +3294,10 @@ router.get('/retail-stores/export-data', async (req, res) => {
       const stat = storeStatsMap.get(removeVietnameseTones(st.name)) || { count: 0, revenue: 0 };
       return {
         'STT': idx + 1,
-        'Mã khách hàng': st.customerCode || '',
-        'Tên điểm bán': st.name || '',
-        'Địa chỉ': st.address || '',
-        'Số điện thoại': st.phone || '',
+        'MÃ KH': st.customerCode || '',
+        'TÊN ĐIỂM BÁN': st.name || '',
+        'ĐỊA CHỈ': st.address || '',
+        'ĐIỆN THOẠI': st.phone || '',
         'Tổng SP đã gán': stat.count,
         'Doanh số (VNĐ)': stat.revenue
       };
@@ -3292,7 +3305,7 @@ router.get('/retail-stores/export-data', async (req, res) => {
     const wsStores = XLSX.utils.json_to_sheet(
       storeRows.length > 0
         ? storeRows
-        : [{ 'STT': 1, 'Mã khách hàng': '', 'Tên điểm bán': '', 'Địa chỉ': '', 'Số điện thoại': '', 'Tổng SP đã gán': 0, 'Doanh số (VNĐ)': 0 }]
+        : [{ 'STT': 1, 'MÃ KH': '', 'TÊN ĐIỂM BÁN': '', 'ĐỊA CHỈ': '', 'ĐIỆN THOẠI': '', 'Tổng SP đã gán': 0, 'Doanh số (VNĐ)': 0 }]
     );
     wsStores['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 40 }, { wch: 18 }, { wch: 16 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, wsStores, 'Danh sách Điểm bán');
@@ -4527,16 +4540,33 @@ router.get('/npp-labels', async (req, res) => {
 
     if (search) {
       const cleanSearch = String(search).trim();
-      // Tìm sản phẩm khớp tên
-      const matchProds = await Product.find({ name: { $regex: cleanSearch, $options: 'i' } }).select('_id').lean();
-      const prodIds = matchProds.map(p => p._id);
+      const escapedSearch = cleanSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const isPureDigits = /^\d+$/.test(cleanSearch);
 
-      const searchOr = [
-        { serialNumber: { $regex: cleanSearch, $options: 'i' } },
-        { activeCode: { $regex: cleanSearch, $options: 'i' } },
-        { smsCode: { $regex: cleanSearch, $options: 'i' } }
-      ];
-      if (prodIds.length > 0) searchOr.push({ productId: { $in: prodIds } });
+      let searchOr;
+      if (isPureDigits) {
+        const strippedNum = cleanSearch.replace(/^0+/, '') || '0';
+        const exactNumericSerialRegex = new RegExp(`^(?:[A-Za-z._-]*?)0*${strippedNum}$`, 'i');
+        const exactCodeRegex = new RegExp(`^0*${strippedNum}$`, 'i');
+        searchOr = [
+          { serialNumber: { $regex: exactNumericSerialRegex } },
+          { internalCode: { $regex: exactCodeRegex } },
+          { ownerCode: { $regex: exactCodeRegex } },
+          { activeCode: { $regex: exactCodeRegex } },
+          { smsCode: { $regex: exactCodeRegex } }
+        ];
+      } else {
+        // Tìm sản phẩm khớp tên
+        const matchProds = await Product.find({ name: { $regex: escapedSearch, $options: 'i' } }).select('_id').lean();
+        const prodIds = matchProds.map(p => p._id);
+
+        searchOr = [
+          { serialNumber: { $regex: escapedSearch, $options: 'i' } },
+          { activeCode: { $regex: escapedSearch, $options: 'i' } },
+          { smsCode: { $regex: escapedSearch, $options: 'i' } }
+        ];
+        if (prodIds.length > 0) searchOr.push({ productId: { $in: prodIds } });
+      }
 
       query.$and = [{ $or: searchOr }];
     }

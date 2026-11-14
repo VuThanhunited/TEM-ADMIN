@@ -107,11 +107,13 @@ export default function Labels() {
     if (isAdmin) loadEnterprises();
   }, [isAdmin]);
 
-  // Dùng ref để track search và page hiện tại (tránh stale closure)
+  // Dùng ref để track search, page hiện tại (tránh stale closure) và request ID chống race condition
   const curSearch = useRef(search);
   const curBatchPage = useRef(batchPagination.page);
   const curLabelPage = useRef(labelPagination.page);
   const tabMounted = useRef(false);
+  const batchReqIdRef = useRef(0);
+  const labelReqIdRef = useRef(0);
 
   // Load khi tab thay đổi (và lần đầu mount)
   useEffect(() => {
@@ -127,16 +129,19 @@ export default function Labels() {
     }
   }, [activeTab]);
 
-  // Khi search thay đổi: reset về page 1 và load
+  // Khi search thay đổi: debounce 250ms, reset về page 1 và load
   useEffect(() => {
     if (!tabMounted.current) return;
     curSearch.current = search;
-    setBatchPagination(p => ({ ...p, page: 1 }));
-    setLabelPagination(p => ({ ...p, page: 1 }));
-    curBatchPage.current = 1;
-    curLabelPage.current = 1;
-    if (activeTab === 'batches') loadBatches(1, search);
-    else if (activeTab === 'activate') loadLabels(1, search);
+    const timer = setTimeout(() => {
+      setBatchPagination(p => ({ ...p, page: 1 }));
+      setLabelPagination(p => ({ ...p, page: 1 }));
+      curBatchPage.current = 1;
+      curLabelPage.current = 1;
+      if (activeTab === 'batches') loadBatches(1, search);
+      else if (activeTab === 'activate') loadLabels(1, search);
+    }, 250);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
@@ -253,6 +258,7 @@ export default function Labels() {
 
   // ── Load functions: nhận tường minh page + searchTerm + filters ─────────────────
   const loadBatches = async (page = 1, searchTerm = curSearch.current, customFilters = {}) => {
+    const reqId = ++batchReqIdRef.current;
     try {
       setLoading(true);
       const prodId = customFilters.productId !== undefined ? customFilters.productId : filterProduct;
@@ -262,12 +268,15 @@ export default function Labels() {
       const expired = customFilters.expired !== undefined ? customFilters.expired : '';
       const expiringSoon = customFilters.expiringSoon !== undefined ? customFilters.expiringSoon : '';
       const r = await api.getBatches({ page, search: searchTerm, productId: prodId, status: stat, enterpriseId: entId, expired, expiringSoon });
+      if (reqId !== batchReqIdRef.current) return;
       if (r && r.data) {
         setBatches(r.data);
         setBatchPagination(prev => ({ ...prev, ...r.pagination, page: r.pagination?.page ?? page }));
         curBatchPage.current = r.pagination?.page ?? page;
       }
-    } catch (e) { console.error('[loadBatches]', e.message); } finally { setLoading(false); }
+    } catch (e) { console.error('[loadBatches]', e.message); } finally {
+      if (reqId === batchReqIdRef.current) setLoading(false);
+    }
   };
 
   // Load thống kê số lô hết hạn / sắp hết hạn cho tab Gia hạn
@@ -283,6 +292,7 @@ export default function Labels() {
   };
 
   const loadLabels = async (page = 1, searchTerm = curSearch.current, customFilters = {}) => {
+    const reqId = ++labelReqIdRef.current;
     try {
       setLoading(true);
       const prodId = customFilters.productId !== undefined ? customFilters.productId : filterProduct;
@@ -290,12 +300,15 @@ export default function Labels() {
       const stat = customFilters.status !== undefined ? customFilters.status : filterStatus;
       const entId = customFilters.enterpriseId !== undefined ? customFilters.enterpriseId : filterEnterprise;
       const r = await api.getLabels({ page, search: searchTerm, productId: prodId, batchId: batId, status: stat, enterpriseId: entId, limit: 30 });
+      if (reqId !== labelReqIdRef.current) return;
       if (r && r.data) {
         setLabels(r.data);
         setLabelPagination(prev => ({ ...prev, ...r.pagination, page: r.pagination?.page ?? page }));
         curLabelPage.current = r.pagination?.page ?? page;
       }
-    } catch (e) { console.error('[loadLabels]', e.message); } finally { setLoading(false); }
+    } catch (e) { console.error('[loadLabels]', e.message); } finally {
+      if (reqId === labelReqIdRef.current) setLoading(false);
+    }
   };
 
   const handleResetFilters = () => {
@@ -613,16 +626,17 @@ export default function Labels() {
       const wb = XLSX.utils.book_new();
       const storeRows = enterpriseStores.map((st, idx) => ({
         'STT': idx + 1,
-        'Tên điểm bán': st.name || '',
-        'Địa chỉ': st.address || '',
-        'Số điện thoại': st.phone || ''
+        'MÃ KH': st.customerCode || '',
+        'TÊN ĐIỂM BÁN': st.name || '',
+        'ĐỊA CHỈ': st.address || '',
+        'ĐIỆN THOẠI': st.phone || ''
       }));
       const wsStores = XLSX.utils.json_to_sheet(
         storeRows.length > 0
           ? storeRows
-          : [{ 'STT': 1, 'Tên điểm bán': '', 'Địa chỉ': '', 'Số điện thoại': '' }]
+          : [{ 'STT': 1, 'MÃ KH': '', 'TÊN ĐIỂM BÁN': '', 'ĐỊA CHỈ': '', 'ĐIỆN THOẠI': '' }]
       );
-      wsStores['!cols'] = [{ wch: 6 }, { wch: 32 }, { wch: 40 }, { wch: 18 }];
+      wsStores['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 40 }, { wch: 18 }];
       XLSX.utils.book_append_sheet(wb, wsStores, 'Danh sách Điểm bán');
 
       // Sheet 2: Bảng Ma trận Điểm bán × Sản phẩm × Dải Serial (theo mẫu vyphyto_req_image2.png)
@@ -751,12 +765,12 @@ export default function Labels() {
     const wb = XLSX.utils.book_new();
     if (type === 'stores') {
       const wsData = [
-        ['STT', 'Tên điểm bán', 'Địa chỉ', 'Số điện thoại'],
-        [1, 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
-        [2, 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321']
+        ['STT', 'MÃ KH', 'TÊN ĐIỂM BÁN', 'ĐỊA CHỈ', 'ĐIỆN THOẠI'],
+        [1, 'KH0001', 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
+        [2, 'KH0002', 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321']
       ];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [{ wch: 6 }, { wch: 32 }, { wch: 40 }, { wch: 18 }];
+      ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 40 }, { wch: 18 }];
       XLSX.utils.book_append_sheet(wb, ws, 'Danh_sach_diem_ban');
       XLSX.writeFile(wb, 'Mau_Import_Danh_Sach_Diem_Ban.xlsx');
       return;
@@ -3374,7 +3388,7 @@ export default function Labels() {
                   <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: 6 }}>
                     📋 Tự động nhận diện mọi định dạng file Excel Điểm bán &amp; Phân phối TPCN:
                   </div>
-                  <div>• <strong>Mẫu 1 (Danh sách Điểm bán):</strong> Cột <code>Tên điểm bán</code>, <code>Địa chỉ</code>, <code>Số điện thoại</code>.</div>
+                  <div>• <strong>Mẫu 1 (Danh sách Điểm bán):</strong> Cột <code>STT</code>, <code>MÃ KH</code>, <code>TÊN ĐIỂM BÁN</code>, <code>ĐỊA CHỈ</code>, <code>ĐIỆN THOẠI</code>.</div>
                   <div>• <strong>Mẫu 2 (Ma trận Phân phối):</strong> Dòng 1 <code>Điểm bán ---------&gt; | Nhà A | Nhà B</code>, các dòng dưới là <code>Tên sản phẩm</code> và dải Serial (VD: <code>00001-000010</code>).</div>
                   <div>• <strong>Mẫu 3 (Chi tiết Phân phối):</strong> Cột <code>Tên sản phẩm</code>, <code>Mã Serial / Dải Serial</code>, <code>Điểm bán</code>.</div>
                   <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>

@@ -373,55 +373,37 @@ export default function NppStores() {
   const handleDownloadTemplate = (type = 'stores') => {
     try {
       const wb = XLSX.utils.book_new();
-      if (type === 'stores') {
-        const wsData = [
-          ['STT', 'Mã khách hàng', 'Tên điểm bán', 'Địa chỉ', 'Số điện thoại'],
-          [1, 'KH0001', 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
-          [2, 'KH0002', 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321'],
-          [3, 'KH0003', 'Quầy Thuốc An Khang', '88 Trần Phú, Hải Châu, Đà Nẵng', '0905112233']
-        ];
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-        ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 42 }, { wch: 18 }];
-        XLSX.utils.book_append_sheet(wb, ws, 'Danh_sach_diem_ban');
-        XLSX.writeFile(wb, 'Mau_Import_Danh_Sach_Diem_Ban.xlsx');
-        return;
-      }
-
-      if (type === 'matrix_prefilled' && stores.length > 0) {
-        const storeHeaders = stores.slice(0, 20).map((s) => s.name);
-        const prodNames = enterpriseProducts.length > 0
-          ? enterpriseProducts.map((p) => p.name)
-          : ['Sản phẩm 1', 'Sản phẩm 2', 'Sản phẩm 3'];
+      if ((type === 'stores_prefilled' || type === 'matrix_prefilled') && stores.length > 0) {
         const wsPrefilledData = [
-          ['Điểm bán --------->', ...storeHeaders],
-          ['Tên sản phẩm', ...storeHeaders.map(() => '')],
-          ...prodNames.map((pName, idx) => [
-            pName,
-            ...storeHeaders.map((_, sIdx) => (idx === 0 && sIdx === 0 ? '00001-000010' : ''))
+          ['STT', 'MÃ KH', 'TÊN ĐIỂM BÁN', 'ĐỊA CHỈ', 'ĐIỆN THOẠI'],
+          ...stores.map((st, idx) => [
+            idx + 1,
+            st.customerCode || '',
+            st.name || '',
+            st.address || '',
+            st.phone || ''
           ])
         ];
         const wsPrefilled = XLSX.utils.aoa_to_sheet(wsPrefilledData);
-        wsPrefilled['!cols'] = [{ wch: 28 }, ...storeHeaders.map(() => ({ wch: 24 }))];
-        XLSX.utils.book_append_sheet(wb, wsPrefilled, 'Nhap_Serial_Diem_Ban');
-        XLSX.writeFile(wb, 'Mau_Nhap_Serial_Diem_Ban_Hien_Tai.xlsx');
+        wsPrefilled['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 42 }, { wch: 18 }];
+        XLSX.utils.book_append_sheet(wb, wsPrefilled, 'Danh_sach_diem_ban');
+        XLSX.writeFile(wb, 'Mau_Danh_Sach_Diem_Ban_Hien_Tai.xlsx');
         return;
       }
 
-      // Chuẩn Mục 4 trong YEU CAU TRAO DOI.docx (1 Sheet duy nhất đúng cấu trúc khách gửi)
-      const wsMatrixData = [
-        ['Điểm bán --------->', 'Nhà A', 'Nhà B', 'Nhà C'],
-        ['Tên sản phẩm', '', '', ''],
-        ['Sản phẩm 1', '00001-000010', '', ''],
-        ['Sản phẩm 2', '00101-001910', '', ''],
-        ['Sản phẩm 3', '', '', '']
+      // Mẫu chuẩn 5 cột theo thiết kế khách hàng: STT | MÃ KH | TÊN ĐIỂM BÁN | ĐỊA CHỈ | ĐIỆN THOẠI
+      const wsData = [
+        ['STT', 'MÃ KH', 'TÊN ĐIỂM BÁN', 'ĐỊA CHỈ', 'ĐIỆN THOẠI'],
+        [1, 'KH0001', 'Nhà Thuốc Thành Công', '120 Nguyễn Trãi, Thanh Xuân, Hà Nội', '0912345678'],
+        [2, 'KH0002', 'Nhà Thuốc Minh Châu', '45 Hai Bà Trưng, Quận 1, TP.HCM', '0987654321'],
+        [3, 'KH0003', 'Quầy Thuốc An Khang', '88 Trần Phú, Hải Châu, Đà Nẵng', '0905112233']
       ];
-      const wsMatrix = XLSX.utils.aoa_to_sheet(wsMatrixData);
-      wsMatrix['!cols'] = [{ wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 22 }];
-      XLSX.utils.book_append_sheet(wb, wsMatrix, 'Nhap_Serial_Diem_Ban');
-
-      XLSX.writeFile(wb, 'Mau_Nhap_Serial_Cho_Diem_Ban_Muc4.xlsx');
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{ wch: 6 }, { wch: 16 }, { wch: 32 }, { wch: 42 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Danh_sach_diem_ban');
+      XLSX.writeFile(wb, 'Mau_Import_Danh_Sach_Diem_Ban.xlsx');
     } catch (err) {
-      window.open(api.getRetailStoreTemplateUrl(type), '_blank');
+      window.open(api.getRetailStoreTemplateUrl('stores'), '_blank');
     }
   };
 
@@ -556,6 +538,16 @@ export default function NppStores() {
         const val = parseInt(sm[2], 10);
         return val >= minN && val <= maxN;
       });
+    }
+    if (/^\d+$/.test(qRaw)) {
+      const strippedNum = qRaw.replace(/^0+/, '') || '0';
+      const exactSerialRegex = new RegExp(`^(?:[A-Za-z._-]*?)0*${strippedNum}$`, 'i');
+      const exactMatched = baseList.filter((item) => {
+        const sStr = String(item.serialNumber || '').trim();
+        const mkhStr = String(item.customerCode || serialModalStore?.customerCode || '').trim();
+        return exactSerialRegex.test(sStr) || (mkhStr && mkhStr.toLowerCase() === qRaw.toLowerCase());
+      });
+      if (exactMatched.length > 0) return exactMatched;
     }
     return baseList.filter((item) => {
       const serialNorm = removeVietnameseTones(item.serialNumber || '');
@@ -773,17 +765,17 @@ export default function NppStores() {
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#065f46' }}>
-                📥 Mục Nhập Serial cho Điểm bán bằng File Excel (Mục 4)
+                📥 Nhập File Excel Điểm bán &amp; Phân phối Serial
               </h3>
               <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#047857' }}>
-                Import bảng Excel gán dải Serial cho các Điểm bán theo mẫu: <strong>Điểm bán ---------&gt; | Nhà A | Nhà B | Nhà C</strong> và <strong>Tên sản phẩm</strong> (Ngày import sẽ được tính là ngày bán / gán sản phẩm).
+                File Excel mẫu chuẩn 5 cột: <strong>STT | MÃ KH | TÊN ĐIỂM BÁN | ĐỊA CHỈ | ĐIỆN THOẠI</strong> (hỗ trợ đồng bộ Điểm bán kèm Mã KH và gán Serial theo file).
               </p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={() => handleDownloadTemplate('matrix')}
+              onClick={() => handleDownloadTemplate('stores')}
               style={{
                 padding: '8px 14px',
                 borderRadius: '8px',
@@ -799,12 +791,12 @@ export default function NppStores() {
               }}
             >
               <Download size={15} />
-              Tải File Excel Mẫu (Mục 4)
+              Tải File Excel Mẫu (Có MÃ KH)
             </button>
             {stores.length > 0 && (
               <button
                 type="button"
-                onClick={() => handleDownloadTemplate('matrix_prefilled')}
+                onClick={() => handleDownloadTemplate('stores_prefilled')}
                 style={{
                   padding: '8px 14px',
                   borderRadius: '8px',
@@ -820,7 +812,7 @@ export default function NppStores() {
                 }}
               >
                 <Download size={15} />
-                Tải Mẫu Có Sẵn Điểm Bán Hiện Tại
+                Tải DS Điểm Bán Hiện Tại
               </button>
             )}
             <button
@@ -845,46 +837,42 @@ export default function NppStores() {
         {showInlineMatrixPanel && (
           <form onSubmit={handleImportMatrixSubmit} style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed #86efac' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', alignItems: 'start' }}>
-              {/* Cột trái: Bảng minh họa cấu trúc các trường theo đúng file Word Mục 4 */}
+              {/* Cột trái: Bảng minh họa cấu trúc 5 cột chuẩn khách hàng yêu cầu */}
               <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 14px' }}>
                 <div style={{ fontWeight: 700, fontSize: '13px', color: '#065f46', marginBottom: '8px' }}>
-                  📋 Cấu trúc các trường trong file Excel (Đúng theo Mục 4 file Word):
+                  📋 Cấu trúc file Excel mẫu Điểm bán (5 cột chuẩn):
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', background: '#ffffff' }}>
-                    <tbody>
+                    <thead>
                       <tr style={{ background: '#ecfdf5' }}>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#0f172a' }}>Điểm bán ---------&gt;</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà A</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà B</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà C</td>
+                        <th style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>STT</th>
+                        <th style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontWeight: 800, color: '#1d4ed8', textAlign: 'left' }}>MÃ KH</th>
+                        <th style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontWeight: 800, color: '#0f172a', textAlign: 'left' }}>TÊN ĐIỂM BÁN</th>
+                        <th style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontWeight: 800, color: '#0f172a', textAlign: 'left' }}>ĐỊA CHỈ</th>
+                        <th style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontWeight: 800, color: '#059669', textAlign: 'left' }}>ĐIỆN THOẠI</th>
                       </tr>
-                      <tr style={{ background: '#f8fafc' }}>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#1d4ed8' }}>Tên sản phẩm</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>1</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8' }}>KH0001</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontWeight: 600 }}>Nhà Thuốc Thành Công</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px' }}>120 Nguyễn Trãi, Hà Nội</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px' }}>0912345678</td>
                       </tr>
                       <tr>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 1</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00001-000010</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                      </tr>
-                      <tr>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 2</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00101-001910</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                      </tr>
-                      <tr>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 3</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px', textAlign: 'center', fontWeight: 700 }}>2</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8' }}>KH0002</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px', fontWeight: 600 }}>Nhà Thuốc Minh Châu</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px' }}>45 Hai Bà Trưng, TP.HCM</td>
+                        <td style={{ border: '1px solid #cbd5e1', padding: '6px 8px' }}>0987654321</td>
                       </tr>
                     </tbody>
                   </table>
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#047857', lineHeight: 1.45 }}>
+                  • <strong>STT</strong> là theo thứ tự mặc định (1, 2, 3...), 4 trường kia (<strong>MÃ KH</strong>, <strong>TÊN ĐIỂM BÁN</strong>, <strong>ĐỊA CHỈ</strong>, <strong>ĐIỆN THOẠI</strong>) là dữ liệu biến đổi.
                 </div>
               </div>
 
@@ -1935,10 +1923,10 @@ export default function NppStores() {
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#1e3a8a' }}>
                   <div style={{ fontWeight: 700, color: '#1d4ed8', marginBottom: '6px' }}>
-                    📋 Hỗ trợ đồng bộ danh sách Điểm bán từ giải pháp cũ sang giải pháp mới:
+                    📋 Hỗ trợ đồng bộ danh sách Điểm bán (STT là theo thứ tự mặc định, 4 trường kia là dữ liệu biến đổi):
                   </div>
-                  <div>• File Excel gồm các cột: <strong>Mã khách hàng</strong>, <strong>Tên điểm bán</strong>, <strong>Địa chỉ</strong>, <strong>Số điện thoại</strong>.</div>
-                  <div>• Nếu tên điểm bán đã tồn tại, hệ thống sẽ tự động cập nhật Mã khách hàng, Địa chỉ và SĐT mới.</div>
+                  <div>• File Excel gồm 5 cột chuẩn: <strong>STT</strong>, <strong>MÃ KH</strong>, <strong>TÊN ĐIỂM BÁN</strong>, <strong>ĐỊA CHỈ</strong>, <strong>ĐIỆN THOẠI</strong>.</div>
+                  <div>• Nếu tên điểm bán đã tồn tại, hệ thống sẽ tự động cập nhật Mã KH, Địa chỉ và SĐT mới.</div>
                   <div style={{ marginTop: '8px' }}>
                     <button
                       type="button"
@@ -2010,61 +1998,47 @@ export default function NppStores() {
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#065f46' }}>
                   <div style={{ fontWeight: 800, color: '#047857', marginBottom: '6px' }}>
-                    📊 Cấu trúc các trường trong Bảng Excel Nhập Serial (Theo đúng Mục 4 file Word):
+                    📊 Cấu trúc file Excel mẫu Điểm bán chuẩn (5 cột):
                   </div>
                   <div style={{ overflowX: 'auto', marginBottom: '8px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', background: '#ffffff' }}>
-                      <tbody>
+                      <thead>
                         <tr style={{ background: '#d1fae5' }}>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#0f172a' }}>Điểm bán ---------&gt;</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà A</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà B</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#b45309' }}>Nhà C</td>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>STT</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#1d4ed8', textAlign: 'left' }}>MÃ KH</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#047857', textAlign: 'left' }}>TÊN ĐIỂM BÁN</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#0f172a', textAlign: 'left' }}>ĐỊA CHỈ</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#0f172a', textAlign: 'left' }}>ĐIỆN THOẠI</th>
                         </tr>
-                        <tr style={{ background: '#f8fafc' }}>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 800, color: '#1d4ed8' }}>Tên sản phẩm</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        </tr>
+                      </thead>
+                      <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 1</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00001-000010</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        </tr>
-                        <tr>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 2</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>00101-001910</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                        </tr>
-                        <tr>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#0f172a' }}>Sản phẩm 3</td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}></td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', textAlign: 'center', fontWeight: 600 }}>1</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#1d4ed8' }}>KH0001</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600 }}>Nhà Thuốc Thành Công</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px' }}>120 Nguyễn Trãi, Thanh Xuân, Hà Nội</td>
+                          <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontFamily: 'monospace' }}>0912345678</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
-                  <div>• Hệ thống tự động nhận diện Điểm bán (tạo mới nếu chưa có), khớp Sản phẩm và gán toàn bộ dải Serial trong ô.</div>
-                  <div>• <strong>Lưu ý quan trọng:</strong> Ngày import được chọn bên dưới sẽ được ghi nhận là <strong>Ngày bán / gán sản phẩm</strong> để tính doanh thu Điểm bán.</div>
+                  <div>• <strong>STT</strong> đánh theo thứ tự mặc định; 4 cột <strong>MÃ KH</strong>, <strong>TÊN ĐIỂM BÁN</strong>, <strong>ĐỊA CHỈ</strong>, <strong>ĐIỆN THOẠI</strong> nhập dữ liệu biến đổi theo từng điểm bán.</div>
+                  <div>• Hệ thống cũng hỗ trợ nhập file Excel chứa danh sách Điểm bán 5 cột hoặc bảng phân phối Serial theo Điểm bán &amp; Sản phẩm (ngày import chọn bên dưới dùng làm <strong>Ngày bán / gán sản phẩm</strong>).</div>
                   <div style={{ marginTop: '8px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      onClick={() => handleDownloadTemplate('matrix')}
+                      onClick={() => handleDownloadTemplate('stores')}
                       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#059669', fontWeight: 800, textDecoration: 'underline', fontSize: '13px' }}
                     >
-                      <Download size={14} /> Tải file Excel mẫu chuẩn Mục 4 (.xlsx)
+                      <Download size={14} /> Tải file Excel mẫu Điểm bán có MÃ KH (.xlsx)
                     </button>
                     {stores.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => handleDownloadTemplate('matrix_prefilled')}
+                        onClick={() => handleDownloadTemplate('stores_prefilled')}
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#1d4ed8', fontWeight: 800, textDecoration: 'underline', fontSize: '13px' }}
                       >
-                        <Download size={14} /> Tải mẫu có sẵn Điểm bán &amp; SP hiện tại (.xlsx)
+                        <Download size={14} /> Tải danh sách Điểm bán hiện tại kèm MÃ KH (.xlsx)
                       </button>
                     )}
                   </div>
