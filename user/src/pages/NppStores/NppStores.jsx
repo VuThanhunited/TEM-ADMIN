@@ -358,6 +358,7 @@ export default function NppStores() {
   };
 
   const handleOpenManualSerialModal = (store) => {
+    const storeEntId = String(store?.enterpriseId?._id || store?.enterpriseId || '').trim();
     setManualSerialStore(store);
     setManualProductId('');
     setManualCustomerCode(store?.customerCode || '');
@@ -366,7 +367,7 @@ export default function NppStores() {
     setManualDistributedTime(getCurrentTimeHHMM());
     setManualSerialError('');
     setManualSerialResult(null);
-    userApi.getRetailStores({ includeStats: '0' }).then((res) => {
+    userApi.getRetailStores({ includeStats: '0', ...(storeEntId ? { enterpriseId: storeEntId } : {}) }).then((res) => {
       if (Array.isArray(res?.products) && res.products.length > 0) {
         setEnterpriseProducts(res.products);
       }
@@ -377,8 +378,13 @@ export default function NppStores() {
   };
 
   const productsForManualStore = useMemo(() => {
-    return enterpriseProducts;
-  }, [enterpriseProducts]);
+    const storeEntId = String(manualSerialStore?.enterpriseId?._id || manualSerialStore?.enterpriseId || '').trim();
+    if (!storeEntId) return enterpriseProducts;
+    return enterpriseProducts.filter((p) => {
+      const pEntId = String(p?.enterpriseId?._id || p?.enterpriseId || '').trim();
+      return pEntId === storeEntId;
+    });
+  }, [enterpriseProducts, manualSerialStore]);
 
   const batchesForSelectedManualProduct = useMemo(() => {
     if (!manualProductId) return [];

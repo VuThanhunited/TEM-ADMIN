@@ -194,8 +194,11 @@ export default function NppStores() {
     });
   }, []);
 
-  const fetchAllProductsForDropdown = useCallback(() => {
-    api.getProducts({ page: 1, limit: 1000, simple: 'true' }).then((res) => {
+  const fetchAllProductsForDropdown = useCallback((targetEnterpriseId = '') => {
+    const cleanEntId = String(targetEnterpriseId || '').trim();
+    const params = { page: 1, limit: 1000, simple: 'true' };
+    if (cleanEntId) params.enterpriseId = cleanEntId;
+    api.getProducts(params).then((res) => {
       const list = res?.products || res?.data || [];
       mergeProductsList(list);
     }).catch(() => {});
@@ -474,6 +477,7 @@ export default function NppStores() {
   };
 
   const handleOpenManualSerialModal = (store) => {
+    const storeEntId = String(store?.enterpriseId?._id || store?.enterpriseId || '').trim();
     setManualSerialStore(store);
     setManualCustomerCode(store?.customerCode || '');
     setManualProductId('');
@@ -482,8 +486,8 @@ export default function NppStores() {
     setManualDistributedTime(getCurrentTimeHHMM());
     setManualSerialError('');
     setManualSerialResult(null);
-    fetchAllProductsForDropdown();
-    api.getRetailStores({ includeStats: '0' }).then((res) => {
+    fetchAllProductsForDropdown(storeEntId);
+    api.getRetailStores({ includeStats: '0', ...(storeEntId ? { enterpriseId: storeEntId } : {}) }).then((res) => {
       if (Array.isArray(res?.products) && res.products.length > 0) {
         mergeProductsList(res.products);
       }
@@ -494,8 +498,13 @@ export default function NppStores() {
   };
 
   const productsForManualStore = useMemo(() => {
-    return enterpriseProducts;
-  }, [enterpriseProducts]);
+    const storeEntId = String(manualSerialStore?.enterpriseId?._id || manualSerialStore?.enterpriseId || '').trim();
+    if (!storeEntId) return enterpriseProducts;
+    return enterpriseProducts.filter((p) => {
+      const pEntId = String(p?.enterpriseId?._id || p?.enterpriseId || '').trim();
+      return pEntId === storeEntId;
+    });
+  }, [enterpriseProducts, manualSerialStore]);
 
   const batchesForSelectedManualProduct = useMemo(() => {
     if (!manualProductId) return [];

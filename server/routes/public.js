@@ -1677,9 +1677,16 @@ router.get('/retail-stores', async (req, res) => {
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
 
-    const prodFilter = enterpriseId
-      ? { enterpriseId: { $in: await getRelatedEnterpriseIdsById(enterpriseId) } }
-      : {};
+    let targetProdEntIds = [];
+    if (enterpriseId) {
+      targetProdEntIds = await getRelatedEnterpriseIdsById(enterpriseId);
+    } else if (decoded.role !== 'ADMIN' && !decoded.isAdminImpersonating) {
+      targetProdEntIds = await getRelatedEnterpriseIds(user);
+    }
+
+    const prodFilter = targetProdEntIds.length > 0
+      ? { enterpriseId: { $in: targetProdEntIds } }
+      : (decoded.role === 'ADMIN' || decoded.isAdminImpersonating ? {} : { enterpriseId: null });
     const [products, batches] = await Promise.all([
       Product.find(prodFilter)
         .populate('enterpriseId', 'name')
@@ -3417,6 +3424,20 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy sản phẩm đã chọn!' });
     }
 
+    const storeEntIds = store.enterpriseId
+      ? await getRelatedEnterpriseIdsById(store.enterpriseId)
+      : (decoded.role !== 'ADMIN' && !decoded.isAdminImpersonating ? await getRelatedEnterpriseIds(user) : []);
+
+    if (
+      storeEntIds.length > 0 &&
+      selectedProduct.enterpriseId &&
+      !storeEntIds.some((id) => String(id) === String(selectedProduct.enterpriseId))
+    ) {
+      return res.status(400).json({
+        error: 'Sản phẩm đã chọn không thuộc danh mục sản phẩm của doanh nghiệp quản lý điểm bán này!'
+      });
+    }
+
     const rawInput = String(serialInput || '').trim();
     if (!rawInput) {
       return res.status(400).json({
@@ -3426,8 +3447,11 @@ router.post('/retail-stores/:id/assign-serials', async (req, res) => {
 
     const validSoldDate = resolveDistributedDateTime(distributedDate, distributedTime);
 
-    // 1. Lấy toàn bộ Lô tem (LabelBatch) trong hệ thống để cho phép gán bất kỳ sản phẩm nào có trong danh sách
-    const validBatches = await LabelBatch.find({})
+    // 1. Lấy Lô tem (LabelBatch) thuộc doanh nghiệp của điểm bán / sản phẩm đang chọn
+    const batchFilter = storeEntIds.length > 0
+      ? { enterpriseId: { $in: storeEntIds } }
+      : (selectedProduct.enterpriseId ? { enterpriseId: selectedProduct.enterpriseId } : {});
+    const validBatches = await LabelBatch.find(batchFilter)
       .populate('productId', 'name')
       .select('_id batchCode serialStart serialEnd prefix enterpriseId productId totalLabels')
       .lean();
