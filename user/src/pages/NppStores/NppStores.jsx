@@ -510,6 +510,27 @@ export default function NppStores() {
     }
   };
 
+  const handleDownloadTemplate = async (type = 'stores') => {
+    try {
+      const url = userApi.getRetailStoreTemplateUrl(type);
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Không thể tải file Excel mẫu');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = type === 'matrix_legacy'
+        ? 'Mau_Import_Ma_Tran_Diem_Ban_Serial.xlsx'
+        : 'Mau_Import_Danh_Sach_Diem_Ban.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(userApi.getRetailStoreTemplateUrl(type), '_blank');
+    }
+  };
+
   const handleExportExcel = async () => {
     setExportingExcel(true);
     try {
@@ -591,6 +612,26 @@ export default function NppStores() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleDownloadTemplate('stores')}
+              style={{
+                background: '#1e293b',
+                border: '1px solid #10b981',
+                color: '#34d399',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              title="Tải file Excel mẫu chuẩn 5 cột (STT | MÃ KH | TÊN ĐIỂM BÁN | ĐỊA CHỈ | ĐIỆN THOẠI)"
+            >
+              <Download size={17} />
+              Tải Excel Mẫu (Có MÃ KH)
+            </button>
             <button
               type="button"
               onClick={handleExportExcel}
@@ -1550,14 +1591,13 @@ export default function NppStores() {
               <div style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '10px', padding: '12px', fontSize: '0.84rem', color: '#cbd5e1' }}>
                 <div>• File Excel gồm 5 cột: <strong>STT</strong>, <strong>MÃ KH</strong>, <strong>TÊN ĐIỂM BÁN</strong>, <strong>ĐỊA CHỈ</strong>, <strong>ĐIỆN THOẠI</strong> (STT mặc định tăng dần, 4 trường còn lại biến đổi theo từng điểm bán).</div>
                 <div style={{ marginTop: '6px' }}>
-                  <a
-                    href={userApi.getRetailStoreTemplateUrl('stores')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadTemplate('stores')}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline', fontSize: '0.84rem' }}
                   >
                     <Download size={14} /> Tải file Excel mẫu Danh sách Điểm bán (5 cột có MÃ KH)
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -1635,14 +1675,13 @@ export default function NppStores() {
                 <div>• Mẫu Excel Điểm bán chuẩn gồm 5 cột: <strong>STT</strong> | <strong>MÃ KH</strong> | <strong>TÊN ĐIỂM BÁN</strong> | <strong>ĐỊA CHỈ</strong> | <strong>ĐIỆN THOẠI</strong> (STT mặc định, 4 trường sau biến đổi theo dữ liệu).</div>
                 <div>• Hệ thống vẫn hỗ trợ nhập cả file danh sách Điểm bán 5 cột lẫn file phân phối dải Serial theo Điểm bán &amp; Sản phẩm (<strong>Ngày import</strong> sẽ là <strong>Ngày bán / gán sản phẩm</strong>).</div>
                 <div style={{ marginTop: '6px' }}>
-                  <a
-                    href={userApi.getRetailStoreTemplateUrl('stores')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline' }}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadTemplate('stores')}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#34d399', fontWeight: 700, textDecoration: 'underline', fontSize: '0.84rem' }}
                   >
                     <Download size={14} /> Tải file Excel mẫu Điểm bán có MÃ KH (.xlsx)
-                  </a>
+                  </button>
                 </div>
               </div>
 

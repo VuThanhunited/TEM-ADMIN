@@ -2083,6 +2083,10 @@ function resolveEndSerialFromStart(startSerial, rawEndSerial) {
 // GET /api/public/retail-stores/template-excel - Tải file Excel mẫu Điểm bán chuẩn 5 cột (STT | MÃ KH | TÊN ĐIỂM BÁN | ĐỊA CHỈ | ĐIỆN THOẠI)
 router.get('/retail-stores/template-excel', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const { type = 'stores' } = req.query;
     const wb = XLSX.utils.book_new();
 
@@ -3225,7 +3229,11 @@ router.get('/retail-stores/export-data', async (req, res) => {
 
     const assignedLabels = await Label.find(labelQuery)
       .populate('productId', 'name price sku category')
-      .populate('batchId', 'batchCode')
+      .populate({
+        path: 'batchId',
+        select: 'batchCode productId',
+        populate: { path: 'productId', select: 'name price sku category' }
+      })
       .sort({ serialNumber: 1 })
       .select('serialNumber productId batchId storeId customerCode enterpriseId distributorName distributorAddress ownerCode distributedAt ownerInfo status scanCount updatedAt')
       .lean();
@@ -3244,9 +3252,10 @@ router.get('/retail-stores/export-data', async (req, res) => {
     const cellSerialsMap = new Map();
 
     assignedLabels.forEach((lbl) => {
+      const effectiveProd = lbl.batchId?.productId?._id ? lbl.batchId.productId : lbl.productId;
       const stName = String(lbl.distributorName || lbl.ownerInfo?.name || '').trim();
-      const prodName = String(lbl.productId?.name || 'Sản phẩm').trim();
-      const unitPrice = Number(lbl.productId?.price) || 0;
+      const prodName = String(effectiveProd?.name || lbl.productId?.name || 'Sản phẩm').trim();
+      const unitPrice = Number(effectiveProd?.price ?? lbl.productId?.price) || 0;
       if (prodName) productSet.add(prodName);
       if (stName) {
         storeSet.add(stName);
@@ -3338,6 +3347,7 @@ router.get('/retail-stores/export-data', async (req, res) => {
 
     // Sheet 3: Chi tiết phân phối từng mã Serial
     const detailRows = assignedLabels.map((lbl, idx) => {
+      const effectiveProd = lbl.batchId?.productId?._id ? lbl.batchId.productId : lbl.productId;
       const stName = lbl.distributorName || lbl.ownerInfo?.name || '';
       const stAddr = lbl.distributorAddress || lbl.ownerInfo?.address || '';
       const stPhone = lbl.ownerInfo?.phone || '';
@@ -3346,7 +3356,7 @@ router.get('/retail-stores/export-data', async (req, res) => {
       return {
         'STT': idx + 1,
         'Mã lô': lbl.batchId?.batchCode || '',
-        'Tên sản phẩm': lbl.productId?.name || 'Sản phẩm',
+        'Tên sản phẩm': effectiveProd?.name || lbl.productId?.name || 'Sản phẩm',
         'Mã Serial': lbl.serialNumber || '',
         'Mã khách hàng': stCode,
         'Điểm bán': stName,

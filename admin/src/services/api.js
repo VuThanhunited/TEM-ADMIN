@@ -258,7 +258,7 @@ class ApiService {
   assignRetailStoreSerials(storeId, data) { return this.request('POST', `/public/retail-stores/${storeId}/assign-serials`, data, {}, 0, 60000); }
   unassignRetailStoreSerial(storeId, data) { return this.request('POST', `/public/retail-stores/${storeId}/unassign-serial`, data); }
   exportRetailStoresData(params = {}) { return this.request('GET', '/public/retail-stores/export-data', null, params, 0, 120000); }
-  getRetailStoreTemplateUrl(type = 'matrix') { return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}`; }
+  getRetailStoreTemplateUrl(type = 'stores') { return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}&_t=${Date.now()}`; }
 
   // ── Location Alerts (Cảnh báo quét sai vị trí điểm bán) ───────────────────
   getLocationAlerts(params) { return this.request('GET', '/public/location-alerts', null, params); }
