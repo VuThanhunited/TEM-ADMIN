@@ -199,6 +199,10 @@ class UserApiService {
     return this.request('GET', '/public/retail-stores/export-data', null, params, true, 0, 120000);
   }
 
+  exportRetailStoreSerials(id, params = {}) {
+    return this.request('GET', `/public/retail-stores/${id}/export-excel`, null, params, true, 0, 60000);
+  }
+
   getRetailStoreTemplateUrl(type = 'stores') {
     return `${this.baseUrl}/public/retail-stores/template-excel?type=${encodeURIComponent(type)}&_t=${Date.now()}`;
   }

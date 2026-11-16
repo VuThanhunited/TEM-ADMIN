@@ -164,6 +164,7 @@ export default function NppStores() {
   const [importMatrixResult, setImportMatrixResult] = useState(null);
   const [importMatrixError, setImportMatrixError] = useState('');
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [downloadingStoreId, setDownloadingStoreId] = useState(null);
   const [enterpriseProducts, setEnterpriseProducts] = useState([]);
   const [enterpriseBatches, setEnterpriseBatches] = useState([]);
 
@@ -309,6 +310,65 @@ export default function NppStores() {
       loadStores(search);
     } catch (err) {
       alert(err.message || 'Lỗi khi xóa điểm bán');
+    }
+  };
+
+  const handleDownloadStoreExcel = async (store) => {
+    if (!store?._id || downloadingStoreId === store._id) return;
+    setDownloadingStoreId(store._id);
+    try {
+      const res = await api.exportRetailStoreSerials(store._id);
+      if (res?.fileBase64) {
+        const binaryStr = window.atob(res.fileBase64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const cleanCode = String(store.customerCode || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+        const cleanNameSlug = removeVietnameseTones(store.name || 'diem_ban')
+          .replace(/[^a-z0-9]+/gi, '_')
+          .replace(/^_+|_+$/g, '')
+          .slice(0, 40) || 'diem_ban';
+        a.download = res.fileName || `Diem_Ban_${cleanCode ? `${cleanCode}_` : ''}${cleanNameSlug}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Fallback client-side XLSX nếu cần
+      const serialRes = await api.getRetailStoreSerials(store._id, { periodType: 'all' });
+      const list = serialRes?.serials || serialRes?.data || [];
+      const wsData = [
+        ['STT', 'Sản phẩm', 'Serial gán', 'Ngày gán'],
+        ...list.map((item, idx) => [
+          idx + 1,
+          item.productName || 'Sản phẩm',
+          item.serialNumber || '',
+          formatDateOnlyVN(toDateKeyYYYYMMDD(item.soldAt))
+        ])
+      ];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{ wch: 8 }, { wch: 36 }, { wch: 22 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Chi_tiet_diem_ban');
+      const cleanCode = String(store.customerCode || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+      const cleanNameSlug = removeVietnameseTones(store.name || 'diem_ban')
+        .replace(/[^a-z0-9]+/gi, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 40) || 'diem_ban';
+      XLSX.writeFile(wb, `Diem_Ban_${cleanCode ? `${cleanCode}_` : ''}${cleanNameSlug}.xlsx`);
+    } catch (err) {
+      alert('Lỗi khi tải file Excel của điểm bán: ' + (err.message || err));
+    } finally {
+      setDownloadingStoreId(null);
     }
   };
 
@@ -1219,6 +1279,30 @@ export default function NppStores() {
                       <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                         <button
                           type="button"
+                          onClick={() => handleDownloadStoreExcel(store)}
+                          disabled={downloadingStoreId === store._id}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            padding: '6px 10px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #0f172a',
+                            background: '#ffffff',
+                            color: '#0f172a',
+                            fontWeight: 800,
+                            fontSize: '12.5px',
+                            cursor: downloadingStoreId === store._id ? 'wait' : 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Tải về file Excel gồm: STT | Sản phẩm | Serial gán | Ngày gán của điểm bán này"
+                        >
+                          <Download size={13} />
+                          {downloadingStoreId === store._id ? 'Đang tải...' : 'Tải về'}
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleViewSerials(store)}
                           style={{
                             display: 'inline-flex',
@@ -1434,9 +1518,34 @@ export default function NppStores() {
                   Địa chỉ: {serialModalStore.address || '—'} | SĐT: {serialModalStore.phone || '—'}
                 </p>
               </div>
-              <button type="button" className="btn-icon" onClick={() => setSerialModalStore(null)}>
-                <X size={20} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadStoreExcel(serialModalStore)}
+                  disabled={downloadingStoreId === serialModalStore._id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #059669',
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    cursor: downloadingStoreId === serialModalStore._id ? 'wait' : 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="Tải về file Excel (STT | Sản phẩm | Serial gán | Ngày gán) của điểm bán này"
+                >
+                  <Download size={15} />
+                  {downloadingStoreId === serialModalStore._id ? 'Đang tải...' : 'Tải về Excel'}
+                </button>
+                <button type="button" className="btn-icon" onClick={() => setSerialModalStore(null)}>
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div className="modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>

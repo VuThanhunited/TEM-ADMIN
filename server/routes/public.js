@@ -1754,7 +1754,7 @@ router.get('/retail-stores/:id/serials', async (req, res) => {
         select: 'batchCode productId',
         populate: { path: 'productId', select: 'name sku price category' }
       })
-      .sort({ distributedAt: -1, updatedAt: -1 })
+      .sort({ distributedAt: -1, serialNumber: 1, updatedAt: -1 })
       .limit(50000)
       .lean();
 
@@ -1812,6 +1812,109 @@ router.get('/retail-stores/:id/serials', async (req, res) => {
   } catch (error) {
     console.error('Get retail store serials error:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách serial của điểm bán' });
+  }
+});
+
+// Helper: Định dạng ngày DD/MM/YYYY theo múi giờ Việt Nam (UTC+7)
+function formatVnDateDDMMYYYY(dateVal) {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (Number.isNaN(d.getTime())) return '';
+  const vnTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+  const dd = String(vnTime.getUTCDate()).padStart(2, '0');
+  const mm = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = vnTime.getUTCFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+// GET /api/public/retail-stores/:id/export-excel - Tải file Excel chi tiết của 1 Điểm bán (STT | Sản phẩm | Serial gán | Ngày gán)
+router.get('/retail-stores/:id/export-excel', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    const authCtx = await verifyNppOrAdminRequest(req, res);
+    if (!authCtx) return;
+    const { user, decoded } = authCtx;
+
+    const filter = await buildRetailStoreFilter(user, decoded);
+    const store = await RetailStore.findOne({ _id: req.params.id, ...filter }).lean();
+    if (!store) {
+      return res.status(404).json({ error: 'Không tìm thấy điểm bán hoặc không có quyền truy cập' });
+    }
+
+    const storeOr = [
+      { storeId: store._id },
+      { distributorName: store.name },
+      { 'ownerInfo.name': store.name }
+    ];
+    const labelQuery = store.enterpriseId
+      ? { enterpriseId: store.enterpriseId, $or: storeOr }
+      : { $or: storeOr };
+
+    const labels = await Label.find(labelQuery)
+      .populate('productId', 'name sku price category')
+      .populate({
+        path: 'batchId',
+        select: 'batchCode productId',
+        populate: { path: 'productId', select: 'name sku price category' }
+      })
+      .sort({ distributedAt: -1, serialNumber: 1, updatedAt: -1 })
+      .limit(50000)
+      .lean();
+
+    // Đúng cấu trúc 4 cột khách hàng yêu cầu: STT | Sản phẩm | Serial gán | Ngày gán
+    const wsData = [
+      ['STT', 'Sản phẩm', 'Serial gán', 'Ngày gán'],
+      ...labels.map((lbl, idx) => {
+        const effectiveProd = lbl.batchId?.productId?._id ? lbl.batchId.productId : lbl.productId;
+        const pName = effectiveProd?.name || lbl.productId?.name || 'Sản phẩm';
+        const soldAt = lbl.distributedAt || lbl.ownerInfo?.activatedAt || lbl.updatedAt;
+        return [
+          idx + 1,
+          pName,
+          lbl.serialNumber || '',
+          formatVnDateDDMMYYYY(soldAt)
+        ];
+      })
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 8 }, { wch: 36 }, { wch: 22 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Chi_tiet_diem_ban');
+
+    const excelBuf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', compression: true });
+    const cleanCode = String(store.customerCode || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+    const cleanNameSlug = removeVietnameseTones(store.name || 'diem_ban')
+      .replace(/[^a-z0-9]+/gi, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 40) || 'diem_ban';
+    const fileName = `Diem_Ban_${cleanCode ? `${cleanCode}_` : ''}${cleanNameSlug}.xlsx`;
+
+    if (req.query.download === '1') {
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      return res.send(excelBuf);
+    }
+
+    return res.json({
+      success: true,
+      fileName,
+      fileBase64: excelBuf.toString('base64'),
+      total: labels.length,
+      store: {
+        _id: store._id,
+        customerCode: store.customerCode || '',
+        name: store.name
+      }
+    });
+  } catch (error) {
+    console.error('Export single retail store excel error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Lỗi máy chủ khi tải file Excel của điểm bán: ' + error.message });
+    }
   }
 });
 
