@@ -1301,7 +1301,7 @@ router.post('/npp-login', async (req, res) => {
         role: tokenRole
       },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     // Save currentToken to lock single device session
@@ -5007,7 +5007,7 @@ router.post('/guest-login', async (req, res) => {
         role: tokenRole
       },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
     );
 
     // Save currentToken to lock single device session

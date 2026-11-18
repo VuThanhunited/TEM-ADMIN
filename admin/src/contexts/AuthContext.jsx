@@ -48,6 +48,7 @@ export function AuthProvider({ children }) {
     const payload = parseJwtPayload(token);
     if (payload?.exp && Date.now() / 1000 > payload.exp) {
       localStorage.removeItem('tem_token');
+      localStorage.removeItem('tem_user');
       localStorage.removeItem('npp_scan_token');
       localStorage.removeItem('npp_scan_user');
       setUser(null);
@@ -63,12 +64,16 @@ export function AuthProvider({ children }) {
 
     try {
       const userData = await api.getMe();
+      const activeToken = userData?.refreshedToken || token;
+      if (userData?.refreshedToken) {
+        localStorage.setItem('tem_token', userData.refreshedToken);
+      }
       setUser(userData);
       localStorage.setItem('tem_user', JSON.stringify(userData));
       
       // Sync scan session if NPP
       if (userData?.role === 'NPP') {
-        localStorage.setItem('npp_scan_token', token);
+        localStorage.setItem('npp_scan_token', activeToken);
         localStorage.setItem('npp_scan_user', JSON.stringify(userData));
       }
     } catch (err) {
@@ -98,11 +103,18 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     loadUser();
 
-    // Heartbeat check (mỗi 15 giây) để phát hiện ngay phiên đăng nhập trùng từ máy khác
+    // Heartbeat check (mỗi 15 giây) để tự động làm mới token và phát hiện phiên hết hạn
     const interval = setInterval(() => {
       const token = localStorage.getItem('tem_token');
       if (token) {
-        api.getMe().catch(() => {});
+        api.getMe().then((uData) => {
+          if (uData?.refreshedToken) {
+            localStorage.setItem('tem_token', uData.refreshedToken);
+            if (uData?.role === 'NPP') {
+              localStorage.setItem('npp_scan_token', uData.refreshedToken);
+            }
+          }
+        }).catch(() => {});
       }
     }, 15000);
 

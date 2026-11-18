@@ -15,7 +15,7 @@ class ApiService {
   }
 
   getToken() {
-    return localStorage.getItem('tem_token');
+    return localStorage.getItem('tem_token') || localStorage.getItem('npp_scan_token');
   }
 
   getHeaders() {
@@ -106,10 +106,28 @@ class ApiService {
       // Phiên đăng nhập bị chiếm từ thiết bị khác
       if (response.status === 401 && result && result.code === 'SESSION_SUPERSEDED') {
         localStorage.removeItem('tem_token');
+        localStorage.removeItem('tem_user');
         localStorage.removeItem('npp_scan_token');
         localStorage.removeItem('npp_scan_user');
         alert('⚠️ CẢNH BÁO BẢO MẬT:\nTài khoản của bạn vừa được đăng nhập từ một thiết bị hoặc trình duyệt khác.\nPhiên làm việc trên thiết bị này đã bị chấm dứt.');
         window.location.href = '/login?reason=session_superseded';
+      }
+
+      // Tự động chuyển về trang đăng nhập khi token hết hạn (401) để tránh hiển thị trang trống 0 dữ liệu
+      const isLoginEndpoint = endpoint.includes('/login');
+      if (response.status === 401 && !isLoginEndpoint && (!result || result.code !== 'SESSION_SUPERSEDED')) {
+        localStorage.removeItem('tem_token');
+        localStorage.removeItem('tem_user');
+        localStorage.removeItem('npp_scan_token');
+        localStorage.removeItem('npp_scan_user');
+        try {
+          Object.keys(sessionStorage).forEach(k => {
+            if (k.startsWith('tem_products_cache_')) sessionStorage.removeItem(k);
+          });
+        } catch {}
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login?tab=npp&reason=expired';
+        }
       }
 
       // Với lỗi 503 (server bị quá tải/timeout) thử lại

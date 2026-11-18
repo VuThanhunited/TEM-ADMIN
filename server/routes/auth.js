@@ -104,7 +104,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
     );
 
     // Update last login and lock session to current device
@@ -132,7 +132,17 @@ router.get('/me', auth, async (req, res) => {
     const user = await User.findById(req.user._id)
       .select('-password')
       .populate('enterpriseId');
-    res.json(user);
+    if (!user) {
+      return res.status(401).json({ error: 'Tài khoản không tồn tại' });
+    }
+    const refreshedToken = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET || 'tem_admin_jwt_secret_key_2024_super_secure',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '30d' }
+    );
+    const userObj = user.toObject();
+    userObj.refreshedToken = refreshedToken;
+    res.json(userObj);
   } catch (error) {
     res.status(500).json({ error: 'Lỗi máy chủ' });
   }

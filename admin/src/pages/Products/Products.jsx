@@ -294,11 +294,23 @@ function ImageInput({ value, onChange, placeholder, index }) {
 }
 
 // ── Session Cache Helper (SWR - Stale-While-Revalidate) ────────────────────────
-const CACHE_PREFIX = 'tem_products_cache_v3_';
+const CACHE_PREFIX = 'tem_products_cache_v4_';
+const getCacheScope = () => {
+  try {
+    const rawUser = localStorage.getItem('tem_user');
+    if (rawUser) {
+      const u = JSON.parse(rawUser);
+      const entId = u?.enterpriseId?._id || u?.enterpriseId || '';
+      return `${u?.role || 'USER'}_${entId || u?._id || 'default'}`;
+    }
+  } catch (e) {}
+  return 'default';
+};
+
 const getSessionCache = (page, search) => {
   if (search) return null; // Không dùng cache khi đang tìm kiếm
   try {
-    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${page}`);
+    const raw = sessionStorage.getItem(`${CACHE_PREFIX}${getCacheScope()}_${page}`);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0 && Date.now() - parsed.ts < 10 * 60 * 1000) {
@@ -312,7 +324,7 @@ const getSessionCache = (page, search) => {
 const setSessionCache = (page, search, data, pagination) => {
   if (search) return;
   try {
-    sessionStorage.setItem(`${CACHE_PREFIX}${page}`, JSON.stringify({ data, pagination, ts: Date.now() }));
+    sessionStorage.setItem(`${CACHE_PREFIX}${getCacheScope()}_${page}`, JSON.stringify({ data, pagination, ts: Date.now() }));
   } catch (e) {}
 };
 
@@ -372,10 +384,10 @@ export default function Products() {
     setPagination(prev => ({ ...prev, page: 1 }));
   }, [debouncedSearch]);
 
-  // Load products khi page hoặc debouncedSearch thay đổi
+  // Load products khi page, debouncedSearch hoặc enterpriseId thay đổi
   useEffect(() => {
     loadProducts();
-  }, [pagination.page, debouncedSearch]);
+  }, [pagination.page, debouncedSearch, enterpriseId]);
 
   const loadProducts = async () => {
     const cached = getSessionCache(pagination.page, debouncedSearch);
