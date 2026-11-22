@@ -181,3 +181,13 @@
   opacity: 1;
   color: var(--color-danger);
 }
+
+/* Bảng Quản lý lô tem: chia các icon thao tác thành lưới 4 cột (2 hàng) */
+.action-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  gap: 6px;
+  align-items: center;
+  justify-content: start;
+}
+.action-buttons-grid .btn { white-space: nowrap; }

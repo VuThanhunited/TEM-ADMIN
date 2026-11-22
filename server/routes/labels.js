@@ -254,6 +254,68 @@ router.get('/export', auth, requireOwnership, async (req, res) => {
 });
 
 // PUT /api/labels/batches/:id/mark-printed - Toggle/Set printed status for a batch
+// GET /api/labels/batches/:id/export-stores - Excel: STT | Tên Serial | Tên điểm bán
+// Chỉ gồm các serial của lô đã được gán điểm bán
+router.get('/batches/:id/export-stores', auth, requireOwnership, async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    const RetailStore = require('../models/RetailStore');
+
+    const batch = await LabelBatch.findOne({ _id: req.params.id, ...(req.enterpriseFilter || {}) })
+      .select('_id batchCode')
+      .lean();
+    if (!batch) {
+      return res.status(404).json({ error: 'Không tìm thấy lô tem hoặc không có quyền truy cập' });
+    }
+
+    const labels = await Label.find({
+      batchId: batch._id,
+      $or: [
+        { storeId: { $ne: null } },
+        { distributorName: { $nin: [null, ''] } },
+        { 'ownerInfo.name': { $nin: [null, ''] } }
+      ]
+    })
+      .select('serialNumber storeId customerCode distributorName ownerInfo distributedAt updatedAt')
+      .sort({ serialNumber: 1 })
+      .lean();
+
+    const storeIds = [...new Set(labels.map((l) => (l.storeId ? String(l.storeId) : '')).filter(Boolean))];
+    const stores = storeIds.length > 0
+      ? await RetailStore.find({ _id: { $in: storeIds } }).select('name customerCode').lean()
+      : [];
+    const storeMap = new Map(stores.map((s) => [String(s._id), s]));
+
+    const rows = [['STT', 'Tên Serial', 'Tên điểm bán']];
+    labels.forEach((l, idx) => {
+      const st = l.storeId ? storeMap.get(String(l.storeId)) : null;
+      rows.push([
+        idx + 1,
+        l.serialNumber || '',
+        st?.name || l.distributorName || l.ownerInfo?.name || ''
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 8 }, { wch: 22 }, { wch: 42 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Serial_DiemBan');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', compression: true });
+
+    const safeCode = String(batch.batchCode || 'lo_tem').replace(/[^a-zA-Z0-9_-]/g, '_');
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      success: true,
+      fileName: `Serial_DiemBan_${safeCode}.xlsx`,
+      fileBase64: buf.toString('base64'),
+      total: labels.length
+    });
+  } catch (error) {
+    console.error('Export batch stores error:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xuất file Serial & Điểm bán: ' + error.message });
+  }
+});
+
 router.put('/batches/:id/mark-printed', auth, requireOwnership, async (req, res) => {
   try {
     const { isPrinted = true, printedCount } = req.body;

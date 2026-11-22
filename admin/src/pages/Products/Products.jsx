@@ -356,6 +356,11 @@ export default function Products() {
   // Cache flag — chỉ gọi API 1 lần trong suốt session
   const modalDataLoadedRef = useRef(false);
 
+  // Import file Quy trình sản xuất (ảnh / PDF từ máy)
+  const processFileInputRef = useRef(null);
+  const [uploadingProcessFile, setUploadingProcessFile] = useState(false);
+  const [processFileError, setProcessFileError] = useState('');
+
   const MAX_IMAGES = 6;
 
   const initialForm = {
@@ -365,6 +370,7 @@ export default function Products() {
     images: ['', '', '', '', '', ''], distributors: [], specifications: [], enterpriseId: '',
     verificationText: 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
     productionProcess: [],
+    productionProcessFile: { url: '', fileType: '', name: '' },
     congBoImages: ['', '', ''],
     congBoNumber: '',
     producerInfo: '',
@@ -553,6 +559,11 @@ export default function Products() {
         enterpriseId: p.enterpriseId?._id || p.enterpriseId || '',
         verificationText: p.verificationText || 'XÁC THỰC THÀNH CÔNG\nSản phẩm chính hãng',
         productionProcess: p.productionProcess || [],
+        productionProcessFile: {
+          url: p.productionProcessFile?.url || '',
+          fileType: p.productionProcessFile?.fileType || '',
+          name: p.productionProcessFile?.name || ''
+        },
         congBoImages: congBoImgs,
         congBoNumber: p.congBoNumber || '',
         producerInfo: p.producerInfo || '',
@@ -661,7 +672,71 @@ export default function Products() {
   };
   const removeSpecification = (idx) => setForm({ ...form, specifications: form.specifications.filter((_, i) => i !== idx) });
 
-  const addProductionStep = () => setForm({ ...form, productionProcess: [...form.productionProcess, { title: '', description: '', image: '' }] });
+  const PROCESS_FILE_MAX_SIZE = 15 * 1024 * 1024;
+
+  const handleImportProcessFile = async (e) => {
+    const rawFile = e.target.files?.[0];
+    e.target.value = '';
+    if (!rawFile) return;
+
+    const isPdf = rawFile.type === 'application/pdf' || /\.pdf$/i.test(rawFile.name);
+    const isImage = rawFile.type.startsWith('image/');
+    if (!isPdf && !isImage) {
+      setProcessFileError('Chỉ chấp nhận file ảnh (JPG, PNG, WebP) hoặc PDF.');
+      return;
+    }
+    if (rawFile.size > PROCESS_FILE_MAX_SIZE) {
+      setProcessFileError('File quá lớn. Vui lòng chọn file nhỏ hơn 15MB.');
+      return;
+    }
+
+    setProcessFileError('');
+    setUploadingProcessFile(true);
+    try {
+      const file = isImage ? await compressImageIfNeeded(rawFile) : rawFile;
+      const result = await api.uploadDocument(file);
+      if (!result?.url) throw new Error('Máy chủ không trả về đường dẫn file');
+      setForm(prev => ({
+        ...prev,
+        productionProcessFile: { url: result.url, fileType: isPdf ? 'pdf' : 'image', name: rawFile.name }
+      }));
+    } catch (err) {
+      setProcessFileError(err.message || 'Lỗi tải file lên');
+    } finally {
+      setUploadingProcessFile(false);
+    }
+  };
+
+  const removeProcessFile = () => {
+    setProcessFileError('');
+    setForm(prev => ({ ...prev, productionProcessFile: { url: '', fileType: '', name: '' } }));
+  };
+
+  const renderProcessFileCard = () => {
+    const pf = form.productionProcessFile;
+    if (!pf?.url) {
+      return (
+        <div className="process-file-empty">
+          Chưa import file. Bấm <strong>"Import file ảnh / PDF"</strong> để tải file quy trình sản xuất từ máy của bạn lên (JPG, PNG, WebP hoặc PDF, tối đa 15MB).
+        </div>
+      );
+    }
+    return (
+      <div className="process-file-card">
+        {pf.fileType === 'pdf' ? (
+          <div className="process-file-pdf-badge">PDF</div>
+        ) : (
+          <img src={pf.url} alt="Quy trình sản xuất" className="process-file-thumb" />
+        )}
+        <div className="process-file-info">
+          <div className="process-file-name">{pf.name || (pf.fileType === 'pdf' ? 'File PDF quy trình sản xuất' : 'Ảnh quy trình sản xuất')}</div>
+          <div className="process-file-hint">Đã import — hiển thị ở mục "Quy trình SX" trên trang tem</div>
+        </div>
+        <a href={pf.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-ghost"><ExternalLink size={14} /> Xem</a>
+        <button type="button" className="btn-icon" onClick={removeProcessFile} title="Xóa file"><X size={16} /></button>
+      </div>
+    );
+  };
   const updateProductionStep = (idx, field, value) => {
     const steps = [...form.productionProcess];
     steps[idx][field] = value;
@@ -1121,9 +1196,15 @@ export default function Products() {
                 {/* Quy trình sản xuất */}
                 <div className="distributors-section" style={{ marginBottom: 20 }}>
                   <div className="section-header">
-                    <label>Quy trình sản xuất (Từng bước thực hiện)</label>
-                    <button type="button" className="btn btn-sm btn-ghost" onClick={addProductionStep}><Plus size={14} /> Thêm bước</button>
+                    <label>Quy trình sản xuất (Import file ảnh hoặc PDF)</label>
+                    <button type="button" className="btn btn-sm btn-ghost" disabled={uploadingProcessFile} onClick={() => processFileInputRef.current?.click()}><Upload size={14} /> {uploadingProcessFile ? 'Đang tải lên...' : (form.productionProcessFile?.url ? 'Đổi file' : 'Import file ảnh / PDF')}</button>
+                    <input type="file" ref={processFileInputRef} accept="image/*,application/pdf,.pdf" className="process-file-input" onChange={handleImportProcessFile} />
                   </div>
+                  {renderProcessFileCard()}
+                  {processFileError && <div className="process-file-error">{processFileError}</div>}
+                  {form.productionProcess?.length > 0 && (
+                    <div className="process-legacy-note">Các bước nhập tay trước đây (dữ liệu cũ) — có thể xóa nếu không cần:</div>
+                  )}
                   {form.productionProcess?.map((step, idx) => (
                     <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 10, marginBottom: 8, alignItems: 'center' }}>
                       <input className="input" placeholder="Tên bước (VD: Gieo trồng)" value={step.title || ''} onChange={e => updateProductionStep(idx, 'title', e.target.value)} />

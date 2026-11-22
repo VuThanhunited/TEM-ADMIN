@@ -234,6 +234,7 @@ class ApiService {
     } while (page <= pages);
     return allLabels;
   }
+  exportBatchStores(batchId) { return this.request('GET', `/labels/batches/${batchId}/export-stores`, null, {}, 0, 120000); } // Excel: STT | Serial | Tên điểm bán
   exportFilteredLabels(params) { return this.request('GET', '/labels/export-all', null, params, 0, 300000); } // 5 min timeout for large datasets
 
   // ── Analytics ─────────────────────────────────────────────────────────────
@@ -323,6 +324,26 @@ class ApiService {
     return res.json();
   }
 }
+
+ApiService.prototype.uploadDocument = async function uploadDocument(file) {
+  // Upload file ảnh hoặc PDF (tối đa 15MB) cho mục Quy trình sản xuất
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = this.getToken();
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${this.baseUrl}/upload/document`, {
+    method: 'POST',
+    headers,
+    body: formData,
+    signal: AbortSignal.timeout(120000)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Lỗi tải file lên');
+  }
+  return res.json();
+};
 
 const api = new ApiService();
 export default api;

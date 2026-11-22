@@ -84,6 +84,12 @@ const productSchema = new mongoose.Schema({
     description: { type: String, default: '' },
     image: { type: String, default: '' }
   }],
+  // File Quy trình sản xuất (ảnh hoặc PDF) do doanh nghiệp import từ máy — fileType: 'image' | 'pdf'
+  productionProcessFile: {
+    url: { type: String, default: '' },
+    fileType: { type: String, default: '' },
+    name: { type: String, default: '' }
+  },
   // Ảnh giấy tiếp nhận đăng ký bản công bố sản phẩm
   congBoImages: [{
     type: String

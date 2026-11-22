@@ -8,7 +8,7 @@ import {
   Headphones, Gift, Lock, LayoutGrid, Check, Activity, Shield, Flame, Eye,
   Wrench, FileText, Scan, Handshake, ShoppingBag, Ribbon,
   Pill, Stethoscope, ShieldAlert, FileCheck, Sprout, Utensils, Heart, Sparkle,
-  BookOpen, AlertCircle, UserCheck, User, Store
+  BookOpen, AlertCircle, UserCheck, User, Store, Factory
 } from 'lucide-react';
 import { useDomain } from '../../contexts/DomainContext';
 import userApi from '../../services/api';
@@ -255,6 +255,64 @@ export default function ProductInfo() {
 
   // Computed values (không phải hooks, an toàn để đặt đây)
   const product = scanData?.product;
+
+  // ── File Quy trình sản xuất (ảnh / PDF do doanh nghiệp import) → mục "Quy trình SX" ──
+  const processFile = product?.productionProcessFile;
+  const hasProcessFile = Boolean(processFile?.url && String(processFile.url).trim());
+  const hasLegacyProcessSteps = Array.isArray(product?.productionProcess) && product.productionProcess.length > 0;
+
+  const renderProductionViewer = (lang = 'vi') => {
+    const title = lang === 'en' ? 'Production Process' : lang === 'zh' ? '生产流程' : 'Quy trình sản xuất';
+    const openLabel = lang === 'en' ? 'Open / download file' : lang === 'zh' ? '打开 / 下载文件' : 'Mở / Tải file về máy';
+    if (!hasProcessFile && !hasLegacyProcessSteps) {
+      return (
+        <div className="production-process-viewer" style={{ textAlign: 'center', padding: '24px 12px', color: '#64748b' }}>
+          <Factory size={36} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+          <h3 className="production-process-title" style={{ marginBottom: 6 }}>{title}</h3>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>
+            {lang === 'en'
+              ? 'Production process document has not been uploaded for this product yet.'
+              : lang === 'zh'
+                ? '该产品尚未上传生产流程文件。'
+                : 'Chưa có hình ảnh hoặc file PDF quy trình sản xuất được tải lên cho sản phẩm này.'}
+          </p>
+        </div>
+      );
+    }
+    const isPdf = hasProcessFile && (processFile.fileType === 'pdf' || /\.pdf($|\?)/i.test(processFile.url));
+    return (
+      <div className="production-process-viewer">
+        <h3 className="production-process-title">{title}</h3>
+        {hasProcessFile && (
+          isPdf ? (
+            <>
+              <iframe className="production-process-pdf" src={processFile.url} title={title} />
+              <a className="production-process-open-btn" href={processFile.url} target="_blank" rel="noopener noreferrer">
+                {openLabel}
+              </a>
+            </>
+          ) : (
+            <a href={processFile.url} target="_blank" rel="noopener noreferrer">
+              <img className="production-process-img" src={processFile.url} alt={processFile.name || title} />
+            </a>
+          )
+        )}
+        {hasLegacyProcessSteps && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: hasProcessFile ? 12 : 0 }}>
+            {product.productionProcess.map((step, idx) => (
+              <div key={idx} style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a' }}>
+                  Bước {idx + 1}: {step.title || ''}
+                </div>
+                {step.description && <div style={{ fontSize: '0.86rem', color: '#475569', marginTop: 4 }}>{step.description}</div>}
+                {step.image && <img src={step.image} alt={step.title || `Bước ${idx + 1}`} className="production-process-img" style={{ marginTop: 8 }} />}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
   const enterprise = scanData?.enterprise;
   const label = scanData?.label;
   const serialNumber = label?.serialNumber || serial || '';
@@ -599,6 +657,10 @@ export default function ProductInfo() {
             <div className="medical-action-icon"><ShieldAlert size={26} color="#00897B" /></div>
             <span className="medical-action-label">{tc.btn8Label}</span>
           </div>
+          <div className="medical-action-card" onClick={() => setActiveModal('production')}>
+            <div className="medical-action-icon"><Factory size={26} color="#00897B" /></div>
+            <span className="medical-action-label">Quy trình SX</span>
+          </div>
         </div>
 
         {/* 5. Active Batch & Storage Details Card */}
@@ -854,6 +916,10 @@ export default function ProductInfo() {
         <div className="appliance-action-card" onClick={() => setActiveModal('reward')}>
           <div className="appliance-action-icon"><Gift size={34} color="#003366" strokeWidth={1.75} /></div>
           <span className="appliance-action-label">Tích điểm</span>
+        </div>
+        <div className="appliance-action-card" onClick={() => setActiveModal('production')}>
+          <div className="appliance-action-icon"><Factory size={34} color="#003366" strokeWidth={1.75} /></div>
+          <span className="appliance-action-label">Quy trình SX</span>
         </div>
       </div>
 
@@ -1200,6 +1266,13 @@ const renderFoodView = () => {
                 <div className="exact-tpcn-icon-circle"><Gift size={22} color="#16a34a" /></div>
                 <span>{tc.btn8Label}</span>
               </div>
+              <div
+                className="exact-tpcn-grid-item"
+                onClick={() => setActiveModal('production')}
+              >
+                <div className="exact-tpcn-icon-circle"><Factory size={22} color="#16a34a" /></div>
+                <span>Quy trình SX</span>
+              </div>
             </>
           )}
         </div>
@@ -1432,6 +1505,10 @@ const renderOcopView = () => {
           <div className="exact-ocop-grid-item" onClick={() => setActiveModal('tem')}>
             <div className="exact-ocop-icon-circle"><MapPin size={22} color="#15803d" /></div>
             <span>{tc.btn8Label}</span>
+          </div>
+          <div className="exact-ocop-grid-item" onClick={() => setActiveModal('production')}>
+            <div className="exact-ocop-icon-circle"><Factory size={22} color="#15803d" /></div>
+            <span>Quy trình SX</span>
           </div>
         </div>
       </div>
@@ -1827,6 +1904,11 @@ const renderStayCoolView = () => {
             <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('cert')}>
               <span className="vyphyto-grid-label-bold">{tc.gridBtn6Label}</span>
             </div>
+
+            {/* Nút QUY TRÌNH SX */}
+            <div className="vyphyto-grid-item vyphyto-grid-item--text" onClick={() => setActiveModal('production')}>
+              <span className="vyphyto-grid-label-bold">QUY TRÌNH SX</span>
+            </div>
           </>
         )}
       </div>
@@ -1989,6 +2071,7 @@ const renderAgricultureView = () => (
         <div className="agri-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#15803D" /><span>{tc.btn2Label}</span></div>
         <div className="agri-action-card" onClick={() => setActiveModal('mfg')}><Sprout size={26} color="#15803D" /><span>{tc.btn3Label}</span></div>
         <div className="agri-action-card" onClick={() => setActiveModal('cert')}><Award size={26} color="#15803D" /><span>{tc.btn4Label}</span></div>
+        <div className="agri-action-card" onClick={() => setActiveModal('production')}><Factory size={26} color="#15803D" /><span>Quy trình SX</span></div>
       </div>
 
       {/* Related Products - Agriculture */}
@@ -2055,6 +2138,7 @@ const renderCosmeticsView = () => (
         <div className="cosmetics-action-card" onClick={() => setActiveModal('scan')}><Scan size={26} color="#BE185D" /><span>{tc.btn2Label}</span></div>
         <div className="cosmetics-action-card" onClick={() => setActiveModal('ingredients')}><Sparkles size={26} color="#BE185D" /><span>{tc.btn3Label}</span></div>
         <div className="cosmetics-action-card" onClick={() => setActiveModal('mfg')}><Building2 size={26} color="#BE185D" /><span>{tc.btn4Label}</span></div>
+        <div className="cosmetics-action-card" onClick={() => setActiveModal('production')}><Factory size={26} color="#BE185D" /><span>Quy trình SX</span></div>
       </div>
 
       {/* Related Products - Cosmetics */}
@@ -3236,6 +3320,8 @@ const renderHoneyView = () => {
 
   const t = i18n[honeyLang] || i18n.vi;
   const currentRegionDists = distributorsByRegion[honeyRegion] || [];
+  const honeyProcessTabLabel = honeyLang === 'en' ? 'Production Process' : honeyLang === 'zh' ? '生产流程' : 'Quy trình SX';
+  const visibleHoneyTabs = [...t.tabs, { id: 'production', label: honeyProcessTabLabel, wide: true }];
 
   const handleSelectHoneyTab = (tabId) => {
     setHoneyTab(tabId);
@@ -3291,6 +3377,8 @@ const renderHoneyView = () => {
         return <MapPin size={20} strokeWidth={2.2} color={strokeColor} />;
       case 'soil':
         return <Sprout size={20} strokeWidth={2.2} color={strokeColor} />;
+      case 'production':
+        return <Factory size={20} strokeWidth={2.2} color={strokeColor} />;
       case 'bee_breed':
         return (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3515,7 +3603,7 @@ const renderHoneyView = () => {
 
         {/* 3. 6 TAB ĐIỀU HƯỚNG (2 HÀNG x 3 CỘT - BẤM VÀO TAB NÀO THÌ TAB ĐÓ ĐỔI MÀU VÀNG) */}
         <div className="honey-tabs-grid" role="tablist">
-          {t.tabs.map((tab) => {
+          {visibleHoneyTabs.map((tab) => {
             const isActive = honeyTab === tab.id;
             return (
               <button
@@ -3523,7 +3611,7 @@ const renderHoneyView = () => {
                 type="button"
                 role="tab"
                 aria-selected={isActive}
-                className={`honey-tab-btn ${isActive ? 'active' : ''}`}
+                className={`honey-tab-btn ${isActive ? 'active' : ''} ${tab.wide ? 'honey-tab-btn-wide' : ''}`}
                 onClick={() => handleSelectHoneyTab(tab.id)}
               >
                 <span className="honey-tab-icon">
@@ -3739,6 +3827,9 @@ const renderHoneyView = () => {
                   </div>
                 </div>
               )
+            ) : honeyTab === 'production' ? (
+              /* 5E. MỤC "QUY TRÌNH SX" - HIỂN THỊ ẢNH / PDF DOANH NGHIỆP ĐÃ IMPORT */
+              <div className="honey-article-view">{renderProductionViewer(honeyLang)}</div>
             ) : honeyTab === 'about_us' ? (
               /* 5D. NỘI DUNG "VỀ CHÚNG TÔI" - BÀI GIỚI THIỆU Ở MỤC DOANH NGHIỆP */
               <div className="honey-article-view honey-about-us-view">
@@ -3867,6 +3958,17 @@ return (
     {activeTheme === 'cosmetics' && renderCosmeticsView()}
     {activeTheme === 'ocop' && renderOcopView()}
 
+    {/* Mục "Quy trình SX" (ảnh / PDF) cho các giao diện ngành hàng khác - bấm để mở xem */}
+    {activeTheme !== 'honey' && hasProcessFile && (
+      <div className="product-info-body production-process-standalone">
+        <button type="button" className="production-process-open-card" onClick={() => setActiveModal('production')}>
+          <Factory size={20} />
+          <span>Quy trình SX</span>
+          <ChevronRight size={18} />
+        </button>
+      </div>
+    )}
+
     {/* Thông tin KH sở hữu cho các theme ngành hàng (default, appliance, functional_food đã tự hiển thị) */}
     {activeTheme !== 'default' && activeTheme !== 'appliance' && activeTheme !== 'honey' && !isFoodTheme && hasOwnerInfo && (
       <div className="product-info-body owner-card-standalone">
@@ -3888,6 +3990,7 @@ return (
               {activeModal === 'mfg' && 'Thông tin Nhà sản xuất'}
               {activeModal === 'distributor' && 'Thông tin Độc quyền Phân phối'}
               {activeModal === 'cert' && 'Giấy công bố sản phẩm'}
+              {activeModal === 'production' && 'Quy trình sản xuất'}
               {activeModal === 'brand' && 'Câu chuyện Thương hiệu'}
               {activeModal === 'export' && 'Thông tin Xuất khẩu'}
               {activeModal === 'reward' && 'Chương trình Tích điểm Đổi quà'}
@@ -3902,7 +4005,7 @@ return (
             </button>
           </div>
           <div className="appliance-modal-content">
-            {isFoodTheme && !isFoodActivated && activeModal !== 'product_detail' ? (
+            {isFoodTheme && !isFoodActivated && activeModal !== 'product_detail' && activeModal !== 'production' ? (
               <div style={{ textAlign: 'center', padding: '16px 8px' }}>
                 <div
                   style={{
@@ -3974,6 +4077,7 @@ return (
               </div>
             ) : (
               <>
+                {activeModal === 'production' && renderProductionViewer('vi')}
                 {activeModal === 'activate' && (() => {
                   return (
                     <div>

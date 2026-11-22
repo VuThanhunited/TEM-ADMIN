@@ -866,7 +866,22 @@ export default function Scan() {
                 <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#374151' }}>QUY TRÌNH SẢN XUẤT</span>
               </div>
               <div className="expand-section-body" style={{ padding: '16px' }}>
-                {product?.productionProcess?.length > 0 ? (
+                {product?.productionProcessFile?.url ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {product.productionProcessFile.fileType === 'pdf' || /\.pdf($|\?)/i.test(product.productionProcessFile.url) ? (
+                      <>
+                        <iframe src={product.productionProcessFile.url} title="Quy trình sản xuất" style={{ width: '100%', height: '380px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                        <a href={product.productionProcessFile.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', textAlign: 'center', padding: '8px 14px', borderRadius: '8px', background: '#16a34a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: '0.85rem' }}>
+                          Mở / Tải file PDF Quy trình SX
+                        </a>
+                      </>
+                    ) : (
+                      <a href={product.productionProcessFile.url} target="_blank" rel="noopener noreferrer">
+                        <img src={product.productionProcessFile.url} alt="Quy trình sản xuất" style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+                      </a>
+                    )}
+                  </div>
+                ) : product?.productionProcess?.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {product.productionProcess.map((step, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: '12px' }}>

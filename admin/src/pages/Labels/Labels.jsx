@@ -48,6 +48,7 @@ export default function Labels() {
   const [templates, setTemplates] = useState([]);
   const [exportingBatchId, setExportingBatchId] = useState(null);
   const [exportingDistBatchId, setExportingDistBatchId] = useState(null);
+  const [exportingStoresBatchId, setExportingStoresBatchId] = useState(null);
   const [exportingLabels, setExportingLabels] = useState(false);
   const [showBulkMapModal, setShowBulkMapModal] = useState(false);
   const [bulkForm, setBulkForm] = useState({ batchId: '', serialStart: '', serialEnd: '', productId: '', distributorIdx: '', distributorName: '', distributorAddress: '', ownerCode: '' });
@@ -585,6 +586,32 @@ export default function Labels() {
   };
 
   // Yêu cầu 3 (Chỉ áp dụng cho giao diện Thực phẩm chức năng): Xuất dữ liệu phân phối (Điểm bán / Serial / Sản phẩm)
+  // Tải về file Excel: STT | Mã Serial | Tên điểm bán (chỉ các serial của lô đã được gán điểm bán)
+  const handleExportBatchStores = async (batch) => {
+    if (!batch?._id || exportingStoresBatchId) return;
+    setExportingStoresBatchId(batch._id);
+    try {
+      const res = await api.exportBatchStores(batch._id);
+      if (!res?.fileBase64) throw new Error('Không nhận được dữ liệu file từ máy chủ');
+      const binaryStr = window.atob(res.fileBase64);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.fileName || `Serial_DiemBan_${batch.batchCode || 'lo_tem'}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message || 'Lỗi khi tải file Serial & Điểm bán');
+    } finally {
+      setExportingStoresBatchId(null);
+    }
+  };
+
   const handleExportDistributionBatch = async (batch) => {
     try {
       setExportingDistBatchId(batch?._id || 'all');
@@ -1864,7 +1891,7 @@ export default function Labels() {
                       {batch.isMigrated && <span className="badge badge-info" style={{ marginLeft: 4 }}>Di trú</span>}
                     </td>
                     <td>
-                      <div className="action-buttons">
+                      <div className="action-buttons action-buttons-grid">
                         {activeTab !== 'renew' && (
                           <>
                             <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
@@ -1950,6 +1977,20 @@ export default function Labels() {
                                 <span>Mã nội bộ</span>
                               </button>
                             )}
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => handleExportBatchStores(batch)}
+                              title="Tải về file (Tên Serial / Tên điểm bán đã được gán)"
+                              disabled={exportingStoresBatchId === batch._id}
+                              style={{ color: '#818cf8', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(99, 102, 241, 0.35)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
+                            >
+                              {exportingStoresBatchId === batch._id ? (
+                                <div className="loading-spinner" style={{ width: 13, height: 13, borderWidth: 2 }}></div>
+                              ) : (
+                                <Download size={13} />
+                              )}
+                              <span>Tải về file</span>
+                            </button>
                             <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
                               {exportingBatchId === batch._id ? (
                                 <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>

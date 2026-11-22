@@ -26,3 +26,57 @@
   .form-row { grid-template-columns: 1fr; gap: 12px; }
   .product-overlay { opacity: 1; }
 }
+
+
+/* ── Import file Quy trình sản xuất (ảnh / PDF) ───────────────────────────── */
+.process-file-input { display: none; }
+.process-file-empty {
+  padding: 12px 14px;
+  border: 1px dashed rgba(99, 102, 241, 0.4);
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.05);
+  font-size: 0.84rem;
+  color: var(--color-text-muted, #94a3b8);
+  line-height: 1.5;
+}
+.process-file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(99, 102, 241, 0.06);
+}
+.process-file-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.process-file-pdf-badge {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+}
+.process-file-info { flex: 1; min-width: 0; }
+.process-file-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.process-file-hint { font-size: 0.76rem; color: var(--color-text-muted, #94a3b8); margin-top: 2px; }
+.process-file-error { margin-top: 6px; font-size: 0.82rem; color: #f87171; }
+.process-legacy-note { margin: 12px 0 8px; font-size: 0.78rem; color: var(--color-text-muted, #94a3b8); }

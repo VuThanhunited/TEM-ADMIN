@@ -5,6 +5,20 @@ const { requireOwnership, getRelatedEnterpriseIds } = require('../middleware/rba
 
 const router = express.Router();
 
+// Chuẩn hóa file Quy trình sản xuất (ảnh / PDF đã upload qua /api/upload/document)
+// Trả về undefined nếu client không gửi (giữ nguyên dữ liệu cũ), hoặc object rỗng để xóa file
+const sanitizeProcessFile = (raw) => {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const url = String(raw.url || '').trim();
+  if (!url) return { url: '', fileType: '', name: '' };
+  if (url.startsWith('data:') || url.length > 600) return undefined;
+  return {
+    url,
+    fileType: raw.fileType === 'pdf' || /\.pdf($|\?)/i.test(url) ? 'pdf' : 'image',
+    name: String(raw.name || '').slice(0, 200)
+  };
+};
+
 // ── In-Memory Cache cho danh sách sản phẩm (TTL 60s) ─────────────────────────
 const productsCache = new Map();
 const CACHE_TTL_MS = 60 * 1000; // 60 giây
@@ -164,6 +178,7 @@ router.post('/', auth, requireOwnership, async (req, res) => {
       specifications: specifications || {},
       verificationText,
       productionProcess: productionProcess || [],
+      productionProcessFile: sanitizeProcessFile(req.body.productionProcessFile),
       certifications: certifications || {},
       producerInfo,
       distributorInfo,
@@ -233,6 +248,10 @@ router.put('/:id', auth, async (req, res) => {
     }
 
     if (bannerImage !== undefined) updateData.bannerImage = bannerImage;
+
+    // File Quy trình sản xuất (ảnh / PDF): chỉ cập nhật khi client gửi lên (gửi url rỗng để xóa file)
+    const cleanProcessFile = sanitizeProcessFile(req.body.productionProcessFile);
+    if (cleanProcessFile !== undefined) updateData.productionProcessFile = cleanProcessFile;
     if (theme !== undefined) updateData.theme = theme;
 
     // BẢO VỆ DỮ LIỆU CÔNG BỐ: Chỉ cập nhật nếu client gửi mảng có nội dung (>0 URL hợp lệ)

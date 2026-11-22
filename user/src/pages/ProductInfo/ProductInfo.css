@@ -5442,3 +5442,65 @@
 
 
 
+
+
+/* ── Mục "Quy trình SX" (ảnh / PDF do doanh nghiệp import) ─────────────────── */
+.honey-tab-btn-wide { grid-column: 1 / -1; }
+
+.production-process-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 2px 8px;
+}
+.production-process-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-align: center;
+}
+.production-process-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+}
+.production-process-pdf {
+  width: 100%;
+  height: 70vh;
+  min-height: 360px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 10px;
+  background: #ffffff;
+}
+.production-process-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 16px;
+  border-radius: 999px;
+  background: #15803d;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.production-process-standalone { padding-top: 4px; padding-bottom: 12px; }
+.production-process-open-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+}
+.production-process-open-card span { flex: 1; text-align: left; }
