@@ -1891,41 +1891,44 @@ export default function Labels() {
                       {batch.isMigrated && <span className="badge badge-info" style={{ marginLeft: 4 }}>Di trú</span>}
                     </td>
                     <td>
-                      <div className="action-buttons action-buttons-grid">
+                      <div
+                        className="action-buttons action-buttons-grid"
+                        style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}
+                      >
                         {activeTab !== 'renew' && (
-                          <>
-                            <button className="btn btn-sm btn-ghost" onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
-                              {batch.status === 'ACTIVE' ? <ToggleRight size={18} className="text-success"/> : <ToggleLeft size={18}/>}
-                            </button>
-                            <button
-                              className="btn btn-sm btn-ghost"
-                              onClick={() => handleTogglePrinted(batch)}
-                              title={batch.isPrinted ? "Đã in (Bấm để hủy đánh dấu)" : "Bấm để đánh dấu đã in ấn"}
-                              style={{ color: batch.isPrinted ? '#10b981' : '#94a3b8' }}
-                            >
-                              <Printer size={15} />
-                            </button>
-                            <button className="btn btn-sm btn-ghost" onClick={() => {
-                              const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
-                              if (targetEntId) loadProducts(targetEntId);
-                              setSelectedBatch(batch);
-                              setMapForm({
-                                productId: batch.productId?._id || batch.productId || '',
-                                theme: batch.theme || 'default',
-                                distributorIdx: '',
-                                distributorName: '',
-                                distributorAddress: '',
-                                customDomain: batch.customDomain || '',
-                                serialStart: batch.serialStart || '',
-                                serialEnd: batch.serialEnd || ''
-                              });
-                              setShowMapModal(true);
-                            }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
-                              <Edit size={14} className="text-primary"/>
-                            </button>
-                            {['functional_food', 'food', 'staycool', 'vyphyto'].includes(batch.theme) ? (
-                              <>
-                                <button className="btn btn-sm btn-ghost" onClick={() => {
+                          ['functional_food', 'food', 'staycool', 'vyphyto'].includes(batch.theme) ? (
+                            <>
+                              <div className="batch-action-row" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap' }}>
+                                <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
+                                  {batch.status === 'ACTIVE' ? <ToggleRight size={17} className="text-success"/> : <ToggleLeft size={17}/>}
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-ghost"
+                                  onClick={() => handleTogglePrinted(batch)}
+                                  title={batch.isPrinted ? "Đã in (Bấm để hủy đánh dấu)" : "Bấm để đánh dấu đã in ấn"}
+                                  style={{ padding: '4px 6px', color: batch.isPrinted ? '#10b981' : '#94a3b8' }}
+                                >
+                                  <Printer size={15} />
+                                </button>
+                                <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => {
+                                  const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
+                                  if (targetEntId) loadProducts(targetEntId);
+                                  setSelectedBatch(batch);
+                                  setMapForm({
+                                    productId: batch.productId?._id || batch.productId || '',
+                                    theme: batch.theme || 'default',
+                                    distributorIdx: '',
+                                    distributorName: '',
+                                    distributorAddress: '',
+                                    customDomain: batch.customDomain || '',
+                                    serialStart: batch.serialStart || '',
+                                    serialEnd: batch.serialEnd || ''
+                                  });
+                                  setShowMapModal(true);
+                                }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
+                                  <Edit size={14} className="text-primary"/>
+                                </button>
+                                <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => {
                                   setModalError(null);
                                   const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
                                   if (targetEntId) loadProducts(targetEntId);
@@ -1942,68 +1945,131 @@ export default function Labels() {
                                 }} title="Gắn Serial cho Điểm bán (Thực phẩm chức năng)">
                                   <MapPin size={14} className="text-primary"/>
                                 </button>
+                                <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
+                                  {exportingBatchId === batch._id ? (
+                                    <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
+                                  ) : (
+                                    <Download size={14} className="text-success" />
+                                  )}
+                                </button>
+                              </div>
+                              <div className="batch-action-row" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap' }}>
                                 <button
                                   className="btn btn-sm btn-ghost"
                                   onClick={() => handleOpenTpcnImportModal(batch)}
                                   title={`Import Điểm bán / Phân phối Excel cho lô "${batch.batchCode}"`}
-                                  style={{ color: '#60a5fa', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(59, 130, 246, 0.35)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
+                                  style={{ color: '#60a5fa', display: 'inline-flex', alignItems: 'center', gap: 3, border: '1px solid rgba(59, 130, 246, 0.35)', padding: '3px 6px', borderRadius: 6, fontSize: '0.71rem', fontWeight: 600, whiteSpace: 'nowrap' }}
                                 >
-                                  <Upload size={13} />
-                                  <span>Import Điểm bán</span>
+                                  <Upload size={12} />
+                                  <span>Import ĐB</span>
                                 </button>
                                 <button
                                   className="btn btn-sm btn-ghost"
                                   onClick={() => handleExportDistributionBatch(batch)}
                                   title="Xuất dữ liệu phân phối (Điểm bán / Serial / Sản phẩm)"
                                   disabled={exportingDistBatchId === batch._id}
-                                  style={{ color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(245, 158, 11, 0.35)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
+                                  style={{ color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: 3, border: '1px solid rgba(245, 158, 11, 0.35)', padding: '3px 6px', borderRadius: 6, fontSize: '0.71rem', fontWeight: 600, whiteSpace: 'nowrap' }}
                                 >
                                   {exportingDistBatchId === batch._id ? (
-                                    <div className="loading-spinner" style={{ width: 13, height: 13, borderWidth: 2 }}></div>
+                                    <div className="loading-spinner" style={{ width: 12, height: 12, borderWidth: 2 }}></div>
                                   ) : (
-                                    <FileSpreadsheet size={13} />
+                                    <FileSpreadsheet size={12} />
                                   )}
                                   <span>Xuất PP</span>
                                 </button>
-                              </>
-                            ) : (
-                              <button
-                                className="btn btn-sm btn-ghost"
-                                onClick={() => handleOpenInternalCodeModal(batch)}
-                                title={`Import mã nội bộ cho lô "${batch.batchCode}" (Excel 3 cột: Serial | Mã nội bộ | Sản phẩm)`}
-                                style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
-                              >
-                                <Upload size={13} />
-                                <span>Mã nội bộ</span>
-                              </button>
-                            )}
-                            <button
-                              className="btn btn-sm btn-ghost"
-                              onClick={() => handleExportBatchStores(batch)}
-                              title="Tải về file (Tên Serial / Tên điểm bán đã được gán)"
-                              disabled={exportingStoresBatchId === batch._id}
-                              style={{ color: '#818cf8', display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid rgba(99, 102, 241, 0.35)', padding: '3px 7px', borderRadius: 6, fontSize: '0.73rem', fontWeight: 600 }}
-                            >
-                              {exportingStoresBatchId === batch._id ? (
-                                <div className="loading-spinner" style={{ width: 13, height: 13, borderWidth: 2 }}></div>
-                              ) : (
-                                <Download size={13} />
-                              )}
-                              <span>Tải về file</span>
-                            </button>
-                            <button className="btn btn-sm btn-ghost" onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
-                              {exportingBatchId === batch._id ? (
-                                <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
-                              ) : (
-                                <Download size={14} className="text-success" />
-                              )}
-                            </button>
-                            {isAdmin && (
-                              <button className="btn btn-sm btn-ghost" onClick={() => handleDeleteBatch(batch)} title="Xóa lô tem">
-                                <Trash2 size={14} style={{ color: '#ef4444' }} />
-                              </button>
-                            )}
-                          </>
+                                <button
+                                  className="btn btn-sm btn-ghost"
+                                  onClick={() => handleExportBatchStores(batch)}
+                                  title="Tải về file (Tên Serial / Tên điểm bán đã được gán)"
+                                  disabled={exportingStoresBatchId === batch._id}
+                                  style={{ color: '#818cf8', display: 'inline-flex', alignItems: 'center', gap: 3, border: '1px solid rgba(99, 102, 241, 0.35)', padding: '3px 6px', borderRadius: 6, fontSize: '0.71rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                >
+                                  {exportingStoresBatchId === batch._id ? (
+                                    <div className="loading-spinner" style={{ width: 12, height: 12, borderWidth: 2 }}></div>
+                                  ) : (
+                                    <Download size={12} />
+                                  )}
+                                  <span>Tải về file</span>
+                                </button>
+                                {isAdmin && (
+                                  <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => handleDeleteBatch(batch)} title="Xóa lô tem">
+                                    <Trash2 size={14} style={{ color: '#ef4444' }} />
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="batch-action-row" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap' }}>
+                                <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => handleToggleStatus(batch)} title={batch.status === 'ACTIVE' ? 'Tắt' : 'Bật'}>
+                                  {batch.status === 'ACTIVE' ? <ToggleRight size={17} className="text-success"/> : <ToggleLeft size={17}/>}
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-ghost"
+                                  onClick={() => handleTogglePrinted(batch)}
+                                  title={batch.isPrinted ? "Đã in (Bấm để hủy đánh dấu)" : "Bấm để đánh dấu đã in ấn"}
+                                  style={{ padding: '4px 6px', color: batch.isPrinted ? '#10b981' : '#94a3b8' }}
+                                >
+                                  <Printer size={15} />
+                                </button>
+                                <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => {
+                                  const targetEntId = batch.enterpriseId?._id || batch.enterpriseId;
+                                  if (targetEntId) loadProducts(targetEntId);
+                                  setSelectedBatch(batch);
+                                  setMapForm({
+                                    productId: batch.productId?._id || batch.productId || '',
+                                    theme: batch.theme || 'default',
+                                    distributorIdx: '',
+                                    distributorName: '',
+                                    distributorAddress: '',
+                                    customDomain: batch.customDomain || '',
+                                    serialStart: batch.serialStart || '',
+                                    serialEnd: batch.serialEnd || ''
+                                  });
+                                  setShowMapModal(true);
+                                }} title="Chỉnh sửa giao diện (Theme) & Gắn sản phẩm">
+                                  <Edit size={14} className="text-primary"/>
+                                </button>
+                                <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => handleDownloadBatch(batch)} title="Tải dữ liệu tem (Excel)" disabled={exportingBatchId === batch._id}>
+                                  {exportingBatchId === batch._id ? (
+                                    <div className="loading-spinner" style={{ width: 14, height: 14, borderWidth: 2 }}></div>
+                                  ) : (
+                                    <Download size={14} className="text-success" />
+                                  )}
+                                </button>
+                              </div>
+                              <div className="batch-action-row" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap' }}>
+                                <button
+                                  className="btn btn-sm btn-ghost"
+                                  onClick={() => handleOpenInternalCodeModal(batch)}
+                                  title={`Import mã nội bộ cho lô "${batch.batchCode}" (Excel 3 cột: Serial | Mã nội bộ | Sản phẩm)`}
+                                  style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 3, border: '1px solid rgba(16, 185, 129, 0.3)', padding: '3px 6px', borderRadius: 6, fontSize: '0.71rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                >
+                                  <Upload size={12} />
+                                  <span>Mã nội bộ</span>
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-ghost"
+                                  onClick={() => handleExportBatchStores(batch)}
+                                  title="Tải về file (Tên Serial / Tên điểm bán đã được gán)"
+                                  disabled={exportingStoresBatchId === batch._id}
+                                  style={{ color: '#818cf8', display: 'inline-flex', alignItems: 'center', gap: 3, border: '1px solid rgba(99, 102, 241, 0.35)', padding: '3px 6px', borderRadius: 6, fontSize: '0.71rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                >
+                                  {exportingStoresBatchId === batch._id ? (
+                                    <div className="loading-spinner" style={{ width: 12, height: 12, borderWidth: 2 }}></div>
+                                  ) : (
+                                    <Download size={12} />
+                                  )}
+                                  <span>Tải về file</span>
+                                </button>
+                                {isAdmin && (
+                                  <button className="btn btn-sm btn-ghost" style={{ padding: '4px 6px' }} onClick={() => handleDeleteBatch(batch)} title="Xóa lô tem">
+                                    <Trash2 size={14} style={{ color: '#ef4444' }} />
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          )
                         )}
                         {activeTab === 'renew' && (
                           <button

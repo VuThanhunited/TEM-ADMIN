@@ -536,6 +536,17 @@ export default function Scan() {
         });
       }
     });
+    const congBoDocs = (product?.congBoImages || []).filter(u => u && typeof u === 'string' && u.trim());
+    congBoDocs.forEach((docUrl, idx) => {
+      list.push({
+        key: `congbo_${idx}`,
+        label: `Chứng nhận / Công bố SP ${congBoDocs.length > 1 ? `#${idx + 1}` : ''}`.trim(),
+        badgeClass: 'default',
+        badgeText: /\.pdf($|\?)/i.test(docUrl) ? 'PDF' : 'CERT',
+        certNo: product?.congBoNumber || 'Đã xác thực',
+        image: docUrl
+      });
+    });
     return list;
   };
   const certList = getCertList();
@@ -1643,9 +1654,18 @@ export default function Scan() {
       {/* Certificate details modal popup */}
       {activeCertDoc && (
         <div className="modal-overlay" onClick={() => setActiveCertDoc(null)} style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.85)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '92%', maxWidth: '720px', maxHeight: '90%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
             <button className="btn-icon" onClick={() => setActiveCertDoc(null)} style={{ position: 'absolute', top: '-40px', right: 0, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '6px', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
-            <img src={activeCertDoc} alt="Giấy chứng nhận" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', border: '3px solid white' }} />
+            {/\.pdf($|\?)/i.test(activeCertDoc) || String(activeCertDoc).startsWith('data:application/pdf') ? (
+              <>
+                <iframe src={activeCertDoc} title="Tài liệu chứng nhận PDF" style={{ width: '100%', height: '75vh', borderRadius: '8px', border: '2px solid white', background: '#fff' }} />
+                <a href={activeCertDoc} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', borderRadius: 8, background: '#16a34a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: '0.88rem' }}>
+                  📄 Mở / Tải file PDF Chứng nhận
+                </a>
+              </>
+            ) : (
+              <img src={activeCertDoc} alt="Giấy chứng nhận" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', border: '3px solid white' }} />
+            )}
           </div>
         </div>
       )}

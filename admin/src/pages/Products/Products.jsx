@@ -100,14 +100,15 @@ const compressImageIfNeeded = (file) => {
   });
 };
 
-// ── ImageInput: slot ảnh hỗ trợ cả URL lẫn upload từ thiết bị ──────────────
-function ImageInput({ value, onChange, placeholder, index }) {
+// ── ImageInput: slot ảnh / PDF hỗ trợ cả URL lẫn upload từ thiết bị ──────────
+function ImageInput({ value, onChange, placeholder, index, allowPdf = false }) {
   const [mode, setMode] = useState('upload');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileRef = useRef();
 
   const hasValue = Boolean(value && typeof value === 'string' && value.trim());
+  const isPdfValue = hasValue && (/\.pdf($|\?)/i.test(value) || value.startsWith('data:application/pdf'));
 
   const handleFileChange = async (e) => {
     const rawFile = e.target.files?.[0];
@@ -116,13 +117,35 @@ function ImageInput({ value, onChange, placeholder, index }) {
     setUploading(true);
 
     try {
+      const isPdfFile = rawFile.type === 'application/pdf' || /\.pdf$/i.test(rawFile.name || '');
+
+      if (isPdfFile) {
+        if (!allowPdf) {
+          setUploadError('Mục này chỉ hỗ trợ tải file ảnh (JPG, PNG, WebP).');
+          return;
+        }
+        if (rawFile.size > 15 * 1024 * 1024) {
+          setUploadError('File PDF vượt quá 15MB. Vui lòng chọn file nhỏ hơn.');
+          return;
+        }
+        const result = await api.uploadDocument(rawFile);
+        if (result && result.url) {
+          onChange(result.url);
+        } else {
+          const dataUrl = await readFileAsDataUrl(rawFile);
+          onChange(dataUrl);
+        }
+        setMode('upload');
+        return;
+      }
+
       // Bước 1: Nén ảnh nếu ảnh nặng
       const file = await compressImageIfNeeded(rawFile);
 
       // Bước 2: Thử tải lên qua API backend
       let uploadedUrl = null;
       try {
-        const result = await api.uploadImage(file);
+        const result = allowPdf ? await api.uploadDocument(file) : await api.uploadImage(file);
         if (result && result.url) {
           uploadedUrl = result.url;
         }
@@ -145,7 +168,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
         onChange(dataUrl);
         setMode('upload');
       } catch (fallbackErr) {
-        setUploadError(err.message || 'Lỗi tải ảnh');
+        setUploadError(err.message || 'Lỗi tải file');
       }
     } finally {
       setUploading(false);
@@ -192,7 +215,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
         <input
           type="file"
           ref={fileRef}
-          accept="image/*"
+          accept={allowPdf ? 'image/*,application/pdf,.pdf' : 'image/*'}
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
@@ -208,12 +231,24 @@ function ImageInput({ value, onChange, placeholder, index }) {
             onChange={e => onChange(e.target.value)}
           />
           {hasValue && (
-            <img
-              src={value}
-              alt={'Ảnh ' + (index + 1)}
-              style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: '#fff' }}
-              onError={e => { e.target.style.display = 'none'; }}
-            />
+            isPdfValue ? (
+              <a
+                href={value}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ width: 40, height: 40, borderRadius: 6, background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', border: '1px solid #fecaca' }}
+                title="Mở xem PDF"
+              >
+                PDF
+              </a>
+            ) : (
+              <img
+                src={value}
+                alt={'Ảnh ' + (index + 1)}
+                style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: '#fff' }}
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+            )
           )}
         </div>
       ) : (
@@ -229,19 +264,35 @@ function ImageInput({ value, onChange, placeholder, index }) {
               background: 'rgba(99,102,241,0.06)',
               border: '1px solid rgba(99,102,241,0.2)'
             }}>
-              <img
-                src={value}
-                alt={'Ảnh ' + (index + 1)}
-                style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 6, background: '#fff', border: '1px solid rgba(0,0,0,0.1)' }}
-                onError={e => { e.target.style.display = 'none'; }}
-              />
+              {isPdfValue ? (
+                <div style={{ width: 56, height: 56, borderRadius: 6, background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fecaca', flexShrink: 0 }}>
+                  PDF
+                </div>
+              ) : (
+                <img
+                  src={value}
+                  alt={'Ảnh ' + (index + 1)}
+                  style={{ width: 56, height: 56, objectFit: 'contain', borderRadius: 6, background: '#fff', border: '1px solid rgba(0,0,0,0.1)' }}
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
+              )}
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main, #e2e8f0)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <CheckCircle2 size={13} color="#22c55e" /> Ảnh đã tải lên
+                  <CheckCircle2 size={13} color="#22c55e" /> {isPdfValue ? 'File PDF chứng nhận đã tải lên' : 'Ảnh đã tải lên'}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {value.startsWith('data:') ? 'Ảnh từ thiết bị' : value}
+                  {value.startsWith('data:') ? 'Tệp từ thiết bị' : value}
                 </div>
+                {isPdfValue && (
+                  <a
+                    href={value}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.74rem', color: 'var(--primary-color)', fontWeight: 600, textDecoration: 'underline', display: 'inline-block', marginTop: 2 }}
+                  >
+                    Xem file PDF ↗
+                  </a>
+                )}
               </div>
               <button
                 type="button"
@@ -253,12 +304,12 @@ function ImageInput({ value, onChange, placeholder, index }) {
                   color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: 4
                 }}
               >
-                <Upload size={12} /> {uploading ? 'Đang tải...' : 'Đổi ảnh'}
+                <Upload size={12} /> {uploading ? 'Đang tải...' : (allowPdf ? 'Đổi file' : 'Đổi ảnh')}
               </button>
               <button
                 type="button"
                 onClick={handleClear}
-                title="Xóa ảnh này"
+                title="Xóa file này"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 4 }}
               >
                 <X size={16} />
@@ -279,7 +330,7 @@ function ImageInput({ value, onChange, placeholder, index }) {
               {uploading ? (
                 <><div className="loading-spinner" style={{ width: 14, height: 14 }} /> Đang tải...</>
               ) : (
-                <><Upload size={14} /> Chọn ảnh từ thiết bị (JPG, PNG, WebP tối đa 5MB)</>
+                <><Upload size={14} /> {allowPdf ? 'Chọn ảnh hoặc file PDF từ thiết bị (JPG, PNG, WebP, PDF tối đa 15MB)' : 'Chọn ảnh từ thiết bị (JPG, PNG, WebP tối đa 5MB)'}</>
               )}
             </button>
           )}
@@ -1147,16 +1198,16 @@ export default function Products() {
                   </div>
                 </div>
 
-                {/* Giấy công bố sản phẩm */}
+                {/* Giấy công bố / Chứng nhận sản phẩm */}
                 <div className="distributors-section" style={{ marginBottom: 20 }}>
                   <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '8px', color: 'var(--primary-color)' }}>
-                    📄 Giấy tiếp nhận đăng ký bản công bố sản phẩm
+                    📄 Giấy tiếp nhận đăng ký bản công bố / Chứng nhận sản phẩm (Hỗ trợ Ảnh & PDF)
                   </label>
 
                   {/* Số công bố */}
                   <div className="input-group" style={{ marginBottom: 14 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      🏷️ Số công bố (Mã số tiếp nhận)
+                      🏷️ Số công bố / Số chứng nhận (Mã số tiếp nhận)
                     </label>
                     <input
                       className="input"
@@ -1165,23 +1216,24 @@ export default function Products() {
                       onChange={e => setForm({ ...form, congBoNumber: e.target.value })}
                     />
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                      Mã số trên giấy tiếp nhận đăng ký bản công bố sản phẩm — sẽ hiển thị trên trang quét QR.
+                      Mã số trên giấy tiếp nhận đăng ký bản công bố / chứng nhận sản phẩm — sẽ hiển thị trên trang quét QR.
                     </span>
                   </div>
 
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-                    Tải lên ảnh chụp / scan giấy công bố sản phẩm (tối đa 3 ảnh)
+                    Tải lên ảnh chụp hoặc file PDF giấy công bố / chứng nhận sản phẩm (tối đa 3 file ảnh hoặc PDF)
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     {[0, 1, 2].map(i => (
                       <div key={i}>
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                          Ảnh giấy công bố {i + 1}{i === 0 ? ' (Trang chính)' : ' (Tùy chọn)'}
+                          File ảnh / PDF chứng nhận & công bố {i + 1}{i === 0 ? ' (Tài liệu chính)' : ' (Tùy chọn)'}
                         </div>
                         <ImageInput
                           index={i}
+                          allowPdf={true}
                           value={form.congBoImages?.[i] || ''}
-                          placeholder={'URL ảnh giấy công bố ' + (i + 1) + '...'}
+                          placeholder={'URL ảnh hoặc file PDF chứng nhận / công bố ' + (i + 1) + '...'}
                           onChange={url => {
                             const imgs = [...(form.congBoImages || ['', '', ''])];
                             imgs[i] = url;

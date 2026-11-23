@@ -313,6 +313,95 @@ export default function ProductInfo() {
       </div>
     );
   };
+
+  const isPdfDocUrl = (url) => Boolean(url && (/\.pdf($|\?)/i.test(String(url)) || String(url).startsWith('data:application/pdf')));
+
+  const renderCongBoDocItem = (url, idx, options = {}) => {
+    const {
+      borderColor = '#d1fae5',
+      accentBg = '#f0fdf4',
+      accentColor = '#059669',
+      imgHeight = 160,
+      imgMaxHeight = null,
+      showFooterBar = false
+    } = options;
+
+    if (isPdfDocUrl(url)) {
+      return (
+        <div
+          key={idx}
+          style={{
+            gridColumn: '1 / -1',
+            borderRadius: 10,
+            overflow: 'hidden',
+            border: `1.5px solid ${borderColor}`,
+            background: '#ffffff',
+            padding: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8
+          }}
+        >
+          <iframe
+            className="production-process-pdf"
+            src={url}
+            title={`Tài liệu chứng nhận / công bố ${idx + 1}`}
+            style={{ width: '100%', height: 420, border: '1px solid #e2e8f0', borderRadius: 8 }}
+          />
+          <a
+            className="production-process-open-btn"
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ background: accentColor }}
+          >
+            📄 Mở / Tải file PDF Chứng nhận {idx + 1}
+          </a>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={idx}
+        onClick={() => setPreviewImage(url)}
+        style={{
+          cursor: 'pointer',
+          borderRadius: 10,
+          overflow: 'hidden',
+          border: `1.5px solid ${borderColor}`,
+          background: '#f8fafc',
+          position: 'relative'
+        }}
+      >
+        <img
+          src={url}
+          alt={`Giấy công bố ${idx + 1}`}
+          style={imgMaxHeight
+            ? { width: '100%', objectFit: 'contain', maxHeight: imgMaxHeight, display: 'block', background: '#fff' }
+            : { width: '100%', height: imgHeight, objectFit: 'contain', background: '#fff', display: 'block' }}
+        />
+        {showFooterBar && (
+          <div style={{
+            padding: '5px 8px',
+            background: accentBg,
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: accentColor,
+            borderTop: `1px solid ${borderColor}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5
+          }}>
+            <Eye size={13} />
+            <span>Nhấn để xem phóng to</span>
+          </div>
+        )}
+      </div>
+    );
+  };
   const enterprise = scanData?.enterprise;
   const label = scanData?.label;
   const serialNumber = label?.serialNumber || serial || '';
@@ -1303,15 +1392,7 @@ const renderFoodView = () => {
           )}
           {congBoImagesList.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: congBoImagesList.length === 1 ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
-              {congBoImagesList.map((img, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setPreviewImage(img)}
-                  style={{ cursor: 'pointer', borderRadius: 10, overflow: 'hidden', border: '1px solid #bbf7d0', background: '#f8fafc' }}
-                >
-                  <img src={img} alt={`Giấy công bố ${idx + 1}`} style={{ width: '100%', height: 160, objectFit: 'contain', background: '#fff', display: 'block' }} />
-                </div>
-              ))}
+              {congBoImagesList.map((img, idx) => renderCongBoDocItem(img, idx, { borderColor: '#bbf7d0', accentColor: '#15803d', showFooterBar: true }))}
             </div>
           )}
         </div>
@@ -1571,55 +1652,20 @@ const renderOcopView = () => {
             </div>
           )}
 
-          {/* Danh sách ảnh công bố */}
+          {/* Danh sách ảnh / PDF công bố */}
           {product?.congBoImages && product.congBoImages.filter(img => img && img.trim()).length > 0 && (
             <div>
               <p style={{ fontSize: '0.82rem', color: '#475569', marginBottom: 10, lineHeight: 1.4 }}>
-                Văn bản công bố sản phẩm hợp quy (chạm vào ảnh để xem phóng to):
+                Văn bản công bố / chứng nhận sản phẩm hợp quy:
               </p>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: product.congBoImages.filter(img => img && img.trim()).length === 1 ? '1fr' : 'repeat(2, 1fr)',
                 gap: 10
               }}>
-                {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setPreviewImage(img)}
-                    style={{
-                      cursor: 'pointer',
-                      borderRadius: 10,
-                      overflow: 'hidden',
-                      border: '1.5px solid #bbf7d0',
-                      background: '#f8fafc',
-                      position: 'relative'
-                    }}
-                  >
-                    <img
-                      src={img}
-                      alt={`Giấy công bố ${idx + 1}`}
-                      style={{ width: '100%', height: 160, objectFit: 'contain', background: '#fff', display: 'block' }}
-                    />
-                    <div style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      padding: '5px 8px',
-                      background: 'rgba(21, 128, 61, 0.88)',
-                      color: '#fff',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4
-                    }}>
-                      <Eye size={13} />
-                      <span>Xem phóng to</span>
-                    </div>
-                  </div>
-                ))}
+                {product.congBoImages.filter(img => img && img.trim()).map((img, idx) =>
+                  renderCongBoDocItem(img, idx, { borderColor: '#bbf7d0', accentColor: '#15803d', showFooterBar: true })
+                )}
               </div>
             </div>
           )}
@@ -1938,15 +1984,7 @@ const renderStayCoolView = () => {
           )}
           {congBoImagesList.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: congBoImagesList.length === 1 ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
-              {congBoImagesList.map((img, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setPreviewImage(img)}
-                  style={{ cursor: 'pointer', borderRadius: 10, overflow: 'hidden', border: '1px solid #fed7aa', background: '#f8fafc' }}
-                >
-                  <img src={img} alt={`Giấy công bố ${idx + 1}`} style={{ width: '100%', height: 160, objectFit: 'contain', background: '#fff', display: 'block' }} />
-                </div>
-              ))}
+              {congBoImagesList.map((img, idx) => renderCongBoDocItem(img, idx, { borderColor: '#fed7aa', accentBg: '#fff7ed', accentColor: '#ea580c', showFooterBar: true }))}
             </div>
           )}
         </div>
@@ -2527,50 +2565,16 @@ const renderDefaultView = () => {
           </div>
         )}
 
-        {/* Ảnh giấy công bố */}
+        {/* Ảnh / PDF giấy công bố */}
         {congBoImagesList.length > 0 ? (
           <div>
             <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: 10 }}>
-              {tc.certGuideText || 'Giấy tiếp nhận bản công bố đã được thẩm định bởi cơ quan có thẩm quyền (nhấn để phóng to):'}
+              {tc.certGuideText || 'Giấy tiếp nhận bản công bố / chứng nhận đã được thẩm định bởi cơ quan có thẩm quyền:'}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: congBoImagesList.length === 1 ? '1fr' : 'repeat(2, 1fr)', gap: 10 }}>
-              {congBoImagesList.map((img, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setPreviewImage(img)}
-                  style={{
-                    cursor: 'pointer',
-                    borderRadius: 10,
-                    overflow: 'hidden',
-                    border: '1.5px solid #e2e8f0',
-                    background: '#f8fafc',
-                    position: 'relative'
-                  }}
-                >
-                  <img
-                    src={img}
-                    alt={`Giấy công bố ${idx + 1}`}
-                    style={{ width: '100%', height: 160, objectFit: 'contain', background: '#fff', display: 'block' }}
-                  />
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: '4px 6px',
-                    background: 'rgba(0,0,0,0.6)',
-                    color: '#fff',
-                    fontSize: '0.72rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4
-                  }}>
-                    <Eye size={12} />
-                    <span>Xem phóng to</span>
-                  </div>
-                </div>
-              ))}
+              {congBoImagesList.map((img, idx) =>
+                renderCongBoDocItem(img, idx, { borderColor: '#e2e8f0', accentBg: '#fffbeb', accentColor: '#b45309', showFooterBar: true })
+              )}
             </div>
           </div>
         ) : !product?.congBoNumber && certList.length === 0 ? (
@@ -3321,7 +3325,12 @@ const renderHoneyView = () => {
   const t = i18n[honeyLang] || i18n.vi;
   const currentRegionDists = distributorsByRegion[honeyRegion] || [];
   const honeyProcessTabLabel = honeyLang === 'en' ? 'Production Process' : honeyLang === 'zh' ? '生产流程' : 'Quy trình SX';
-  const visibleHoneyTabs = [...t.tabs, { id: 'production', label: honeyProcessTabLabel, wide: true }];
+  const honeyCertTabLabel = honeyLang === 'en' ? 'Certificates' : honeyLang === 'zh' ? '质量认证' : 'Chứng nhận';
+  const honeyCongBoDocs = (product?.congBoImages || []).filter(u => u && String(u).trim());
+  const hasHoneyCertDocs = Boolean(product?.congBoNumber || honeyCongBoDocs.length > 0);
+  const visibleHoneyTabs = hasHoneyCertDocs
+    ? [...t.tabs, { id: 'production', label: honeyProcessTabLabel }, { id: 'cert', label: honeyCertTabLabel }]
+    : [...t.tabs, { id: 'production', label: honeyProcessTabLabel, wide: true }];
 
   const handleSelectHoneyTab = (tabId) => {
     setHoneyTab(tabId);
@@ -3379,6 +3388,8 @@ const renderHoneyView = () => {
         return <Sprout size={20} strokeWidth={2.2} color={strokeColor} />;
       case 'production':
         return <Factory size={20} strokeWidth={2.2} color={strokeColor} />;
+      case 'cert':
+        return <FileCheck size={20} strokeWidth={2.2} color={strokeColor} />;
       case 'bee_breed':
         return (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3830,6 +3841,23 @@ const renderHoneyView = () => {
             ) : honeyTab === 'production' ? (
               /* 5E. MỤC "QUY TRÌNH SX" - HIỂN THỊ ẢNH / PDF DOANH NGHIỆP ĐÃ IMPORT */
               <div className="honey-article-view">{renderProductionViewer(honeyLang)}</div>
+            ) : honeyTab === 'cert' ? (
+              /* 5F. MỤC "CHỨNG NHẬN" - HIỂN THỊ ẢNH / PDF CHỨNG NHẬN & CÔNG BỐ SẢN PHẨM */
+              <div className="honey-article-view">
+                <div className="production-process-viewer">
+                  <h3 className="production-process-title">{honeyCertTabLabel}</h3>
+                  {product?.congBoNumber && (
+                    <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, background: '#f0fdf4', border: '1.5px solid #86efac', fontSize: '0.9rem' }}>
+                      Số công bố / chứng nhận: <strong style={{ color: '#14532d' }}>{product.congBoNumber}</strong>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {honeyCongBoDocs.map((docUrl, idx) =>
+                      renderCongBoDocItem(docUrl, idx, { borderColor: '#86efac', accentBg: '#f0fdf4', accentColor: '#15803d', imgMaxHeight: 400, showFooterBar: true })
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : honeyTab === 'about_us' ? (
               /* 5D. NỘI DUNG "VỀ CHÚNG TÔI" - BÀI GIỚI THIỆU Ở MỤC DOANH NGHIỆP */
               <div className="honey-article-view honey-about-us-view">
@@ -4543,45 +4571,12 @@ return (
                     {product?.congBoImages?.filter(img => img && img.trim()).length > 0 ? (
                       <div>
                         <p style={{ fontSize: '0.88rem', color: '#4b5563', marginBottom: 14, lineHeight: 1.5 }}>
-                          Giấy tiếp nhận đăng ký bản công bố sản phẩm đã được xác nhận bởi cơ quan có thẩm quyền.
+                          Giấy tiếp nhận đăng ký bản công bố / chứng nhận sản phẩm đã được xác nhận bởi cơ quan có thẩm quyền.
                         </p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() => setPreviewImage(img)}
-                              style={{
-                                cursor: 'pointer',
-                                borderRadius: 10,
-                                overflow: 'hidden',
-                                border: '1.5px solid #d1fae5',
-                                background: '#f9fafb',
-                                position: 'relative'
-                              }}
-                            >
-                              <img
-                                src={img}
-                                alt={'Giấy công bố ' + (idx + 1)}
-                                style={{ width: '100%', objectFit: 'contain', maxHeight: 340, display: 'block', background: '#fff' }}
-                              />
-                              <div style={{
-                                padding: '6px 10px',
-                                background: '#f0fdf4',
-                                textAlign: 'center',
-                                fontSize: '0.78rem',
-                                fontWeight: 600,
-                                color: '#059669',
-                                borderTop: '1px solid #d1fae5',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 5
-                              }}>
-                                <Eye size={13} />
-                                <span>Nhấn để xem phóng to</span>
-                              </div>
-                            </div>
-                          ))}
+                          {product.congBoImages.filter(img => img && img.trim()).map((img, idx) =>
+                            renderCongBoDocItem(img, idx, { borderColor: '#d1fae5', accentBg: '#f0fdf4', accentColor: '#059669', imgMaxHeight: 340, showFooterBar: true })
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -4708,18 +4703,9 @@ return (
                           )}
                           {product?.congBoImages?.filter(img => img && img.trim()).length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                              {product.congBoImages.filter(img => img && img.trim()).map((img, idx) => (
-                                <div
-                                  key={idx}
-                                  onClick={() => setPreviewImage(img)}
-                                  style={{ cursor: 'pointer', borderRadius: 8, overflow: 'hidden', border: '1px solid #d1fae5' }}
-                                >
-                                  <img src={img} alt={'Giấy công bố ' + (idx + 1)} style={{ width: '100%', objectFit: 'contain', maxHeight: 300, display: 'block', background: '#fff' }} />
-                                  <div style={{ padding: '4px', textAlign: 'center', background: '#f0fdf4', fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
-                                    Nhấn để xem phóng to
-                                  </div>
-                                </div>
-                              ))}
+                              {product.congBoImages.filter(img => img && img.trim()).map((img, idx) =>
+                                renderCongBoDocItem(img, idx, { borderColor: '#d1fae5', accentBg: '#f0fdf4', accentColor: '#059669', imgMaxHeight: 300, showFooterBar: true })
+                              )}
                             </div>
                           )}
                         </div>

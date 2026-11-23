@@ -182,12 +182,30 @@
   color: var(--color-danger);
 }
 
-/* Bảng Quản lý lô tem: chia các icon thao tác thành lưới 4 cột (2 hàng) */
-.action-buttons-grid {
-  display: grid;
-  grid-template-columns: repeat(4, max-content);
-  gap: 6px;
-  align-items: center;
-  justify-content: start;
+/* Bảng Quản lý lô tem: thu gọn padding cột & chia các nút Hành động thành 2 hàng gọn gàng */
+.labels-page .table th,
+.labels-page .table td {
+  padding: 10px 8px;
+  vertical-align: middle;
 }
+
+.labels-page .serial-range,
+.labels-page .badge {
+  white-space: nowrap;
+}
+
+.labels-page .action-buttons.action-buttons-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  align-items: flex-start !important;
+}
+
+.labels-page .batch-action-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
 .action-buttons-grid .btn { white-space: nowrap; }
