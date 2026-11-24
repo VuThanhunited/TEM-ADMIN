@@ -536,8 +536,27 @@ router.get('/scan/:serial', async (req, res) => {
       return res.status(400).json({ error: 'Lô tem này đã hết hạn sử dụng!' });
     }
 
-    // Check enterprise status & subscription
-    const enterprise = label.enterpriseId;
+    // Check enterprise status & subscription (ưu tiên đơn vị sở hữu hiện tại của sản phẩm)
+    let enterprise = label.enterpriseId;
+    const productOwnerEntId = label.productId?.enterpriseId?._id || label.productId?.enterpriseId;
+    const currentLabelEntId = enterprise?._id || enterprise;
+    if (productOwnerEntId && String(productOwnerEntId) !== String(currentLabelEntId)) {
+      const productOwnerEnt = await Enterprise.findById(productOwnerEntId);
+      if (productOwnerEnt && productOwnerEnt.isActive) {
+        enterprise = productOwnerEnt;
+        label.enterpriseId = productOwnerEnt;
+        setImmediate(async () => {
+          try {
+            await Promise.all([
+              Label.updateOne({ _id: label._id }, { $set: { enterpriseId: productOwnerEnt._id } }),
+              LabelBatch.updateOne({ _id: batch._id }, { $set: { enterpriseId: productOwnerEnt._id } })
+            ]);
+          } catch (syncErr) {
+            console.warn('Sync enterpriseId to label/batch error:', syncErr.message);
+          }
+        });
+      }
+    }
     if (!enterprise || !enterprise.isActive) {
       return res.status(400).json({ error: 'Doanh nghiệp sở hữu tem hiện đang tạm khóa hoặc không tồn tại!' });
     }

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import NPPLogin from './NPPLogin';
 import DistributorEntry from './DistributorEntry';
+import PdfAllPagesViewer from '../../components/PdfAllPagesViewer';
 import './Scan.css';
 
 const getEffectiveTheme = (themeName, category) => {
@@ -880,12 +881,13 @@ export default function Scan() {
                 {product?.productionProcessFile?.url ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {product.productionProcessFile.fileType === 'pdf' || /\.pdf($|\?)/i.test(product.productionProcessFile.url) ? (
-                      <>
-                        <iframe src={product.productionProcessFile.url} title="Quy trình sản xuất" style={{ width: '100%', height: '380px', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                        <a href={product.productionProcessFile.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', textAlign: 'center', padding: '8px 14px', borderRadius: '8px', background: '#16a34a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: '0.85rem' }}>
-                          Mở / Tải file PDF Quy trình SX
-                        </a>
-                      </>
+                      <PdfAllPagesViewer
+                        url={product.productionProcessFile.url}
+                        title="Quy trình sản xuất"
+                        accentColor="#16a34a"
+                        borderColor="#e5e7eb"
+                        onPageClick={setActiveCertDoc}
+                      />
                     ) : (
                       <a href={product.productionProcessFile.url} target="_blank" rel="noopener noreferrer">
                         <img src={product.productionProcessFile.url} alt="Quy trình sản xuất" style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
@@ -1653,16 +1655,16 @@ export default function Scan() {
 
       {/* Certificate details modal popup */}
       {activeCertDoc && (
-        <div className="modal-overlay" onClick={() => setActiveCertDoc(null)} style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.85)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '92%', maxWidth: '720px', maxHeight: '90%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10 }}>
-            <button className="btn-icon" onClick={() => setActiveCertDoc(null)} style={{ position: 'absolute', top: '-40px', right: 0, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: '50%', padding: '6px', border: 'none', cursor: 'pointer' }}><X size={24} /></button>
+        <div className="modal-overlay" onClick={() => setActiveCertDoc(null)} style={{ zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.85)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, padding: '16px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '92%', maxWidth: '760px', maxHeight: '88vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center', gap: 10, background: /\.pdf($|\?)/i.test(activeCertDoc) || String(activeCertDoc).startsWith('data:application/pdf') ? '#fff' : 'transparent', borderRadius: 12, padding: /\.pdf($|\?)/i.test(activeCertDoc) || String(activeCertDoc).startsWith('data:application/pdf') ? 14 : 0 }}>
+            <button className="btn-icon" onClick={() => setActiveCertDoc(null)} style={{ position: 'sticky', top: 0, alignSelf: 'flex-end', color: 'white', backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: '50%', padding: '6px', border: 'none', cursor: 'pointer', zIndex: 2 }}><X size={22} /></button>
             {/\.pdf($|\?)/i.test(activeCertDoc) || String(activeCertDoc).startsWith('data:application/pdf') ? (
-              <>
-                <iframe src={activeCertDoc} title="Tài liệu chứng nhận PDF" style={{ width: '100%', height: '75vh', borderRadius: '8px', border: '2px solid white', background: '#fff' }} />
-                <a href={activeCertDoc} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', borderRadius: 8, background: '#16a34a', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: '0.88rem' }}>
-                  📄 Mở / Tải file PDF Chứng nhận
-                </a>
-              </>
+              <PdfAllPagesViewer
+                url={activeCertDoc}
+                title="Tài liệu Chứng nhận / Công bố"
+                accentColor="#16a34a"
+                borderColor="#d1fae5"
+              />
             ) : (
               <img src={activeCertDoc} alt="Giấy chứng nhận" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', border: '3px solid white' }} />
             )}

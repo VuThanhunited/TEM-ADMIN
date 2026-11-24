@@ -53,7 +53,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
 
     let findQuery = Product.find(query)
-      .populate('enterpriseId', 'name')
+      .populate('enterpriseId', 'name address phone email taxCode logo hasGeographicalIndication')
       .sort({ createdAt: -1 })
       .skip((parsedPage - 1) * parsedLimit)
       .limit(parsedLimit)
@@ -93,7 +93,7 @@ router.get('/', auth, requireOwnership, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-    .populate('enterpriseId', 'name')
+    .populate('enterpriseId', 'name address phone email taxCode logo hasGeographicalIndication')
     .populate('manufacturerId', 'name address phone email logo hasGeographicalIndication');
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
     res.json(product);
@@ -214,19 +214,21 @@ router.put('/:id', auth, async (req, res) => {
       bannerImage, theme, hasGeographicalIndication
     } = req.body;
 
+    const existingProd = await Product.findById(req.params.id).select('enterpriseId manufacturerId').lean();
+    if (!existingProd) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+
     if (req.user.role !== 'ADMIN') {
-      const existingProd = await Product.findById(req.params.id).select('enterpriseId').lean();
-      if (!existingProd) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
       const relatedIds = await getRelatedEnterpriseIds(req.user.enterpriseId);
       if (!relatedIds.some(id => String(id) === String(existingProd.enterpriseId))) {
         return res.status(403).json({ error: 'Không có quyền chỉnh sửa sản phẩm của doanh nghiệp khác' });
       }
     }
 
+    let resolvedManufacturerId = manufacturerId || null;
     let manufacturerModel = 'Enterprise';
-    if (manufacturerId) {
+    if (resolvedManufacturerId) {
       const User = require('../models/User');
-      const isUser = await User.exists({ _id: manufacturerId });
+      const isUser = await User.exists({ _id: resolvedManufacturerId });
       if (isUser) manufacturerModel = 'User';
     }
 
@@ -234,10 +236,24 @@ router.put('/:id', auth, async (req, res) => {
     const updateData = {
       name, description, category, sku, barcode, distributors, specifications, isActive,
       verificationText, productionProcess, certifications, producerInfo, distributorInfo,
-      chatbotQA, manufacturerId: manufacturerId || null, manufacturerModel, manufacturerInfo,
+      chatbotQA, manufacturerId: resolvedManufacturerId, manufacturerModel, manufacturerInfo,
       distributionBannerText: distributionBannerText !== undefined ? distributionBannerText : undefined,
       congBoNumber: congBoNumber !== undefined ? congBoNumber : undefined
     };
+
+    // Cho phép ADMIN thay đổi Doanh nghiệp sở hữu sản phẩm & đồng bộ thông tin sang lô tem/tem nhãn liên quan
+    let enterpriseChangedTo = null;
+    if (req.user.role === 'ADMIN' && req.body.enterpriseId && String(req.body.enterpriseId).trim()) {
+      const newEntId = String(req.body.enterpriseId).trim();
+      updateData.enterpriseId = newEntId;
+      if (String(existingProd.enterpriseId) !== newEntId) {
+        enterpriseChangedTo = newEntId;
+        if (!resolvedManufacturerId || String(resolvedManufacturerId) === String(existingProd.enterpriseId)) {
+          updateData.manufacturerId = newEntId;
+          updateData.manufacturerModel = 'Enterprise';
+        }
+      }
+    }
 
     if (hasGeographicalIndication !== undefined) {
       updateData.hasGeographicalIndication = Boolean(hasGeographicalIndication);
@@ -284,9 +300,21 @@ router.put('/:id', auth, async (req, res) => {
       req.params.id,
       updateData,
       { new: true }
-    ).populate('enterpriseId', 'name').populate('manufacturerId');
+    )
+      .populate('enterpriseId', 'name address phone email taxCode logo hasGeographicalIndication')
+      .populate('manufacturerId');
 
     if (!product) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+
+    if (enterpriseChangedTo) {
+      const LabelBatch = require('../models/LabelBatch');
+      const Label = require('../models/Label');
+      await Promise.all([
+        LabelBatch.updateMany({ productId: req.params.id }, { $set: { enterpriseId: enterpriseChangedTo } }),
+        Label.updateMany({ productId: req.params.id }, { $set: { enterpriseId: enterpriseChangedTo } })
+      ]);
+    }
+
     invalidateProductsCache();
     const result = await normalizeManufacturer(product);
     res.json(result);

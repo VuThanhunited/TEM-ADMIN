@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import {
   Package, Plus, Search, Edit, Trash2, X, Eye, XCircle, Upload, Link, Building2, ExternalLink, CheckCircle2,
-  Image as ImageIcon
+  Image as ImageIcon, Download
 } from 'lucide-react';
 import './Products.css';
 import Pagination from '../../components/Pagination';
@@ -231,24 +231,41 @@ function ImageInput({ value, onChange, placeholder, index, allowPdf = false }) {
             onChange={e => onChange(e.target.value)}
           />
           {hasValue && (
-            isPdfValue ? (
+            <>
+              {isPdfValue ? (
+                <a
+                  href={value}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ width: 40, height: 40, borderRadius: 6, background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', border: '1px solid #fecaca', flexShrink: 0 }}
+                  title="Mở xem PDF"
+                >
+                  PDF
+                </a>
+              ) : (
+                <img
+                  src={value}
+                  alt={'Ảnh ' + (index + 1)}
+                  style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: '#fff', flexShrink: 0 }}
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
+              )}
               <a
                 href={value}
+                download
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ width: 40, height: 40, borderRadius: 6, background: '#fee2e2', color: '#dc2626', fontWeight: 800, fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', border: '1px solid #fecaca' }}
-                title="Mở xem PDF"
+                title="Export / Tải file về máy"
+                style={{
+                  padding: '6px 10px', borderRadius: 6, fontSize: '0.76rem', cursor: 'pointer',
+                  border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.12)',
+                  color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4,
+                  textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0
+                }}
               >
-                PDF
+                <Download size={12} /> Tải về
               </a>
-            ) : (
-              <img
-                src={value}
-                alt={'Ảnh ' + (index + 1)}
-                style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: '#fff' }}
-                onError={e => { e.target.style.display = 'none'; }}
-              />
-            )
+            </>
           )}
         </div>
       ) : (
@@ -278,7 +295,7 @@ function ImageInput({ value, onChange, placeholder, index, allowPdf = false }) {
               )}
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main, #e2e8f0)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <CheckCircle2 size={13} color="#22c55e" /> {isPdfValue ? 'File PDF chứng nhận đã tải lên' : 'Ảnh đã tải lên'}
+                  <CheckCircle2 size={13} color="#22c55e" /> {isPdfValue ? 'File PDF đã tải lên' : 'Ảnh đã tải lên'}
                 </div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {value.startsWith('data:') ? 'Tệp từ thiết bị' : value}
@@ -294,6 +311,21 @@ function ImageInput({ value, onChange, placeholder, index, allowPdf = false }) {
                   </a>
                 )}
               </div>
+              <a
+                href={value}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Export / Tải file về máy"
+                style={{
+                  padding: '4px 9px', borderRadius: 6, fontSize: '0.76rem', cursor: 'pointer',
+                  border: '1px solid rgba(16,185,129,0.35)', background: 'rgba(16,185,129,0.12)',
+                  color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: 4,
+                  textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap'
+                }}
+              >
+                <Download size={12} /> Tải về
+              </a>
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
@@ -301,7 +333,7 @@ function ImageInput({ value, onChange, placeholder, index, allowPdf = false }) {
                 style={{
                   padding: '4px 10px', borderRadius: 6, fontSize: '0.78rem', cursor: 'pointer',
                   border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)',
-                  color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: 4
+                  color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap'
                 }}
               >
                 <Upload size={12} /> {uploading ? 'Đang tải...' : (allowPdf ? 'Đổi file' : 'Đổi ảnh')}
@@ -803,9 +835,62 @@ export default function Products() {
   };
   const removeProductQA = (idx) => setForm({ ...form, chatbotQA: form.chatbotQA.filter((_, i) => i !== idx) });
 
+  const selectedOwnerEnterprise = enterprises.find(e => String(e._id) === String(form.enterpriseId));
   const selectedManufacturer = manufacturers.find(m => String(m._id) === String(form.manufacturerId));
   const partnerManufacturers = manufacturers.filter(m => m.source === 'USER_NSX' || !m.isEnterprise);
   const enterpriseManufacturers = manufacturers.filter(m => m.source === 'ENTERPRISE_NSX' || m.isEnterprise);
+
+  const buildEnterpriseInfoText = (ent) => {
+    if (!ent) return '';
+    return [
+      ent.name ? `Đơn vị sản xuất: ${ent.name}` : '',
+      ent.address ? `Địa chỉ: ${ent.address}` : '',
+      ent.phone ? `Hotline / ĐT: ${ent.phone}` : '',
+      ent.email ? `Email: ${ent.email}` : '',
+      ent.partnerDetails ? `Tiêu chuẩn / Giấy phép: ${ent.partnerDetails.replace(/<[^>]*>?/gm, '').trim()}` : ''
+    ].filter(Boolean).join('\n');
+  };
+
+  const handleOwnerEnterpriseChange = (newEntId) => {
+    const newEnt = enterprises.find(e => String(e._id) === String(newEntId));
+    setForm(prev => {
+      const prevEnt = enterprises.find(e => String(e._id) === String(prev.enterpriseId));
+      const newInfoText = buildEnterpriseInfoText(newEnt);
+
+      const isMfgOwnedByPrevOrEnt =
+        !prev.manufacturerId ||
+        String(prev.manufacturerId) === String(prev.enterpriseId) ||
+        enterprises.some(e => String(e._id) === String(prev.manufacturerId));
+
+      const nextManufacturerId = newEntId && isMfgOwnedByPrevOrEnt ? newEntId : prev.manufacturerId;
+
+      const prevEntName = (prevEnt?.name || '').trim();
+      const shouldUpdateMfgInfo =
+        !prev.manufacturerInfo?.trim() ||
+        isMfgOwnedByPrevOrEnt ||
+        (prevEntName && prev.manufacturerInfo.includes(prevEntName));
+      const nextManufacturerInfo = shouldUpdateMfgInfo && newInfoText ? newInfoText : prev.manufacturerInfo;
+
+      let nextBannerText = prev.distributionBannerText;
+      if (newEnt?.name && prevEntName && prev.distributionBannerText?.toUpperCase().includes(prevEntName.toUpperCase())) {
+        nextBannerText = `SẢN PHẨM CỦA ${newEnt.name.toUpperCase()} NHẬP KHẨU VÀ PHÂN PHỐI`;
+      }
+
+      let nextProducerInfo = prev.producerInfo;
+      if (newEnt && prevEntName && prev.producerInfo?.includes(prevEntName)) {
+        nextProducerInfo = newInfoText;
+      }
+
+      return {
+        ...prev,
+        enterpriseId: newEntId,
+        manufacturerId: nextManufacturerId,
+        manufacturerInfo: nextManufacturerInfo,
+        distributionBannerText: nextBannerText,
+        producerInfo: nextProducerInfo
+      };
+    });
+  };
 
   const handleManufacturerSelect = (id, forceUpdate = true) => {
     const nsx = manufacturers.find(m => String(m._id) === String(id));
@@ -885,11 +970,21 @@ export default function Products() {
         ) : products.length === 0 ? (
           <div className="empty-state"><Package size={60} /><h3>Chưa có sản phẩm nào</h3><p>Bấm "Thêm sản phẩm" để tạo mới</p></div>
         ) : (
-          products.map(product => (
+          products.map(product => {
+            const firstImg = product.images?.[0];
+            const isFirstImgPdf = Boolean(firstImg && (/\.pdf($|\?)/i.test(firstImg) || String(firstImg).startsWith('data:application/pdf')));
+            return (
             <div key={product._id} className="product-card card animate-fade-in-up">
               <div className="product-image">
-                {product.images?.[0] ? (
-                  <img src={product.images[0]} alt={product.name} />
+                {firstImg ? (
+                  isFirstImgPdf ? (
+                    <div className="product-image-placeholder" style={{ background: '#fef2f2', color: '#dc2626', flexDirection: 'column', gap: 4 }}>
+                      <strong style={{ fontSize: '1.1rem' }}>PDF</strong>
+                      <span style={{ fontSize: '0.72rem' }}>Tài liệu sản phẩm</span>
+                    </div>
+                  ) : (
+                    <img src={firstImg} alt={product.name} />
+                  )
                 ) : (
                   <div className="product-image-placeholder"><ImageIcon size={32} /></div>
                 )}
@@ -908,8 +1003,13 @@ export default function Products() {
                 </div>
                 {product.sku && <span className="product-sku">SKU: {product.sku}</span>}
                 <p className="product-desc">{product.description?.substring(0, 80)}{product.description?.length > 80 ? '...' : ''}</p>
+                {product.enterpriseId?.name && (
+                  <span style={{ fontSize: '0.78rem', color: 'var(--primary-color, #818cf8)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontWeight: 600 }}>
+                    <Building2 size={11} /> Sở hữu: {product.enterpriseId.name}
+                  </span>
+                )}
                 {product.manufacturerId && (
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                     <Building2 size={11} /> NSX: {product.manufacturerId?.name || ''}
                   </span>
                 )}
@@ -918,7 +1018,8 @@ export default function Products() {
                 )}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -959,10 +1060,21 @@ export default function Products() {
                 {isAdmin && (
                   <div className="input-group">
                     <label>Doanh nghiệp sở hữu *</label>
-                    <select className="input select" value={form.enterpriseId} onChange={e => setForm({ ...form, enterpriseId: e.target.value })} required>
+                    <select className="input select" value={form.enterpriseId} onChange={e => handleOwnerEnterpriseChange(e.target.value)} required>
                       <option value="">-- Chọn doanh nghiệp --</option>
                       {enterprises.map(ent => <option key={ent._id} value={ent._id}>{ent.name}</option>)}
                     </select>
+                    {selectedOwnerEnterprise && (
+                      <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.28)', fontSize: '0.8rem', lineHeight: 1.45 }}>
+                        <div style={{ fontWeight: 700, color: '#10b981', marginBottom: 2 }}>
+                          🏢 Đơn vị sở hữu đang chọn: {selectedOwnerEnterprise.name}
+                        </div>
+                        {selectedOwnerEnterprise.address && <div>📍 Địa chỉ: {selectedOwnerEnterprise.address}</div>}
+                        {selectedOwnerEnterprise.phone && <div>📞 Điện thoại: {selectedOwnerEnterprise.phone}</div>}
+                        {selectedOwnerEnterprise.email && <div>✉️ Email: {selectedOwnerEnterprise.email}</div>}
+                        {selectedOwnerEnterprise.taxCode && <div>🧾 MST: {selectedOwnerEnterprise.taxCode}</div>}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1042,19 +1154,20 @@ export default function Products() {
                   <input className="input" value={form.verificationText} onChange={e => setForm({ ...form, verificationText: e.target.value })} />
                 </div>
 
-                {/* Phần upload ảnh: Hỗ trợ URL và upload từ thiết bị */}
+                {/* Phần upload ảnh / file PDF: Hỗ trợ URL, tải từ thiết bị và export file */}
                 <div className="input-group">
-                  <label>Hình ảnh sản phẩm (Tối đa {MAX_IMAGES} ảnh — nhập URL hoặc tải từ thiết bị)</label>
+                  <label>Hình ảnh / Tài liệu PDF sản phẩm (Tối đa {MAX_IMAGES} file — Hỗ trợ Ảnh & PDF, có Export tải về)</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     {Array.from({ length: MAX_IMAGES }, (_, i) => i).map(i => (
                       <div key={i}>
                         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                          Ảnh {i + 1}{i === 0 ? ' (Chính — bắt buộc)' : ' (Tùy chọn)'}
+                          File ảnh / PDF {i + 1}{i === 0 ? ' (Chính — bắt buộc)' : ' (Tùy chọn)'}
                         </div>
                         <ImageInput
                           index={i}
+                          allowPdf={true}
                           value={form.images[i] || ''}
-                          placeholder={'Ảnh ' + (i + 1) + ' URL...'}
+                          placeholder={'URL ảnh hoặc file PDF ' + (i + 1) + '...'}
                           onChange={url => {
                             const imgs = [...form.images];
                             imgs[i] = url;

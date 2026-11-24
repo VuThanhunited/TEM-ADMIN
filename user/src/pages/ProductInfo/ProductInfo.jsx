@@ -13,6 +13,7 @@ import {
 import { useDomain } from '../../contexts/DomainContext';
 import userApi from '../../services/api';
 import { getMergedThemeContent, resolveCanonicalThemeKey, DEFAULT_HONEY_DISTRIBUTORS } from '../../config/themeDefaultContents';
+import PdfAllPagesViewer from '../../components/PdfAllPagesViewer';
 import './ProductInfo.css';
 
 // 1. Trust Badge cho Tem Đồ gia dụng (Trạng thái Đã kích hoạt)
@@ -285,12 +286,13 @@ export default function ProductInfo() {
         <h3 className="production-process-title">{title}</h3>
         {hasProcessFile && (
           isPdf ? (
-            <>
-              <iframe className="production-process-pdf" src={processFile.url} title={title} />
-              <a className="production-process-open-btn" href={processFile.url} target="_blank" rel="noopener noreferrer">
-                {openLabel}
-              </a>
-            </>
+            <PdfAllPagesViewer
+              url={processFile.url}
+              title={title}
+              accentColor="#16a34a"
+              borderColor="#bbf7d0"
+              onPageClick={setPreviewImage}
+            />
           ) : (
             <a href={processFile.url} target="_blank" rel="noopener noreferrer">
               <img className="production-process-img" src={processFile.url} alt={processFile.name || title} />
@@ -315,6 +317,8 @@ export default function ProductInfo() {
   };
 
   const isPdfDocUrl = (url) => Boolean(url && (/\.pdf($|\?)/i.test(String(url)) || String(url).startsWith('data:application/pdf')));
+  const productImageOnlyUrls = (product?.images || []).filter(u => u && String(u).trim() && !isPdfDocUrl(u));
+  const productPdfDocs = (product?.images || []).filter(u => isPdfDocUrl(u));
 
   const renderCongBoDocItem = (url, idx, options = {}) => {
     const {
@@ -336,27 +340,16 @@ export default function ProductInfo() {
             overflow: 'hidden',
             border: `1.5px solid ${borderColor}`,
             background: '#ffffff',
-            padding: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8
+            padding: 10
           }}
         >
-          <iframe
-            className="production-process-pdf"
-            src={url}
-            title={`Tài liệu chứng nhận / công bố ${idx + 1}`}
-            style={{ width: '100%', height: 420, border: '1px solid #e2e8f0', borderRadius: 8 }}
+          <PdfAllPagesViewer
+            url={url}
+            title={`Chứng nhận / Công bố ${idx + 1}`}
+            accentColor={accentColor}
+            borderColor={borderColor}
+            onPageClick={setPreviewImage}
           />
-          <a
-            className="production-process-open-btn"
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ background: accentColor }}
-          >
-            📄 Mở / Tải file PDF Chứng nhận {idx + 1}
-          </a>
         </div>
       );
     }
@@ -665,7 +658,7 @@ export default function ProductInfo() {
           <div className="medical-hero-body">
             <div className="medical-hero-img-wrap">
               <img
-                src={product?.images?.[0] || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=60'}
+                src={productImageOnlyUrls[0] || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=500&auto=format&fit=crop&q=60'}
                 alt={product?.name || 'Dược phẩm chính hãng'}
                 className="medical-hero-img"
               />
@@ -1085,8 +1078,8 @@ const renderFoodView = () => {
   const isMock = !product?.name || product?.name === 'VINSUMI';
   const productName = isMock ? 'NATURAL SPIRULINA 500MG' : product.name;
   const makerName = isMock ? 'Công Ty Cổ Phần Tập Đoàn Nam Dược Tân Viên Sơn' : (enterprise?.name || 'Công Ty Cổ Phần Tập Đoàn Nam Dược Tân Viên Sơn');
-  const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
-    ? product.images[0]
+  const heroImage = (productImageOnlyUrls[0] && !productImageOnlyUrls[0].includes('hero_banner') && !productImageOnlyUrls[0].includes('vinsumi'))
+    ? productImageOnlyUrls[0]
     : '/images/tpcn_spirulina_hero.png';
 
   const storeDisplayName = label?.distributorName || label?.ownerInfo?.name || '';
@@ -1454,9 +1447,7 @@ const renderOcopView = () => {
   const ownerName = isMock ? 'Hợp tác xã Nông nghiệp Lục Sơn' : (enterprise?.name || 'Hợp tác xã Nông nghiệp Lục Sơn');
 
   // Tìm ảnh hợp lệ đầu tiên từ images mảng hoặc trường image
-  const firstValidImage = (product?.images && Array.isArray(product.images))
-    ? product.images.find(img => img && typeof img === 'string' && img.trim() && !img.includes('hero_banner') && !img.includes('vinsumi'))
-    : (product?.image || null);
+  const firstValidImage = productImageOnlyUrls.find(img => !img.includes('hero_banner') && !img.includes('vinsumi')) || null;
 
   const heroImage = firstValidImage || (isMock ? '/images/ocop_hero_product.png' : '');
 
@@ -1715,8 +1706,8 @@ const renderOcopView = () => {
 const renderStayCoolView = () => {
   const isMock = !product?.name || product?.name === 'VINSUMI';
   const productName = isMock ? 'VYPHYTOZINC' : product.name;
-  const heroImage = (product?.images?.[0] && !product.images[0].includes('hero_banner') && !product.images[0].includes('vinsumi'))
-    ? product.images[0]
+  const heroImage = (productImageOnlyUrls[0] && !productImageOnlyUrls[0].includes('hero_banner') && !productImageOnlyUrls[0].includes('vinsumi'))
+    ? productImageOnlyUrls[0]
     : '/images/vyphyto_full_design.jpg';
 
   const distributorName = label?.distributorName || label?.distributorId?.fullName || product?.distributors?.[0]?.name;
@@ -2093,7 +2084,7 @@ const renderAgricultureView = () => (
       </div>
 
       <div className="agri-hero-card">
-        <img src={product?.images?.[0] || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="agri-hero-img" />
+        <img src={productImageOnlyUrls[0] || 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="agri-hero-img" />
         <div className="agri-hero-info">
           <h3>{product?.name || 'Nông sản sạch VietGAP'}</h3>
           <div className="agri-tags-grid">
@@ -2159,7 +2150,7 @@ const renderCosmeticsView = () => (
       </div>
 
       <div className="cosmetics-hero-card">
-        <img src={product?.images?.[0] || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="cosmetics-hero-img" />
+        <img src={productImageOnlyUrls[0] || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=500&auto=format&fit=crop&q=60'} alt={product?.name} className="cosmetics-hero-img" />
         <div className="cosmetics-hero-info">
           <h3>{product?.name || 'Mỹ phẩm chăm sóc da cao cấp'}</h3>
           <p className="cosmetics-brand">{tc.brandPrefix} <strong>{product?.brand || enterprise?.name || 'Beauty Care'}</strong></p>
@@ -2346,8 +2337,8 @@ const renderDefaultView = () => {
       {/* Thẻ sản phẩm */}
       <div className="product-info-card">
         <div className="product-info-image-area">
-          {product?.images?.[0] ? (
-            <img src={product.images[0]} alt={product.name} />
+          {productImageOnlyUrls[0] ? (
+            <img src={productImageOnlyUrls[0]} alt={product.name} />
           ) : (
             <div className="product-info-image-placeholder">
               <Package size={48} />
@@ -3986,6 +3977,30 @@ return (
     {activeTheme === 'cosmetics' && renderCosmeticsView()}
     {activeTheme === 'ocop' && renderOcopView()}
 
+    {/* Tài liệu PDF sản phẩm (nếu có upload PDF vào mục Hình ảnh / Tài liệu sản phẩm) */}
+    {productPdfDocs.length > 0 && !(activeTheme === 'appliance' && !isApplianceActivated) && (
+      <div className="product-info-body" style={{ marginTop: 12 }}>
+        <div style={{ background: '#ffffff', borderRadius: 14, padding: 14, border: '1.5px solid #cbd5e1', boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontWeight: 800, fontSize: '0.94rem', color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileText size={18} color="#2563eb" />
+            <span>Tài liệu / Hồ sơ sản phẩm (PDF)</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {productPdfDocs.map((pdfUrl, idx) => (
+              <PdfAllPagesViewer
+                key={idx}
+                url={pdfUrl}
+                title={`Tài liệu sản phẩm ${productPdfDocs.length > 1 ? `#${idx + 1}` : ''}`.trim()}
+                accentColor="#2563eb"
+                borderColor="#cbd5e1"
+                onPageClick={setPreviewImage}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* Mục "Quy trình SX" (ảnh / PDF) cho các giao diện ngành hàng khác - bấm để mở xem */}
     {activeTheme !== 'honey' && hasProcessFile && (
       <div className="product-info-body production-process-standalone">
@@ -4685,6 +4700,25 @@ return (
                         <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                           <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 6 }}>Đơn vị sản xuất:</div>
                           <div style={{ whiteSpace: 'pre-line', fontSize: '0.86rem', lineHeight: '1.6', color: '#334155' }}>{product.producerInfo}</div>
+                        </div>
+                      )}
+
+                      {/* Tài liệu PDF sản phẩm (nếu có) */}
+                      {productPdfDocs.length > 0 && (
+                        <div style={{ marginTop: 14 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#00695C', marginBottom: 8 }}>Tài liệu / Hồ sơ sản phẩm (PDF):</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {productPdfDocs.map((pdfUrl, idx) => (
+                              <PdfAllPagesViewer
+                                key={idx}
+                                url={pdfUrl}
+                                title={`Tài liệu sản phẩm ${productPdfDocs.length > 1 ? `#${idx + 1}` : ''}`.trim()}
+                                accentColor="#059669"
+                                borderColor="#d1fae5"
+                                onPageClick={setPreviewImage}
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
 

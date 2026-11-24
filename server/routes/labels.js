@@ -253,16 +253,16 @@ router.get('/export', auth, requireOwnership, async (req, res) => {
   }
 });
 
-// PUT /api/labels/batches/:id/mark-printed - Toggle/Set printed status for a batch
-// GET /api/labels/batches/:id/export-stores - Excel: STT | Tên Serial | Tên điểm bán
-// Chỉ gồm các serial của lô đã được gán điểm bán
+// GET /api/labels/batches/:id/export-stores - Excel: Serial | Sản phẩm | Điểm bán | Ngày Bán/ Gán
+// Chỉ gồm các serial của lô đã được gán điểm bán, sắp xếp theo ngày bán/gán tăng dần
 router.get('/batches/:id/export-stores', auth, requireOwnership, async (req, res) => {
   try {
     const XLSX = require('xlsx');
     const RetailStore = require('../models/RetailStore');
 
     const batch = await LabelBatch.findOne({ _id: req.params.id, ...(req.enterpriseFilter || {}) })
-      .select('_id batchCode')
+      .select('_id batchCode productId')
+      .populate('productId', 'name')
       .lean();
     if (!batch) {
       return res.status(404).json({ error: 'Không tìm thấy lô tem hoặc không có quyền truy cập' });
@@ -276,8 +276,8 @@ router.get('/batches/:id/export-stores', auth, requireOwnership, async (req, res
         { 'ownerInfo.name': { $nin: [null, ''] } }
       ]
     })
-      .select('serialNumber storeId customerCode distributorName ownerInfo distributedAt updatedAt')
-      .sort({ serialNumber: 1 })
+      .select('serialNumber productId storeId customerCode distributorName ownerInfo distributedAt updatedAt')
+      .populate('productId', 'name')
       .lean();
 
     const storeIds = [...new Set(labels.map((l) => (l.storeId ? String(l.storeId) : '')).filter(Boolean))];
@@ -286,18 +286,42 @@ router.get('/batches/:id/export-stores', auth, requireOwnership, async (req, res
       : [];
     const storeMap = new Map(stores.map((s) => [String(s._id), s]));
 
-    const rows = [['STT', 'Tên Serial', 'Tên điểm bán']];
-    labels.forEach((l, idx) => {
+    const enriched = labels.map((l) => {
       const st = l.storeId ? storeMap.get(String(l.storeId)) : null;
-      rows.push([
-        idx + 1,
-        l.serialNumber || '',
-        st?.name || l.distributorName || l.ownerInfo?.name || ''
-      ]);
+      const rawDate = l.distributedAt || l.ownerInfo?.activatedAt || l.updatedAt || null;
+      const dateObj = rawDate ? new Date(rawDate) : null;
+      const isValidDate = Boolean(dateObj && !Number.isNaN(dateObj.getTime()));
+      const daySortKey = isValidDate
+        ? new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime()
+        : Number.MAX_SAFE_INTEGER;
+      const dateLabel = isValidDate
+        ? `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`
+        : '';
+
+      return {
+        serial: String(l.serialNumber || ''),
+        productName: l.productId?.name || batch.productId?.name || '',
+        storeName: st?.name || l.distributorName || l.ownerInfo?.name || '',
+        dateLabel,
+        daySortKey
+      };
+    });
+
+    // Sắp xếp ngày bán/gán tăng dần (ngày cũ/nhỏ ở trên đầu), cùng ngày xếp theo Serial tăng dần
+    enriched.sort((a, b) => {
+      if (a.daySortKey !== b.daySortKey) {
+        return a.daySortKey - b.daySortKey;
+      }
+      return a.serial.localeCompare(b.serial, undefined, { numeric: true });
+    });
+
+    const rows = [['Serial', 'Sản phẩm', 'Điểm bán', 'Ngày Bán/ Gán']];
+    enriched.forEach((item) => {
+      rows.push([item.serial, item.productName, item.storeName, item.dateLabel]);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 8 }, { wch: 22 }, { wch: 42 }];
+    ws['!cols'] = [{ wch: 18 }, { wch: 28 }, { wch: 36 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Serial_DiemBan');
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', compression: true });
@@ -308,7 +332,7 @@ router.get('/batches/:id/export-stores', auth, requireOwnership, async (req, res
       success: true,
       fileName: `Serial_DiemBan_${safeCode}.xlsx`,
       fileBase64: buf.toString('base64'),
-      total: labels.length
+      total: enriched.length
     });
   } catch (error) {
     console.error('Export batch stores error:', error);
@@ -964,10 +988,18 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
   try {
     const { productId, theme, customDomain } = req.body;
     const updateData = {};
+    let syncedEnterpriseId = null;
     if (productId !== undefined) {
       const targetProductId = productId || null;
       updateData.productId = targetProductId;
-      if (targetProductId) updateData.status = 'ACTIVE';
+      if (targetProductId) {
+        updateData.status = 'ACTIVE';
+        const prodDoc = await Product.findById(targetProductId).select('enterpriseId').lean();
+        if (prodDoc?.enterpriseId) {
+          syncedEnterpriseId = prodDoc.enterpriseId;
+          updateData.enterpriseId = syncedEnterpriseId;
+        }
+      }
     }
     if (theme !== undefined) updateData.theme = theme;
     if (customDomain !== undefined) updateData.customDomain = customDomain ? customDomain.trim() : null;
@@ -980,10 +1012,13 @@ router.post('/batches/:id/map-product', auth, async (req, res) => {
 
     if (!batch) return res.status(404).json({ error: 'Không tìm thấy lô tem' });
 
-    // 1. Update productId trên toàn bộ label trong lô đồng bộ ngay trước khi trả response
+    // 1. Update productId (và enterpriseId theo sản phẩm nếu có) trên toàn bộ label trong lô đồng bộ ngay trước khi trả response
     if (productId !== undefined) {
       const targetProductId = productId || null;
       const labelUpdate = { productId: targetProductId };
+      if (syncedEnterpriseId) {
+        labelUpdate.enterpriseId = syncedEnterpriseId;
+      }
       if (targetProductId) {
         labelUpdate.status = 'ACTIVE';
         labelUpdate.isActive = true;
