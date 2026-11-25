@@ -69,18 +69,28 @@ export default function ScanChoice() {
     'honey', 'mint_honey', 'hoang_bach',
     'ocop', 'medical', 'agriculture', 'cosmetics'
   ];
-  const resolvedTheme =
-    product?.theme ||
-    label?.batchId?.theme ||
-    scanData?.theme ||
-    enterprise?.displayConfig?.defaultTheme ||
-    'default';
+  const normalizeTheme = (val) => {
+    if (val === 'warranty' || val === 'warranty_solution') return 'appliance';
+    if (val === 'mint_honey' || val === 'hoang_bach') return 'honey';
+    return val;
+  };
+  const pickConcreteTheme = (...candidates) => {
+    for (const raw of candidates) {
+      const t = normalizeTheme(raw);
+      if (t && t !== 'auto' && t !== 'default') return t;
+    }
+    return 'default';
+  };
+  const resolvedTheme = pickConcreteTheme(
+    product?.theme,
+    label?.batchId?.theme,
+    scanData?.theme,
+    enterprise?.displayConfig?.defaultTheme
+  );
 
   const isWarrantyTheme =
     resolvedTheme === 'default' ||
     resolvedTheme === 'appliance' ||
-    resolvedTheme === 'warranty' ||
-    resolvedTheme === 'warranty_solution' ||
     !nonWarrantyThemes.includes(resolvedTheme);
 
   const isWarrantyActivated = Boolean(
@@ -168,28 +178,35 @@ export default function ScanChoice() {
         {!loading && !error && scanData && (
           <>
             {/* Product preview */}
-            <div className="scan-choice-product">
-              {product?.images?.[0] ? (
-                <img src={product.images[0]} alt={product.name} className="scan-choice-product-img" />
-              ) : (
-                <div className="scan-choice-product-placeholder">
-                  <Package size={24} />
-                </div>
-              )}
-              <div className="scan-choice-product-info">
-                <div className="scan-choice-product-name">
-                  {product?.name || 'Sản phẩm'}
-                </div>
-                <div className="scan-choice-product-serial">
-                  SERIAL chống làm giả: {label?.serialNumber || code}
-                </div>
-                {enterprise?.name && (
-                  <div className="scan-choice-product-enterprise">
-                    {enterprise.name}
+            {(() => {
+              const firstPreviewImage = (product?.images || []).find(
+                u => u && typeof u === 'string' && u.trim() && !/\.pdf($|\?)/i.test(u) && !u.startsWith('data:application/pdf')
+              );
+              return (
+                <div className="scan-choice-product">
+                  {firstPreviewImage ? (
+                    <img src={firstPreviewImage} alt={product.name} className="scan-choice-product-img" />
+                  ) : (
+                    <div className="scan-choice-product-placeholder">
+                      <Package size={24} />
+                    </div>
+                  )}
+                  <div className="scan-choice-product-info">
+                    <div className="scan-choice-product-name">
+                      {product?.name || 'Sản phẩm'}
+                    </div>
+                    <div className="scan-choice-product-serial">
+                      SERIAL chống làm giả: {label?.serialNumber || code}
+                    </div>
+                    {enterprise?.name && (
+                      <div className="scan-choice-product-enterprise">
+                        {enterprise.name}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              );
+            })()}
 
             {/* Choice prompt */}
             <div className="scan-choice-prompt">

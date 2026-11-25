@@ -5276,11 +5276,15 @@ router.get('/enterprise-by-domain', async (req, res) => {
     }
 
     if (!enterprise) {
-      const batchWithDomain = await LabelBatch.findOne({
-        customDomain: { $regex: new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i') }
-      }).populate('enterpriseId');
-      if (batchWithDomain && batchWithDomain.enterpriseId) {
-        enterprise = batchWithDomain.enterpriseId;
+      const domainRegex = new RegExp(cleanDomain.replace(/\./g, '\\.'), 'i');
+      const distinctEntIds = await LabelBatch.distinct('enterpriseId', { customDomain: { $regex: domainRegex } });
+      const validEntIds = distinctEntIds.filter(Boolean).map(String);
+      // Chỉ gán chủ sở hữu domain theo lô tem nếu domain này thuộc duy nhất 1 doanh nghiệp
+      // (Tránh trả nhầm DN đầu tiên đối với các domain dùng chung như txng.nongsansovn.com)
+      if (validEntIds.length === 1) {
+        const singleEnt = await Enterprise.findOne({ _id: validEntIds[0], isActive: true })
+          .select('name logo domain subdomain brandConfig chatbotConfig address phone email website _id');
+        if (singleEnt) enterprise = singleEnt;
       }
     }
 

@@ -129,12 +129,11 @@ function ImageInput({ value, onChange, placeholder, index, allowPdf = false }) {
           return;
         }
         const result = await api.uploadDocument(rawFile);
-        if (result && result.url) {
-          onChange(result.url);
-        } else {
-          const dataUrl = await readFileAsDataUrl(rawFile);
-          onChange(dataUrl);
+        if (!result?.url) {
+          setUploadError('Máy chủ không trả về đường dẫn file PDF. Vui lòng thử lại.');
+          return;
         }
+        onChange(result.url);
         setMode('upload');
         return;
       }
@@ -162,6 +161,11 @@ function ImageInput({ value, onChange, placeholder, index, allowPdf = false }) {
       }
       setMode('upload');
     } catch (err) {
+      const isPdfErr = rawFile.type === 'application/pdf' || /\.pdf$/i.test(rawFile.name || '');
+      if (isPdfErr) {
+        setUploadError(err.message || 'Lỗi tải file PDF lên máy chủ. Vui lòng thử lại.');
+        return;
+      }
       // Trường hợp hiếm hoi cả nén và đọc file đều lỗi thì thử đọc file gốc
       try {
         const dataUrl = await readFileAsDataUrl(rawFile);

@@ -57,6 +57,8 @@ export default function PdfAllPagesViewer({
 
   useEffect(() => {
     let cancelled = false;
+    let activeLoadingTask = null;
+    let activePdf = null;
 
     const renderAllPages = async () => {
       if (!url) {
@@ -73,8 +75,9 @@ export default function PdfAllPagesViewer({
 
       try {
         const pdfjsLib = await loadPdfJs();
-        const loadingTask = pdfjsLib.getDocument({ url, withCredentials: false });
-        const pdf = await loadingTask.promise;
+        activeLoadingTask = pdfjsLib.getDocument({ url, withCredentials: false });
+        const pdf = await activeLoadingTask.promise;
+        activePdf = pdf;
         if (cancelled) return;
 
         const total = pdf.numPages || 0;
@@ -95,7 +98,9 @@ export default function PdfAllPagesViewer({
           canvas.height = Math.floor(viewport.height);
 
           await page.render({ canvasContext: context, viewport }).promise;
-          const dataUrl = canvas.toDataURL('image/png');
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          canvas.width = 0;
+          canvas.height = 0;
           renderedPages.push({ pageNum, dataUrl });
 
           if (!cancelled) {
@@ -118,6 +123,8 @@ export default function PdfAllPagesViewer({
 
     return () => {
       cancelled = true;
+      try { activeLoadingTask?.destroy?.(); } catch {}
+      try { activePdf?.destroy?.(); } catch {}
     };
   }, [url]);
 

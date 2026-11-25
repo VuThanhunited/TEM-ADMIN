@@ -3954,17 +3954,22 @@ const renderHoneyView = () => {
 
 return (
   <div className={`product-info-page theme-${activeTheme}`}>
-    {/* Enterprise Custom Domain Banner */}
-    {isCustomDomain && customEnterprise && activeTheme !== 'honey' && !(activeTheme === 'appliance' && !isApplianceActivated) && (
-      <div className="product-info-domain-banner"
-        style={{ background: customEnterprise.brandConfig?.primaryColor || '#1565C0' }}
-      >
-        {customEnterprise.logo && (
-          <img src={customEnterprise.logo} alt={customEnterprise.name} className="product-info-domain-logo" />
-        )}
-        <span className="product-info-domain-name">{customEnterprise.name}</span>
-      </div>
-    )}
+    {/* Enterprise Custom Domain Banner — luôn hiển thị đúng đơn vị sở hữu thực tế của sản phẩm vừa quét */}
+    {((isCustomDomain && customEnterprise) || (customDomain && enterprise)) && activeTheme !== 'honey' && !(activeTheme === 'appliance' && !isApplianceActivated) && (() => {
+      const bannerEnt = enterprise?._id ? enterprise : customEnterprise;
+      if (!bannerEnt?.name) return null;
+      return (
+        <div
+          className="product-info-domain-banner"
+          style={{ background: bannerEnt.brandConfig?.primaryColor || customEnterprise?.brandConfig?.primaryColor || '#1565C0' }}
+        >
+          {bannerEnt.logo && (
+            <img src={bannerEnt.logo} alt={bannerEnt.name} className="product-info-domain-logo" />
+          )}
+          <span className="product-info-domain-name">{bannerEnt.name}</span>
+        </div>
+      );
+    })()}
 
 
     {/* Render Active View by Industry */}
