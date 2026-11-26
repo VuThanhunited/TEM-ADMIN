@@ -254,6 +254,11 @@ class UserApiService {
     return this.request('GET', '/public/enterprise-by-domain', null, { domain }, false);
   }
 
+  // Lấy thông tin chi tiết 1 sản phẩm liên quan
+  getPublicProduct(id) {
+    return this.request('GET', `/public/products/${id}`, null, {}, false);
+  }
+
   // Lấy hostname hiện tại (bỏ www., chỉ lấy domain)
   getCurrentDomain() {
     const hostname = window.location.hostname;

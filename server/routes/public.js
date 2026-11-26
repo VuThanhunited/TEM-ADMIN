@@ -369,6 +369,23 @@ router.get('/namecard/:slug', async (req, res) => {
   }
 });
 
+// GET /api/public/products/:id - Xem đầy đủ thông tin chi tiết 1 sản phẩm liên quan khi người dùng click vào
+router.get('/products/:id', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const prod = await Product.findById(req.params.id)
+      .populate('enterpriseId')
+      .populate('manufacturerId', 'name address phone email logo partnerDetails hasGeographicalIndication region shortIntro scale foragingArea cert')
+      .lean();
+    if (!prod) return res.status(404).json({ error: 'Không tìm thấy sản phẩm' });
+    const resolvedProd = await resolveProductManufacturer(prod);
+    res.json({ product: resolvedProd });
+  } catch (err) {
+    console.error('GET /public/products/:id error:', err);
+    res.status(500).json({ error: 'Lỗi máy chủ khi tải thông tin sản phẩm' });
+  }
+});
+
 // GET /api/public/scan/:serial
 router.get('/scan/:serial', async (req, res) => {
   try {
@@ -806,13 +823,16 @@ router.get('/scan/:serial', async (req, res) => {
       }
     }
 
-    // Lấy TẤT CẢ sản phẩm của cùng NSX (không giới hạn số lượng)
+    // Lấy TẤT CẢ sản phẩm của cùng NSX (không giới hạn số lượng, đầy đủ thông tin để click xem chi tiết ngay)
     let relatedProducts = [];
     if (enterprise && enterprise._id) {
       relatedProducts = await Product.find({
         enterpriseId: enterprise._id,
         _id: { $ne: label.productId?._id }
-      }).select('name category images description').lean();
+      })
+        .select('-chatbotQA')
+        .populate('manufacturerId', 'name address phone email logo partnerDetails hasGeographicalIndication region shortIntro scale foragingArea cert')
+        .lean();
     }
 
     const normalizeTheme = (t) => {

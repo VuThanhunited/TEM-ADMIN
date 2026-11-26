@@ -266,6 +266,7 @@ export default function ProductInfo() {
   const [honeyRegion, setHoneyRegion] = useState('dong_van');
   const [selectedHoneyDist, setSelectedHoneyDist] = useState(null);
   const honeyContentBoxRef = useRef(null);
+  const [originalScannedProduct, setOriginalScannedProduct] = useState(null);
 
   // Computed values (không phải hooks, an toàn để đặt đây)
   const product = scanData?.product;
@@ -414,7 +415,62 @@ export default function ProductInfo() {
   const scanCount = Number(label?.scanCount || 0);
   const relatedProducts = scanData?.relatedProducts || scanData?.enterpriseProducts || [];
   const currentProductId = product?._id || product?.id;
-  const filteredRelated = relatedProducts.filter(p => (p._id || p.id) !== currentProductId);
+  const filteredRelated = relatedProducts.filter(p => String(p._id || p.id) !== String(currentProductId));
+
+  const getProductThumbUrl = (p) => {
+    const imgs = Array.isArray(p?.images) ? p.images : (p?.image ? [p.image] : []);
+    return imgs.find(u => u && typeof u === 'string' && u.trim() && !isPdfDocUrl(u)) || '';
+  };
+
+  const handleSelectRelatedProduct = async (targetProd) => {
+    if (!targetProd) return;
+    const baseOriginal = originalScannedProduct || scanData?.product || null;
+    if (!originalScannedProduct && scanData?.product) {
+      setOriginalScannedProduct(scanData.product);
+    }
+
+    // Gom tất cả sản phẩm của đơn vị (bao gồm cả sản phẩm gốc vừa quét) để luôn chuyển đổi qua lại được
+    const poolMap = new Map();
+    [baseOriginal, scanData?.product, ...(scanData?.relatedProducts || []), ...(scanData?.enterpriseProducts || [])]
+      .filter(Boolean)
+      .forEach(item => {
+        const key = String(item._id || item.id || item.name);
+        if (key) {
+          poolMap.set(key, { ...(poolMap.get(key) || {}), ...item });
+        }
+      });
+
+    const targetId = String(targetProd._id || targetProd.id || '');
+    const mergedTarget = (targetId && poolMap.get(targetId)) || targetProd;
+    const allPoolProducts = Array.from(poolMap.values());
+
+    setActiveModal(null);
+    setScanData(prev => ({
+      ...prev,
+      product: mergedTarget,
+      relatedProducts: allPoolProducts
+    }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Nếu sản phẩm liên quan chưa có đầy đủ trường chi tiết (congBoImages, productionProcessFile...), tải bổ sung từ API
+    if (targetId && mergedTarget.congBoImages === undefined) {
+      try {
+        const res = await userApi.getPublicProduct(targetId);
+        if (res?.product) {
+          setScanData(prev => {
+            const updatedPool = (prev.relatedProducts || []).map(item =>
+              String(item._id || item.id) === targetId ? { ...item, ...res.product } : item
+            );
+            return {
+              ...prev,
+              product: String(prev.product?._id || prev.product?.id) === targetId ? res.product : prev.product,
+              relatedProducts: updatedPool
+            };
+          });
+        }
+      } catch {}
+    }
+  };
   const showRelated = (scanData?.showRelated !== undefined)
     ? scanData.showRelated
     : (scanData?.template?.showRelatedProducts !== undefined
@@ -797,17 +853,25 @@ export default function ProductInfo() {
               </h3>
             </div>
             <div className="medical-related-grid">
-              {filteredRelated.map((p, idx) => (
-                <div key={p._id || idx} className="medical-related-card">
+              {filteredRelated.map((p, idx) => {
+                const thumbUrl = getProductThumbUrl(p);
+                return (
+                <div
+                  key={p._id || idx}
+                  className="medical-related-card"
+                  onClick={() => handleSelectRelatedProduct(p)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="medical-related-img">
-                    {p.images?.[0]
-                      ? <img src={p.images[0]} alt={p.name} style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                    {thumbUrl
+                      ? <img src={thumbUrl} alt={p.name} style={{ width: 48, height: 48, objectFit: 'contain' }} />
                       : <Pill size={32} color="#00897B" />}
                   </div>
                   <div className="medical-related-name">{p.name}</div>
                   {p.category && <div className="medical-related-sub">{p.category}</div>}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1031,17 +1095,25 @@ export default function ProductInfo() {
             </h3>
           </div>
           <div className="appliance-related-grid">
-            {filteredRelated.map((p, idx) => (
-              <div key={p._id || idx} className="appliance-related-card">
+            {filteredRelated.map((p, idx) => {
+              const thumbUrl = getProductThumbUrl(p);
+              return (
+              <div
+                key={p._id || idx}
+                className="appliance-related-card"
+                onClick={() => handleSelectRelatedProduct(p)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="appliance-related-img-box">
-                  {p.images?.[0]
-                    ? <img src={p.images[0]} alt={p.name} />
+                  {thumbUrl
+                    ? <img src={thumbUrl} alt={p.name} />
                     : <Package size={32} color="#003366" />}
                 </div>
                 <div className="appliance-related-name">{p.name}</div>
                 {p.category && <div className="appliance-related-sub">{p.category}</div>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1414,14 +1486,22 @@ const renderFoodView = () => {
             <h3>{tc.relatedSectionTitle}</h3>
           </div>
           <div className="exact-tpcn-related-grid">
-            {filteredRelated.map((p, idx) => (
-              <div key={p._id || idx} className="exact-tpcn-related-item">
-                {p.images?.[0]
-                  ? <img src={p.images[0]} alt={p.name} />
+            {filteredRelated.map((p, idx) => {
+              const thumbUrl = getProductThumbUrl(p);
+              return (
+              <div
+                key={p._id || idx}
+                className="exact-tpcn-related-item"
+                onClick={() => handleSelectRelatedProduct(p)}
+                style={{ cursor: 'pointer' }}
+              >
+                {thumbUrl
+                  ? <img src={thumbUrl} alt={p.name} />
                   : <div style={{ width: 64, height: 64, background: '#f0fdf4', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={32} color="#16a34a" /></div>}
                 <h4>{p.name}</h4>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1686,15 +1766,23 @@ const renderOcopView = () => {
             <h3>{tc.relatedSectionTitle}</h3>
           </div>
           <div className="exact-ocop-related-grid">
-            {filteredRelated.map((p, idx) => (
-              <div key={p._id || idx} className="exact-ocop-related-item">
-                {p.images?.[0]
-                  ? <img src={p.images[0]} alt={p.name} />
+            {filteredRelated.map((p, idx) => {
+              const thumbUrl = getProductThumbUrl(p);
+              return (
+              <div
+                key={p._id || idx}
+                className="exact-ocop-related-item"
+                onClick={() => handleSelectRelatedProduct(p)}
+                style={{ cursor: 'pointer' }}
+              >
+                {thumbUrl
+                  ? <img src={thumbUrl} alt={p.name} />
                   : <div style={{ width: 64, height: 64, background: '#f0fdf4', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Sprout size={28} color="#15803d" /></div>}
                 <h4>{p.name}</h4>
                 {p.category && <div className="exact-ocop-star-tag">{p.category}</div>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -2004,10 +2092,17 @@ const renderStayCoolView = () => {
             <h3>SẢN PHẨM {(distributorName || entName).toUpperCase()} PHÂN PHỐI</h3>
           </div>
           <div className="vyphyto-related-grid">
-            {filteredRelated.map((p, idx) => (
-              <div key={p._id || idx} className="vyphyto-related-item">
-                {p.images?.[0] ? (
-                  <img src={p.images[0]} alt={p.name} />
+            {filteredRelated.map((p, idx) => {
+              const thumbUrl = getProductThumbUrl(p);
+              return (
+              <div
+                key={p._id || idx}
+                className="vyphyto-related-item"
+                onClick={() => handleSelectRelatedProduct(p)}
+                style={{ cursor: 'pointer' }}
+              >
+                {thumbUrl ? (
+                  <img src={thumbUrl} alt={p.name} />
                 ) : (
                   <div className="vyphyto-related-placeholder">
                     <Package size={26} color="#ea580c" />
@@ -2016,7 +2111,8 @@ const renderStayCoolView = () => {
                 <h4>{p.name}</h4>
                 {p.category && <div className="vyphyto-related-cat">{p.category}</div>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -2126,15 +2222,23 @@ const renderAgricultureView = () => (
             <h3><ShoppingBag size={20} color="#15803D" style={{ marginRight: 8 }} />{tc.relatedSectionTitle}</h3>
           </div>
           <div className="agri-related-grid">
-            {filteredRelated.map((p, idx) => (
-              <div key={p._id || idx} className="agri-related-card">
+            {filteredRelated.map((p, idx) => {
+              const thumbUrl = getProductThumbUrl(p);
+              return (
+              <div
+                key={p._id || idx}
+                className="agri-related-card"
+                onClick={() => handleSelectRelatedProduct(p)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="agri-related-img">
-                  {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain" }} /> : <Sprout size={32} color="#15803D" />}
+                  {thumbUrl ? <img src={thumbUrl} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain" }} /> : <Sprout size={32} color="#15803D" />}
                 </div>
                 <div className="agri-related-name">{p.name}</div>
                 {p.category && <div className="agri-related-sub">{p.category}</div>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -2193,15 +2297,23 @@ const renderCosmeticsView = () => (
             <h3><ShoppingBag size={20} color="#BE185D" style={{ marginRight: 8 }} />{tc.relatedSectionTitle}</h3>
           </div>
           <div className="cosmetics-related-grid">
-            {filteredRelated.map((p, idx) => (
-              <div key={p._id || idx} className="cosmetics-related-card">
+            {filteredRelated.map((p, idx) => {
+              const thumbUrl = getProductThumbUrl(p);
+              return (
+              <div
+                key={p._id || idx}
+                className="cosmetics-related-card"
+                onClick={() => handleSelectRelatedProduct(p)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="cosmetics-related-img">
-                  {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain" }} /> : <Sparkles size={32} color="#BE185D" />}
+                  {thumbUrl ? <img src={thumbUrl} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain" }} /> : <Sparkles size={32} color="#BE185D" />}
                 </div>
                 <div className="cosmetics-related-name">{p.name}</div>
                 {p.category && <div className="cosmetics-related-sub">{p.category}</div>}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -2214,14 +2326,21 @@ const renderCosmeticsView = () => (
           <ShoppingBag size={18} /><span>{tc.relatedSectionTitle}</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "12px" }}>
-          {filteredRelated.map((p, idx) => (
-            <div key={p._id || idx} style={{ textAlign: "center", padding: "10px", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.1)", background: "#fff" }}>
+          {filteredRelated.map((p, idx) => {
+            const thumbUrl = getProductThumbUrl(p);
+            return (
+            <div
+              key={p._id || idx}
+              onClick={() => handleSelectRelatedProduct(p)}
+              style={{ cursor: 'pointer', textAlign: "center", padding: "10px", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.1)", background: "#fff" }}
+            >
               <div style={{ width: 48, height: 48, margin: "0 auto 6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 48, height: 48, objectFit: "contain" }} /> : <Package size={32} color="#6366f1" />}
+                {thumbUrl ? <img src={thumbUrl} alt={p.name} style={{ width: 48, height: 48, objectFit: "contain" }} /> : <Package size={32} color="#6366f1" />}
               </div>
               <div style={{ fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.3 }}>{p.name}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     )}
@@ -3988,6 +4107,45 @@ return (
     })()}
 
 
+    {/* Thanh quay lại sản phẩm gốc khi đang bấm xem Sản phẩm liên quan */}
+    {originalScannedProduct && String(product?._id || product?.id) !== String(originalScannedProduct?._id || originalScannedProduct?.id) && (
+      <div
+        style={{
+          background: '#eff6ff',
+          borderBottom: '1.5px solid #bfdbfe',
+          padding: '8px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          flexWrap: 'wrap'
+        }}
+      >
+        <span style={{ fontSize: '0.82rem', color: '#1e3a8a', fontWeight: 600 }}>
+          📦 Đang xem sản phẩm liên quan: <strong>{product?.name}</strong>
+        </span>
+        <button
+          type="button"
+          onClick={() => handleSelectRelatedProduct(originalScannedProduct)}
+          style={{
+            background: '#2563eb',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 6,
+            padding: '5px 12px',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          <ArrowLeft size={14} /> Quay lại: {originalScannedProduct.name}
+        </button>
+      </div>
+    )}
+
     {/* Render Active View by Industry */}
     {activeTheme === 'honey' && renderHoneyView()}
     {(activeTheme === 'staycool' || activeTheme === 'vyphyto') && renderStayCoolView()}
@@ -4628,15 +4786,22 @@ return (
                   <div>
                     {showRelated && filteredRelated.length > 0 ? (
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: "12px", padding: "4px 0" }}>
-                        {filteredRelated.map((p, idx) => (
-                          <div key={p._id || idx} style={{ textAlign: "center", padding: "10px", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.1)", background: "#f0fdf4" }}>
+                        {filteredRelated.map((p, idx) => {
+                          const thumbUrl = getProductThumbUrl(p);
+                          return (
+                          <div
+                            key={p._id || idx}
+                            onClick={() => handleSelectRelatedProduct(p)}
+                            style={{ cursor: 'pointer', textAlign: "center", padding: "10px", borderRadius: "8px", border: "1px solid rgba(0,0,0,0.1)", background: "#f0fdf4" }}
+                          >
                             <div style={{ width: 56, height: 56, margin: "0 auto 8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              {p.images?.[0] ? <img src={p.images[0]} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 6 }} /> : <Package size={32} color="#16a34a" />}
+                              {thumbUrl ? <img src={thumbUrl} alt={p.name} style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 6 }} /> : <Package size={32} color="#16a34a" />}
                             </div>
                             <div style={{ fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.3, color: "#166534" }}>{p.name}</div>
                             {p.category && <div style={{ fontSize: "0.72rem", color: "#4ade80", marginTop: 3 }}>{p.category}</div>}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <p style={{ textAlign: "center", opacity: 0.6, padding: "20px 0" }}>Không có sản phẩm liên quan.</p>
