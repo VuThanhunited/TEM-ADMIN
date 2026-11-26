@@ -84,7 +84,7 @@ const CosmeticsTrustBadge = () => (
 export default function ProductInfo() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { customEnterprise, isCustomDomain } = useDomain();
+  const { customEnterprise, customDomain, isCustomDomain } = useDomain() || {};
 
   const defaultMockScanData = {
     theme: 'appliance',
@@ -110,8 +110,21 @@ export default function ProductInfo() {
     }
   };
 
-  const [scanData, setScanData] = useState(location.state?.scanData || defaultMockScanData);
-  const serial = location.state?.serial || scanData?.label?.serialNumber;
+  const getStoredScanSession = () => {
+    try {
+      const raw = sessionStorage.getItem('tem_last_scan_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.scanData) return parsed;
+      }
+    } catch {}
+    return null;
+  };
+  const storedSession = getStoredScanSession();
+  const urlCodeParam = new URLSearchParams(location.search).get('code') || new URLSearchParams(location.search).get('serial') || '';
+
+  const [scanData, setScanData] = useState(location.state?.scanData || storedSession?.scanData || defaultMockScanData);
+  const serial = location.state?.serial || urlCodeParam || storedSession?.serial || scanData?.label?.serialNumber;
 
   // Dynamic Automatic Theme Detection based on Batch Theme, Product, & Enterprise Info
   const getInitialTheme = () => {
@@ -486,19 +499,22 @@ export default function ProductInfo() {
 
   // Tự động làm mới dữ liệu mới nhất từ server khi vào trang hoặc reload để luôn cập nhật ảnh/thông tin sản phẩm
   useEffect(() => {
-    const serialToFetch = serial || scanData?.label?.serialNumber || scanData?.label?.qrCode;
+    const serialToFetch = urlCodeParam || serial || scanData?.label?.serialNumber || scanData?.label?.qrCode;
     if (serialToFetch && serialToFetch !== 'VSM-88392100') {
       userApi.getPublicScan(serialToFetch, { noCount: '1' })
         .then(freshData => {
           if (freshData && freshData.product) {
             setScanData(freshData);
+            try {
+              sessionStorage.setItem('tem_last_scan_session', JSON.stringify({ scanData: freshData, serial: serialToFetch }));
+            } catch {}
           }
         })
         .catch(() => {
           // Bỏ qua lỗi ngầm, vẫn giữ scanData hiện tại
         });
     }
-  }, [serial]);
+  }, [serial, urlCodeParam]);
 
   useEffect(() => {
     setActiveTheme(getInitialTheme());

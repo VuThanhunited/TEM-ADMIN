@@ -35,6 +35,9 @@ export default function ScanChoice() {
     try {
       const result = await userApi.getPublicScan(code);
       setScanData(result);
+      try {
+        sessionStorage.setItem('tem_last_scan_session', JSON.stringify({ scanData: result, serial: code }));
+      } catch {}
 
       // Nếu NPP đang trong phiên "Quét tiếp" cho 1 Điểm bán đã chọn (chưa bấm Dừng),
       // tự động chuyển sang gán mã kế tiếp cho điểm bán đó luôn (Bước 4)
@@ -104,8 +107,11 @@ export default function ScanChoice() {
       setUnactivatedNotice('Tem chưa được kích hoạt sở hữu , Vui lòng kích hoạt');
       return;
     }
+    try {
+      sessionStorage.setItem('tem_last_scan_session', JSON.stringify({ scanData, serial: code }));
+    } catch {}
     // Guest: navigate to product info page (no login needed)
-    navigate('/product-info', {
+    navigate(`/product-info?code=${encodeURIComponent(code)}`, {
       state: { scanData, serial: code }
     });
   };
@@ -130,7 +136,10 @@ export default function ScanChoice() {
   const handleBack = () => {
     // Khách hàng yêu cầu: nút back luôn về giao diện tem, TUYỆT ĐỐI không về trang chủ giải pháp
     if (scanData) {
-      navigate('/product-info', {
+      try {
+        sessionStorage.setItem('tem_last_scan_session', JSON.stringify({ scanData, serial: code }));
+      } catch {}
+      navigate(`/product-info?code=${encodeURIComponent(code)}`, {
         state: { scanData, serial: code }
       });
     } else {
